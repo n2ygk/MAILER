@@ -1203,11 +1203,13 @@ char *s;
 int l;
 {
     char buf[200];
-
-    bcopy("250 ",buf,4);
-    bcopy(&s[5], &buf[4], l-5);
-    bcopy(" ... that's the ticket.",&buf[4+l-5],23);
-    (*S.repf)(buf,27+l-5);
+    if (l > 5) {
+        bcopy("250 ",buf,4);
+        bcopy(&s[5], &buf[4], l-5);
+        bcopy(" ... that's the ticket.",&buf[4+l-5],23);
+        (*S.repf)(buf,27+l-5);
+    } else
+        return s_syntax(st, s, l);
     return st;
 }
 
