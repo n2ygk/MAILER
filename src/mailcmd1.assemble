@@ -79,15 +79,9 @@ EYESKIP  DS    0H
          MVI   FLAG,0        CLEAR THE FLAG BYTE
          MVC   SRCUSER,=CL8' '
          L     R4,@SENDUSR         Get sending userid.
-         LA    R1,8(R4)      END OF STRING
-         TRT   0(8,R4),TRTAB LOOK FOR BLANK AT END OF ID
-         LA    R3,8(R4)      ADDRESS OF END
-         SR    R3,R1         MINUS LENGTH GIVES # OF LEADING BLANKS
-         LA    R3,SRCUSER(R3)      Left pad to this address.
-         SR    R1,R4         LENGTH OF THE USERID
-         BZ    NOUSER              No userid.
-         BCTR  R1,0          -1 FOR EXECUTED MOVE
-         EX    R1,MOVEIT     MVC 0(0,R3),0(R4)
+         CLC   =CL8' ',0(R4)       Was one supplied
+         BE    NOUSER              ---> No
+         MVC   SRCUSER,0(R4)       Copy it in
 NOUSER   DS    0H
          MVC   MSGSENDR,SRCUSER    Initialize response userid.
          SPACE 1
@@ -95,15 +89,9 @@ NOUSER   DS    0H
          L     R4,@SENDNOD         Get sending user's node.
          LTR   R4,R4               Any?
          BZ    NONODE              No  :
-         LA    R1,8(R4)            End of string.
-         TRT   0(8,R4),TRTAB       Find blank at end.
-         LA    R3,8(R4)            Address of end
-         SR    R3,R1                  - length = # OF LEADING BLANKS
-         LA    R3,SRCNODE(R3)      Left-align ADDRESS
-         SR    R1,R4               Get nodename length.
-         BZ    NONODE              None : don't try to move it.
-         BCTR  R1,0
-         EX    R1,MOVEIT           "MVC 0(0,R3),0(R4)"
+         CLC   =CL8' ',0(R4)       Anything there?
+         BE    NONODE              ---> No
+         MVC   SRCNODE,0(R4)       Copy it in
 NONODE   DS    0H
          MVC   MSGNODE,=CL8' '     Blank out response node.
          CLC   @CODE,=A(CMDNET)    Is it from the network?
@@ -116,7 +104,17 @@ NONODE   DS    0H
          CLC   @CODE,=A(CMDCONS)   Is it from the console?
          BE    SKIPCON             Yes : Don't bother, he's seen it.
          MVC   WORKBUF(24),=C'From         @        : '
-         MVC   WORKBUF+05(8),MSGSENDR
+         LA    R4,SRCUSER          Get sending userid.
+         LA    R1,8(R4)            End of string
+         TRT   0(8,R4),TRTAB       Look for blank at end of id
+         LA    R3,8(R4)            Address of end
+         SR    R3,R1               Minus length gives leading blanks
+         LA    R3,WORKBUF+05(R3)   Start here
+         SR    R1,R4               Length of the userid
+         BZ    NOUSER2             No userid.
+         BCTR  R1,0                -1 for executed move
+         EX    R1,MOVEIT           MVC 0(0,R3),0(R4)
+NOUSER2  DS    0H
          MVC   WORKBUF+14(8),MSGNODE
          CLC   @CODE,=A(CMDNET)    Is it from the network?
          BE    *+10                Yes : Nodename is right.
