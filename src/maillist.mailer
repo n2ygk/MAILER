@@ -622,6 +622,9 @@ if ^exists(listid 'MAILLIST' diskmode)  then  do
    return 8
    end
 
+'EXECSTAT' listid 'MAILLIST'
+if rc = 0  then  'EXECDROP' listid 'MAILLIST'
+
 'ERASE' listid 'MAILLIST' diskmode
 call msg '"'listid 'MAILLIST" file erased'
 
