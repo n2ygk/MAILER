@@ -139,6 +139,7 @@ static struct mailblok {
                              /*     found)                           */
     char reserved;           /* Reserved                             */
     struct fscb ulfscb;      /* MAILER USERLOG fscb                  */
+    int align3b;             /* For alignment with ASM               */
     struct trcent *trtblst;  /* Start of trace table                 */
     struct trcent *trtblcur; /* Current trace table entry            */
     struct trcent *trtblend; /* End of trace table                   */
