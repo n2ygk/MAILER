@@ -528,7 +528,7 @@ NOFILES  EQU   *             NOT ALLOWED TO SEND FILES TO THESE IDS
          B     RET
          SPACE ,
 ILLEGAL  EQU   *
-         LOG   LCL031,(CA,(R4))
+         LOG   LCL031,(CA,(R3))
          LA    R15,4
          B     RET
          SPACE ,
