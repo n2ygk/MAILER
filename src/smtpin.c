@@ -1723,12 +1723,35 @@ int l;
 
 /*
  * find_routd:  Return pointer to ROUTD given hostname string
- *   (1) Look up full host string in MAILRTAB
- *   (2) If not found, look for full host string in MAILDTAB
- *   (3) If not found and RSCS-domains are found strip RSCS domain
- *   (4) look for the hostname in MAILRTAB
- *   (5) if not found,  look for it in MAILDTAB
- *   (6) if not found and MOPTAUN true,  look for *DEFAULT* in MAILRTAB
+ *
+ * The search sequence proceeds in the following order until a
+ * match is found or the entire sequence fails:
+ *
+ *   (1)  Look up full host string in MAILRTAB (OUTGOING table)
+ *
+ *   (2)  Strip any attached RSCS-Domain
+ *        If any RSCS-domains have been coded, do a right to left
+ *        compare and strip on a match
+ *
+ *   (3)  Look for the (shorter) hostname in MAILRTAB (OUTGOING table)
+ *
+ *   (4)  Look for it in MAILDTAB (DOMAINS table)
+ *
+ *   (5)  If MOPTAUN (Allow-Unknown-Nodes) true look for *DEFAULT*
+ *
+ *   (5A) If original string (the one used for the lookup in step 1)
+ *        has no dot in it (i.e. no domain name originally)  then
+ *        look for *DEFAULT* in MAILRTAB (OUTGOING table)
+ *
+ *   (5B) If original string (the one used for the lookup in step 1)
+ *        has a dot in it (i.e. a domain name originally)  then
+ *
+ *        (5B.1) If an RSCS-Domain match was found look for
+ *               *DEFAULT*ROUTE*.rscsdomain in MAILDTAB (DOMAINS table)
+ *
+ *        (5B.2) Look for *DEFAULT* in MAILDTAB (DOMAINS table)
+ *
+ *
  *  Returns ptr to ROUTD or NULL if not found.
  */
 _fnroutd(s, l)     /* assembly-language callable stub */
@@ -1750,6 +1773,7 @@ int l;
 {
     struct tbentry *te;
     int ol = l;              /* original length */
+    char defrt[255];         /* *DEFAULT*ROUTE* string */
 #ifdef DEBUG_FIND_ROUTD
     char dbgmsg[133];
 #endif
@@ -1766,6 +1790,9 @@ int l;
 #endif
 
     /* (1) see if it is in MAILRTAB */
+#ifdef DEBUG_FIND_ROUTD
+        wrterm("==> find_routd: Checking MAILRTAB");
+#endif
     if (ctbluk(&te, mailblok.mailrtab, s, l) == TBMATCH) {
 #ifdef DEBUG_FIND_ROUTD
         wrterm("==> find_routd: Found in MAILRTAB");
@@ -1773,15 +1800,10 @@ int l;
         return te->tbe_dsp;        /* table dispatch value is *routd */
     }
 
-    /* (2) see if it is in MAILDTAB */
-    if (ctbluk(&te, mailblok.maildtab, s, ol) == TBMATCH) {
+    /* (2) see if it ends in .<RSCS-domain> */
 #ifdef DEBUG_FIND_ROUTD
-        wrterm("==> find_routd: Found in MAILDTAB");
+        wrterm("==> find_routd: Attempting RSCS domain removal");
 #endif
-        return te->tbe_dsp;
-    }
-
-    /* (3) see if it ends in .<RSCS-domain> */
     if (mailblok.rscsdom[0] != 0) {
         int ri;
 #ifdef DEBUG_FIND_ROUTD
@@ -1808,9 +1830,18 @@ int l;
 #endif
            }
         }
+#ifdef DEBUG_FIND_ROUTD
+        bcopy("==> find_routd: >", dbgmsg, 17);
+        bcopy(s, &dbgmsg[17], l);
+        bcopy("<", &dbgmsg[17+l], 2);
+        wrterm(dbgmsg);
+#endif
     }
 
-    /* (4) see if it is in MAILRTAB */
+    /* (3) see if it is in MAILRTAB */
+#ifdef DEBUG_FIND_ROUTD
+        wrterm("==> find_routd: Checking MAILRTAB");
+#endif
     if (ctbluk(&te, mailblok.mailrtab, s, l) == TBMATCH) {
 #ifdef DEBUG_FIND_ROUTD
         wrterm("==> find_routd: Found in MAILRTAB");
@@ -1818,7 +1849,10 @@ int l;
         return te->tbe_dsp;        /* table dispatch value is *routd */
     }
 
-    /* (5) see if it is in MAILDTAB */
+    /* (4) see if it is in MAILDTAB */
+#ifdef DEBUG_FIND_ROUTD
+        wrterm("==> find_routd: Checking MAILDTAB");
+#endif
     if (ctbluk(&te, mailblok.maildtab, s, ol) == TBMATCH) {
 #ifdef DEBUG_FIND_ROUTD
         wrterm("==> find_routd: Found in MAILDTAB");
@@ -1826,14 +1860,59 @@ int l;
         return te->tbe_dsp;
     }
 
-    /* (6) see if MOPTAUN and *DEFAULT* is in MAILRTAB */
-    if (mailblok.mailopts&MOPTAUN
-        && ctbluk(&te, mailblok.mailrtab, "*DEFAULT*", 9)
+    /* (5) see if MOPTAUN and *DEFAULT* is in MAILDTAB/MAILRTAB */
+    if (mailblok.mailopts&MOPTAUN) {
+#ifdef DEBUG_FIND_ROUTD
+        wrterm("==> find_routd: Allow unknown nodes set");
+#endif
+       if (strnindex(s, '.', ol) == 0) {
+       /* (5A) No '.' in original address string */
+#ifdef DEBUG_FIND_ROUTD
+           wrterm("==> find_routd: Checking MAILRTAB with *DEFAULT*");
+#endif
+           if (ctbluk(&te, mailblok.mailrtab, "*DEFAULT*", 9)
                                                    == TBMATCH) {
 #ifdef DEBUG_FIND_ROUTD
-        wrterm("==> find_routd: Using *DEFAULT*");
+           wrterm("==> find_routd: Using *DEFAULT* in OUTGOING table");
 #endif
-        return te->tbe_dsp;
+           return te->tbe_dsp;
+           }
+       } else {
+       /* (5B) Have a '.' in original address string */
+#ifdef DEBUG_FIND_ROUTD
+           wrterm("==> find_routd: Checking MAILDTAB with *DEFAULT*");
+#endif
+           if (l != ol) {
+               /* (5B.1)  Stripped an RSCS-Domain */
+               bcopy("*DEFAULT*ROUTE*", defrt, 15);
+               bcopy(s+l,defrt,ol-l);
+#ifdef DEBUG_FIND_ROUTD
+               bcopy("==> find_routd: Using ", dbgmsg, 22);
+               bcopy(defrt, dbgmsg+22, ol-l+15);
+               bcopy(" in DOMAINS table", dbgmsg+22+(ol-l+15), 18);
+               wrterm(dbgmsg);
+#endif
+               if (ctbluk(&te, mailblok.maildtab, defrt, ol-l+15)
+                                                       == TBMATCH) {
+#ifdef DEBUG_FIND_ROUTD
+                   bcopy("==> find_routd: Using ", dbgmsg, 22);
+                   bcopy(defrt, dbgmsg+22, ol-l+15);
+                   bcopy(" in DOMAINS table", dbgmsg+22+(ol-l+15), 18);
+                   wrterm(dbgmsg);
+#endif
+                   return te->tbe_dsp;
+               }
+           }
+           /* (5B.2) Try for *DEFAULT* */
+           if (ctbluk(&te, mailblok.maildtab, "*DEFAULT*", 9)
+                                                       == TBMATCH) {
+#ifdef DEBUG_FIND_ROUTD
+               wrterm(
+                 "==> find_routd: Using *DEFAULT* in DOMAINS table");
+#endif
+               return te->tbe_dsp;
+           }
+       }
     }
 
     /* give up */

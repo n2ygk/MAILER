@@ -75,3 +75,19 @@ strindex( str, c )
     return( -1 );
   }
 
+int
+strnindex( str, c , l)
+    char        *str;
+    char        c;
+    int         l;
+  {
+    char        *s;
+    int         rl;
+
+    for( s=str, rl=0 ; *s, rl<l ; ++s, ++rl )
+    if( *s == c )
+      return( s-str );
+
+    return( -1 );
+  }
+
