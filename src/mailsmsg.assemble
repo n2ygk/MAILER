@@ -9,13 +9,10 @@ MAILSMSG CSECT
 *  Commands sent to the mailer via the CP SMSG command are handled
 *  in this routine.  This routine runs as the External interrupt
 *  handler declared to CMS via the HNDEXT macro.  Since this routine
-*  runs disabled,  it does not issue any I/O.  The reentrant
-*  command parser MAILCMD1 is called for command processing.
-*  Trivial commands (i.e. can be done disabled) are performed
-*  in MAILCMD1.  More complex commands are remembered in DMSFREE
-*  storage and are processed at a later time by MAILCMD2.
-*
-* LAST EDIT: 5/12/82 by Alan Crosswell
+*  runs disabled,  it does not issue any I/O.  It either severs
+*  the IUCV connection or receives the data being transmitted.  If
+*  data is received, a copy of the data buffer and IUCV parms buffer
+*  is stacked for processing by the MAILCMDx routines.
 *
          SPACE
 * REGISTER USAGE -
@@ -26,7 +23,7 @@ R3  EQU  3 -
 R4  EQU  4 -
 R5  EQU  5 -
 R6  EQU  6 -
-R7  EQU  7 -
+R7  EQU  7 - IUCV receive block base
 R8  EQU  8 -
 R9  EQU  9 - VMCPARM BASE
 R10 EQU 10 - EXTERNAL INTERRUPT SAVE AREA
@@ -40,6 +37,7 @@ R15 EQU 15 - SUBROUTINE LINKAGE
          MAILBLOK ,
          NUCON DSECT
          COPY  IPARML
+         MSGBLOK ,
          COPY  MAILEQU
          EJECT
 MAILSMSG CSECT ,
@@ -59,18 +57,33 @@ EYESKIP  DS    0H
          USING MAILBLOK,R11
          LR    R10,R1        COPY PLIST POINTER
          USING EXTSAVE,R10   ADDRESS THE PARMS
+         LA    R7,0                Signal no MSGBLOK gotten yet
          CLC   EXTPSW+2(2),=X'4000' IUCV interrupt?
          BNE   DONE          NOPE, IGNORE IT
          LA    R9,MAILIUCB         Get IUCV external-parms.
          USING IPARML,R9
          CLC   IPPATHID,MAILIUCP   Is it our *MSG path?
+         DROP  R9
          BNE   SEVER               No  : SEVER the path.
          SPACE 3
 RCVLOOP  DS    0H
-         LA    R9,IUCVP            Now user out IPARML.
-         XC    0(IPSIZE*8,R9),0(R9) Clear it out.
-         LA    R2,L'MESSAGE
-         IUCV  RECEIVE,BUFFER=MESSAGE,BUFLEN=(R2),PRMLIST=(R9),        X
+         DMSFREE DWORDS=MSGBLOKL/8,ERR=DONE
+*                                  Ignore interrupt if no storage
+         LR    R7,R1               Base into better reg
+         USING MSGBLOK,R7          Map it for assembler
+         LR    R14,R7              Start of area to clear
+         L     R15,=A(MSGBLOKL)    Length to clear
+         LA    R1,0                Set from length of 0 and pad of x'0'
+         MVCL  R14,R0              Clear MSGBLOK to zeros
+         ST    R0,MSGBLEN          Remember length
+         MVC   SRCNODE,=CL8' '     Init to blanks
+         MVC   SRCUSER,=CL8' '     Init to blanks
+RCVLOOP2 EQU   *                   Come here if block already gotten
+         XC    MAILIPRM(IPSIZE*8),MAILIPRM Clear it out.
+         LA    R15,L'MESSAGE
+         LA    R9,MAILIPRM         Base for IPARML
+         USING IPARML,R9           Tell assembler
+         IUCV  RECEIVE,BUFFER=MESSAGE,BUFLEN=(R15),PRMLIST=(R9),       X
                PATHID=MAILIUCP
          BNZ   DONE                Error: Exit.
          L     R1,IPTRGCLS         Get message type
@@ -90,33 +103,39 @@ RCVLOOP  DS    0H
          SPACE 3
 UNKNOWN  DS    0H
          TM    MAILOPTS,MOPTALLM   Display all received messages?
-         BNO   RCVLOOP             ---> No, ignore this
-         MVC   USER,MESSAGE        Accept userid from IUCV.
-         MVC   NODENAME,CPUSTR     It's from our node.
-         LA    R5,=CL38'* Unknown (unsupported) IPTRGCLS value'
-         LA    R8,38               Message length
-         LA    R2,CMDSMSG          Type = SMSG.
-         B     EXECUTE
+         BNO   RCVLOOP2            ---> No, ignore this
+         MVC   SRCUSER,MESSAGE     Accept userid from IUCV.
+         MVC   SRCNODE,CPUSTR      It's from our node.
+         MVC   MESSAGE(38),=CL38'* Unknown (unsupported) IPTRGCLS valueX
+               '
+         LA    R15,MESSAGE         Start of message
+         ST    R15,@MESSAGE        Into MSGBLOK
+         MVC   @MSGLEN,=F'38'      Message length
+         MVC   SRCCODE,=A(CMDSMSG) Type = SMSG.
+         B     QUEUEIT
          SPACE 3
 WNG      DS    0H
          TM    MAILOPTS,MOPTALLM   Display all received messages?
          BO    SMSG                ---> Yes
-         B     RCVLOOP             ---> No, ignore it
+         B     RCVLOOP2            ---> No, ignore it
          SPACE 3
 CPMSG    DS    0H
          TM    MAILOPTS,MOPTALLM   Display all received messages?
          BO    SMSG                ---> Yes
-         B     RCVLOOP             ---> No, ignore it
+         B     RCVLOOP2            ---> No, ignore it
          SPACE 3
 SMSG     DS    0H
-         MVC   USER,MESSAGE        Accept userid from IUCV.
-         MVC   NODENAME,CPUSTR     It's from our node.
-         LA    R5,MESSAGE+8        -> Command.
-         LA    R8,L'MESSAGE        Get
-         SH    R8,IPBFLN1             command
-         SH    R8,=H'8'                  length.
-         LA    R2,CMDSMSG          Type = SMSG.
-         B     EXECUTE
+         MVC   SRCUSER,MESSAGE     Accept userid from IUCV.
+         MVC   SRCNODE,CPUSTR      It's from our node.
+         LA    R15,MESSAGE+8       -> Command.
+         ST    R15,@MESSAGE        Into MSGBLOK
+         LA    R15,L'MESSAGE       Get
+         SH    R15,IPBFLN1            command
+         SH    R15,=H'8'                 length.
+         ST    R15,@MSGLEN         Into MSGBLOK
+         MVC   SRCCODE,=A(CMDSMSG) Type = SMSG.
+         B     QUEUEIT
+         SPACE 1
 MSG      DS    0H
          CLC   RSCSNAME,MESSAGE    Is it from RSCS?
          BE    MSG1                Yes : Special processing.
@@ -125,18 +144,19 @@ MSG      DS    0H
 MSG1     DS    0H
          TM    MAILOPTS,MOPTALLM   Display all received messages?
          BO    SMSG                ---> Yes
-         LA    R8,L'MESSAGE        Get
-         SH    R8,IPBFLN1             command
-         SH    R8,=H'8'                  length.
-         CALL  UNIXSCAN,(PTRS,L'PTRS,MESSAGE+8,(R8))
+         LA    R14,MESSAGE+8       Message address
+         LA    R15,L'MESSAGE       Get
+         SH    R15,IPBFLN1            command
+         SH    R15,=H'8'                 length.
+         CALL  UNIXSCAN,(PTRS,L'PTRS,(R14),(R15))
          CH    R1,=H'6'            At least "FROM node(user):"?
-         BL    RCVLOOP             No  : Ignore it.
+         BL    RCVLOOP2            No  : Ignore it.
          LA    R1,PTRS             Assume no message number.
          CLI   0(R1),4             Can it be "FROM"?
          BE    MSG2                Yes : Skip.
          LA    R1,PTRS+4           Skip the DMTCMXnnnI.
          CLI   0(R1),4             Might this one be "FROM"?
-         BNE   RCVLOOP             No  : Ignore it.
+         BNE   RCVLOOP2            No  : Ignore it.
 MSG2     DS    0H
          L     R2,0(,R1)           Is it
          TR    0(4,R2),UPCASE      Upcase it before testing.
@@ -144,60 +164,106 @@ MSG2     DS    0H
          BNE   RCVLOOP             No  : Exit.
          L     R2,8(,R1)           Is it
          CLI   0(R2),C'('             from a user?
-         BNE   RCVLOOP             No  : Message from RSCS itself.
-         MVC   NODENAME,=CL8' '    Blank it out.
+         BNE   RCVLOOP2            No  : Message from RSCS itself.
+         MVC   SRCNODE,=CL8' '     Blank it out.
          IC    R2,4(,R1)           Length of nodename.
          L     R3,4(,R1)           Address of nodename.
-         LA    R4,NODENAME
+         LA    R4,SRCNODE
          BCTR  R2,0
          EX    R2,MOVEIT           "MVC 0(*-*,R4),0(R3)".
-         MVC   USER,=CL8' '        Blank it out.
+         MVC   SRCUSER,=CL8' '     Blank it out.
          IC    R2,12(,R1)          Length of userid.
          L     R3,12(,R1)          Address of userid.
-         LA    R4,USER
+         LA    R4,SRCUSER
          BCTR  R2,0
          EX    R2,MOVEIT           "MVC 0(*-*,R4),0(R3)".
-         L     R5,24(,R1)          Address of command.
-         LA    R5,0(,R5)           Purify address.
-         LA    R8,MESSAGE+L'MESSAGE Get
-         SH    R8,IPBFLN1             command
-         SR    R8,R5                     length.
-         LA    R2,CMDNET           Type = Network.
-         B     EXECUTE
+         L     R14,24(,R1)         Address of command.
+         LA    R14,0(,R14)         Purify address.
+         ST    R14,@MESSAGE        Into MSGBLOK
+         LA    R15,MESSAGE+L'MESSAGE Get
+         SH    R15,IPBFLN1             command
+         SR    R15,R14                    length.
+         ST    R15,@MSGLEN         Into MSGBLOK
+         MVC   SRCCODE,=A(CMDNET)  Type = Network.
+         B     QUEUEIT
+         SPACE 1
 MOVEIT   MVC   0(*-*,R4),0(R3)     *** Executed ***
-EXECUTE  DS    0H
-         CALL  MAILCMD1,((R11),(R5),(R8),USER,NODENAME,(R2))
+         SPACE 1
+         DROP  R9
+         SPACE 1
+QUEUEIT  DS    0H
+         BAL   R14,CHAINIT
          B     RCVLOOP             Go check for more.
          SPACE 3
 SEVER    DS    0H
+         USING IPARML,R9
          IUCV  SEVER,PRMLIST=(R9)  Kill any paths except *MSG.
+         DROP  R9
          SPACE 3
 DONE     EQU   *
+         LTR   R7,R7               Have a block to free?
+         BZ    DONE2               ---> No
+         LR    R1,R7               Move it (dumb CMS macro)
+         DMSFRET LOC=(1),DWORDS=MSGBLOKL/8,ERR=*
+         SPACE 1
+         DROP  R7
+DONE2    EQU   *
          SR    R15,R15
          TM    MAILSTAT,MSTINWT   IN WAITD?
          BNO   RET
          LA    R0,=C'QUERY FILES'  Command.
-         LA    R1,MESSAGE          Output area.
+         LA    R1,FILESMSG         Output area.
          L     R2,=AL1(X'40',0,0,11) Length + Output-in-Buffer flag
          LA    R3,40               Enough for "FILES: nnn RDR ..."
          DIAG  R0,R2,X'0008'       Get the file counts.
-         CLC   MESSAGE+7(3),=C' NO' Any files waiting?
+         CLC   FILESRDR,=C' NO'    Any files waiting?
          BE    RET                 No  : Let sleeping MAILERs lie.
-         LA    R1,=C'READY C'
-         LA    R0,7
+         LA    R1,=CL9'READY 00C'
+         LA    R0,9
          DC    X'83100008'   WAKE UP THE SLEEPING MAILER
+         SPACE 1
 RET      EQU   *
          L     R13,4(R13)              GET CALLER'S SAVE PTR
          L     R14,12(R13)             GET R14
          LM    R0,R12,20(R13)          GET R0-R12
          BR    R14                     RETURN
+         EJECT ,
+*--------------------------------------------------------------------
+*
+*  Add command block to MAILCMDL chain
+*
+*  Regs at entry:
+*
+*    R7  - MSGBLOK base
+*    R14 - Return address
+*
+*--------------------------------------------------------------------
+         SPACE 1
+CHAINIT  DS    0H
+         LA    R15,MAILCMDL        Address of list
+CHAIN10  EQU   *
+         ICM   R1,B'1111',0(R15)   Get next command pointer
+         BZ    CHAIN20             Found end of chain
+         USING MSGBLOK,R1
+         LA    R15,MSGNEXT         Chain along
+         DROP  R1
+         B     CHAIN10
+CHAIN20  EQU   *
+         ST    R7,0(R15)           Add onto chain
+         OI    MAILCMD,MCMDCMD     Indicate there is work to do
+         OI    CMDECB,POSTED       And post the command ECB.
+         BR    R14                 Return to caller
+         EJECT ,
          LTORG ,
 SAVE     DS    18F                     SAVE AREA
-NODENAME DS    CL8                 Name of sending node.
-USER     DS    CL8                 Name of sending user.
-MESSAGE  DS    CL256               IUCV RECEIVE buffer.
-IUCVP    DS    (IPSIZE)D
-PTRS     DS    CL(10*4)
+PTRS     DS    CL(10*4)            Used by UNIXSCAN
+FILESMSG DS    C'FILES: '          Response from Q FILES goes here
+FILESRDR DS    C'nnn'
+         DS    C' RDR, '
+FILESPRT DS    C'nnn'
+         DS    C' PRT, '
+FILESPUN DS    C'nnn'
+         DS    C' PUN. '
          SPACE ,
 EXTSAVE  DSECT ,
 EXTGRS   DS        16F

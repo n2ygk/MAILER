@@ -1,36 +1,26 @@
-*Added end-marker for multi-line replies and SHOW table * ACTIVE [1.24]
-*[1.22]Add SHOW ORIGINS and SHOW DOMAINS                         [1.22]
-MAILCMD1 TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - COMMAND PARSER'
+MAILCMD1 TITLE 'VM Network Mailer Release 2 - Command processor'
+MAILCMD1 CSECT ,
 *---------------------------------------------------------------------*
 *      MAILER -- Copyright (c) 1982,1985 Columbia University.         *
 *    Program Property of the Trustees of Columbia University in the   *
 *    City of New York.                                                *
+*                Copyright (c) 1990 Princeton University              *
 *---------------------------------------------------------------------*
-MAILCMD1 CSECT ,
+         SPACE 1
 * MAILCMD1 -
-* This routine processes mailer commands.  These are received
-* in a variety of ways (smsg, console, etc.).  This routine is
-* reentrant so that it may be called within an interrupt
-* handler.  Most commands will not require much processing and
-* can be executed within this module.  Those that require further
-* processing will be added to a list that will be later processed
-* at a polling point in MAILMAIN.  Storage for work areas is
-* allocated via DMSFREE.
-*
-* LAST EDIT: 5/23/82 by Alan Crosswell
+         SPACE 1
+* MAILCMD1 contains the routines to procss the SHOW/QUERY command.
 *
 * CALLED VIA -
-*  CALL MAILCMD1,(MAILBLOK,STRING,LENGTH,SENDUSER,SENDNODE,CODE)
+*  CALL MAILCMD1,(MAILBLOK,MSGBLOK)
+         SPACE 1
 PAB      DSECT ,
-@MBLOK   DS    A             MAILBLOK ADDRESS
-@STRING  DS    A             STRING ADDRESS
-@LEN     DS    A             STRING LENGTH
-@SENDUSR DS    A             Command sender userid.
-@SENDNOD DS    A             Command sender nodename.
-@CODE    DS    A             INDICATES SOURCE OF CMD (CONS,SMSG...)
+@MBLOK   DS    A             MAILBLOK address
+@MSGBLOK DS    A             MSGBLOK address
 *
          SPACE
 * REGISTER USAGE -
+         SPACE 1
 R0  EQU  0 -
 R1  EQU  1 -
 R2  EQU  2 -
@@ -40,10 +30,10 @@ R5  EQU  5 -
 R6  EQU  6 -
 R7  EQU  7 -
 R8  EQU  8 - STRING LENGTH
-R9  EQU  9 - STRING POINTER
-R10 EQU 10 - PLIST POINTER
-R11 EQU 11 - MAILBLOK BASE
-R12 EQU 12 - PROGRAM BASE
+R9  EQU  9 - MSGBLOK base
+R10 EQU 10 -
+R11 EQU 11 - MAILBLOK base
+R12 EQU 12 - Program base
 R13 EQU 13 - WORK AREA DSECT
 R14 EQU 14 - SUBROUTINE LINKAGE
 R15 EQU 15 - SUBROUTINE LINKAGE
@@ -53,6 +43,8 @@ R15 EQU 15 - SUBROUTINE LINKAGE
          TBTAB DSECT=YES
          MAILBLOK ,
          COPY MAILEQU
+         COPY  IPARML
+         MSGBLOK ,
          EJECT
 MAILCMD1 CSECT ,
          USING MAILCMD1,R15  TEMPORARY ADDRESSABILITY
@@ -63,472 +55,126 @@ EYESKIP  DS    0H
          STM   R14,R12,12(R13) SAVE CALLER'S REGS
          LR    R12,R15       PERMANENT ADDRESSABILITY
          USING MAILCMD1,R12
-         LR    R10,R1        GRAB PLIST POINTER
-         DMSFREE DWORDS=LSAVE
-         ST    R13,4(R1)     SAVE R13
-         LR    R13,R1
-         USING SAVEAREA,R13  ADDRESS IT
-         USING PAB,R10       ADDRESS THE PARMS
+         LA    R14,SAVEAREA
+         ST    R13,4(,R14)         Chain forward
+         ST    R14,8(,R13)         Chain backward
+         LR    R13,R14             Point to ours
+         USING PAB,R1        ADDRESS THE PARMS
          L     R11,@MBLOK    GET MAILBLOK
+         L     R9,@MSGBLOK         Get MSGBLOK
+         SPACE 1
+         DROP  R1
          USING MAILBLOK,R11
-         L     R9,@STRING    STRING POINTER
-         L     R8,@LEN       STRING LENGTH
-         LTR   R8,R8         ANY DATA THERE?
-         BNH   RET
-*--- INTIALIZE MESSAGE BUFFER ---
-         MVI   FLAG,0        CLEAR THE FLAG BYTE
-         MVC   SRCUSER,=CL8' '
-         L     R4,@SENDUSR         Get sending userid.
-         CLC   =CL8' ',0(R4)       Was one supplied
-         BE    NOUSER              ---> No
-         MVC   SRCUSER,0(R4)       Copy it in
-NOUSER   DS    0H
-         MVC   MSGSENDR,SRCUSER    Initialize response userid.
-         SPACE 1
-         MVC   SRCNODE,=CL8' '     Blank out nodename.
-         L     R4,@SENDNOD         Get sending user's node.
-         LTR   R4,R4               Any?
-         BZ    NONODE              No  :
-         CLC   =CL8' ',0(R4)       Anything there?
-         BE    NONODE              ---> No
-         MVC   SRCNODE,0(R4)       Copy it in
-NONODE   DS    0H
-         MVC   MSGNODE,=CL8' '     Blank out response node.
-         CLC   @CODE,=A(CMDNET)    Is it from the network?
-         BNE   *+10                No  : Skip
-         MVC   MSGNODE,SRCNODE     Yes : Initialize response node.
-         SPACE 1
-         MVI   MSGNODE+8,C' '
-         MVC   MSGDATA-3(3),=C' * ' BLANK DELIMITER
-         SPACE ,
-         CLC   @CODE,=A(CMDCONS)   Is it from the console?
-         BE    SKIPCON             Yes : Don't bother, he's seen it.
-         MVC   WORKBUF(24),=C'From         @        : '
-         LA    R4,SRCUSER          Get sending userid.
-         LA    R1,8(R4)            End of string
-         TRT   0(8,R4),TRTAB       Look for blank at end of id
-         LA    R3,8(R4)            Address of end
-         SR    R3,R1               Minus length gives leading blanks
-         LA    R3,WORKBUF+05(R3)   Start here
-         SR    R1,R4               Length of the userid
-         BZ    NOUSER2             No userid.
-         BCTR  R1,0                -1 for executed move
-         EX    R1,MOVEIT           MVC 0(0,R3),0(R4)
-NOUSER2  DS    0H
-         MVC   WORKBUF+14(8),MSGNODE
-         CLC   @CODE,=A(CMDNET)    Is it from the network?
-         BE    *+10                Yes : Nodename is right.
-         MVC   WORKBUF+14(8),CPUSTR No : It's from here.
-         LR    R1,R8               Get command length
-         BCTR  R1,0                   for EX.
-         EX    R1,CON$MVC          "MVC WORKBUF+24(*-*),0(R9)"
-         LA    R3,WORKBUF
-         LA    R4,24(,R8)
-         WRTERM (R3),(R4)          Echo the command on the console.
-         WAITT ,                   Be nice.
-SKIPCON  DS    0H
-         SPACE ,
-*--- TOKENIZE THE COMMAND LINE ---
-* CALL UNIXSCAN,(ARGV,ARGVMAX,STRING,LENGTH)
-         LA    R1,ARGV       GET ARGV ADDRESS
-         ST    R1,UNIXPARM
-         LA    R1,LARGV      LENGTH
-         ST    R1,UNIXPARM+4
-         ST    R9,UNIXPARM+8
-         ST    R8,UNIXPARM+12
-         LA    R1,UNIXPARM
-         L     R15,=V(UNIXSCAN)  UNIX-STYLE PARAMETER SCANNER
-         BALR  R14,R15       CALL IT
-         ST    R1,ARGC       ARG COUNT RETURNED IN R1
-**--- REUSE UNIXPARM AS THE POINTER TO THE CURRENT TOKEN IN ARGV --
-*---- LOOK FOR KEYWORD IN TABLE ----
-*        CALL TBLUK,(TABLE,STRING,LENGTH,WORK)
-FINDKEY  EQU   *
-         CLC   ARGC,=F'0'    ANY TOKENS LEFT?
-         BNH   BOGUS         NOPE -- GARBAGE COMMAND
-         LA    R1,CMDTAB     COMMAND TABLE
-         ST    R1,TPTAB      INTO PLIST
-         L     R1,UNIXPARM   GET THE ARGV INDEX
-         SR    R2,R2         GET ZIP
-         IC    R2,0(R1)      GET LENGTH OF THE KEYWORD
-         ST    R2,TPLEN      SAVE LENGTH INTO PLIST
-         L     R2,0(R1)      GET ADDRESS OF THE KEYWORD
-         CLI   0(R2),C'*'          Does it start with an asterisk?
-         BE    RET                 Yes : Ignore these quietly.
-         ST    R2,TPSTR      SAVE ADDRESS INTO PLIST
-         LA    R1,4(R1)      INCRMENT ARGV INDEX
-         ST    R1,UNIXPARM   AND PUT BACK INTO PLIST
-         L     R1,ARGC       GET COUNT OF TOKENS
-         BCTR  R1,0          -1 FOR THIS ONE
-         ST    R1,ARGC       PUT IT BACK FOR THE NEXT GUY
-         LA    R1,TWORK      WORK AREA
-         ST    R1,TPWRK      INTO PLIST
-         LA    R1,TPTAB      ADDRESS OF PLIST
-         L     R15,ATBLUK    ADDRESS OF TBLUK ROUTINE
-         BALR  R14,R15       CALL IT
-         C     R15,=F'4'     UNIQUE SUBSTRING FOUND?
-         BNHR  R1            GO TO COMMAND ROUTINE
-         SPACE ,
-         B     BOGUS
-         SPACE ,
-CON$MVC  MVC   WORKBUF+24(*-*),0(R9) *** Executed ***
-         SPACE ,
-*--------------------------------------------------------------------
-*        COMMAND TABLE AND ROUTINES
-*--------------------------------------------------------------------
-CMDTAB   TBSTART ,
-         T '?',$HELP         GENERAL USER HELP
-         T 'ACTIVATE'        RESUME PROCESSING READER FILES
-         T 'CHECK'           CHECK A USER'S MAILBOX
-         T 'CMS'             ISSUE CMS COMMAND
-         T 'CP'              ISSUE CP COMMAND
-         T 'FORWARD'         ADD TO FORWARDING TABLE
-         T 'HELP'            GENERAL USER HELP
-         T 'MAILLIST',$MLIST Change a mailing list
-         T 'Q',$SHOW         alias for SHOW.                     [1.24]
-         T 'QU',$SHOW        alias for SHOW.                     [1.24]
-         T 'QUERY',$SHOW     alias for SHOW.                     [1.24]
-         T 'QUIESCE'         STOP PROCESSING READER FILES
-         T 'RELOAD'          RELOAD THE MAILER
-         T 'SHOW'            SHOW VARIABLES, STATUS, ETC.
-         T 'SMSG'            RETURN REPLY AS SMSG
-         T 'STOP'            STOP THE MAILER
-         TBEND ,
-         EJECT ,
-*--------------------------------------------------------------------
-*                            A C T I V A T E
-*
-*  TURNS OFF MSTQSC FLAG TO ALLOW PROCESSING OF READER FILES
-*--------------------------------------------------------------------
-$ACTIVAT DS    0H
-         BAL   R14,CHKAUTH
-         NI    MAILSTAT,255-MSTQSC  TURN OFF QUIESCE FLAG
-         L     R1,=A(ACTMSG)
-         LA    R0,L'ACTMSG
-         BAL  R14,MESSAGE
-         B     RET
-         EJECT ,
-*--------------------------------------------------------------------
-*                            C H E C K
-*
-*  CHECK TO SEE IF ANOTHER USER HAS MAIL.  REQUIRES CLASS D PRIVS
-*  TO QUERY A READER FOR CLASS M FILES GENERATED BY THIS USERID.
-*--------------------------------------------------------------------
-$CHECK   DS    0H
-         L     R1,=A(CHKMSG)
-         LA    R0,L'CHKMSG
-         BAL  R14,MESSAGE
-         B     RET
-         EJECT ,
-*--------------------------------------------------------------------
-*                            C P
-*
-*  CP COMMANDS ISSUED BY AN AUTHORIZED USER.  THE REPLY IS RETURNED
-*  IN A BUFFER AND SENT BACK TO THE ISSUER.
-*--------------------------------------------------------------------
-$CP      DS    0H
-         BAL   R14,CHKAUTH   CHECK AUTHORIZATION
-         CLC   ARGC,=F'0'    BARE CP COMMAND...
-         BH    $CP1          NOPE
-         CLC   @CODE,=A(CMDCONS)   ONLY ALLOWED FROM CONSOLE
-         BNE   BOGUS         SORRY...
-         B     $CP2          GO DO IT
-$CP1     EQU   *
-         L     R1,UNIXPARM   GET POINTER TO NEXT TOKEN
-         L     R4,0(R1)      GET ADDRESS OF IT
-         LA    R4,0(R4)      CLEAR THE LENGTH BYTE
-         LR    R6,R4
-         SR    R6,R9         DIFFERENCE FROM ORIGINAL LENGTH
-         SR    R8,R6         GET UPDATED LENGTH
-         LR    R6,R8         COPY LENGTH
-         LR    R1,R6               Get length
-         BCTR  R1,0                   for EX
-         EX    R1,$CPTR            Upcase the CP command
-         LA    R5,WORKBUF    ADDRESS FOR REPLY
-         LA    R7,LWORKBUF   LENGTH FOR REPLY
-         O     R6,=X'40000000' FLAG TO INDICATE REPLY IN BUFFER
-         DC    X'83460008'   ISSUE THE COMMAND
-         BC    4,$CPSHORT    BUFFER WAS TOO SHORT
-         LR    R0,R7         LENGTH OF REPLY
-         LA    R1,WORKBUF
-         BAL  R14,MESSAGE       SEND THE REPLY BACK
-         B     RET
-$CPTR    TR    0(*-*,R4),UPCASE    *** Executed ***
-$CPSHORT EQU   *
-         LA    R0,LWORKBUF   TRUNCATED REPLY
-         LA    R1,WORKBUF
-         BAL  R14,MESSAGE
-         B     RET
-$CP2     EQU   *
-         SR    R0,R0         ENTER CP WITH NO DATA
-         DC    X'83000008'   JUST LIKE THAT
-         B     RET           AND ISSUE NO MESSAGE
-         EJECT ,
-*--------------------------------------------------------------------
-*                            C M S
-*
-*  AN AUTHORIZED USER MAY ISSUE CMS COMMANDS.  SINCE THIS MODULE
-*  MAY BE RUNNING DISABLED,  CMS COMMANDS ARE ADDED TO THE MAILCMDL
-*  CHAIN FOR LATER PROCESSING BY MAILCMD2.
-*--------------------------------------------------------------------
-$CMS     DS    0H
-         BAL   R14,CHKAUTH   CHECK AUTHORITY
-         CLC   ARGC,=F'0'    BARE CMS COMMAND...
-         BNH   BOGUS         YES, COMPLAIN
-         L     R1,UNIXPARM   GET POINTER TO NEXT TOKEN
-         L     R4,0(R1)      GET ADDRESS OF IT
-         LA    R4,0(R4)      CLEAR THE LENGTH BYTE
-         LR    R6,R4
-         SR    R6,R9         DIFFERENCE FROM ORIGINAL LENGTH
-         LR    R9,R4         NEW DATA ADDRESS
-         SR    R8,R6         GET UPDATED LENGTH
-         LR    R0,R8               Copy data length
-         LA    R1,CMD202           Command type
-         BAL   R14,BLDCMDBL        Build a command block
-         B     RET                 ---> Error building block
-         LR    R6,R1               Copy address where expected
-         BCTR  R8,0                -1 for EX
-         EX    R8,MOVECMD          MVC CMDDATA(0),0(R9)
-         BAL   R14,CHAINIT         Add to MAILCMDL list
-         L     R1,=A(CMSMSG)       Get msg
-         LA    R0,L'CMSMSG
-         BAL  R14,MESSAGE
-         B     RET
-         SPACE ,
-         USING COMMAND,R6
-MOVECMD  MVC   CMDDATA(0),0(R9)
-         DROP  R6
-         EJECT ,
-*--------------------------------------------------------------------
-*                            F O R W A R D
-*
-*  Automatic mail forwarding is done by issuing the FORWARD command
-*  to tell the mailer where to forward a user's mail.  Unauthorized
-*  users may only set their own forwarding value.  Users listed as
-*  a maintainer may set values for other users.
-*
-*  Since MAILER may be running disabled, FORWARD commands are added
-*  to the MAILCMDL chain for later processing by MAILCMD2.
-*
-*--------------------------------------------------------------------
-$FORWARD DS    0H
-         LR    R0,R8               Size of data field
-         LA    R1,CMDFWD           Command type
-         BAL   R14,BLDCMDBL        Build a command block
-         B     RET                 ---> Error building block
-         LR    R6,R1               Get into a better register
-         BCTR  R8,0                -1 for executed
-         EX    R8,MOVECMD          MVC CMDDATA(0),0(R9)
-         BAL   R14,CHAINIT         Chain command block
-         L     R1,=A(FWDMSG)       Get msg
-         LA    R0,L'FWDMSG
-         BAL  R14,MESSAGE
-         B     RET
-         EJECT ,
-*--------------------------------------------------------------------
-*                            H E L P
-*
-*  PROVIDE THE USER WITH SOME HELP BY LISTING THE COMMAND NAMES AND
-*  OPTIONS.  LEAVE EXTENSIVE HELP IN THE MAIL HELPCMS FILE RATHER
-*  THAN WASTING TIME WITH IT HERE.
-*--------------------------------------------------------------------
-$HELP    DS    0H
-         L     R1,=A(HLPMSG)
-         LA    R0,LHLPMSG
-         BAL  R14,MESSAGE
-         B     RET
-         EJECT ,
-*--------------------------------------------------------------------
-*                            M A I L L I S T
-*
-*  Creation, deletion and modification of mail distribution lists
-*  is done with the MAILLIST command.  Mailing lists are similar
-*  to FORWARD files, except that MAILLISTs are almost always created
-*  with names that do not match a real id on the system and mailing
-*  lists may have more than 1 owner (users allowed to make changes
-*  in the list's destination addressees).
-*
-*  Since MAILER may be running disabled, MAILLIST commands are added
-*  to the MAILCMDL chain for later processing by MAILCMD2.
-*
-*--------------------------------------------------------------------
-$MLIST   DS    0H
-         LR    R0,R8               Size of data field
-         LA    R1,CMDMLS           Command type
-         BAL   R14,BLDCMDBL        Build a command block
-         B     RET                 ---> Error building block
-         LR    R6,R1               Get into a better register
-         BCTR  R8,0                -1 for executed
-         EX    R8,MOVECMD          MVC CMDDATA(0),0(R9)
-         BAL   R14,CHAINIT         Chain command block
-         L     R1,=A(DLSMSG)       Get msg
-         LA    R0,L'DLSMSG
-         BAL   R14,MESSAGE
-         B     RET
-         EJECT ,
-*--------------------------------------------------------------------
-*                            Q U I E S C E
-*
-*  SET THE MSTQSC FLAG TO PREVENT PROCESSING OF READER FILES.
-*--------------------------------------------------------------------
-$QUIESCE DS    0H
-         BAL   R14,CHKAUTH   CHECK AUTHORIZATION
-         OI    MAILSTAT,MSTQSC SET FLAG TO QUIET DOWN
-         L     R1,=A(QUSMSG)
-         LA    R0,L'QUSMSG
-         BAL  R14,MESSAGE
-         B     RET
-         EJECT ,
-*--------------------------------------------------------------------
-*                            R E L O A D
-*
-*  A PRIVILIDGED USER MAY TELL THE MAILER TO RELOAD.  THIS CAUSES IT
-*  TO READ THE MAILER PROFILE AND LOAD ALL USER EXITS.
-*--------------------------------------------------------------------
-$RELOAD  DS    0H
-         BAL   R14,CHKAUTH   CHECK AUTHORIZATION
-         OI    RELDECB,POSTED      Tell MAILER to reload.
-         L     R1,=A(RELMSG)
-         LA    R0,L'RELMSG
-         BAL  R14,MESSAGE
-         B     RET
-         EJECT ,
-*--------------------------------------------------------------------
-*                            S M S G
-*
-*  THE SMSG PREFIX TO A COMMAND INDICATES THAT THE USER GETS THE
-*  REPLY AS AN SMSG RATHER THAN MSG/MSGNOH.
-*--------------------------------------------------------------------
-$SMSG    DS    0H            REPLY WANTED AS SMSG
-         OI    FLAG,SMSFLG   TURN ON SMSG FLAG
-         B     FINDKEY       NOW GET THE REAL KEYWORD
-         EJECT ,
-*--------------------------------------------------------------------
-*                            S T O P
-*
-*  AN AUTHORIZED USER MAY ISSUE THE  STOP COMMAND TO CAUSE THE MAILER
-*  TO STOP PROCESSING AND EXIT.
-*--------------------------------------------------------------------
-$STOP    DS    0H
-         BAL   R14,CHKAUTH   CHECK AUTHORIZATION
-         OI    STOPECB,POSTED      Post the stop ECB
-         XC    HALTRC,HALTRC       Clear Return Code.
-         CLC   ARGC,=F'0'          Might there be a Return Code?
-         BNH   STOPMSG             No  : All done.
-         L     R1,UNIXPARM         Yes : Get the address
-         SR    R2,R2                        and length
-         IC    R2,0(,R1)                       of the next
-         L     R1,0(,R1)                          token.
-         SR    R3,R3               Clear accumulator.
-STOPLOOP DS    0H
-         MH    R3,=H'10'           Total = Total * 10
-         IC    R0,0(,R1)                      +
-         N     R0,=X'0000000F'                   new
-         AR    R3,R0                                digit.
-         LA    R1,1(,R1)
-         BCT   R2,STOPLOOP         Next!
-         ST    R3,HALTRC           Set requested Return Code.
-STOPMSG  DS    0H
-         L     R1,=A(STPMSG)
-         LA    R0,L'STPMSG
-         BAL  R14,MESSAGE
-         B     RET
-         EJECT ,
+         USING MSGBLOK,R9
+         SPACE 2
 *--------------------------------------------------------------------
 *                            S H O W
 *
-*  SHOW CURRENT VALUES OF ASSORTED COUNTERS AND TABLES
+*  Show current values of assorted counters and tables
 *--------------------------------------------------------------------
-         SPACE ,
+         SPACE 2
+$SHOW    DS    0H
+         CLC   ARGC,=F'0'          ANY TOKENS LEFT?
+         BNH   BOGUS               ---> No
+         L     R15,ARGVP           Get ARGV index ptr
+         L     R14,0(R15)          Address of token
+         LA    R15,4(,R15)         Bump ARGV pointer to next token
+         ST    R15,ARGVP           Update ARGV pointer
+         L     R1,ARGC             Get remaining token count
+         BCTR  R1,0                Decrement
+         ST    R1,ARGC             Update it
+         LA    R0,SHOTAB           SHOW options table
+         SRDL  R14,24              Length of token
+         SRL   R15,8               Address of token
+         CALL  TBLUK,((0),(15),(14),TWORK)
+         C     R15,=F'4'           Unique substring found?
+         BNHR  R1                  ---> Go to command routine
+         B     BOGUS               ---> Unknown command
+         SPACE 1
 SHOTAB   TBSTART ,           SHOW COMMAND OPTIONS
          T '?',$SHELP
-         T 'ACTIVE'                                              [1.24]
+         T 'ACTIVE'
          T 'AUTHORIZATION'
-         T 'DOMAINS'                                             [1.22]
+         T 'DOMAINS'
          T 'INCOMING'
-         T 'ORIGINS'                                             [1.22]
+         T 'ORIGINS'
          T 'OUTGOING'
          T 'SPECIAL'
          T 'STATUS'
          T 'VERSION'
          TBEND ,
-         SPACE 2
-$SHOW    DS    0H
-         CLC   ARGC,=F'0'    ANY TOKENS LEFT?
-         BNH   BOGUS         NOPE...
-         LA    R1,SHOTAB     SHOW OPTIONS TABLE
-         ST    R1,TPTAB      INTO PLIST
-         L     R1,UNIXPARM   GET THE ARGV INDEX
-         SR    R2,R2         GET ZIP
-         IC    R2,0(R1)      GET LENGTH OF THE KEYWORD
-         ST    R2,TPLEN      SAVE LENGTH INTO PLIST
-         L     R2,0(R1)      GET ADDRESS OF THE KEYWORD
-         ST    R2,TPSTR      SAVE ADDRESS INTO PLIST
-         LA    R1,4(R1)      INCRMENT ARGV INDEX
-         ST    R1,UNIXPARM   AND PUT BACK INTO PLIST
-         L     R1,ARGC       GET COUNT OF TOKENS
-         BCTR  R1,0          -1 FOR THIS ONE
-         ST    R1,ARGC       PUT IT BACK FOR THE NEXT GUY
-         LA    R1,TWORK      WORK AREA
-         ST    R1,TPWRK      INTO PLIST
-         LA    R1,TPTAB      ADDRESS OF PLIST
-         L     R15,ATBLUK    ADDRESS OF TBLUK ROUTINE
-         BALR  R14,R15       CALL IT
-         C     R15,=F'4'     UNIQUE SUBSTRING FOUND?
-         BNHR  R1            GO TO COMMAND ROUTINE
-         B     BOGUS         UNKNOWN COMMAND
-         SPACE ,
+         EJECT ,
+*--------------------------------------------------------------------
+*                        S H O W     H E L P
+*
+*  Help for the SHOW command
+*--------------------------------------------------------------------
+         SPACE 1
 $SHELP   DS    0H
          L     R1,=A(SHLPMSG)      Help message
-         LA    R0,LSHLP
-         BAL  R14,MESSAGE
+         LA    R0,LSHLP                 and length
+         BAL   R14,WRITEMSG        Write messge
          B     RET
-$ACTIVE  DS    0H            SHOW ACTIVE                         [1.24]
-         OI    FLAG,ACTFLG   set flag to indicate so             [1.24]
-         B     $SHOW         and continue show command processing[1.24]
+         EJECT ,
+*--------------------------------------------------------------------
+*                       S H O W    A C T I V E
+*
+*  List active entries in some table
+*--------------------------------------------------------------------
+         SPACE 1
+$ACTIVE  DS    0H                  SHOW ACTIVE
+         OI    FLAG,ACTFLG         set flag to indicate so
+         B     $SHOW               and continue command processing
+         EJECT ,
+*--------------------------------------------------------------------
+*                       S H O W    S T A T U S
+*
+*  List status info
+*--------------------------------------------------------------------
+         SPACE 1
 $STATUS  DS    0H
-         MVC   WORKBUF(LSTMSG),STMSG   COPY MSG SKELETON
-         TM    MAILSTAT,MSTINWT        IN WAIT STATE?
-         BO    $STAT1        YES
+         MVC   WORKBUF(LSTMSG),STMSG    Copy msg skeleton
+         TM    MAILSTAT,MSTINWT         In wait state?
+         BO    $STAT1                   ---> Yes
          MVC   WORKBUF+STSTAT(8),=CL8'RUNNING'
 $STAT1   EQU   *
-         TM    MAILSTAT,MSTQSC  QUIESCENT?
-         BO    $STAT2        YES
+         TM    MAILSTAT,MSTQSC          Quiescent?
+         BO    $STAT2                   ---> Yes
          MVC   WORKBUF+STRDR(9),=CL9'READY'
 $STAT2   EQU   *
          MVC   WORKBUF+STTIME(8),MAILTIME
          MVC   WORKBUF+STTIME+9(8),MAILTIME+8
-         L     R1,MAILICNT   MSGS IN
+         L     R1,MAILICNT              Msgs in
          CVD   R1,DWORD
          UNPK  WORKBUF+STMIN(5),DWORD
          OI    WORKBUF+STMIN+4,X'F0'
-         L     R1,MAILRTOT   MSGS OUT
+         L     R1,MAILRTOT              Msgs out
          CVD   R1,DWORD
          UNPK  WORKBUF+STMOUT(5),DWORD
          OI    WORKBUF+STMOUT+4,X'F0'
-         L     R1,MAILRMAX   MAX MULTI
+         L     R1,MAILRMAX              Max multi
          CVD   R1,DWORD
          UNPK  WORKBUF+STMUL(5),DWORD
          OI    WORKBUF+STMUL+4,X'F0'
-         SR    R4,R4         ZERO HI DIVIDE REGISTER
-         L     R5,MAILSTMX   GET STACK MAXIMUM
-         S     R5,STACK     - ORIGIN ADDRESS
+         SR    R4,R4                    Zero hi divide register
+         L     R5,MAILSTMX              Get stack maximum
+         S     R5,STACK                 - origin address
          BNH   *+8
-         D     R4,STACK+4   DIVIDED BY STACK SIZE
-         C     R5,=F'99'     MORE THAN 99% USED?
+         D     R4,STACK+4               Divided by stack size
+         C     R5,=F'99'                More than 99% used?
          BH    $STAT3
-         CVD   R5,DWORD      CONVERT TO DECIMAL
+         CVD   R5,DWORD                 Convert to decimal
          UNPK  WORKBUF+STSTKM(2),DWORD
          OI    WORKBUF+STSTKM+1,X'F0'
 $STAT3   EQU   *
-         L     R1,STACK+4    MAX AVAILABLE
-         SRL   R1,10         GET IN TERMS OF K
+         L     R1,STACK+4               Max available
+         SRL   R1,10                    Get in terms of K
          CVD   R1,DWORD
          UNPK  WORKBUF+STSTKA(4),DWORD
          OI    WORKBUF+STSTKA+3,X'F0'
          LA    R1,WORKBUF
          LA    R0,LSTMSG
-         BAL  R14,MESSAGE
+         BAL   R14,WRITEMSG
          B     RET
 STMSG    DC    C'Since: 00/00/00 00:00:00  Status: WAITING'
          DC    C'  Reader: QUIESCENT  ',X'15'
@@ -544,115 +190,121 @@ STMUL    EQU   102
 STSTKM   EQU   120
 STSTKA   EQU   127
 STLEN    EQU   131
+         EJECT ,
+*--------------------------------------------------------------------
+*                   S H O W    A U T H O R I Z E D
+*
+*  List authorized ids - not implemented
+*--------------------------------------------------------------------
+         SPACE 1
 $AUTHORI DS    0H
          B     RET
+         EJECT ,
 *--------------------------------------------------------------------
 *        S H O W    I N C O M I N G
 *
-*  SHOWS INFORMATION ABOUT INCOMING MESSAGES FOR THE NAMED MAIL
-*  SERVER BY FINDING THE VALD FROM MAILVTAB AND DISPLAYING THE
-*  INFORMATION IN IT.
+*  Shows information about incoming messages for the named mail
+*  server by finding the VALD from MAILVTAB and displaying the
+*  information in it.
 *--------------------------------------------------------------------
+         SPACE 1
 $INCOMIN DS    0H
-         CLC   ARGC,=F'0'    NOT ENOUGH PARMS?
-         BNH   $INHELP      TELL THEM HOW
-         L     R1,UNIXPARM   GET THE TOKEN ADDRESS
-         SR    R4,R4         GET A ZERO
-         IC    R4,0(R1)      GET TOKEN LENGTH
-         L     R5,0(R1)      AND ADDRESS
-         CLI   0(R1),1       CHECK FOR "?"
-         BNE   $IN0
-         CLI   0(R5),C'*'    WANT ALL OF THEM?
-         BE    $IN1
-         CLI   0(R5),C'?'    WANT HELP?
-         BNE   $IN0
+         CLC   ARGC,=F'0'          Not enough parms?
+         BNH   $INHELP             ---> No, give them help
+         L     R1,ARGVP            Get the token address
+         L     R4,0(R1)            Get token ptr
+         SRDL  R4,24               Get token length
+         SRL   R5,8                    and address
+         CLI   0(R1),1             Only 1 character?
+         BNE   $IN0                ---> No, must be node
+         CLI   0(R5),C'*'          Want all of them?
+         BE    $IN1                ---> Yes, list all
+         CLI   0(R5),C'?'          Want help?
+         BNE   $IN0                ----> No, must be node
 $INHELP  EQU   *
-         L     R1,=A(INHLP)
-         LA    R0,L'INHLP
-         BAL   R14,MESSAGE
+         L     R1,=A(INHLP)        Point to help msg
+         LA    R0,L'INHLP               and get length
+         BAL   R14,WRITEMSG        Write message
          B     RET
-$IN0     EQU   *
-         CLC   ARGC,=F'2'    2 TOKENS REQUIRED
+         SPACE 1
+$IN0     EQU   *                   List 1 node
+         CLC   ARGC,=F'2'          2 tokens required
          BL    $INHELP
-         C     R4,=F'8'      NODENAME MORE THAN 8?
-         BH    BOGUS         SORRY
-         MVI   WORKBUF,C' '  INIT TO BLANKS
+         C     R4,=F'8'            Nodename more than 8?
+         BH    BOGUS               ---> Yes, not NJE node, bogus
+         MVI   WORKBUF,C' '        Init to blanks
          MVC   WORKBUF+1(15),WORKBUF
-         BCTR  R4,0          -1 FOR EXECUTED MOVE
-         EX    R4,MOVEVAL    MVC WORKBUF(0),0(R5)
-         L     R1,UNIXPARM   GET ARGV POINTER
-         LA    R1,4(R1)      POINT TO NEXT ARGV ENTRY
-         IC    R4,0(R1)      GET LENGTH OF USERNAME TOKEN
-         L     R5,0(R1)      GET ADDRESS OF TOEN
-         C     R4,=F'8'      MORE THAN 8?
-         BH    BOGUS
-         BCTR  R4,0          -1 FOR EXEC
-         EX    R4,MOVEVAL2   MOVE THE SECOND PART
-         L     R1,MAILVTAB   GET VALIDATION TABLE
-         ST    R1,TPTAB      INTO PLIST
-         MVC   TPLEN,=F'16'  ALL VTAB KEYWORDS ARE 16 LONG
-         LA    R1,WORKBUF
-         ST    R1,TPSTR      SAVE ADDRESS INTO PLIST
-         LA    R1,TWORK      WORK AREA
-         ST    R1,TPWRK      INTO PLIST
-         LA    R1,TPTAB      ADDRESS OF PLIST
-         L     R15,ATBLUK    ADDRESS OF TBLUK ROUTINE
-         BALR  R14,R15       CALL IT
-         LTR   R15,R15       FIND IT?
-         BNZ   $IN2         NOT FOUND
-         LR    R5,R0         HOLD FOR A SEC
+         BCTR  R4,0                -1 for executed move
+         EX    R4,MOVEVAL          MVC WORKBUF(0),0(R5)
+         L     R1,ARGVP            Get argv pointer
+         LA    R1,4(R1)            Point to next argv entry
+         L     R4,0(R1)            Get token ptr
+         SRDL  R4,24               Get length of username token
+         SRL   R5,8                Get address of toen
+         C     R4,=F'8'            More than 8?
+         BH    BOGUS               ---> Yes, not NJE userid, bogus
+         BCTR  R4,0                -1 for exec
+         EX    R4,MOVEVAL2         Move the second part
+         L     R0,MAILVTAB         Get validation table
+         LA    R15,WORKBUF         String address
+         LA    R14,16              All VTAB keywords are 16 long
+         CALL  TBLUK,((0),(15),(14),TWORK)
+         LTR   R15,R15             Find it?
+         BNZ   $IN2                ---> Not found
+         LR    R5,R0               Hold for a sec
          LR    R6,R1
-         L     R1,=A(INMSG)
+         L     R1,=A(INMSG)        Write heading messages
          LA    R0,LINMSG
-         BAL   R14,MESSAGE
+         BAL   R14,WRITEMSG
          LR    R0,R5
          LR    R1,R6
-         LA    R2,WORKBUF   OUTPUT BUFFER
-         BAL   R14,PRINTVA   PRINT THE VALD
-         LA    R0,INLEN
+         LA    R2,WORKBUF          Output buffer
+         BAL   R14,PRINTVA         Format the VALD
+         LA    R0,INLEN            Write info line
          LA    R1,WORKBUF
-         BAL  R14,MESSAGE
+         BAL   R14,WRITEMSG
          B     RET
          SPACE ,
 **--- LOOP THRU ALL MAILVTAB ENTRIES AND PRINT THEM OUT
+         SPACE 1
 $IN1    EQU   *
          L     R1,=A(INMSG)
          LA    R0,LINMSG
-         BAL   R14,MESSAGE   PRINT TITLE LINES
-         L     R6,MAILVTAB   GET VALIDATION TABLE
-         USING TBTAB,R6      ADDRESS IT
-         ICM   R7,B'1111',TB$LEN  GET COUNT OF ENTRIES
-         BZ    $IN2        NO  ENTRIES IN TABLE
-         BCTR  R7,0          -1 TO GET START ADDRESS OF LAST ONE
-         MH    R7,=Y(TBE$LEN)  #ENTRIES * LENGTH OF EACH
-         L     R8,TB$ADR     BXLE INDEX
-         AR    R7,R8         BXLE COMPARAND ADDRESS
-         LA    R6,TBE$LEN    BXLE INCREMENT
+         BAL   R14,WRITEMSG         Print title lines
+         L     R6,MAILVTAB         Get validation table
+         USING TBTAB,R6            Address it
+         ICM   R7,B'1111',TB$LEN   Get count of entries
+         BZ    $IN2                No  entries in table
+         BCTR  R7,0                -1 to get start address of last one
+         MH    R7,=Y(TBE$LEN)      #entries * length of each
+         L     R8,TB$ADR           BXLE index
+         AR    R7,R8               BXLE comparand address
+         LA    R6,TBE$LEN          BXLE increment
          DROP  R6
 $INLOOP EQU   *
          USING TBENTRY,R8    ADDRESS THE ENTRY
          LR    R0,R8         GET POINTER TO ENTRY
-         L     R1,TBE$DSP    GET VALD POINTER                    [1.24]
+         L     R1,TBE$DSP    GET VALD POINTER
          LA    R2,WORKBUF    WORK BUFFER
-         TM    FLAG,ACTFLG   Want only ACTIVE entries?           [1.24]
-         BZ    $INLOOP2      no,  want all of them               [1.24]
-         USING VALD,R1                                           [1.24]
-         CLC   =F'0',VAMSGLEN check for non-zero counter         [1.24]
-         BE    $INLOOP3      skip this record                    [1.24]
-         DROP  R1                                                [1.24]
-$INLOOP2 EQU   *                                                 [1.24]
+         TM    FLAG,ACTFLG   Want only ACTIVE entries?
+         BZ    $INLOOP2      no,  want all of them
+         USING VALD,R1
+         CLC   =F'0',VAMSGLEN check for non-zero counter
+         BE    $INLOOP3      skip this record
+         DROP  R1
+$INLOOP2 EQU   *
          BAL   R14,PRINTVA   PRINT THE VALDD
          LA    R1,WORKBUF
          LA    R0,INLEN
-         BAL   R14,MESSAGE   SEND IT OUT
+         BAL   R14,WRITEMSG   SEND IT OUT
          DROP  R8
-$INLOOP3 EQU   *             <- here when skipping inactive rec. [1.24]
+$INLOOP3 EQU   *             <- here when skipping inactive rec.
          BXLE  R8,R6,$INLOOP  LOOP BACK FOR NEXT ENTRY
-         B     ENDMSG        -> end of multi-line message        [1.24]
+         B     ENDMSG        -> end of multi-line message
 $IN2    EQU   *
          L     R1,=A(INMSG2)
          LA    R0,L'INMSG2
-         BAL  R14,MESSAGE
+         BAL  R14,WRITEMSG
          B     RET
 INEXIT   EQU   18
 INCNT    EQU   27
@@ -706,18 +358,18 @@ PRINTVA  DS    0H            ROUTINE TO PRINT VALD
          SPACE 3
 *--------------------------------------------------------------------
 *        S H O W    O U T G O I N G   /   S P E C I A L
-*                   D O M A I N S   /  O R I G I N S             [1.22]
+*                   D O M A I N S   /  O R I G I N S
 *
 *  SHOWS INFORMATION ABOUT OUTGOING MESSAGES FOR THE NAMED HOST
 *  OR ALIAS BY FINDING THE ROUTD FROM MAILRTAB AND DISPLAYING THE
 *  INFORMATION IN IT.
 *--------------------------------------------------------------------
-$DOMAINS DS    0H                                                [1.22]
-         MVC   $OUTTAB,MAILDTAB  use domains table               [1.22]
-         B     $OUTST                                            [1.22]
-$ORIGINS DS    0H                                                [1.22]
-         MVC   $OUTTAB,MAILOTAB  use origins table               [1.22]
-         B     $OUTST                                            [1.22]
+$DOMAINS DS    0H
+         MVC   $OUTTAB,MAILDTAB  use domains table
+         B     $OUTST
+$ORIGINS DS    0H
+         MVC   $OUTTAB,MAILOTAB  use origins table
+         B     $OUTST
 $SPECIAL DS    0H
          MVC   $OUTTAB,MAILSTAB  USE SPECIAL TABLE
          B     $OUTST
@@ -726,10 +378,10 @@ $OUTGOIN DS    0H
 $OUTST   EQU   *
          CLC   ARGC,=F'0'    NO ARG?
          BNH   $OUTHELP      TELL THEM HOW
-         L     R1,UNIXPARM   GET THE TOKEN ADDRESS
-         SR    R4,R4         GET A ZERO
-         IC    R4,0(R1)      GET TOKEN LENGTH
-         L     R5,0(R1)      AND ADDRESS
+         L     R1,ARGVP      GET THE TOKEN ADDRESS
+         L     R4,0(R1)      GET A ZERO
+         SRDL  R4,24         GET TOKEN LENGTH
+         SRL   R5,8          AND ADDRESS
          CLI   0(R1),1       CHECK FOR "?"
          BNE   $OUT0
          CLI   0(R5),C'*'    WANT ALL OF THEM?
@@ -739,39 +391,33 @@ $OUTST   EQU   *
 $OUTHELP EQU   *
          L     R1,=A(OUTHLP)
          LA    R0,L'OUTHLP
-         BAL   R14,MESSAGE
+         BAL   R14,WRITEMSG
          B     RET
+         SPACE 1
 $OUT0    EQU   *
-         L     R1,$OUTTAB    GET ROUTING TABLE
-         ST    R1,TPTAB      INTO PLIST
-         ST    R4,TPLEN      SAVE LENGTH INTO PLIST
-         ST    R5,TPSTR      SAVE ADDRESS INTO PLIST
-         LA    R1,TWORK      WORK AREA
-         ST    R1,TPWRK      INTO PLIST
-         LA    R1,TPTAB      ADDRESS OF PLIST
-         L     R15,ATBLUK    ADDRESS OF TBLUK ROUTINE
-         BALR  R14,R15       CALL IT
+         L     R0,$OUTTAB    GET ROUTING TABLE
+         CALL  TBLUK,((0),(5),(4),TWORK)
          LTR   R15,R15       FIND IT?
          BNZ   $OUT2         NOT FOUND
          LR    R5,R0         HOLD FOR A SEC
          LR    R6,R1
          LA    R1,OUTMSG
          LA    R0,LOUTMSG
-         BAL   R14,MESSAGE
+         BAL   R14,WRITEMSG
          LR    R0,R5
          LR    R1,R6
          LA    R2,WORKBUF   OUTPUT BUFFER
          BAL   R14,PRINTRT   PRINT THE ROUTD
          LA    R0,OUTLEN
          LA    R1,WORKBUF
-         BAL  R14,MESSAGE
+         BAL  R14,WRITEMSG
          B     RET
          SPACE ,
 **--- LOOP THRU ALL MAILRTAB ENTRIES AND PRINT THEM OUT
 $OUT1    EQU   *
          LA    R1,OUTMSG
          LA    R0,LOUTMSG
-         BAL   R14,MESSAGE   PRINT TITLE LINES
+         BAL   R14,WRITEMSG   PRINT TITLE LINES
          L     R6,$OUTTAB    GET ROUTING TABLE
          USING TBTAB,R6      ADDRESS IT
          ICM   R7,B'1111',TB$LEN  GET COUNT OF ENTRIES
@@ -787,25 +433,25 @@ $OUTLOOP EQU   *
          LR    R0,R8         GET POINTER TO ENTRY
          L     R1,TBE$DSP    GET ROUTD POINTER
          LA    R2,WORKBUF    WORK BUFFER
-         TM    FLAG,ACTFLG   want ACTIVE records only?           [1.24]
-         BZ    $OUTLOO2      no, all records                     [1.24]
-         USING ROUTD,R1      address the ROUTD                   [1.24]
-         CLC   =F'0',RTMSGLEN is this an active record?          [1.24]
-         BE    $OUTLOO3      no, inactive. skip it               [1.24]
-         DROP  R1            done w/ROUTD                        [1.24]
-$OUTLOO2 EQU   *             <- here when we want all records    [1.24]
+         TM    FLAG,ACTFLG   want ACTIVE records only?
+         BZ    $OUTLOO2      no, all records
+         USING ROUTD,R1      address the ROUTD
+         CLC   =F'0',RTMSGLEN is this an active record?
+         BE    $OUTLOO3      no, inactive. skip it
+         DROP  R1            done w/ROUTD
+$OUTLOO2 EQU   *             <- here when we want all records
          BAL   R14,PRINTRT   PRINT THE ROUTD
          LA    R1,WORKBUF
          LA    R0,OUTLEN
-         BAL   R14,MESSAGE   SEND IT OUT
+         BAL   R14,WRITEMSG   SEND IT OUT
          DROP  R8
-$OUTLOO3 EQU   *             <- here when skipping inactive rec  [1.24]
+$OUTLOO3 EQU   *             <- here when skipping inactive rec
          BXLE  R8,R6,$OUTLOOP  LOOP BACK FOR NEXT ENTRY
-         B     ENDMSG        -> end of multiline respons         [1.24]
+         B     ENDMSG        -> end of multiline respons
 $OUT2    EQU   *
          L     R1,=A(OUTMSG2)
          LA    R0,L'OUTMSG2
-         BAL  R14,MESSAGE
+         BAL  R14,WRITEMSG
          B     RET
 OUTMSG   DC    C'    Host           Server      Punching  Msg  '
          DC    C'Error   Avg    Max   Total',X'15'
@@ -886,7 +532,7 @@ $VERSION DS    0H
          MVC   WORKBUF+L'VERMSG(L'MAILVERS),MAILVERS
          LA    R1,WORKBUF
          LA    R0,L'VERMSG+L'MAILVERS
-         BAL  R14,MESSAGE
+         BAL  R14,WRITEMSG
          B     RET
 VERMSG   DC    C'VM Network Mailer '
          SPACE 3
@@ -897,18 +543,19 @@ VERMSG   DC    C'VM Network Mailer '
 BOGUS    DS    0H
          L     R1,=A(BOGMSG)
          LA    R0,L'BOGMSG
-         BAL  R14,MESSAGE
+         BAL  R14,WRITEMSG
          B     RET
          EJECT ,
 *--------------------------------------------------------------------
-*                            M E S S A G E
+*                           W R I T E M S G
 *
-*  SEND REPLY TO THE COMMAND ISSUER.  MULTILINE REPLIES ARE SEPERATED
-*  BY X'15' (NEWLINE) CHARACTERS.  REGISTERS ARE AS FOLLOWS:
-*        R1 - MESSAGE ADDRESS
-*        R0 - LENGTH
+*  Send reply to the command issuer.  Multiline replies are seperated
+*  by x'15' (newline) characters.  Registers are as follows:
+*        R1 - message address
+*        R0 - length
 *--------------------------------------------------------------------
-MESSAGE  DS    0H
+         SPACE 1
+WRITEMSG DS    0H
          STM   R14,R12,12(R13)
          LR    R7,R1
          LR    R8,R0
@@ -921,11 +568,11 @@ MESSAGE1 EQU   *
          LR    R7,R1         COPY FOR NEXT PASS THRU LOOP
          LR    R8,R2
          LR    R3,R0
-         CLC   @CODE,=A(CMDCONS)   Is it from the console?
+         CLC   SRCCODE,=A(CMDCONS) Is it from the console?
          BE    MSGCON        MESSAGE TO CONSOLE
-         CLC   @CODE,=A(CMDSMSG)   Is it from SMSG?
+         CLC   SRCCODE,=A(CMDSMSG) Is it from SMSG?
          BE    MSGMSG        MSG BACK VIA MSG COMMAND
-         CLC   @CODE,=A(CMDNET)    Is it from the network?
+         CLC   SRCCODE,=A(CMDNET)  Is it from the network?
          BE    MSGNET              Yes : Output via network.
          B     MSGRET        UNKNOWN CODE
 MSGCON   EQU   *
@@ -970,155 +617,17 @@ MSGRET   EQU   *
          LM    R14,R12,12(R13)
          BR    R14
          SPACE ,
-ENDMSG   DS    0H            <- here to end multi-line reply     [1.24]
+ENDMSG   DS    0H            <- here to end multi-line reply
          L     R1,=A(ENDMESG) end marker
-         LA    R0,L'ENDMESG  length of above                     [1.24]
-         BAL   R14,MESSAGE   and send the message                [1.24]
-         B     RET           and return                          [1.24]
+         LA    R0,L'ENDMESG  length of above
+         BAL   R14,WRITEMSG   and send the message
+         B     RET           and return
          EJECT ,
-RET      DS    0H                                                [1.24]
-         LR    R1,R13        GRAB POINTER TO WORK AREA
+RET      DS    0H
          L     R13,4(R13)              GET CALLER'S SAVE PTR
-         DMSFRET DWORDS=LSAVE,LOC=(1) FREE THE WORK AREA
          L     R14,12(R13)             GET R14
          LM    R0,R12,20(R13)          GET R0-R12
          BR    R14                     RETURN
-         EJECT ,
-*  Build a command block for passing to MAILCMD2
-*
-*  Registers at entry:
-*
-*      R0  - Length of data for inclusion in command block
-*      R1  - Command code
-*      R14 - Return address
-*
-*  Registers at exit:
-*
-*      R1  - Address of command block
-*
-*      All other registers unchanged
-*
-         SPACE 2
-BLDCMDBL DS    0H
-         STM   R14,R12,12(R13)     Save the regs
-         LM    R2,R3,20(R13)       R2 - data length
-*                                  R3 - command type value
-         A     R0,=A(CMDSIZE*8+7)  Round size needed to
-         N     R0,=X'FFFFFFF8'          doubleword
-         SRL   R0,3                Make into a dword quantity
-         DMSFREE DWORDS=(0)        Get the storage
-         LR    R6,R1               Get into a better register
-         USING COMMAND,R6          Build a command block
-         ST    R0,CMDLEN           Length of the block
-         ST    R2,CMDDLEN          Data length
-         MVC   CMDSNDR,SRCUSER     Pass along response userid
-         MVC   CMDNODE,MSGNODE        and nodename.
-         ST    R3,CMDCODE          Set command type
-         XC    CMDNEXT,CMDNEXT     Keep our chain clean
-         CLC   @CODE,=A(CMDCONS)   From console?
-         BNE   BLDCMD01            ---> No
-BLDCMD00 EQU   *
-         MVC   CMDSNDR,=CL8'*'     Put in special flag
-         B     BLDCMD04
-         SPACE 1
-BLDCMD01 EQU   *
-         CLC   @CODE,=A(CMDNET)    From network?
-         BNE   BLDCMD02            ---> No
-         MVC   CMDMSG,=CL18'SMSG rscsname MSG '
-         MVC   CMDMSG+5(8),RSCSNAME
-         B     BLDCMD04
-         SPACE 1
-BLDCMD02 EQU   *
-         CLC   @CODE,=A(CMDSMSG)   From SMSG?
-         BNE   BLDCMD06            Unknown code
-         TM    FLAG,SMSFLG         Want smsg reply?
-         BNO   BLDCMD03            ---> No
-         MVC   CMDMSG,=CL18'SMSG'  Remember SMSG
-         B     BLDCMD04
-         SPACE 1
-BLDCMD03 EQU   *
-         MVC   CMDMSG,=CL18'MSGNOH' Use MSGNOH
-         SPACE 1
-BLDCMD04 EQU   *
-         LR    R1,R6               Copy address for return
-         DROP  R6
-         LM    R14,R0,12(R13)      Restore R14, R15 and R0
-         LM    R2,R12,28(R13)      Restore R2 - R12
-         B     4(,R14)             Take successful exit
-         SPACE 2
-*  Reply code not recognized
-         SPACE 1
-BLDCMD06 EQU   *
-         EJECT ,
-*--------------------------------------------------------------------
-*
-*  Add command block to MAILCMDL chain
-*
-*  Regs at entry:
-*
-*    R6  - Command block base
-*    R10 - Savearea dsect
-*    R14 - Return address
-*
-*--------------------------------------------------------------------
-         SPACE 1
-CHAINIT  DS    0H
-         CLC   @CODE,=A(CMDCONS)   From console?
-         BNE   CHAIN05             No, SMSG
-         SSM   =X'FE'              Turn off external interrupts
-CHAIN05  EQU   *
-         LA    R15,MAILCMDL        Address of list
-CHAIN10  EQU   *
-         ICM   R1,B'1111',0(R15)   Get next command pointer
-         BZ    CHAIN20             Found end of chain
-         USING COMMAND,R1
-         LA    R15,CMDNEXT         Chain along
-         DROP  R1
-         B     CHAIN10
-CHAIN20  EQU   *
-         ST    R6,0(R15)           Add onto chain
-         OI    MAILCMD,MCMDCMD2    Indicate there is work for MAILCMD2
-         OI    CMDECB,POSTED       And post the command ECB.
-         CLC   @CODE,=A(CMDCONS)   Console?
-         BNE   CHAIN30             No, SMSG
-         SSM   =X'FF'              Enable SMSG again
-CHAIN30  EQU   *
-         BR    R14                 Return to caller
-         EJECT ,
-*  Check if user authorized
-         SPACE 1
-CHKAUTH  EQU   *             CHECK AUTHORIZATION
-         CLC   @CODE,=A(CMDCONS)   COMMAND FROM CONSOLE?
-         BE    CHKOK
-         CLC   @CODE,=A(CMDSMSG)   COMMAND FROM SMSG?
-         BE    CHKSMS        CHECK SMSG SOURCE
-         CLC   @CODE,=A(CMDNET)    Command from network?
-         BE    CHKSMS        ---> Yes
-         B     BOGUS         HMMM....
-CHKSMS   EQU   *
-         LA    R15,MAINTID   Point to first entry of table
-         L     R2,@SENDUSR   Get sender id address
-         L     R1,@SENDNOD   Get sender node address
-CHKSMS01 DS    0H
-         CLI   0(R15),X'FF'               At end of list?
-         BE    BOGUS                      ---> Yes, SMSG is illegal
-         CLC   MAINTNOD-MAINTID(,R15),=8X'00' No cpu specified?
-         BE    CHKSMS30                   ---> Yes, accept any
-         CLC   @CODE,=A(CMDNET)           Command from network?
-         BE    CHKSMS20                   ---> Yes
-         CLC   MAINTNOD-MAINTID(,R15),CPUSTR Maintainer on this cpu?
-         BNE   CHKSMS40                   ---> No, go try next
-CHKSMS20 DS    0H
-         CLC   MAINTNOD-MAINTID(,R15),0(R1) Maintainer node match?
-         BNE   CHKSMS40                   ---> No, go try next
-CHKSMS30 DS    0H
-         CLC   MAINTID-MAINTID(,R15),0(R2) Is the sender on the list?
-         BE    CHKOK                      ---> Yes
-CHKSMS40 DS    0H
-         LA    R15,MAINTID2-MAINTID(R15)  To the next entry
-         B     CHKSMS01
-CHKOK    EQU   *
-         BR    R14
          EJECT ,
 *--------------------------------------------------------------------
 * FIND15 -
@@ -1144,31 +653,12 @@ F15RET   EQU   *
          BCTR  R2,0          -1 FOR THE X'15' FROM LENGTH
          BR    R14
          EJECT ,
-TRAPBLK  TRT   0(0,R9),TRTAB
-SKIPBLK  TRT   0(0,R9),SKIPBLKS
-MOVEIT   MVC   0(0,R3),0(R4)
 MOVEDATA MVC   MSGDATA(0),0(R5)
 MOVEVAL  MVC   WORKBUF(0),0(R5)
 MOVEVAL2 MVC   WORKBUF+8(0),0(R5)
          LTORG ,
-TRTAB    DC    256X'00'      TRAP TABLE FOR DELIMITERS
-         ORG   TRTAB+C' '
-         DC    X'FF'         TRAP BLANKS
-         ORG   ,
-ACTMSG   DC    C'Activate command accepted.'
-CHKMSG   DC    C'Checking not yet implemented.'
-CMSMSG   DC    C'CMS command accepted.'
-FWDMSG   DC    C'FORWARD command accepted.'
-DLSMSG   DC    C'MAILLIST command accepted.'
-HLPMSG   DC    C'General commands:  CHECK, FORWARD, HELP, SHOW'  [1.24]
-         DC    C'|QUERY, SMSG'                                   [1.24]
-*        DC    X'15',C'Type "HELP MAILER" for details.'          [1.24]
-LHLPMSG  EQU   *-HLPMSG
-QUSMSG   DC    C'Quiesce command accepted.'
-RELMSG   DC    C'Reload command accepted.'
-STPMSG   DC    C'Stop command accepted.'
-SHLPMSG  DC    C'SHOW options:  STatus | Version | [ACtive] '    [1.24]
-         DC    C'{Domains | ORigins | OUtgoing | SPecial}'       [1.24]
+SHLPMSG  DC    C'SHOW options:  STatus | Version | [ACtive] '
+         DC    C'{Domains | ORigins | OUtgoing | SPecial}'
 LSHLP    EQU   *-SHLPMSG
 INHLP    DC    C'Specify a mail server node name and userid.'
 INMSG2   DC    C'Incoming server not found.'
@@ -1181,33 +671,14 @@ INMSG    DC    C'      Server      Validity  Msg  '
 LINMSG  EQU   *-INMSG
 OUTHLP   DC    C'Specify a network host or alias name.'
 OUTMSG2  DC    C'Host (or alias) not found.'
-ENDMESG  DC    C'- output complete.'                             [1.24]
+ENDMESG  DC    C'- output complete.'
 BOGMSG   DC    C'Command not allowed or invalid.'
-SAVEAREA DSECT ,             WORK AREA
-         DS    18F           SAVE AREA
+         SPACE 1
+SAVEAREA DS    18F           SAVE AREA
 DWORD    DS    D
 TWORK    DS    64F           TBLUK WORK AREA
-TPTAB    DS    F             TBLUK PARMS
-TPSTR    DS    F
-TPLEN    DS    F
-TPWRK    DS    F
-UNIXPARM DS    4F            PARMS FOR UNIXSCAN
-ARGC     DS    F             COUNT OF ARGUMENTS SCANNED
-ARGV     DS    20F           20 TOKENS IS PLENTY
-LARGV    EQU   *-ARGV        LENGTH OF ARGV
 $OUTTAB  DS    F
-MSGBUF   DS    CL18'MSGNOH '       Room for "SMSG rscsname MSG ".
-MSGNODE  DS    CL8                 Nodename of user for responses.
-         DS    C' '
-MSGSENDR DS    CL8,CL3
-MSGLEN   EQU   *-MSGBUF
-MSGDATA  DS    CL100
-SRCUSER  DS    CL8                 Userid of user sending command.
-SRCNODE  DS    CL8                 Nodename of user sending command.
-FLAG     DS    X
-SMSFLG   EQU   X'80'         SMSG REPLY WANTED
-ACTFLG   EQU   X'40'         only active entries should be shown [1.24]
+         SPACE 1
 WORKBUF  DS    1000C         SHOULD BE ENUF FOR MOST COMMANDS
 LWORKBUF EQU   *-WORKBUF
-LSAVE    EQU   (*-SAVEAREA)/8+1
          END   MAILCMD1

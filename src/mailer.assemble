@@ -27,6 +27,8 @@ MAILER   CSECT ,
          COPY  MAILEQU
          NUCON ,
          DEVTAB ,
+         COPY  IPARML
+         MSGBLOK ,
          SPACE 2                                                  UW002
          WXTRN LCLMOD                                             UW002
          EJECT ,
@@ -239,14 +241,27 @@ CONSINT  DS    0H
          NI    CON1ECB,255-POSTED  Unpost the console ECB.
          DMSKEY RESET              Back to previous key
          DROP  R1
-* INTERRUPT WAS FROM CONSOLE ATTN
-         RDTERM TERMBUF
-         LR    R5,R0         GET LENGTH READ
-         MAILTRC CALL,MAILCMD
-         LA    R15,MAILVMID
-         LA    R14,CPUSTR          It's from our node.
-         CALL  MAILCMD,((R11),TERMBUF,(R5),(R15),(R14),CMDCONS)
-         MAILTRC RETURN,MAILCMD,(R15)
+         SPACE 1
+* Interrupt was from CONSOLE attn
+         SPACE 1
+         DMSFREE DWORDS=MSGBLOKL/8,ERR=WAIT
+*                                  Ignore interrupt if no storage
+         LR    R5,R1               Base into better reg
+         USING MSGBLOK,R5          Map it for assembler
+         LR    R14,R5              Start of area to clear
+         L     R15,=A(MSGBLOKL)    Length to clear
+         LA    R1,0                Set from length of 0 and pad of x'0'
+         MVCL  R14,R0              Clear MSGBLOK to zeros
+         ST    R0,MSGBLEN          Remember length
+         MVC   SRCNODE,CPUSTR      Init to me
+         MVC   SRCUSER,=CL8'CONSOLE'   on this cpu
+         LA    R15,MESSAGE         Message buffer address
+         ST    R15,@MESSAGE        Into MSGBLOK
+         RDTERM (15)
+         ST    R0,@MSGLEN          Command length into MSGBLOK
+         MVC   SRCCODE,=A(CMDCONS) Type = CONSOLE.
+         BAL   R14,CHAINIT         Add to command processing chain
+         DROP  R5
          B     WAIT                Go check for work.
          SPACE ,
 *--------------------------------------------------------------------
@@ -277,9 +292,9 @@ RELOAD   EQU   *
          B     RELENT        GOTO RELOAD ENTRY
          SPACE ,
 MCMD2    EQU   *
-         MAILTRC CALL,MAILCMD1
-         CALL  MAILCMD1,((R11))    2nd level command handler
-         MAILTRC RETURN,MAILCMD1,(R15)
+         MAILTRC CALL,MAILCMD0
+         CALL  MAILCMD0,((R11))    2nd level command handler
+         MAILTRC RETURN,MAILCMD0,(R15)
          B     MAINLOOP      AND GO BACK TO WORK
          SPACE ,
 *--------------------------------------------------------------------
@@ -324,6 +339,34 @@ RDRINT   DS    0H
          SR    R15,R15            RC = 0.
          BR    R14                Return to IO FLIH.
          POP   USING
+         EJECT ,
+*--------------------------------------------------------------------
+*
+*  Add command block to MAILCMDL chain
+*
+*  Regs at entry:
+*
+*    R5  - MSGBLOK base
+*    R14 - Return address
+*
+*--------------------------------------------------------------------
+         SPACE 1
+CHAINIT  DS    0H
+         SSM   =X'00'              Disable for EXT & I/O interrupts
+         LA    R15,MAILCMDL        Address of list
+CHAIN10  EQU   *
+         ICM   R1,B'1111',0(R15)   Get next command pointer
+         USING MSGBLOK,R1
+         BZ    CHAIN20             Found end of chain
+         LA    R15,MSGNEXT         Chain along
+         DROP  R1
+         B     CHAIN10
+CHAIN20  EQU   *
+         ST    R5,0(R15)           Add onto chain
+         OI    MAILCMD,MCMDCMD     Indicate there is work to do
+         OI    CMDECB,POSTED       And post the command ECB.
+         SSM   =X'FF'              Enable interrupts
+         BR    R14                 Return to caller
          EJECT ,
 *--------------------------------------------------------------------
 *        LITERAL POOL AND OTHER READ-ONLY DATA

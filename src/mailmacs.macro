@@ -525,7 +525,7 @@ MFLG1RES EQU   X'01'         [1.16]file has been RESENT.
 MAILCMD  DC    X'00'         COMMAND FLAGS
 *        EQU   X'80'               Spare.
 *        EQU   X'40'               Spare.
-MCMDCMD2 EQU   X'20'         MAILCMD2 HAS TO BE CALLED
+MCMDCMD  EQU   X'20'         Mail command processing to be called
 MAILSTAT DC    X'00'         MAILER STATUS FLAG BYTE
 MSTINWT  EQU   X'80'         MAILER IS IN WAIT STATE
 MSTQSC   EQU   X'40'         MAILER QUIESCENT
