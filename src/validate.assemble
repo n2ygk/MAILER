@@ -566,6 +566,8 @@ BADUXFER EQU   *                       <- so I'm lazy...         [1.24]
          NI    MAILFLG1,X'FF'-MFLG1HDS say header was invalid (lie)
          MVC   MAILUSER,MAINTID        always send to maintainer
          MVC   MAILNODE,MAINTNOD       ...
+         MVC   MAILULEN,=F'8'      Fix up the length for MAILRET.
+         MVC   MAILNLEN,=F'8'      Fix up the length for MAILRET.
          WTR   VAL048
          LA    R15,4
          B     RET
