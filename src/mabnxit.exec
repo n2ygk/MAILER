@@ -1,6 +1,8 @@
 /* ****************************************************************** */
 /*  MABNXIT - MAILER R2 abend exit processor                          */
 /* ****************************************************************** */
+/*              (c) Copyright Princeton University 1991               */
+/* ****************************************************************** */
 /*                                                                    */
 /*  This exec receives control from the abend trap in MAILMAIN.  It   */
 /*  is passed the userid of the maintainer and the spoolid of the     */
