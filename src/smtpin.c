@@ -859,14 +859,26 @@ int l;
     struct tbentry *te;
     struct tbs *ts;
     struct mbox *a;
+    char dbgmsg[133];
 
     if (mailblok.dbgflg[0] & TRACE_CALLS)
        wrterm("==> Entered s_mail");
 
+    if (mailblok.dbgflg[1] & TRACE_S_MAIL) {
+        sprintf(dbgmsg,"s_mail:  MAIL FROM: line length is %d", l);
+        wrterm(dbgmsg);
+    }
+
     mailblok.mailsfld = 0;
     if (xcmp(" FROM:", &s[4], 6) != 0) {   /* check syntax */
-        if (mailblok.dbgflg[0] & TRACE_S_MAIL)
+        if (mailblok.dbgflg[1] & TRACE_S_MAIL)
            wrterm("s_mail:  Not MAIL FROM:");
+        return s_syntax(st, s, l);
+    }
+
+    if (l == 10 ) {   /* MAIL/FILE FROM: with no address */
+        if (mailblok.dbgflg[1] & TRACE_S_MAIL)
+           wrterm("s_mail:  MAIL FROM: with no return address");
         return s_syntax(st, s, l);
     }
 
@@ -874,7 +886,7 @@ int l;
         if (!(mailblok.mailopts & MOPTFIOK))
             return s_syntax(st, s, l);
         else {
-            if (mailblok.dbgflg[0] & TRACE_S_MAIL)
+            if (mailblok.dbgflg[1] & TRACE_S_MAIL)
                wrterm("s_mail:  Processing FILE FROM:");
             mailblok.mailflg2 |= MFLG2N82;    /* Don't look at 822 */
         }
@@ -886,7 +898,7 @@ int l;
     t = (struct tokend *)salloc(sizeof(*t));
     ts = (struct tbs *)salloc(l-5+sizeof(*ts)-1);
     if (!f || !t || !ts) {
-        if (mailblok.dbgflg[0] & TRACE_S_MAIL)
+        if (mailblok.dbgflg[1] & TRACE_S_MAIL)
            wrterm
                ("s_mail:  Storage allocation failure for f or t or ts");
         return s_nosp(st, s, l);
@@ -896,7 +908,7 @@ int l;
      * copy "FROM:<......>" onto stack preceded by tbs header.
      * then set up the tokend pointing to it too.
      */
-    if (mailblok.dbgflg[0] & TRACE_S_MAIL)
+    if (mailblok.dbgflg[1] & TRACE_S_MAIL)
        wrterm("s_mail:  Copying FROM: to stack");
     bcopy(&s[5], &ts->tbs_str, l-5);
     ts->tbs_siz = 4;                    /* length of "FROM" */
@@ -909,7 +921,7 @@ int l;
 
     /* now set up the fieldd */
 
-    if (mailblok.dbgflg[0] & TRACE_S_MAIL)
+    if (mailblok.dbgflg[1] & TRACE_S_MAIL)
        wrterm("s_mail:  Building FROM: fieldd");
     f->fitok = t;
     f->fistr = t->tokptr+5;             /* point past the FROM: */
@@ -926,10 +938,10 @@ int l;
             return s_nosp(st, s, l);    /* no space left */
     }
 
-    if (mailblok.dbgflg[0] & TRACE_S_MAIL)
+    if (mailblok.dbgflg[1] & TRACE_S_MAIL)
        wrterm("s_mail:  Parsing FROM:");
     if (_aparse(f) != 0) {              /* parse the string */
-        if (mailblok.dbgflg[0] & TRACE_S_MAIL)
+        if (mailblok.dbgflg[1] & TRACE_S_MAIL)
            wrterm("s_mail:  Syntax error in FROM:");
         return s_syntax(st, s, l);
     }
@@ -937,17 +949,17 @@ int l;
 
     if (((a = (struct mbox *)f->fipars) !=0) &&
          (a->mbxdcnt == 0)) {
-       if (mailblok.dbgflg[0] & TRACE_S_MAIL)
+       if (mailblok.dbgflg[1] & TRACE_S_MAIL)
            wrterm("s_mail:  Syntax error in FROM:");
        mailblok.mailflg2 |= MFLG2NOH;    /* Remember no host id */
     }
 
     /* check to see if this is a forged from: userid */
     if (!S.trusted) {   /* not a trusted mailer */
-        if (mailblok.dbgflg[0] & TRACE_S_MAIL)
+        if (mailblok.dbgflg[1] & TRACE_S_MAIL)
             wrterm("s_mail:  Not from a trusted mailer");
         if (!check_sender(f->fipars)) {
-            if (mailblok.dbgflg[0] & TRACE_S_MAIL)
+            if (mailblok.dbgflg[1] & TRACE_S_MAIL)
                 wrterm("s_mail:  Charlatan sender found");
             bcopy("501 ", buf, 4);
             bcopy(s+10,&buf[4], l-10);
@@ -959,7 +971,7 @@ int l;
             buf[len++] = ' ';
             bcopy(mailblok.mailuser, &buf[len], 8);  len += 8;
             if (mailblok.mailopts & MOPTAC) {    /* allow charlatans */
-                if (mailblok.dbgflg[0] & TRACE_S_MAIL)
+                if (mailblok.dbgflg[1] & TRACE_S_MAIL)
                     wrterm("s_mail:  Charlatan sender accepted");
                 bcopy("250 ", buf, 4);      /* rewrite reply code */
                 while (buf[len-1] == ' ') --len;
@@ -974,7 +986,7 @@ int l;
             }
             /* NOTREACHED */
         } else {  /* not trusted, but sender checks out ok */
-            if (mailblok.dbgflg[0] & TRACE_S_MAIL)
+            if (mailblok.dbgflg[1] & TRACE_S_MAIL)
                 wrterm("s_mail:  Sender ok");
             bcopy("250 ", buf, 4);
             bcopy(s+10, &buf[4], l-10);     /* copy in from address */
@@ -984,7 +996,7 @@ int l;
             return seenmail;
         }
     } else {                         /* a trusted mailer */
-        if (mailblok.dbgflg[0] & TRACE_S_MAIL)
+        if (mailblok.dbgflg[1] & TRACE_S_MAIL)
             wrterm("s_mail:  From a trusted mailer");
         bcopy("250 ", buf, 4);
         bcopy(s+10, &buf[4], l-10);     /* copy in from address */
@@ -1185,8 +1197,22 @@ int l;
     if (mailblok.dbgflg[0] & TRACE_CALLS)
        wrterm("==> Entered s_rcpt");
 
-    if (xcmp(" TO:", &s[4], 4) != 0)    /* check syntax */
+    if (mailblok.dbgflg[0] & TRACE_S_RCPT) {
+        sprintf(dbgmsg,"s_rcpt:  RCPT TO: line length is %d", l);
+        wrterm(dbgmsg);
+    }
+
+    if (xcmp(" TO:", &s[4], 4) != 0) {  /* check syntax */
+        if (mailblok.dbgflg[0] & TRACE_S_RCPT)
+            wrterm("s_rcpt:  Not RCPT TO:");
         return s_syntax(st, s, l);
+    }
+
+    if (l == 8 ) {  /* RCPT TO: with no address */
+        if (mailblok.dbgflg[0] & TRACE_S_RCPT)
+            wrterm("s_rcpt:  RCPT TO: with no address");
+        return s_syntax(st, s, l);
+    }
 
     /* allocate space from stack */
     f = (struct fieldd *)salloc(sizeof(*f));
@@ -1245,7 +1271,7 @@ int l;
     while (a->mbxrtl != 0) {
        if ((mailblok.dbgflg[0] & TRACE_S_RCPT) ||
            (mailblok.dbgflg[7] & DBGBLDLS))
-          wrterm("s_rcpt  : Processing routeaddr");
+          wrterm("s_rcpt:  Processing routeaddr");
        n = MBOXRTL(a)->noddown;
        plist.node = &n;
        plist.hs = &hs;
@@ -1258,7 +1284,7 @@ int l;
        acall(genlist, 0, &plist);
        if ((mailblok.dbgflg[0] & TRACE_S_RCPT) ||
            (mailblok.dbgflg[7] & DBGBLDLS)) {
-          bcopy("s_rcpt  : Route address <", dbgmsg, 25);
+          bcopy("s_rcpt:  Route address <", dbgmsg, 25);
           bcopy(hs,&dbgmsg[25],hl);
           bcopy(">",&dbgmsg[hl+25],2);
           wrterm(dbgmsg);
@@ -1266,7 +1292,7 @@ int l;
        if (check_local(hs,hl)) {
           if ((mailblok.dbgflg[0] & TRACE_S_RCPT) ||
               (mailblok.dbgflg[7] & DBGBLDLS)) {
-             bcopy("s_rcpt  : Destination is local host,", dbgmsg, 36);
+             bcopy("s_rcpt:  Destination is local host,", dbgmsg, 36);
              bcopy("removing route address", &dbgmsg[36], 22);
              wrterm(dbgmsg);
           }
@@ -1277,7 +1303,7 @@ int l;
        else {
           if ((mailblok.dbgflg[0] & TRACE_S_RCPT) ||
               (mailblok.dbgflg[7] & DBGBLDLS))
-            wrterm("s_rcpt  : No route list found");
+            wrterm("s_rcpt:  No route list found");
           break;
        }
     }
@@ -1287,7 +1313,7 @@ int l;
     if (a->mbxdml == 0) {
        if ((mailblok.dbgflg[0] & TRACE_S_RCPT) ||
            (mailblok.dbgflg[7] & DBGBLDLS))
-          wrterm("s_rcpt  : No host name, using default");
+          wrterm("s_rcpt:  No host name, using default");
        fakenode = (struct node *)salloc(sizeof(*fakenode));
        if (!fakenode) return s_nosp(st,s,l);
        faketoke = (struct tokend*)salloc(sizeof(*faketoke));
@@ -1303,12 +1329,12 @@ int l;
 
     if (a->mbxrtl == 0) {
        if (mailblok.dbgflg[0] & TRACE_S_RCPT)
-          wrterm("s_rcpt  : Using domain for lookup");
+          wrterm("s_rcpt:  Using domain for lookup");
        n = a->mbxdml;
     }
     else {
        if (mailblok.dbgflg[0] & TRACE_S_RCPT)
-          wrterm("s_rcpt  : Using route-addr for lookup");
+          wrterm("s_rcpt:  Using route-addr for lookup");
        n = MBOXRTL(a)->noddown;
     }
     plist.node = &n;
@@ -1322,7 +1348,7 @@ int l;
     acall(genlist, 0, &plist);
     if ((mailblok.dbgflg[0] & TRACE_S_RCPT) ||
         (mailblok.dbgflg[7] & DBGBLDLS)) {
-       bcopy("s_rcpt  : Destination address <", dbgmsg, 31);
+       bcopy("s_rcpt:  Destination address <", dbgmsg, 31);
        bcopy(hs,&dbgmsg[31],hl);
        bcopy(">",&dbgmsg[hl+31],2);
        wrterm(dbgmsg);
@@ -1334,7 +1360,7 @@ int l;
     } else {
        if ((mailblok.dbgflg[0] & TRACE_S_RCPT) ||
            (mailblok.dbgflg[7] & DBGBLDLS)) {
-          bcopy("s_rcpt  : Destination address <", dbgmsg, 31);
+          bcopy("s_rcpt:  Destination address <", dbgmsg, 31);
           bcopy(hs,&dbgmsg[31],hl);
           bcopy(">",&dbgmsg[hl+31],2);
           wrterm(dbgmsg);
@@ -1344,7 +1370,7 @@ int l;
         (mailblok.dbgflg[7] & DBGBLDLS)) {
        if (!(mailblok.mailflg1 & (MFLG1LCL+MFLG1GTW)) &&
            (xcmp(mailblok.cpustr,r->rtroute,8)!=0))
-         wrterm("s_rcpt  : Routing file from network");
+         wrterm("s_rcpt:  Routing file from network");
     }
 
     /* add to mailchn */
