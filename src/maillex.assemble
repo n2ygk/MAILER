@@ -1,0 +1,558 @@
+LEX      TITLE 'MAILLEX     Columbia Univ Network MAILER (Rel. 2)      *
+               Lexical analyzer for RFC822 tokens'
+*-------------------------------------------------------------------*
+*                                                                   *
+*        Columbia University Network MAILER  -  Release 2           *
+*                                                                   *
+*        Program property of Columbia University                    *
+*                                                                   *
+*-------------------------------------------------------------------*
+         SPACE ,
+*-------------------------------------------------------------------*
+*                                                                   *
+* Module Name:                                                      *
+*                                                                   *
+*        MAILLEX                                                    *
+*                                                                   *
+* Function:                                                         *
+*                                                                   *
+*        Lexical analyzer for tokens like those defined in          *
+*        RFC822 specification.                                      *
+*                                                                   *
+* Attributes:                                                       *
+*                                                                   *
+*        Reentrant                                                  *
+*                                                                   *
+* Entry Points:                                                     *
+*                                                                   *
+*        LEX822                                                     *
+*                                                                   *
+* Entry Conditions:                                                 *
+*                                                                   *
+*        R1    = A(PARMS)    see PARMS DSECT,  below                *
+*        R15   = A(LEX822)                                          *
+*        R14   = return address                                     *
+*        R13   = register save area                                 *
+*                                                                   *
+* Sample Invocation:                                                *
+*                                                                   *
+*        CALL LEX822,(STR,LEN,TOKTYPE,TOKPTR,TOKLEN)                *
+*                                                                   *
+* Exit Conditions:                                                  *
+*                                                                   *
+*        Normal                                                     *
+*                                                                   *
+*              R15 = 0       no errors,  STR, LEN updated to point  *
+*                            after end of token.  TOKTYPE, TOKPTR,  *
+*                            TOKLEN updated with token type, address*
+*                            and length.                            *
+*                                                                   *
+*        Error                                                      *
+*                                                                   *
+*              R15 = 4       input string is empty (zero len) or    *
+*                            all white space characters.            *
+*              R15 = 8       string ended early (i.e. saw EOS before*
+*                            comment end)                           *
+*              R15 = 12      syntax error,  STR updated to point at *
+*                            character that broke it.               *
+*                                                                   *
+* Calls to other routines, etc:                                     *
+*                                                                   *
+*        LINEDIT             write to terminal (debugging)          *
+*                                                                   *
+* External References:                                              *
+*                                                                   *
+*        None                                                       *
+*                                                                   *
+* Work Areas:                                                       *
+*                                                                   *
+*        None                                                       *
+*                                                                   *
+* Operation:                                                        *
+*                                                                   *
+*        Uses TRT instructions with several tables to quickly       *
+*        scan thru the input string and break on token boundaries . *
+*                                                                   *
+* Alan Crosswell,  12/83                                            *
+*-------------------------------------------------------------------*
+         EJECT ,
+*-------------------------------------------------------------------*
+*        Local Macros                                               *
+*-------------------------------------------------------------------*
+         MACRO
+&LABEL   CHRTAB &INIT                  macro to init. break table
+         GBLC  &CHRTAB                 global name to ORG to.
+&CHRTAB  SETC  '&LABEL'                same as label of CHRTAB macro
+&CHRTAB  DC    256AL1(&INIT)           set initial values
+         MEND  ,
+         MACRO ,
+         CHR   &OFF,&VAL,&CNT          set a break table entry(ies)
+         GBLC  &CHRTAB                 name of table set by CHRTAB
+         ORG   &CHRTAB+&OFF            go to the offset
+         DC    &CNT.AL1(&VAL)          and drop 1 or more bytes
+         ORG   ,                       org back to starting point
+         MEND  ,
+         GBLB  &DEBUG,&NDB
+*------------------------------------------------------------------ *
+*        Set &DEBUG to 1 when debugging this routine                *
+*------------------------------------------------------------------ *
+         SPACE ,
+&DEBUG   SETB  0
+         SPACE ,
+&NDB     SETB  (NOT &DEBUG)
+         AIF   ('&SYSPARM' EQ 'SUP').NOGEN
+         PRINT GEN
+         AGO   .SKIPIT
+.NOGEN   ANOP
+         PRINT NOGEN
+.SKIPIT  ANOP
+         EJECT ,
+*-------------------------------------------------------------------*
+*        Parameters                                                 *
+*-------------------------------------------------------------------*
+PARMS    DSECT ,             parameters
+@STR     DS    A                       pointer to string to analyze
+@LEN     DS    A                       ptr to length of the string
+@TOKTYPE DS    A                       ptr to token type to fill in
+@TOKPTR  DS    A                       ptr to token start to fill in
+@TOKLEN  DS    A                       ptr to token length to fill in
+         EJECT ,
+*-------------------------------------------------------------------*
+* Register definitions:                                             *
+*-------------------------------------------------------------------*
+R0  EQU  0 -
+R1  EQU  1 - work
+R2  EQU  2 - work
+R3  EQU  3 - work
+R4  EQU  4 -
+R5  EQU  5 - Comment nesting counter
+R6  EQU  6 - token type
+R7  EQU  7 - token start pointer
+R8  EQU  8 - work register when &DEBUG is true
+R9  EQU  9 - string start pointer
+R10 EQU 10 - string end pointer
+R11 EQU 11 - parms pointer (copy r1)
+R12 EQU 12 - program base
+R13 EQU 13 - caller's save area
+R14 EQU 14 - work
+R15 EQU 15 - work
+         EJECT ,
+MAILLEX  CSECT ,
+LEX822   MENTRY STK=NONE
+         LR    R11,R1                  better copy of parms pointer
+         USING PARMS,R11               address the plist
+         L     R9,@STR                 address of string pointer
+         L     R9,0(R9)                address of string
+         L     R10,@LEN                address of string length
+         L     R10,0(R10)              Length of string
+         LA    R10,0(R9,R10)           pointer to end of string
+         BCTR  R10,R0                  ???
+         AIF   (&NDB).DB0000
+         LINEDIT TEXT='entry.  string at ........',SUB=(HEX,(R9))
+         LINEDIT TEXT='           end at ........',SUB=(HEX,(R10)),    *
+               COMP=NO
+.DB0000  ANOP
+*--------------------------------------------------------------------
+*        look for break character based on state                    *
+*--------------------------------------------------------------------
+         LA    R14,TSTART              START state table
+         BAL   R15,TRTL                TRT for possibly > 256 chars
+*--------------------------------------------------------------------
+*        Function byte in R2 is used as an index into branch table  *
+*        for the next state to go to.  First,  set up the token     *
+*        start pointer in r7.                                       *
+*--------------------------------------------------------------------
+         AIF   (&NDB).DB0001
+         LINEDIT TEXT='start: func=....',SUB=(DEC,(R2))
+.DB0001  ANOP
+         SR    R6,R6                   set inital null token code
+         LR    R7,R9                   point just after token start
+         L     R15,SBRANCH(R2)         get branch target
+         BR    R15                     --> do the code for that state
+SBRANCH  DC    A($EMPTY,$ATOM,$QSTR,$ERRR,$DLIT,$COMM,$ERRR,$SPCL)
+         DC    A($ERRR,$ERRR)
+         SPACE ,
+*--------------------------------------------------------------------
+*        string is empty                                            *
+*--------------------------------------------------------------------
+$EMPTY   EQU   *
+         AIF   (&NDB).DB0002
+         LINEDIT TEXT='Empty.'
+.DB0002  ANOP
+         SR    R6,R6                   zip for token type
+         LA    R15,4                   set return code 4
+         B     RETURN                  and go home
+         SPACE ,
+*--------------------------------------------------------------------
+*        The string caused an error.  R9-1 points to the character  *
+*        that shouldn't have been there.  Return with @str pointing *
+*        at the bad character.                                      *
+*--------------------------------------------------------------------
+$EEOS    EQU   *
+         AIF   (&NDB).DB0003
+         LINEDIT TEXT='early end: toktype=''..''',SUB=(DEC,(R6))
+.DB0003  ANOP
+         LA    R15,8                   set return code 8
+         B     RETURN                  and return
+         SPACE ,
+$ERRR    EQU   *
+         AIF   (&NDB).DB0003A
+         LINEDIT TEXT='Error: toktype=''..''',SUB=(DEC,(R6))
+.DB0003A ANOP
+         LA    R15,12                  set return code 12
+         B     RETURN                  and return
+         SPACE ,
+*--------------------------------------------------------------------
+*        The string is an atom.                                     *
+*        The returned TRTL function code doesn't matter,  since an  *
+*        atom either ends on a delim or falls off the string end.   *
+*        Either way is fine.                                        *
+*--------------------------------------------------------------------
+$ATOM    EQU   *
+         AIF   (&NDB).DB0004
+         LINEDIT TEXT='Atom starts at ........',SUB=(HEX,(R7))
+.DB0004  ANOP
+         LA    R9,1(R9)                point at next char
+         LA    R6,TOK$ATOM             atom token type
+         LA    R14,TATOM               get ATOM break table
+         BAL   R15,TRTL                do the long trt
+         SR    R15,R15                 zero return code
+         B     RETURN                  just return it.
+         SPACE ,
+*--------------------------------------------------------------------
+*        The string is a quoted string.  "\" is handled as a        *
+*        special case.                                              *
+*--------------------------------------------------------------------
+$QSTR    EQU   *
+         AIF   (&NDB).DB0005
+         LINEDIT TEXT='Q-str starts at ........',SUB=(HEX,(R7))
+.DB0005  ANOP
+         LA    R9,1(R9)                point to next char
+         LA    R6,TOK$QSTR             qstr token type
+         LA    R14,TQSTR               get QSTR break table
+         BAL   R15,TRTL                do the long trt
+         SR    R15,R15                 zero return code
+         C     R2,=A(QCHR)             quote the next character?
+         BE    $QSTR1                  --> go quote it
+         C     R2,=A(EXIT)             end of the string?
+         BE    $QSTR2                  just exit
+         LTR   R2,R2                   end of string hit?
+         BZ    $EEOS                  early end of string error.
+         B     $ERRR                   everything else is an error.
+$QSTR1   EQU   *                       <-- here to quote a character
+         AIF   (&NDB).DB0006
+         LINEDIT TEXT='Q-str quoting char at ........',                *
+               SUB=(HEX,(R9))
+         LINEDIT TEXT='              char is ''.''',                   *
+               SUB=(CHARA,(R9)),COMP=NO
+.DB0006  ANOP
+         LA    R9,1(R9)                skip the \
+         B     $QSTR                   --> and keep on trucking
+         SPACE ,
+$QSTR2   EQU   *
+         LA    R9,1(R9)                point to next char
+         B     RETURN
+         SPACE ,
+*--------------------------------------------------------------------
+*        string is a domain-literal.  Process just like QSTR.       *
+*--------------------------------------------------------------------
+$DLIT    EQU   *
+         AIF   (&NDB).DB0007
+         LINEDIT TEXT='Dlit starts at ........',SUB=(HEX,(R7))
+.DB0007  ANOP
+         LA    R9,1(R9)                point to next char
+         LA    R6,TOK$DLIT             dlit token type
+         LA    R14,TDLIT               get DLIT break table
+         BAL   R15,TRTL                do the long trt
+         SR    R15,R15                 zero return code
+         C     R2,=A(QCHR)             quote the next character?
+         BE    $DLIT1                  yup
+         C     R2,=A(EXIT)             end of the string?
+         BE    $DLIT2                  just exit
+         LTR   R2,R2                   end of string hit?
+         BZ    $EEOS                  early end of string error.
+         B     $ERRR                   everything else is an error.
+$DLIT1   EQU   *                       <-- here to quote a character
+         AIF   (&NDB).DB0008
+         LINEDIT TEXT='Dlit quoting char at ........',                 *
+               SUB=(HEX,(R9))
+         LINEDIT TEXT='             char is ''.''',                    *
+               SUB=(CHARA,(R9)),COMP=NO
+.DB0008  ANOP
+         LA    R9,1(R9)                skip the character
+         B     $DLIT                   --> and keep on trucking
+         SPACE ,
+$DLIT2   EQU   *
+         LA    R9,1(R9)                point to next char
+         B     RETURN
+         SPACE ,
+*--------------------------------------------------------------------
+*        string is a comment.  This one is a little tougher since   *
+*        comments can nest ((())).                                  *
+*--------------------------------------------------------------------
+$COMM    EQU   *
+         AIF   (&NDB).DB0009
+         LINEDIT TEXT='Comment starts at .......',SUB=(HEX,(R7))
+.DB0009  ANOP
+         LA    R6,TOK$COMM             comment token type
+         LA    R5,1                    set comment depth to 1
+$COMM1   EQU   *                       <-- here for continued scan
+         AIF   (&NDB).DB0010
+         LINEDIT TEXT='Comment depth is ....',SUB=(DEC,(R5))
+         LINEDIT TEXT='    next char at ........',                     *
+               SUB=(HEX,(R9)),COMP=NO
+.DB0010  ANOP
+         LA    R9,1(R9)                point to next char
+         LA    R14,TCOMM               comment break table
+         BAL   R15,TRTL                trap a character
+         LTR   R2,R2                   early end of string?
+         BZ    $EEOS                  --> yes, flag the error
+         C     R2,=A(QCHR)             backslash quoting?
+         BE    $COMM2                  --> quote it
+         C     R2,=A(COMM)             push another comment w/'('?
+         BE    $COMM3                  --> push comment level
+         C     R2,=A(COMP)             pop comment w/')'?
+         BE    $COMM4                  --> go pop the comment level
+         B     $ERRR                   --> else, error
+         SPACE ,
+$COMM2   EQU   *                       <-- quote the next character
+         AIF   (&NDB).DB0011
+         LINEDIT TEXT='Comment quoting char at ........',              *
+               SUB=(HEX,(R9))
+         LINEDIT TEXT='                char is ''.''',                 *
+               SUB=(CHARA,(R9)),COMP=NO
+.DB0011  ANOP
+         LA    R9,1(R9)                skip over character
+         B     $COMM1                  and keep trucking
+         SPACE ,
+$COMM3   EQU   *
+         AIF   (&NDB).DB0012
+         LINEDIT TEXT='Comment push'
+.DB0012  ANOP
+         LA    R5,1(R5)                push comment depth counter
+         B     $COMM1                  and keep going.
+         SPACE ,
+$COMM4   EQU   *                       <-- pop comment level
+         AIF   (&NDB).DB0013
+         LR    R8,R5
+         BCTR  R8,R0
+         LINEDIT TEXT='Comment pop, depth=.....',SUB=(DEC,(R8))
+.DB0013  ANOP
+         BCT   R5,$COMM1               --> not popped all the way
+         LA    R9,1(R9)                point to next char
+         SR    R15,R15                 good return code
+         B     RETURN                  --> comment popped,  return
+         SPACE ,
+*--------------------------------------------------------------------
+*        a special character was found.  The token value is the     *
+*        same as the character.                                     *
+*--------------------------------------------------------------------
+$SPCL    EQU   *
+         SR    R6,R6                   clear token code register
+         IC    R6,0(R7)                get the character
+         AIF   (&NDB).DB0014
+         LINEDIT TEXT='Special char at ........',                      *
+               SUB=(HEX,(R7))
+         LINEDIT TEXT='        char is ''.''',                         *
+               SUB=(CHARA,(R7)),COMP=NO
+.DB0014  ANOP
+         LA    R9,1(R9)                point to next char
+         SR    R15,R15                 nice return code
+         B     RETURN                  and exit
+         SPACE ,
+*--------------------------------------------------------------------
+RETURN   EQU   *
+         AIF   (&NDB).DB0015
+         LR    R8,R15
+         LINEDIT TEXT='Returning, token type ....',                    *
+               SUB=(DEC,(R6))
+         LINEDIT TEXT='Token starts at ........',                      *
+               SUB=(HEX,(R7))
+         LINEDIT TEXT='        ends at ........',                      *
+               SUB=(HEX,(R9)),COMP=NO
+         LR    R15,R8
+.DB0015  ANOP
+         L     R1,@STR                 get pointer to str ptr
+         ST    R9,0(R1)                update pointer
+         L     R1,@LEN                 length goes here
+         SR    R10,R9                  new length of string
+         LA    R10,1(R10)              correct length
+         ST    R10,0(R1)               return the length
+         L     R1,@TOKPTR              pointer to token goes here
+         ST    R7,0(R1)                stuff it
+         L     R1,@TOKLEN              and length of it.
+         SR    R9,R7                   length of the token
+         ST    R9,0(R1)                return it.
+         L     R1,@TOKTYPE             token type goes here
+         ST    R6,0(R1)                return that too.
+         DROP  R11
+         MRET  ,             return via MENTRY macro
+         SPACE ,
+*--------------------------------------------------------------------
+*        TRTL - translate and test long (they did it for MVC...)    *
+*        called with:                                               *
+*              r14 - address of break table                         *
+*              r9  - address of string                              *
+*              r10 - address of string end                          *
+*              r15 - return address                                 *
+*                                                                   *
+*        Returns:                                                   *
+*              r2 - function byte (zero if no break was seen)       *
+*              r9 - updated to point after break char or EOS        *
+*                                                                   *
+*        Clobbers:                                                  *
+*              r3 - work register                                   *
+*--------------------------------------------------------------------
+TRTL     DS    0H
+         SR    R2,R2                   zero out r2
+         LR    R3,R10                  end of string
+         SR    R3,R9                   length-1 for TRT
+         BLR   R15                     return if string is exhausted
+         C     R3,=F'255'              string too long?
+         BNH   TRTL1                   --> length is OK
+         LA    R3,255                  trunc it.
+TRTL1    EQU   *
+         LA    R1,0(R3,R9)             end of this trt string
+         EX    R3,DOTRT                =TRT 0(0,R9),0(R14)
+         LR    R9,R1                   with string ptr updated.
+         BNZR  R15                     return if we get a hit.
+         LA    R9,1(R9)                point past break character
+         B     TRTL                    else,  try for remainder of
+         SPACE ,
+*                                      the string.                  *
+DOTRT    TRT   0(0,R9),0(R14)          executed trt
+         SPACE ,
+         MPEND ,             end of proc
+         SPACE ,
+*--------------------------------------------------------------------
+*        read-only data                                             *
+*--------------------------------------------------------------------
+         SPACE ,
+* states:                                                           *
+SKIP     EQU   0                       skip over these characters
+ATOM     EQU   4                       atom state
+QSTR     EQU   8                       quoted string
+QCHR     EQU   12                      backslash quoted char
+DLIT     EQU   16                      domain literal
+COMM     EQU   20                      comment
+COMP     EQU   24                      pop comment
+SPCL     EQU   28                      special character
+EXIT     EQU   32                      exit
+ERRR     EQU   36                      error
+* some useful symbols:                                              *
+HT       EQU   X'05'                   tab
+CR       EQU   X'0D'                   carriage return
+NL       EQU   X'15'                   newline
+SP       EQU   C' '                    space
+TOK$ATOM EQU   C'A'                    atom token code
+TOK$QSTR EQU   C'"'                    quoted string token code
+TOK$DLIT EQU   C'['                    domain-literal token code
+TOK$COMM EQU   C'('                    comment token code
+         SPACE ,
+* indirect branch table: Indexed by state number.                   *
+         EJECT ,
+*--------------------------------------------------------------------
+*        START state branch table:                                  *
+*                                                                   *
+*        This table is used to select the next state (which can     *
+*        be done uniquely on one character).  White space is ignored*
+*        by having a "SKIP" function byte (0) in SP, HT, and NL     *
+*        and bogus characters are caught by having a "X" function   *
+*        byte.                                                      *
+*                                                                   *
+*--------------------------------------------------------------------
+         SPACE ,
+TSTART   CHRTAB ERRR                   init to all errors
+         CHR   HT,SKIP                 tab
+         CHR   NL,SKIP                 crlf
+         CHR   SP,SKIP                 and space; white space
+         CHR   C'.',SPCL               C'.'; special
+         CHR   C'<',SPCL               <; special
+         CHR   C'(',COMM               (; start of comment
+         CHR   C'+',ATOM,3             + - &; atom characters
+         CHR   C'!',ATOM,3             C'!' - C'*'; atom chars
+         CHR   C';',SPCL               ; -- special
+         CHR   C'^',ATOM,3             not - /; atom chars
+         CHR   C',',SPCL               comma; special
+         CHR   C'%',ATOM,2             % - _; atom chars
+         CHR   C'>',SPCL               >; special
+         CHR   C'?',ATOM               ? - atom char
+         CHR   C'`',ATOM               accent grave - atom char
+         CHR   C':',SPCL               colon; delim
+         CHR   C'#',ATOM               # - atom char
+         CHR   C'@',SPCL               atsign - special
+         CHR   C'''',ATOM,2            ' - =  ; atom chars
+         CHR   C'"',QSTR               quote - q-str delim
+         CHR   C'a',ATOM,9             lower case a - i
+         CHR   C'j',ATOM,9             lower case j-r
+         CHR   C'~',ATOM               tilde - atom char
+         CHR   C's',ATOM,8             lower case s - z
+         CHR   C'[',DLIT               [ - domain literal
+         CHR   C'{',ATOM,10            { and upper case A - I
+         CHR   C'}',ATOM,10            } and upper case J - R
+         CHR   C'S',ATOM,8             upper case S- Z
+         CHR   C'0',ATOM,10            numbers
+         EJECT ,
+*--------------------------------------------------------------------
+*        ATOM state break table:                                    *
+*                                                                   *
+*        Valid atom characters are skipped over.  All other         *
+*        characters are considered delimiters and have a function   *
+*        byte of "EXIT".                                            *
+*--------------------------------------------------------------------
+TATOM    CHRTAB EXIT                   init to all delimiters (exits)
+         CHR   C'+',SKIP,3             + - &; atom characters
+         CHR   C'!',SKIP,3             C'!' - C'*'; atom chars
+         CHR   C'^',SKIP,3             not - /; atom chars
+         CHR   C'%',SKIP,2             % - _; atom chars
+         CHR   C'?',SKIP               ? - atom char
+         CHR   C'`',SKIP               accent grave - atom char
+         CHR   C'#',SKIP               # - atom char
+         CHR   C'''',SKIP,2            ' - =  ; atom chars
+         CHR   C'a',SKIP,9             lower case a - i
+         CHR   C'j',SKIP,9             lower case j-r
+         CHR   C'~',SKIP               tilde - atom char
+         CHR   C's',SKIP,8             lower case s - z
+         CHR   C'{',SKIP,10            { and upper case A - I
+         CHR   C'}',SKIP,10            } and upper case J - R
+         CHR   C'S',SKIP,8             upper case S- Z
+         CHR   C'0',SKIP,10            numbers
+         EJECT ,
+*--------------------------------------------------------------------
+*        QSTR state branch table:                                   *
+*                                                                   *
+*        Skip over all characters except quote,  CR and "\".        *
+*        Quote ends the quoted string.  CR is an error.  Backslash  *
+*        quotes the next character (done in QSTR code).             *
+*--------------------------------------------------------------------
+TQSTR    CHRTAB SKIP                   allow all characters
+         CHR   C'"',EXIT               quote - end of string
+         CHR   CR,ERRR                 CR - error
+         CHR   C'\',QCHR               backslash is special too
+         EJECT ,
+*--------------------------------------------------------------------
+*        DLIT state branch table:                                   *
+*                                                                   *
+*        Similar to QSTR except string delim is "]".                *
+*--------------------------------------------------------------------
+TDLIT    CHRTAB SKIP                   allow all characters
+         CHR   C'[',ERRR               [ - error
+         CHR   C']',EXIT               ] - end of dlit
+         CHR   CR,ERRR                 CR - error
+         CHR   C'\',QCHR               backslash quoting
+         EJECT ,
+*--------------------------------------------------------------------
+*        COMM state branch table:                                   *
+*                                                                   *
+*        Valid comment characters are skipped over.  If an open     *
+*        paren is found,  the comment depth is incremented.  If     *
+*        A close paren is found,  the depth is decremented and      *
+*        if zero,  end.                                             *
+*--------------------------------------------------------------------
+TCOMM    CHRTAB SKIP                   allow all characters
+         CHR   CR,ERRR                 CR - error
+         CHR   C'\',QCHR               backslash quoting
+         CHR   C'(',COMM               ( - push comment depth
+         CHR   C')',COMP               ) - pop comment nesting
+         LTORG ,
+         END   ,

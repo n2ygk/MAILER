@@ -1,0 +1,36 @@
+         MACRO
+&NAME    SALOC &SIZE,&NOSTOR
+.*  SALOC will allocate storage from the common stack pointed to by
+.*  the MAILBLOK fields STACKP and STACKS.
+.*
+.*  The address of the allocated storage is returned in R1.
+.*
+.*  ** WARNING ** SALOC will destroy the contents of registers 0, 1,
+.*  14 and 15..
+.*
+         AIF   ('&SIZE' NE '').X010
+         MNOTE 8,'Request size not given'
+         MEXIT
+.*
+.X010    ANOP
+         AIF   ('&NOSTOR' NE '').X020
+         MNOTE 8,'Not enough stack space error address not provided'
+         MEXIT
+.*
+.X020    ANOP
+         LM    R14,R15,STACKP      Pick up stack pointers
+         LA    R14,0(,R14)         Clear off garbage bits
+         LA    R1,7(,R14)          Round up to doubleword boundary
+         N     R1,=X'FFFFFFF8'     Block will start here
+         LR    R0,R1               Copy starting address
+         SR    R0,R14              Amount to compensate by
+         BZ    $&SYSNDX.A          ---> No compensation needed
+         SR    R15,R0              Fix up size of stack left
+$&SYSNDX.A EQU *
+         L     R14,=A(&SIZE)       Want this much
+         SR    R15,R14             Reduce amount left
+         BNP   &NOSTOR             ---> Not enough space left
+         AR    R14,R1              New stack pointer value
+         STM   R14,R15,STACKP      Update MAILBLOK pointers
+         MEXIT ,
+         MEND  ,

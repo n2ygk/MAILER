@@ -1,0 +1,65 @@
+NOMAIL   TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - NOMAIL EXIT'
+*---------------------------------------------------------------------*
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         *
+*    Program Property of the Trustees of Columbia University in the   *
+*    City of New York.                                                *
+*---------------------------------------------------------------------*
+NOMAIL   CSECT ,
+* NOMAIL     -
+*
+* ACCEPTS A PARM LIST ADDRESS IN R1 -
+*        0: ADDR OF MAILBLOK
+*        4: ADDR OF ACTADR BLOCK
+*
+* REGISTER USAGE -
+R0  EQU  0 -
+R1  EQU  1 -
+R2  EQU  2 -
+R3  EQU  3 -
+R4  EQU  4 -
+R5  EQU  5 -
+R6  EQU  6 -
+R7  EQU  7 -
+R8  EQU  8 -
+R9  EQU  9 -
+R10 EQU 10 -
+R11 EQU 11 -
+R12 EQU 12 - PROGRAM BASE
+R13 EQU 13 - SAVE AREA
+R14 EQU 14 - SUBROUTINE LINKAGE
+R15 EQU 15 - SUBROUTINE LINKAGE
+         BLOCKS ,
+         MAILBLOK
+         EJECT
+NOMAIL   CSECT ,
+         USING NOMAIL,R15
+         B     EYESKIP
+MYNAME   DC    CL8'NOMAIL',CL8'&SYSDATE'
+EYESKIP  DS    0H
+         DROP  R15
+         STM       R14,R12,12(R13)
+         LR    R12,R15
+         USING NOMAIL,R12
+         LA        R14,SAVE
+         ST        R13,4(R14)
+         ST        R14,8(R13)
+         LR        R13,R14
+         LR        R10,R1
+         L         R11,0(R10)          GET MAILBLOK
+         USING     MAILBLOK,R11
+         L         R9,4(R10)           GET ACTADR
+         USING     ACTADR,R9
+         L     R8,ACTRT      ADDRESS OF ROUTD CARD
+         USING     ROUTD,R8
+         LA    R5,RTPARM     USE THE PARM
+         LOG   NOM041,(CA,(R5))        ISSUE MESSAGE
+         LA    R15,4
+RET      EQU       *
+         L         R13,4(R13)
+         L         R14,12(R13)
+         LM        R0,R12,20(R13)
+         BR        R14
+*
+         LTORG
+SAVE     DS        18F
+         END   NOMAIL

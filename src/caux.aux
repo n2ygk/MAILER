@@ -1,0 +1,65 @@
+% offsets into MAILBLOK
+origin 0
+offset mailblok 4            % dummy variable to return address of sect
+origin 0
+offset mailhbuf 8            % addr,len of header buffer
+origin 24
+offset stackp 8              % memory allocation stack pointer, length
+offset mailrtab 4            % outgoing table
+offset mailstab 4            % special table
+offset mailktab 4            % header keyword table
+offset mailvtab 4            % incoming table
+offset mailptab 4            % parameter table
+offset mailhrec 4            % number of actual records in header
+offset mailhlin 4            % number of logical lines in header
+origin 84
+offset mailchn 4             % chain of actada's
+offset mailfld 4             % head of fieldd chain
+offset mailsfld 4            % sender fieldd pointer
+origin 104
+offset mailftxt 4            % spoolid (characters)
+offset mailopts 1            % options
+offset mailflg1 1            % flags
+origin 112
+offset cpustr 8              % rscs node name
+offset rscsname 8            % rscs userid
+offset mailvmid 8            % mailer machine vm userid
+offset mailtime 16           % time of last start/reload
+offset mailvers 16           % mailer version, assembly date
+origin 184
+offset mailnode 8            % origin nodename
+offset mailuser 8            % origin userid
+origin 240
+offset mailsfb 104           % sfblok
+origin 1512
+offset upcase 256            % upper case translate table
+origin 1940
+offset maxrcvd 4             % max number of received header lines
+offset mailulen 4            % length of mailuser
+offset mailnlen 4            % length of mailnode
+offset mailulfs 4            % ptr to error log fscb
+offset lcldom 4              % ptr to local-domain string
+offset cpuslen 4             % length of cpustr
+offset rscsdom 4             % ptr to rscs-domain string
+offset maildtab 4            % domains table
+origin 1990
+offset mailflg2 1            % more flags
+origin 2072
+offset maintid  8            % maintainer userid
+offset maintnod 8            % maintainer node
+offset maintid2 8            % maintainer userid
+offset maintno2 8            % maintainer node
+offset maintid3 8            % maintainer userid
+offset maintno3 8            % maintainer node
+offset maintid4 8            % maintainer userid
+offset maintno4 8            % maintainer node
+offset maintid5 8            % maintainer userid
+offset maintno5 8            % maintainer node
+offset maintid6 8            % maintainer userid
+offset maintno6 8            % maintainer node
+offset maintid7 8            % maintainer userid
+offset maintno7 8            % maintainer node
+offset maintid8 8            % maintainer userid
+offset maintno8 8            % maintainer node
+offset maintid9 8            % maintainer userid
+offset maintno9 8            % maintainer node

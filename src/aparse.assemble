@@ -1,0 +1,178 @@
+APARSE   TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - ADDRESS PARSER'
+*---------------------------------------------------------------------*
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         *
+*    Program Property of the Trustees of Columbia University in the   *
+*    City of New York.                                                *
+*---------------------------------------------------------------------*
+APARSE   CSECT
+* APARSE   -
+*  This routine parses an address list by calling PRSAL and
+*  plugs the returned values into the FIELDD supplied.
+*
+* LAST EDIT: 4/12/82 BY ALAN CROSSWELL
+*
+* CALLED VIA -
+*  CALL APARSE,(MAILBLOK,FIELDD,STKP,STKL)
+         SPACE ,
+PAB      DSECT ,
+@MBLOK   DS    A             ADDRESS OF MAILBLOK
+@FIELDD  DS    A             ADDRESS OF FIELD DESCRIPTOR
+@STK     DS    2F            STACK POINTER
+         SPACE ,
+         SPACE
+* REGISTER USAGE -
+R0  EQU  0 -
+R1  EQU  1 -
+R2  EQU  2 -
+R3  EQU  3 -
+R4  EQU  4 -
+R5  EQU  5 -
+R6  EQU  6 -
+R7  EQU  7 -
+R8  EQU  8 -
+R9  EQU  9 -
+R10 EQU 10 -
+R11 EQU 11 - MAILBLOK BASE
+R12 EQU 12 - PROGRAM BASE
+R13 EQU 13 - SAVE AREA
+R14 EQU 14 - SUBROUTINE LINKAGE
+R15 EQU 15 - SUBROUTINE LINKAGE
+         SPACE
+         PRINT NOGEN
+         BLOCKS ,
+         SPACE 1
+         COPY  DEBUG
+         PRINT OFF
+         NUCON DSECT
+         PRINT ON
+         EJECT
+APARSE   CSECT ,
+         USING APARSE,R15    TEMPORARY ADDRESSABILITY
+         B     EYESKIP       BRANCH OVER EYESKIP
+MYNAME   DC    CL8'APARSE',CL8'&SYSDATE'
+EYESKIP  DS    0H
+         DROP  R15
+         STM   R14,R12,12(R13) SAVE CALLER'S REGS
+         LR    R12,R15       PERMANENT ADDRESSABILITY
+         USING APARSE,R12
+         LA    R14,SAVE      MY SAVE AREA
+         ST    R13,4(R14)    SAVE CALLER'S PTR
+         ST    R14,8(R13)    CHAIN MINE BACK
+         LR    R13,R14       SET MY SAVE PTR
+         LR    R10,R1        GET A BETTER HANDLE
+         USING PAB,R10       ADDRESS PARMS
+         L     R6,@FIELDD    GET FIELDD BASE
+         USING FIELDD,R6     ADDRESS THE FIELD DESCR
+         MVC   ADSTK(8),@STK COPY STACK POINTERS
+         MVC   STRADDR,FISTR Copy string pointer
+         L     R1,FIEND      Get end address
+         S     R1,FISTR      Minus start address
+         ST    R1,STRLEN     Store in string length
+         LA    R1,PRSPARMS
+         L     R15,=V(PRSAL) Call RFC822 parser
+         BALR  R14,R15
+         LTR   R15,R15        Parse successful?
+         BZ    PARSEOK        ---> Yes
+         LA    R1,FISTR       Address of string pointer
+         ST    R1,@STR        Store into plist
+         LA    R1,FIEND       Address of end of string pointer
+         ST    R1,@END        Into plist with this also
+         MVC   @STKPTR(8),@STK Copy addr. of stack pointers into plist
+         LA    R1,ADPARMS     Point to plist
+         L     R15,=V(ADPARSE) RFC733 parser
+         BALR  R14,R15        Go to it
+         LTR   R15,R15        Parse successful?
+         BNZ   RET            ---> No
+PARSEOK  EQU   *
+         MVC   FIPARS,PARLIST PARSE LIST POINTER
+         L     R1,FITOK      GET FIELD NAME TOKEND
+         USING TOKEND,R1     ADDRESS IT
+LOOP     EQU   *
+         ICM   R2,B'1111',TOKNEXT  LOOK FOR LIST END
+         BZ    LOOPOUT
+         LR    R1,R2         CHAIN THRU FIELD NAME TOKENS
+         B     LOOP
+LOOPOUT  EQU   *
+         L     R15,TOKLIST       Pick up token list address
+         ST    R15,TOKNEXT       Add new tokens to chain
+         ST    R1,TOKPREV-TOKEND(R15)  Chain back also
+         DROP  R1
+         AIF   (NOT &DBGTOK).NODBG00
+         LR    R2,R1             Copy address to a better register
+         USING TOKEND,R2
+         LINEDIT TEXT='APARSE  : Token list at ........ chained to toke+
+               n at ........',                                         +
+               SUB=(HEXA,TOKLIST,HEX,(R2)),                            +
+               DOT=NO,COMP=NO,RENT=NO
+         SPACE 1
+         LR    R1,R2               Point to chain pointer
+         L     R15,=V(SHOWTOKS)
+         BALR  R14,R15             Go display token chain
+.NODBG00 ANOP
+         L     R2,FIPARS           Get parse list
+         USING MBOX,R2
+FIXCOUNT DS    0H
+         LA    R1,MBXRTL           Point to route list TOKEND base
+         BAL   R14,TOKENCNT        Go count tokens in list
+         ST    R0,MBXRCNT          Save count of route list TOKENDs
+         LA    R1,MBXLCL           Point to user list TOKEND base
+         BAL   R14,TOKENCNT        Go count tokens in list
+         ST    R0,MBXLCNT          Save count of user list TOKENDs
+         LA    R1,MBXDML           Point to domain list TOKEND base
+         BAL   R14,TOKENCNT        Go count tokens in list
+         ST    R0,MBXDCNT          Save count of domain list TOKENDs
+         ICM   R2,B'1111',MBXNEXT  Point to next MBOX
+         BNZ   FIXCOUNT            ---> Do counts for next one
+         DROP  R2
+         SR    R15,R15             Set return code
+RET      EQU   *
+         L     R13,4(R13)              GET CALLER'S SAVE PTR
+         L     R14,12(R13)             GET R14
+         LM    R0,R12,20(R13)          GET R0-R12
+         BR    R14                     RETURN
+         EJECT ,
+*
+*  Routine to count number of tokens in a chain
+*
+*  Entry conditions:
+*
+*      R1  - @TOKEND chain header
+*      R14 - Return address
+*
+*  Exit conditions:
+*
+*      R0  - Count of TOKENDs on chain
+*
+         SPACE
+TOKENCNT DS    0H
+         SR    R0,R0               Clear reg
+         USING TOKEND,R1
+TOKENCN1 DS    0H
+         ICM   R1,B'1111',TOKNEXT  Get next pointer
+         BZR   R14                 ---> End of chain
+         A     R0,=F'1'            Increment count
+         B     TOKENCN1            ---> Around again
+         SPACE 1
+         DROP  R1
+         EJECT ,
+         LTORG ,
+SAVE     DS    18F                     SAVE AREA
+PRSPARMS DS    0F
+ADSTR    DC    A(STRADDR)
+ADLEN    DC    A(STRLEN)
+ADSTK    DS    2F            STACK POINTER ADDRESS
+         DC    A(TOKLIST,PARLIST)
+TOKLIST  DS    F
+PARLIST  DS    F
+         SPACE 1
+STRADDR  DS    A             Start of string address
+STRLEN   DS    F             String length
+         SPACE 2
+ADPARMS  DS    0F            Parameter list for ADPARSE call
+@STR     DC    A(0)          Addr. of input string pointer
+@END     DC    A(0)          Addr. of end of string pointer
+@STKPTR  DC    A(0)          Addr. of stack pointer
+@STKLEN  DC    A(0)          Addr. of stack length
+         DC    A(TOKLIST)    Addr. of token list pointer (output)
+         DC    A(PARLIST)    Addr. of parse list pointer (output)
+         END   APARSE

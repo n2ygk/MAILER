@@ -1,0 +1,164 @@
+UNIXSCAN TITLE     'UNIXSCAN - UNIX STYLE PARAMETER SCANNER'
+*---------------------------------------------------------------------*
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         *
+*    Program Property of the Trustees of Columbia University in the   *
+*    City of New York.                                                *
+*---------------------------------------------------------------------*
+UNIXSCAN CSECT
+* UNIXSCAN -  SCAN THE CMNDLINE AND RETURN AN ARGC (ARGUMENT COUNT)
+* AND ARGV (ARGUMENT VECTOR).  EACH WORD IN THE ARGV HAS THE LENGTH
+* OF THE ARGUMENT IN THE FIRST BYTE AND THE ADDRESS OF THE ARGUMENT
+* IN THE REMAINING 3 BYTES.
+*
+*                                      ALAN CROSSWELL 8/81
+*
+* LAST EDIT: 2/8/82 BY ALAN CROSSWELL
+*
+* ACCEPTS A PARM LIST ADDRESS IN R1 -
+*        0: ADDRESS OF ARGV IN CALLING PROGRAM
+*        4: MAXIMUM LENGTH OF ARGV IN BYTES
+*        8: ADDRESS OF BUFFER TO SCAN OR ZERO
+*       12: LENGTH OF ABOVE BUFFER OR ZERO
+*
+* IF THE ADDRESS OF THE BUFFER IS ZERO, THEN THE ADDRESS OF THE
+* STANDARD CMS COMMAND LINE IS USED, OTHERWISE THE ADDRESSED BUFFER
+* IS USED
+*
+* RETURNS IN R1 -
+*        NUMBER OF ENTRIES IN ARGV
+* RETURNS IN R15 -
+*        RETURN CODE 0 IF NO ERRORS; THE NUMBER IN R1 IS CORRECT
+*        RETURN CODE 4 IF THE ARGV IS TOO SMALL; THE NUMBER IN R1
+*           IS THE NUMBER OF ARGS THAT WERE SUCCESFULY SCANNED
+*
+* REGISTER USAGE -
+R0  EQU  0 -
+R1  EQU  1 - WORK REG. AND, AT RETURN, THE VALUE OF ARGC
+R2  EQU  2 -
+R3  EQU  3 -
+R4  EQU  4 -
+R5  EQU  5 -
+R6  EQU  6 -
+R7  EQU  7 - ADDRESS OF END OF CMDLINE
+R8  EQU  8 - CURRENT ADDRESS IN CMDLINE
+R9  EQU  9 - ARGC COUNTER IN BYTES (INDEX INTO ARGV)
+R10 EQU 10 - ADDRESS OF ARGV
+R11 EQU 11 - ARGV MAXIMUM LENGTH
+R12 EQU 12 - PROGRAM BASE
+R13 EQU 13 - SAVE AREA
+R14 EQU 14 - SUBROUTINE LINKAGE
+R15 EQU 15 - SUBROUTINE LINKAGE
+*
+* EXTERNAL MACROS/MODULES CALLED -
+         PRINT     NOGEN
+         NUCON     DSECT
+         SPACE
+ARGV     DSECT     ,                   SET UP A SYMBOL
+         EJECT
+UNIXSCAN CSECT
+         STM       R14,R12,12(R13)
+         BALR      R12,0
+         USING     *,R12
+         LA        R14,SAVE
+         ST        R13,4(R14)
+         ST        R14,8(R13)
+         LR        R13,R14
+*
+         L         R10,0(R1)           ADDRESS OF ARGV
+         USING     ARGV,R10            ADDRESS IT AS A SYMBOL
+         L         R11,4(R1)           MAX. SIZE OF ARGV
+         ICM       R8,B'1111',8(R1)    GET ADDRESS OF BUFFER
+         BZ        USECMS              IF ZERO, USE CMS CMNDLINE
+         L         R7,12(R1)           GET LENGTH OF USER BUFFER
+         AR        R7,R8               ADDRESS OF END OF USER BUFFER
+         B         USEHIS              SKIP OVER NUCON STUFF
+USECMS   EQU       *
+         USING     NUCON,R0            ADDRESS NUCLEUS
+         LA        R8,CMNDLINE         ADDRESS OF UNTOKENIZED COMMAND
+         LA        R7,L'CMNDLINE(R8)   ADDRESS OF END OF IT.
+USEHIS   EQU       *
+         SR        R9,R9               INITIALLY THERE ARE NO ARGS
+         SR        R15,R15             INIT NO ERRORS
+* TRIM OFF ANY LEADING BLANKS -
+         LR        R1,R8               IN CASE THERE ARE NONE....
+         LR        R6,R7               LENGTH OF STRING
+         SR        R6,R8               LENGTH TO TRT
+         LTR       R6,R6               ALL DONE
+         BNH       DONE                YES, GO CLEAN UP
+         BCTR      R6,0                -1 FOR EXECUTE
+         EX        R6,SKIPBLK          SKIP LEADING BLANKS
+         LR        R8,R1               NEW STRING START
+LOOP     EQU       *
+         LR        R6,R7               LET'S GET THE TRT LENGTH
+         SR        R6,R8               LENGTH TO TRT
+         LTR       R6,R6               ALL DONE
+         BNH       DONE                YES, GO CLEAN UP
+         BCTR      R6,0                MINUS 1 FOR EXECUTE
+         LR        R1,R7               ADDRESS OF END IN CASE OF CC 0
+         SR        R2,R2               CLEAN IT OUT FOR THE INSERT
+         ST        R8,ARGV(R9)         SAVE ADDRESS OF CURRENT STRING
+         EX        R6,GETBLK           LOOK FOR THE NEXT BLANK OR ()
+         LR        R6,R1               COPY THE STRING END POINTER
+         SR        R1,R8               LENGTH OF STRING
+         STC       R1,ARGV(R9)         INTO 1ST BYTE OF POINTER
+         LR        R8,R6               UPDATED STRING POINTER
+         CH        R2,=H'2'            WAS IT A PAREN?
+         BNE       NOPE                NOPE, KEEP GOING
+         C         R8,ARGV(R9)         WAS END OF LAST AND BEGINNING
+         BE        THESAME             THE SAME?
+         LA        R9,4(R9)            BUMP ARGV COUNTER
+         CR        R9,R11              PAST END OF ARGV BUFFER?
+         BNL       TOOMUCH
+THESAME  EQU       *
+         ST        R8,ARGV(R9)         SAVE ADDRESS
+         LA        R1,1                GET A 1
+         STC       R1,ARGV(R9)
+         LA        R8,1(R8)            POINT PAST PAREN
+NOPE     EQU       *
+* NOW SKIP THE NEXT BUNCH OF BLANKS
+         LR        R6,R7               LLENGTH TO TRT
+         SR        R6,R8               LENGTH TO TRT
+         LTR       R6,R6               ALL DONE
+         BNH       DONE                YES, GO CLEAN UP
+         BCTR      R6,0                -1 FOR EXECUTE
+         LR        R1,R8
+         EX        R6,SKIPBLK          SKIP BLANKS
+         BZ        DONE                ALL BLANKS, DONE
+         LR        R8,R1               NEW POINTER
+         LA        R9,4(R9)            POINT AT NEXT ONE
+         CR        R9,R11              PAST END OF ARGV BUFFER?
+         BNL       TOOMUCH                PAST END, ALL TOOMUCH.
+         B         LOOP                LOOP BACK
+TOOMUCH  EQU       *
+         SH        R9,=H'4'
+         LA        R15,4
+DONE     EQU       *
+         SRA       R9,2                DIVIDE INDEX BY 4
+         LA        R9,1(R9)            + 1 FOR 0TH ARGUMENT
+         LR        R1,R9               RETURN ARGC AS FUNCTION VALUE
+RET      EQU       *
+         L         R13,4(R13)
+         L         R14,12(R13)
+         L         R0,20(R13)
+         LM        R2,R12,28(R13)
+         BR        R14
+*
+GETBLK   TRT       0(0,R8),BLKTAB
+SKIPBLK  TRT       0(0,R8),CHARTAB
+SAVE     DS        18F
+BLKTAB   DC        256X'00'            IGNORE ALL CHARACTERS
+         ORG       BLKTAB+C' '          EXCEPT BLANKS
+         DC        X'01'
+         ORG       BLKTAB+C'('          AND PARENS
+         DC        X'02'
+         ORG       BLKTAB+C')'
+         DC        X'02'
+         ORG   BLKTAB+C'='             AND EQUAL SIGN
+         DC    X'02'
+         ORG
+CHARTAB  DC        X'00',255X'FF'      TRAP ALL CHARACTERS
+         ORG       CHARTAB+C' '        EXCEPT BLANKS AND NULLS
+         DC        X'00'
+         ORG
+         LTORG
+         END       UNIXSCAN

@@ -1,0 +1,93 @@
+MAILSMSI TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - SMSG INIT.'
+*---------------------------------------------------------------------*
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         *
+*    Program Property of the Trustees of Columbia University in the   *
+*    City of New York.                                                *
+*---------------------------------------------------------------------*
+MAILSMSI CSECT
+* MAILSMSI -
+*  This routine enables to receive smsgs.  It sets up the external
+*  interrupt handler (MAILSMSG) and the external interrupt header
+*  data area.
+*
+* LAST EDIT: 5/14/82 by Alan Crosswell
+*
+         SPACE
+* REGISTER USAGE -
+R0  EQU  0 -
+R1  EQU  1 -
+R2  EQU  2 -
+R3  EQU  3 -
+R4  EQU  4 -
+R5  EQU  5 -
+R6  EQU  6 -
+R7  EQU  7 -
+R8  EQU  8 -
+R9  EQU  9 -
+R10 EQU 10 - VMCPARM BASE
+R11 EQU 11 - mailblok base
+R12 EQU 12 - PROGRAM BASE
+R13 EQU 13 - SAVE AREA
+R14 EQU 14 - SUBROUTINE LINKAGE
+R15 EQU 15 - SUBROUTINE LINKAGE
+         SPACE
+         PRINT NOGEN
+         BLOCKS ,
+         MAILBLOK ,
+         COPY IPARML
+         EJECT
+MAILSMSI CSECT ,
+         USING MAILSMSI,R15  TEMPORARY ADDRESSABILITY
+         B     EYESKIP       BRANCH OVER EYESKIP
+MYNAME   DC    CL8'MAILSMSI',CL8'&SYSDATE'
+EYESKIP  DS    0H
+         DROP  R15
+         STM   R14,R12,12(R13) SAVE CALLER'S REGS
+         LR    R12,R15       PERMANENT ADDRESSABILITY
+         USING MAILSMSI,R12
+         LA    R14,SAVE      MY SAVE AREA
+         ST    R13,4(R14)    SAVE CALLER'S PTR
+         ST    R14,8(R13)    CHAIN MINE BACK
+         LR    R13,R14       SET MY SAVE PTR
+         L     R11,=V(MAILBLOK)
+         USING MAILBLOK,R11
+         EXTRN MAILSMSG
+         HNDEXT SET,MAILSMSG SET EXTERNAL HANDLER
+         LA    R10,IUCVP
+         USING IPARML,R10
+         STCTL 0,0,CR0             Enable
+         OI    CR0+3,X'02'            IUCV
+         LCTL  0,0,CR0                   usage.
+         IUCV  DCLBFR,PRMLIST=(R10),BUFFER=MAILIUCB Declare buffer.
+         BNZ   ERR1                Error: Exit.
+         XC    0(8*IPSIZE,R10),0(R10) Clear parmlist.
+         IUCV  CONNECT,PRMLIST=(R10),USERID==CL8'*MSG' Connect.
+         BNZ   ERR2                Error: Exit.
+         MVC   MAILIUCP,IPPATHID   Save the pathid.
+         LA    R0,CPSET            Set up
+         LA    R1,CPSETL             message
+         DIAG  R0,R1,X'0008'            trapping.
+         BNZ   ERR3                Error: Exit.
+         LTR   R1,R1
+         BNZ   ERR3                Error: Exit.
+         DROP  R10
+RET      EQU   *
+         SR    R15,R15
+         L     R13,4(R13)              GET CALLER'S SAVE PTR
+         L     R14,12(R13)             GET R14
+         LM    R0,R12,20(R13)          GET R0-R12
+         BR    R14                     RETURN
+ERR1     WRTERM 'MAILSMSI: Error from IUCV DCLBFR'
+         B     RET
+ERR2     WRTERM 'MAILSMSI: Error from IUCV CONNECT'
+         B     RET
+ERR3     WRTERM 'MAILSMSI: Error from SET ... IUCV'
+         B     RET
+         SPACE ,
+         LTORG ,
+SAVE     DS    18F                     SAVE AREA
+CR0      DS    F
+CPSET    DC    C'SET MSG IUCV',X'15',C'SET SMSG IUCV'
+CPSETL   EQU   *-CPSET
+IUCVP    DC    (IPSIZE)D'0'
+         END   MAILSMSI

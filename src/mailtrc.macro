@@ -1,0 +1,167 @@
+         MACRO
+&NAME    MAILTRC &TYPE,&ARG1,&ARG2
+.**********************************************************************
+.*
+.*       Generate a trace table entry for the mailer
+.*       Also generates code to initialize trace table pointers
+.*
+.*       Uses registers 14 and 15
+.*
+.*       The following TYPE codes are recognized:
+.*
+.*             CALL     - Call of a routine to be done immediately
+.*                        following this trace entry
+.*             CREATE   - Creation of some control block or other
+.*                        entity
+.*             ENTER    - Record entry into a routine
+.*             EXIT     - Record exit from a routine
+.*             INIT     - Initialize trace table
+.*             RETURN   - Return from a routine done immediately
+.*                        preceeding this trace entry
+.*
+.*       Use of any other TYPE values will cause generation of a
+.*       default trace table entry containing the type code and
+.*       address at which the trace request was coded.  This is
+.*       done to allow easy creation of state tracing info.
+.*
+.**********************************************************************
+.*
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+.*       Code common to all entry types
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+.*
+$&SYSNDX.A EQU *                   Label for trace entry address
+         AIF   ('&TYPE' EQ 'INIT').INIT
+.*
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+.*       Code common to remaining entry types
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+.*
+         L     R14,TRTBLCUR        Get current entry pointer
+         A     R14,=A(TRCENTL)     Bump to next entry
+         C     R14,TRTBLEND        Past end?
+         BNH   $&SYSNDX.B          ---> No
+         L     R14,TRTBLST         Back to start
+$&SYSNDX.B EQU *
+         ST    R14,TRTBLCUR        Update current pointer
+         USING TRCENT,R14
+         MVC   TRCTYPE,=CL8'&TYPE'      Move in type code
+         MVC   TRCROUTN,=CL8'&SYSECT'   Move in CSECT name
+         MVC   TRCADDR,=A($&SYSNDX.A)   Move in trace macro address
+         XC    TRCDATA,TRCDATA          Clear rest of entry
+.*
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+.*       End of common code
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+.*
+         AIF   ('&TYPE' EQ 'CALL').CALL
+         AIF   ('&TYPE' EQ 'CREATE').CREATE
+         AIF   ('&TYPE' EQ 'ENTER').ENTER
+         AIF   ('&TYPE' EQ 'EXIT').EXIT
+         AIF   ('&TYPE' EQ 'RETURN').RETURN
+         MNOTE 4,'TYPE value of &TYPE not recognized'
+         MNOTE ,'Default entry type generated'
+         MEXIT
+.*
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+.*       Generate code for CALL trace
+.*
+.*       &ARG1 = Name of routine being called
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+.*
+.CALL    ANOP
+.*
+         MVC   TRCDATA(8),=CL8'&ARG1'   Move in entity type
+         DROP  R14
+         MEXIT
+.*
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+.*       Generate code for CREATE trace table entry
+.*
+.*       &ARG1 = Created entity name (i.e. NODE, TOK, etc)
+.*       &ARG2 = Created entity address (either ADCON or Register)
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+.*
+.CREATE  ANOP
+.*
+         MVC   TRCDATA(8),=CL8'&ARG1'   Move in entity type
+         AIF   ('&ARG2'(1,1) NE '(').CREA010
+         ST    &ARG2,TRCDATA+8          Save entity address
+         AGO   .CREA020
+.CREA010 ANOP
+         MVC   TRCDATA+8(4),=A(&ARG2)   Save entity address
+.CREA020 ANOP
+         DROP  R14
+         MEXIT
+.*
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+.*       Generate code to initialize trace table pointers
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+.*
+.INIT    ANOP
+.*
+         LM    R14,R15,STACK       Pick up stack pointers
+         L     R0,=A(1024*TRCENTL) Length for 1024 entres
+         CR    R0,R15              Will 1K worth of entries fit?
+         BNP   $&SYSNDX.B          ---> Yes
+         L     R0,=A(100*TRCENTL)  Length for 100 entres
+$&SYSNDX.B EQU *
+         ST    R14,TRTBLST         Set trace table start address
+         ST    R14,TRTBLCUR        Set trace table current address
+         USING TRCENT,R14
+         MVC   TRCTYPE,=CL8'INIT'       Move in type code
+         MVC   TRCROUTN,=CL8'&SYSECT'   Move in CSECT name
+         MVC   TRCADDR,=A($&SYSNDX.A)   Move in trace macro address
+         XC    TRCDATA,TRCDATA          Clear rest of entry
+         DROP  R14
+         SR    R15,R0              Reduce stack size
+         AR    R14,R0              Increment stack pointer
+         STM   R14,R15,STACK       Update stack pointers
+         S     R14,=A(TRCENTL)     Back up by 1 entry
+         ST    R14,TRTBLEND        Remember end of trace address
+         MEXIT
+.*
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+.*       Generate code for ENTER trace
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+.*
+.ENTER   ANOP
+.*
+         DROP  R14
+         MEXIT
+.*
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+.*       Generate code for EXIT trace
+.*       &ARG1 = Return code (Decimal value or Register)
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+.*
+.EXIT    ANOP
+.*
+         AIF   ('&ARG1' EQ '').EXIT020
+         AIF   ('&ARG1'(1,1) NE '(').EXIT010
+         ST    &ARG1,TRCDATA            Save return code
+         AGO   .EXIT020
+.EXIT010 ANOP
+         MVC   TRCDATA(4),=A(&ARG1)     Save return code
+.EXIT020 ANOP
+         DROP  R14
+         MEXIT
+.*
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+.*       Generate code for RETURN trace
+.*       &ARG1 = Return code (Register)
+.*       &ARG2 = Return code (Register)
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+.*
+.RETURN  ANOP
+.*
+         MVC   TRCDATA(8),=CL8'&ARG1'   Move in routine name
+         AIF   ('&ARG2'(1,1) NE '(').RETU010
+         ST    &ARG2,TRCDATA+8          Save return code
+         AGO   .RETU020
+.RETU010 ANOP
+         MNOTE 8,'Return code value must be in register'
+.RETU020 ANOP
+         DROP  R14
+.*
+         MEND

@@ -1,0 +1,42 @@
+/* ****************************************************************** */
+/*  SENDMAIL - Distribute mailer files                                */
+/* ****************************************************************** */
+/*                                                                    */
+/*  command format:   SENDMAIL < userid >                             */
+/*                             < userid@node >                        */
+/*                                                                    */
+/*  SENDMAIL is used to ship the files necessary to run the mailer    */
+/*  to a userid.                                                      */
+/*                                                                    */
+/* ****************************************************************** */
+
+address COMMAND
+parse upper arg dest .                       /*                       */
+if dest = ?  then  do                        /*                       */
+   'EXEC CLEAR'                              /*                       */
+   do i=1 while sourceline(i) <> ''          /*                       */
+      say sourceline(i)                      /*                       */
+      end
+   exit
+   end
+                                             /*                       */
+if dest = ''  then  userid = 'VMMAILT'       /*                       */
+else  do                                     /*                       */
+   parse var dest userid '@' node .          /*                       */
+   if node <> ''  then  userid = userid 'AT' node
+   end
+
+'ESTATE MAILLCL TXTLIB *'                    /*                       */
+if rc = 0  then  maillcl = 1                 /*                       */
+else             maillcl = 0                 /*                       */
+
+signal on error
+trace "Commands"
+
+'EXEC SENDFILE MAILER  MODULE TO' userid
+'EXEC SENDFILE MAILER  TXTLIB TO' userid
+'EXEC SENDFILE MABNXIT EXEC   TO' userid
+if maillcl  then
+   'EXEC SENDFILE MAILLCL TXTLIB TO' userid
+
+Error: exit rc

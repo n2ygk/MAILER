@@ -1,0 +1,614 @@
+*9/3/86 Merged Henry Nusbacher and Jeff Honig's updates (having  [1.24]
+*       update identifiers of "FIXUP" and "CCT001") as update--->[1.24]
+INTERNET TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - DEFAULT RSCS ROUTIN*
+               G EXIT + INTERNET GATEWAY HANDLER'
+         MACRO
+&LABEL   BSP   &RX
+         LCLC  &L
+&L       SETC  'B&SYSNDX'
+         AIF   ('&LABEL' EQ '').NOLABEL
+&L       SETC  '&LABEL'
+.NOLABEL ANOP
+&L       CLI   0(&RX),C' '         IS THIS A BLANK ?
+         BNE   A&SYSNDX            NOPE, CONTINUE
+         BCTR  &RX,0               ELSE, BUMP BACKWARD BY 1
+         B     &L                  AND CHECK PREVIOUS CHARACTER
+A&SYSNDX LA    &RX,1(,&RX)         RX -> FIRST BLANK
+         MEND
+         MACRO
+&LABEL   GATE  &NAME,&NODE,&USER,&FLAG=*-*,&PATH=*-*
+&LABEL   DC    CL16'&NAME'         NAME OF DOMAIN
+         DC    CL8'&NODE'          NAME OF GATEWAY NODE
+         DC    CL8'&USER'          NAME OF GATEWAY USERID
+         DC    A(&PATH)            INDIRECT PATH DATA
+         DC    AL1(&FLAG)          FLAG DATA
+         DC    AL3(0)              ROUND OUT TO A FULL WORD
+         MEND
+         EJECT ,
+INTERNET CSECT ,
+* INTERNET -
+*  This routine punches individual files to RSCS sites that are
+*  either not running this Mailer or are running a different
+*  mailer that doesn't know how to handle the same message for
+*  several recipients as one file.
+*
+*  This routine has been updated to handle internet mail.  If a
+*  mail file arrives with the final characters specifying a domain
+*  like - .UUCP, .ARPA, .CCNET, .BITNET, .MAILNET
+*  then handle it.  Some get BSMTP envelopes while others don't.
+*
+*  Changed logic for domain addressing.  A domain suffix is
+*  located if present and then looked up in a table.  The table
+*  specifies the routine to process the specified domain.  If
+*  no domain address is found, control passes to old DEFRT code.
+*  If an unknown domain address is found, an error message is
+*  printed.
+*
+*  A complete list of gateways is contained in GATEWAY MEMOI   FIXUP
+*  that is available from Nicserve or Netserv.                 FIXUP
+*
+         EJECT ,
+*  History:
+*
+*  DEFRT was written by Alan Crosswell (EACUS@CUVMB) in 4/82.
+*  BSMTP was written by Arti Ecock (ECKCU@CUNYVM) in 3/84.
+*  These two programs were merged together by Henry Nussbacher
+*  (VSHANK@WEIZMANN) in 2/85 to form the base INTERNET program.
+*  The code has undergone changes by the following people:
+*
+*  05/24/85 BY Reg Quinton      (A362@UWOCC1)
+*  06/10/85 BY Jeffrey Honig    (NETMAINT@CLVM)
+*  07/16/85 BY Henry Nussbacher
+*  09/05/85 BY Jeffrey Honig
+*  09/11/85 BY Henry Nussbacher
+*  09/19/85 BY Henry Nussbacher
+*  10/30/85 BY Reg Quinton
+*  12/11/85 BY Henry Nussbacher
+*  01/12/86 BY Jeffrey C Honig                                 CCT001
+*  01/29/87 BY Henry Nussbacher
+*
+* Modifications:
+*
+* This release represents a new base level for INTERNET.  All
+* people who wish to make modifications and enhancements are
+* urged to do so, but only in standard CMS Update format.
+* Please use, XEDIT INTERNET ASSEMBLE (CTL INTERNET SID updtname
+* to create your updates and VMFASM to assemble them.  Changes will
+* be accepted into INTERNET under the following 3 conditions:
+*
+* 1) They arrive in standard CMS Update format
+* 2) They assemble correctly into the most current version of
+*    INTERNET
+* 3) They have been checked and verified by the author to perform
+*    as stated
+*
+* These changes should be sent to me (Vshank@Weizmann).
+*
+* CCT001:                                                      CCT001
+*   Added 'RETURN' parameter (to be specified in MAILER        CCT001
+* PROFILE).  When specified will cause mail without domain     CCT001
+* addresses to be returned to the originating user with        CCT001
+* an 'Unknown Host:' message.                                  CCT001
+*                                                              CCT001
+* Changed message 'Syntax Error in field- Unknown Domain' to   CCT001
+* 'Unknown Domain'.  Requires associated mods in MSGTEXT       CCT001
+* ASSEMBLE for message 51.                                     CCT001
+*
+* Installation:
+*
+* To install the latest version of the INTERNET exit:
+*
+* 1) Edit the table of gateways listed near the end.  Some domains
+*    have multiple gateways.  Choose only one gateway per domain.
+*    Example: you could choose the Uwocc1 gateway to UUCP if you
+*    were in Canada or the Psuvax1 gateway if your node is closer
+*    to Psuvax1.
+* 2) VMFASM INTERNET INTERNET
+* 3) TXTLIB DEL MAILER INTERNET
+* 4) TXTLIB ADD MAILER INTERNET
+* 5) Restart your mailer
+*
+         EJECT ,
+PAB      DSECT ,
+@MBLOK   DS    F             ADDRESS OF MAILBLOK
+@ACT     DS    F             ADDRESS OF ACTADR BLOCK
+* REGISTER USAGE -
+R0  EQU  0 -
+R1  EQU  1 -
+R2  EQU  2 -
+R3  EQU  3 -
+R4  EQU  4 -
+R5  EQU  5 -
+R6  EQU  6 -
+R7  EQU  7 -
+R8  EQU  8 -
+R9  EQU  9 -
+R10 EQU 10 - ACTADR BASE
+R11 EQU 11 - MAILBLOK BASE
+R12 EQU 12 - PROGRAM BASE
+R13 EQU 13 - SAVE AREA
+R14 EQU 14 - SUBROUTINE LINKAGE
+R15 EQU 15 - SUBROUTINE LINKAGE
+         BLOCKS ,
+         MAILBLOK ,
+         EJECT ,
+         PRINT NOGEN
+         PUNCH 'SPB'            TELL LOADER TO START ON NEW PAGE
+INTERNET CSECT ,
+         SAVE  (14,12),,*        SAVE CALLER'S REGISTERS
+         USING INTERNET,R15      SET UP TEMP ADDRESSABILITY
+         CNOP  0,4               ALIGN SAVE AREA TO FULLWORD
+         BAL   R15,*+76          BRANCH AROUND LOCAL SAVE AREA
+         DROP  R15               DROP TEMP BASE REGISTER
+         USING SAVEAREA,R13,R12  SET UP NEW BASE REGISTERS
+SAVEAREA DC    18F'-1'           REGISTER SAVE AREA
+*        GRAB A 2ND BASE REGISTER BEFORE SOME DODO TAKES IT
+         ST    R15,8(,R13)       CHAIN FORWARD SAVE AREA PTR
+         ST    R13,4(,R15)       CHAIN BACKWARD SAVE AREA PTR
+         LR    R13,R15           LOAD UP THE BASE REGISTER
+         LA    R12,4095(,R13)    LOAD SECOND BASE REGISTER
+         LA    R12,1(,R12)       EVEN UP FOR 8K ADDRESSABILITY
+         USING PAB,R1            PARMS
+         L     R11,@MBLOK        GET MAILBLOK BASE
+         L     R10,@ACT          GET ACTADR BASE
+         USING MAILBLOK,R11
+         USING ACTADR,R10
+         MVI   FLAGS,0           CLEAR OPTIONS FLAG
+         EJECT ,
+         L     R7,ACTMBOX        GET MBOX BLOCK
+         USING MBOX,R7         GET USER LIST
+         L     R7,MBXDML         POINT TO HOST LIST
+         USING NODE,R7         ADDRESS IT
+         L     R7,NODDOWN        GET DOWN POINTER
+         USING TOKEND,R7         ADDRESS THE HOST NAME TOKEN
+         SR    R4,R4             GET ZERO
+         L     R4,TOKLEN         LENGTH OF NODE STRING
+         L     R3,TOKPTR
+         LA    R2,WORK           POINT TO WORK AREA
+         MVI   0(R2),C' '        SET UP FOR BUFFER CLEAR
+         MVC   1(L'WORK-1,R2),0(R2)  PROPOGATE THE BLANK
+         LR    R5,R4             LOAD UP LENGTH OF STRING
+         BCTR  R5,0              -1 FOR EX
+         EX    R5,COPY           AND MOVE THE ENTIRE STRING TO WORK
+         EX    R5,UPIT           AND UPPERCASE IT FOR COMPARE
+*        ADD LENGTH OF STRING TO START OF STRING
+         LA    R3,WORK           POINT TO START OF DESTINATION
+         AR    R3,R4             ADD IN LENGTH OF STRING
+*        ALLOW FOR A 1 CHARACTER INTERNET NAME SO BACKUP TWO
+         S     R3,=A(2)          BACKUP TO SHORTEST POSSIBLE
+         LA    R1,8              SCAN BACKWARDS 8 CHARACTERS
+DOTLOOP2 CLI   0(R3),C'.'        CHECK FOR BEGINNING OF DOMAIN
+         BE    HAVEDOT2          FOUND IT!
+         BCTR  R3,0              BACK UP TO PREVIOUS CHARACTER
+         BCT   R1,DOTLOOP2       KEEP LOOKING
+         B     UNKNOWN           NO DOMAIN NAME, USE DEFAULT EXCCT001
+HAVEDOT2 EQU   *                 WE HAVE A FIRST DOT, KEEP SCANNING
+         S     R3,=A(2)          BACKUP ANOTHER 2 SPOTS
+         LA    R1,7              SCAN BACK AN ADDITIONAL 8
+DOTLOOP1 CLI   0(R3),C'.'        HAVE WE HIT ANOTHER '.'?
+         BE    HAVEDOT1          YES!!!  LET'S SEE IF IT HAS AN ENTRY
+         BCTR  R3,0              BACK UP TO PREVIOUS CHARACTER
+         BCT   R1,DOTLOOP1       AND KEEP LOOPING
+*        IF WE DROP TO HERE, WE DID NOT FIND THE 2ND DOT AND HAVE TO
+*        NOW SCAN FORWARD TO THE FIRST DOT WE FOUND.
+SCANFWD  EQU   *
+         LA    R3,1(,R3)         SCAN FORWARDS IN NODENAME
+         CLI   0(R3),C'.'        HAVE WE HIT OUR ORIGINAL DOT?
+         BNE   SCANFWD           NOPE, KEEP GOING FORWARD
+         B     HAVEDOT           AND BRANCH TO SINGLE DOMAIN TABLE
+         SPACE 3
+HAVEDOT1 EQU   *
+         LA    R3,1(,R3)         BUMP PAST DOT TO START OF NAME
+         LA    R1,GATES1         POINT TO START OF TABLE
+         LA    R6,GATESIZE       GET SIZE OF ENTRY
+         LA    R7,GATES1ND       POINT TO END OF TABLE
+         USING GATESECT,R1       SET UP ADDRESSABILITY FOR ENTRIES
+GLOOP1   CLC   GATENAME,0(R3)    IS THIS THE DOMAIN WE WANT?
+         BE    HAVEGATE          YES - SET UP AND GO PROCESS
+         BXLE  R1,R6,GLOOP1      CONTINUE SCANING
+*        DOMAIN NOT FOUND IN 2 LEVEL DOMAIN TABLE - GO TRY 1 LEVEL
+         B     SCANFWD
+         SPACE 3
+HAVEDOT  EQU   *
+         LA    R3,1(,R3)         BUMP PAST DOT TO START OF NAME
+         LA    R1,GATES2         POINT TO START OF TABLE
+         LA    R6,GATESIZE       GET SIZE OF ENTRY
+         LA    R7,GATES2ND       POINT TO END OF TABLE
+         USING GATESECT,R1       SET UP ADDRESSABILITY FOR ENTRIES
+GLOOP    CLC   GATENAME,0(R3)    IS THIS THE DOMAIN WE WANT?
+         BE    HAVEGATE          YES - SET UP AND GO PROCESS
+         BXLE  R1,R6,GLOOP       CONTINUE SCANING
+         LOG   INT051,(CA,(R3))                                CCT001
+         LA    R15,8             INDICATE INVALID
+         B     RET
+         EJECT ,
+HAVEGATE MVC   FLAGS,GATEFLAG    SET THE FLAG BYTE
+         MVI   SEP,C'@'          MOVE IN DEFAULT SEPERATOR
+         TM    FLAGS,INDIRECT    IS IT AN INDIRECT PATH?
+         BZ    SKIPSEP           NOPE, SKIP THE '%' STUFFING
+         MVI   SEP,C'%'          MOVE IN '%' SIGN
+SKIPSEP  EQU   *
+         MVC   TAGHOST(8),GATENODE  MOVE IN BITNET NODEID
+         MVC   NETHOST(8),GATENODE  MOVE IN BITNET NODEID
+         MVC   TAGUSER(8),GATEUSER  AND WHO TO SEND IT TO
+         L     R1,GATEPATH       POINT TO THE PATH DATA
+         DROP  R1                DROP ADDRESSABILITY
+         TM    FLAGS,BSMTP       IS IT TO BE SENT BSMTP?
+         BNZ   DO$BSMTP          YES, GO THERE
+         B     DEFAULT           OTHERWISE SEND WITHOUT BSMTP
+         EJECT ,
+DO$BSMTP EQU   *
+         L     R7,ACTMBOX        LOAD MBOX BASE REGISTER
+         USING MBOX,R7         PROVIDE MBOX ADDRESSABILITY
+*        FIRST BUILD THE "HELO NODENAME.BITNET" LINE
+         LA    R2,WHOM           POINT TO RECEIVING FIELD
+         MVI   0(R2),C' '        START BLANKING IT OUT
+         MVC   1(L'WHOM-1,R2),0(R2)  PROPAGATE THE BLANK
+         MVC   0(8,R2),MAILNODE  MOVE IN MY NODENAME
+         LA    R2,8(,R2)         POINT PAST THE NODENAME
+         BSP   R2                BACK UP TO LAST BLANK
+         MVC   0(7,R2),=C'.BITNET'   FINISH OFF THE FIELD
+*        NOW BUILD THE TICK LINE AND USE THE SPOOLID AS THE TICK
+         MVC   TICK(4),MAILFTXT  MOVE IN SPOOLID "NNNN"
+*        TIME TO BUILD THE "MAIL FROM:<USER@HOST.BITNET>" FIELD
+         LA    R2,MADDR          POINT TO RECEIVING FIELD
+         MVI   0(R2),C' '        SET UP FOR BUFFER CLEAR
+         MVC   1(L'MADDR-1,R2),0(R2)  PROPOGATE THE BLANK
+         MVC   0(8,R2),MAILUSER  COPY ORIGIN USERID
+         LA    R8,8(,R2)         POINT PAST THE USERID
+         BSP   R8                POINT TO FIRST BLANK
+         MVI   0(R8),C'@'        MOVE AN "@"
+         MVC   1(8,R8),MAILNODE  COPY THE ORIGIN HOST
+         LA    R8,9(,R8)         POINT PAST THE HOST
+         BSP   R8                POINT TO FIRST BLANK
+         MVC   0(8,R8),=C'.BITNET>'  CLOSE THE FIELD
+*        HERE, WE BUILD THE "RCPT TO:<INTERNET_ADDRESS>" FIELD
+         L     R7,MBXLCL            POINT TO USER LIST
+         USING NODE,R7         PROVIDE ADDRESSABILITY
+         L     R7,NODDOWN        LOAD DOWN POINTER
+         USING TOKEND,R7         ADDRESS THE USER NAME TOKEN
+         SR    R4,R4             CLEAR A WORK REGISTER
+         L     R4,TOKLEN         GET LENGTH OF USERID STRING
+         CL    R4,=A(L'RADDR-1)  IS IT TOO LONG (<71)?
+         BH    FAIL0             YES, FAIL
+         BCTR  R4,0              LENGTH-1 FOR EXECUTE
+         L     R3,TOKPTR         LOAD STRING ADDRESS
+         LA    R2,RADDR          POINT TO RECEIVING FIELD
+         MVI   0(R2),C' '        SET UP FOR BUFFER CLEAR
+         MVC   1(L'RADDR-1,R2),0(R2)   PROPOGATE THE BLANK
+         EX    R4,COPY           MVC 0(*-*,R2),0(R3)
+         LA    R2,1(R2,R4)       POINT TO LAST CHARACTER
+         MVC   0(1,R2),SEP       MOVE IN % OR @ OPERATOR
+         LA    R2,1(,R2)         BUMP PAST THE % OR @
+         LA    R3,L'RADDR        LOAD LENGTH OF FIELD
+         SR    R3,R4             LOAD LENGTH OF FIELD LEFT-1
+         L     R7,ACTMBOX        LOAD MBOX BASE REGISTER
+         USING MBOX,R7         PROVIDE MBOX ADDRESSABILITY
+         L     R7,MBXDML         POINT TO HOST LIST
+         USING NODE,R7         PROVIDE ADDRESSABILITY
+         L     R7,NODDOWN        LOAD DOWN POINTER
+         USING TOKEND,R7         ADDRESS THE HOST NAME TOKEN
+         SR    R4,R4             CLEAR A WORK REGISTER
+         L     R4,TOKLEN         GET LENGTH OF HOST STRING
+         CR    R4,R3             IS IT TOO LONG ?
+         BH    FAIL0             YES, FAIL
+         BCTR  R4,0              LENGTH-1 FOR EXECUTE
+         L     R3,TOKPTR         LOAD STRING ADDRESS
+         EX    R4,COPY           MVC 0(*-*,R2),0(R3)
+         LA    R2,1(R2,R4)       POINT TO LAST CHARACTER
+         TM    FLAGS,INDIRECT    GOING TO INDIRECT GATEWAY?
+         BZ    ARPANGTE          NO - SKIP
+         IC    R4,0(R1)          GET LENGTH OF GATEWAY ADDRESS
+         LA    R3,1(,R1)         POINT TO GATEWAY ADDRESS
+         EX    R4,COPY           MOVE IN GATEWAY ADDRESS
+         AR    R2,R4             POINT PAST LAST CHARACTER
+ARPANGTE MVI   0(R2),C'>'        CLOSE THE FIELD
+         EJECT ,
+*        NOW, SET UP "Return-path: user@node.BITNET"
+*        LET THE GATEWAY DO THE TRANSLATION TO (EXAMPLE):
+*                    "Return-path: user%node.BITNET@WISCVM.WISC.EDU"
+*        EXCEPTION:  WHEN SENDING MAIL THRU BSMTP@UCBJADE WE
+*        DO NOT WANT THE RETURN PATH GOING BACK THRU UCBJADE SO
+*        FORCE IT TO WISCVM.WISC.EDU
+         MVI   RUSER,C' '        SET UP TO CLEAR REST OF CARD
+         MVC   RUSER+1(L'RUSER-1),RUSER  AND CLEAR IT
+         MVC   RUSER(8),MAILUSER COPY ORIGIN USERID
+         LA    R8,RUSER+8        POINT TO END OF USERID
+         BSP   R8                BACKUP TO FIRST BLANK
+         CLC   TAGUSER+0(8),=CL8'BSMTP' IS IT TO BSMTP????
+         BE    FAKEOUT           YES, GOTTA FAKE OUT RETURN-PATH
+         MVI   0(R8),C'@'        MOVE IN '@'
+         MVC   1(8,R8),MAILNODE  MOVE IN THE ORIGIN NODE
+         LA    R8,9(,R8)         POINT TO END OF NODE
+         BSP   R8                BACKUP TO FIRST BLANK
+         MVC   0(7,R8),=C'.BITNET'
+         B     CONTINUE
+FAKEOUT  EQU   *                 FAKE OUT BSMTP@UCBJADE
+         MVI   0(R8),C'%'        MOVE AN "%"
+         MVC   1(8,R8),MAILNODE  MOVE THE ORIGIN NODE
+         LA    R8,9(,R8)         POINT TO END OF NODE
+         BSP   R8                BACKUP TO FIRST BLANK
+         MVC   0(23,R8),=C'.BITNET@WISCVM.WISC.EDU'
+CONTINUE EQU   *
+*        NOW COMPLETE THE BSMTP HEADER AND SEND IT OFF
+         MVC   XRSCS,RSCSNAME    LOAD RSCS USERID
+         CLC   TAGHOST,CPUSTR    THIS HOST ?
+         BNE   *+10              NO - DON'T USE RSCS
+         MVC   XRSCS,TAGUSER     SET USERID TO SEND TO
+         LA    R1,TAGCMD         POINT TO THE CP TAG COMMAND
+         LA    R0,LTAGCMD        LOAD THE LENGTH OF THE COMMAND
+         DC    X'83100008'       ASK CP TO EXECUTE IT
+         PUNCHC HELO             BSMTP: HELO NODE.DOMAIN
+         PUNCHC TICKMSG          BSMTP: TICK ...
+         PUNCHC 'VERB ON'        BSMTP: VERBOSE ON
+         PUNCHC MAILFROM         BSMTP: MAIL FROM: ...
+         PUNCHC RCPTTO           BSTMP: RCPT TO: ...
+         PUNCHC 'DATA'           BSMTP: DATA FOLLOWS
+         PUNCHC RTNPATH          RFC822: RETURN-PATH:
+         EJECT ,
+*        NOW PUNCH THE RFC822 HEADER AS CREATED BY THE USER
+*        INTERFACE PROGRAM (MAIL OR MEMO OR WHATEVER)
+         L     R15,APUNHDR       LOAD HEADER RTN ADDRESS
+         CALL  (15),((R11))      AND PUNCH THE HEADER
+         LTR   R15,R15           DID ALL GO WELL ?
+         BNZ   RET               NOPE, RETURN TO CALLER
+*        NOW PUNCH THE TEXT OF THE MAIL
+         L     R15,APUNTXT       LOAD TEXT ROUTINE ADDRESS
+         CALL  (15),((R11))      PUNCH THE REST OF THE MAIL
+         LTR   R15,R15           DID ALL GO WELL ?
+         BNZ   RET               NOPE, RETURN TO CALLER
+*        NOW FINISH OFF THE BSMTP HEADER
+         PUNCHC '.'              BSMTP: END OF DATA
+         PUNCHC 'QUIT'           BSMTP: END OF TRANSMISSION
+         L     R15,APUNCLS       LOAD CLOSE ROUTINE ADDRESS
+         CALL  (15),((R11))      CLOSE THE PUNCH
+         LTR   R15,R15           DID ALL GO WELL ?
+         BNZ   RET               NOPE, RETURN TO CALLER
+         LOG   INT034,(CA,NETUSER,CA,NETHOST) RECORD SUCCESS
+         B     RET
+FAIL0    EQU   *
+         LOG   INT036,(CA,EMSG)  NET ADDRESS TOO BIG!
+         LA    R15,8             SET A BAD RETURN CODE
+         B     RET               AND RETURN TO CALLER
+         EJECT ,
+UNKNOWN  EQU   *                                               CCT001
+***************************************************************CCT001
+*                                                              CCT001
+*  BEFORE RETURNING TO DEFRT CODE, CHECK FOR "RETURN" PARM     CCT001
+*  WHICH MEANS THAT MAIL TO AN UNKNOWN HOST WILL BE RETURNED   CCT001
+*  WITH AN ERROR MESSAGE                                       CCT001
+*                                                              CCT001
+***************************************************************CCT001
+         SPACE ,                                               CCT001
+         L     R9,ACTRT          ADDRESS OF ROUTD CARD         CCT001
+         USING ROUTD,R9          ADDRESS ROUTD CARD            CCT001
+         CLC   =CL8'RETURN',RTPARM  WAS RETURN SPECIFIED?      CCT001
+         BNE   DEFAULT                                         CCT001
+         LOG   INT027,(CA,WORK)                                CCT001
+         LA    R15,8             INDICATE INVALID              CCT001
+         B     RET                                             CCT001
+         SPACE ,                                               CCT001
+         DROP  R9                                              CCT001
+         EJECT ,                                               CCT001
+DEFAULT  EQU   *
+****************************************************************
+*                                                              *
+* NOW RESUME NORMAL "DEFRT" CODE FOR SENDING THE FILE TO AN    *
+* UNDEFINED BITNET NODE, OR TO A GATEWAY THAT DOESN'T WANT     *
+* BSMTP ENVELOPE.                                              *
+*                                                              *
+****************************************************************
+         TM    FLAGS,NONBSMTP    IS IT TO A GATEWAY?
+         BNZ   GATEWAY           YES, SKIP NON-GATEWAY CODE
+         L     R7,ACTMBOX        GET MBOX BLOCK
+         USING MBOX,R7
+         L     R7,MBXLCL         GET USER LIST
+         USING NODE,R7         ADDRESS IT
+         L     R7,NODDOWN        GET DOWN POINTER
+         USING TOKEND,R7         ADDRESS THE USER NAME TOKEN
+         SR    R4,R4             GET ZERO
+         L     R4,TOKLEN         LENGTH OF USERID STRING
+         C     R4,=F'8'          8 OR LESS?
+         BH    FAIL
+         BCTR  R4,0              -1 FOR EX
+         L     R3,TOKPTR         GET STRING
+         MVC   TAGUSER,=CL8' '   BLANK THE FIELD
+         LA    R2,TAGUSER
+         EX    R4,COPY           MVC TAGUSER(0),4(R3)
+         EX    R4,UPIT
+         L     R7,ACTMBOX        GET MBOX BLOCK
+         USING MBOX,R7
+         L     R7,MBXDML         POINT TO HOST LIST
+         USING NODE,R7         ADDRESS IT
+         L     R7,NODDOWN        GET DOWN POINTER
+         USING TOKEND,R7         ADDRESS THE HOST NAME TOKEN
+         SR    R4,R4             GET ZERO
+         L     R4,TOKLEN         LENGTH OF HOSTNAME STRING
+         TM    FLAGS,BITNET      IS THIS MAIL TO GO DIRECT TO USER?
+         BZ    NORMAL            NOPE, USE TOKLEN FOR LENGTH
+         S     R4,=A(7)          SUBTRACT 7 POSITIONS FOR '.BITNET'
+NORMAL   EQU   *
+         C     R4,=F'8'          8 OR LESS?
+         BH    FAIL
+         BCTR  R4,0              -1 FOR EX
+         L     R3,TOKPTR         GET STRING
+         MVC   TAGHOST,=CL8' '   BLANK THE FIELD
+         LA    R2,TAGHOST
+         EX    R4,COPY           MVC TAGHOST(0),4(R3)
+         EX    R4,UPIT
+         EJECT ,
+GATEWAY  EQU   *   ENTER HERE FOR MAILNET AND OTHER NON-BSMTPers
+*        FIRST MAKE SURE THAT IF GATEWAY IS RUNNING ON LOCAL HOST
+*        THEN SEND MAIL DIRECTLY TO GATEWAY AND NOT TO RSCS
+         MVC   XRSCS,RSCSNAME    GET RSCS NAME
+         CLC   TAGHOST,CPUSTR    THIS HOST ?
+         BNE   *+10              NO - DON'T USE RSCS
+         MVC   XRSCS,TAGUSER     SET USERID TO SEND TO
+         LA    R1,TAGCMD         GET THE TAG COMMAND NOW
+         LA    R0,LTAGCMD
+         DC    X'83100008'       AND EXECUTE
+*        CONSTRUCT A POSSIBLE DELIVER-TO: LINE
+         TM    FLAGS,DELIVER     DO WE NEED A DELIVER-TO LINE?
+         BZ    SKIP$DEL          NOPE, SKIP THIS SECTION
+         L     R7,ACTMBOX        LOAD MBOX BASE REGISTER
+         USING MBOX,R7         PROVIDE ADDRESSABILITY
+         L     R7,MBXLCL         POINT TO USER LIST
+         USING NODE,R7         PROVIDE ADDRESSABILITY
+         L     R7,NODDOWN        LOAD DOWN POINTER
+         USING TOKEND,R7         ADDRESS THE USER NAME TOKEN
+         SR    R4,R4             CLEAR A WORK REGISTER
+         L     R4,TOKLEN         LENGTH OF TOKEN
+         CL    R4,=A(L'MLADDR-1) TOO LONG?
+         BH    FAIL0             YUP, ABORT
+         BCTR  R4,0              LENGTH-1 FOR EXECUTE
+         L     R3,TOKPTR         LOAD STRING ADDRESS
+         LA    R2,MLADDR         POINT TO RECEIVING FIELD
+         MVI   0(R2),C' '        SET UP FOR BUFFER CLEAR
+         MVC   1(L'MLADDR-1,R2),0(R2)  propogate the blank
+         EX    R4,COPY           AND COPY OVER THE USER NAME
+         LA    R2,1(R2,R4)       POINT TO LAST CHARACTER
+         MVI   0(R2),C'@'        AND MOVE IN THE @
+         LA    R2,1(R2)          INCREMENT TO HOST AREA
+         LA    R3,L'RADDR        LOAD LENGTH OF FIELD
+         SR    R3,R4             LOAD LENGTH OF FIELD LEFT-1
+         L     R7,ACTMBOX        LOAD MBOX BASE REGISTER
+         USING MBOX,R7         AND ESTABLISH
+         L     R7,MBXDML         POINT TO HOST LIST
+         USING NODE,R7         AND ESTABLISH
+         L     R7,NODDOWN        LOAD DOWN POINTER
+         USING TOKEND,R7         ADDRESS OF HOST NAME TOKEN
+         SR    R4,R4             CLEAR A WORKING REGISTER
+         L     R4,TOKLEN         LENGTH OF HOST NAME
+         CR    R4,R3             TOO LONG?
+         BH    FAIL0             YUP, ABORT
+         BCTR  R4,0              LENGTH-1 FOR EXECUTE
+         L     R3,TOKPTR         LOAD STRING ADDRESS
+         EX    R4,COPY           AND COPY IN THE HOST NAME
+         PUNCHC MDELTO           PUNCH THE DELIVER-TO: LINE
+         EJECT ,
+SKIP$DEL EQU   *
+         L     R15,APUNHDR
+         CALL  (15),((R11))      PUNCH THE HEADER
+         LTR   R15,R15           ANY SCREW UPS?
+         BNZ   RET
+         L     R15,APUNTXT
+         CALL  (15),((R11))      PUNCH THE REST
+         LTR   R15,R15           ANY ERRORS?
+         BNZ   RET               OH WEEELLL....
+         L     R15,APUNCLS       ROUTINE TO CLOSE PUNCH
+         CALL  (15),((R11))      CALL IT
+         LTR   R15,R15           ERRORS?
+         BNZ   RET
+         TM    FLAGS,NONBSMTP    IS IT TO GATEWAY OR TO A USER?
+         BZ    DRCTMSG           NO, SEND DIRECT TO USER
+         LOG   INT034,(CA,NETUSER,CA,NETHOST)
+         B     RET
+DRCTMSG  EQU   *
+         LOG   INT034,(CA,TAGUSER,CA,TAGHOST)
+RET      EQU   *
+         L     R13,4(,R13)       GET CALLER'S SAVE AREA PTR
+         RETURN (14,12),RC=(15)  RELOAD CALLER'S REGISTERS,
+FAIL     EQU   *
+         LOG   INT030,(CA,EMSG2) NET ADDRESS TOO BIG!
+         LA    R15,8
+         B     RET
+         EJECT ,
+***********************************************************************
+*                                                                     *
+*        DATA AREAS AND CONTROL BLOCKS                                *
+*                                                                     *
+***********************************************************************
+*
+UPIT     TR    0(0,R2),UPCASE
+TAGCMD   DC    C'TAG DEV PUN '
+TAGHOST  DS    CL8
+         DC    C' '
+TAGUSER  DS    CL8
+         DC    X'15',C'SP PUN CLASS M TO '
+XRSCS    DS    CL8
+LTAGCMD  EQU   *-TAGCMD
+*
+COPY     MVC   0(*-*,R2),0(R3)         COPY USER NAME TOKEN
+HELO     DC    C'HELO '
+WHOM     DS    CL75
+TICKMSG  DC    C'TICK '
+TICK     DC    CL75' '
+MAILFROM DC    C'MAIL FROM:<'
+MADDR    DS    CL69
+RCPTTO   DC    C'RCPT TO:<'
+RADDR    DS    CL71
+MDELTO   DC    C'Deliver-to: '
+MLADDR   DS    CL68
+NETUSER  DC    CL8'Gateway'
+NETHOST  DC    CL8'        '
+RTNPATH  DC    C'Return-path: '
+RUSER    DS    CL67
+WORK     DS    CL70
+EMSG     DC    CL19'NetAddress too long'
+EMSG2    DC    CL19'User@Node too long '
+SEP      DC    C'@'
+FLAGS    DC    X'00'                   A FLAG BYTE - WHAT ELSE?
+BSMTP    EQU   X'80'                   MAIL NEEDS BSMTP ENVELOPE
+INDIRECT EQU   X'40'                   MAIL PASSES THRU 2 NETS
+DELIVER  EQU   X'20'                   MAIL NEEDS Deliver-to: HDR
+NONBSMTP EQU   X'10'                   SITE IS A SIMPLE NON-BSMTP GATE
+BITNET   EQU   X'08'                   SEND MAIL DIRECTLY TO USER
+         SPACE 1
+         EJECT ,
+*   Format is:
+*   1st token: Domain name
+*   2nd token: Gateway Bitnet nodename
+*   3rd token: Gateway Bitnet userid
+*   4th token: Flags (optional)
+*              BSMTP    - Gateway expects BSMTP envelope
+*              INDIRECT - Mail destined via an intermediate gateway
+*                         (requires a 5th token of PATH=)
+*              DELIVER  - Requires the Deliver-To: Header
+*              NONBSMTP - Gateway expects no BSMTP envelope
+*              BITNET   - Send mail directly to user on Bitnet
+*   5th token: Path (only required if FLAG=INDIRECT)
+*
+*   Wherever muliple gateways are listed, you are expected to choose
+*   which one you would prefer.
+*
+*   Special gateway of Bitnet will allow VM users to reply to mail
+*   in the form 'user@node.Bitnet'.  The mail will be sent directly
+*   to the user, therefore the userid and node must each be less
+*   than or equal to 8 characters in length.
+*
+         SPACE 3
+*        CONTANTS FOR INDIRECT NETWORK ADDRESSING
+DEC      DC    AL1(15),C'@DECWRL.DEC.COM'
+OZ       DC    AL1(15),C'@SEISMO.CSS.GOV'
+UK       DC    AL1(13),C'@CS.UCL.AC.UK'                        FIXUP
+         EJECT
+         DS    0D
+GATES1   EQU   *                       ALIGN THE TABLE
+*   Second level gate check is done first.  Maximum of 16 characters
+*   are allowed in second level domain check.
+*   The following are just given as examples since the DOMAIN  FIXUP
+*   NAMES file handles this function now.                      FIXUP
+         GATE  COLUMBIA.EDU,CUVMA,MAILER,FLAG=BSMTP
+         GATE  CMU.EDU,CMUCCVMA,MAILER,FLAG=BSMTP
+GATES1ND EQU   *
+         SPACE 3
+         DS    0D                      ALIGN THE TABLE
+GATES2   EQU   *
+*   All gateways not listed here are handled within Mailer     FIXUP
+*   itself via the DOMAIN NAMES file.                          FIXUP
+         GATE  BITNET,*,*,FLAG=BITNET                            [1.24]
+         GATE  DEC,WISCVM,SMTPUSER,FLAG=INDIRECT+BSMTP,PATH=DEC
+         GATE  OZ,WISCVM,SMTPUSER,FLAG=INDIRECT+BSMTP,PATH=OZ
+GATES2ND EQU   *
+         EJECT ,
+         LTORG ,
+         EJECT ,
+GATESECT DSECT DEFINITION OF AN INTERNET TABLE ENTRY
+GATENAME DC    CL16' '             NAME OF DOMAIN
+GATENODE DC    CL8' '              NAME OF BITNET GATEWAY NODE
+GATEUSER DC    CL8' '              NAME OF BITNET GATEWAY USER
+GATEPATH DC    A(*-*)              INDIRECT PATH DATA
+GATEFLAG DC    AL1(*-*)            VALUE FOR FLAG
+         DS    AL3                 ROUND OUT TO A FULLWORD
+GATESIZE EQU   *-GATESECT          SIZE OF A GATESECT
+         END   INTERNET

@@ -1,0 +1,455 @@
+*9/16/86 merge in Mike Borkowski's mods UW002,UW003              [1.24]
+*[1.20] Add hook for local BROWN adparse pre-proc routine.
+*[1.19] Allow quoted-string == atom for user name
+*[1.15] Mistake with checking for "AT"
+ADP      TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - PARSE AN ARPA-STYLE*
+                MAIL ADDRESS'
+*---------------------------------------------------------------------*
+*      MAILER -- Copyright (c) 1982,1986 Columbia University.         *
+*    Program Property of the Trustees of Columbia University in the   *
+*    City of New York.                                                *
+*---------------------------------------------------------------------*
+* This routine will parse an in-core address list according to
+* a subset of the arpa message format standard described in
+* RFC #733.
+* E. ALAN CROSSWELL                       CUCCA     7/81
+*
+* LAST EDIT: 11/16/82 BY ALAN CROSSWELL
+*
+* ON ENTRY, R1 POINTS TO A PARMLIST:
+PAB      DSECT ,
+@STR     DS    A             ADDRESS OF INPUT STRING POINTER
+@END     DS    A             ADDRESS OF END OF STRING POINTER
+@STK     DS    A             ADDRESS OF STACK POINTER
+@LEN     DS    F             ADDRESS OF STACK LENGTH
+@TOK     DS    A             ADDRESS OF TOKEN LIST POINTER (OUTPUT)
+@PAR     DS    A             ADDRESS OF PARSE LIST POINTER (OUTPUT)
+         SPACE ,
+* ON RETURN, THE WORK BUFFER(STACK) POINTER AND LENGTH ARE UPDATED
+* TO POINT TO THE NEXT UNUSED BYTE AND THE ADDRESSES OF THE TOKEN
+* LIST AND PARSE LIST ARE RETURNED.
+*
+* Interpretation of token list -
+*  The token list consists of a singly linked list of tokens in the
+*  order that they appear in the input string. Each token is
+*  described by a "TOKEND" dsect which tells the token type, the
+*  address of the next token and the address and length of the
+*  actual string that the token represents.
+*
+* Interpretation of the parse list:
+*  the parse list consists of a list of representations of
+*  individual addresses in an address list.  each MBOX dsect
+*  describes one full address which consists of a user name and
+*  list of one or more host names (i.e. FOO@BAR@BAZ).  the
+*  MBOX contains a pointer to the next address in the list,
+*  a pointer to the list of tokens in the user name and a count
+*  of how many tokens are in it (usually only 1) and a pointer
+*  to a list of host names and the count of how many names are
+*  present.  The NODE dsect is used to represent the tokens
+*  in a user name or host name list. Each NODE points to the
+*  next NODE for the same item (if any) and down to the
+*  token descriptor that represents that particular token.
+*
+*  Why it's so complicated looking:
+*   The use of 3 levels of pointers makes manipulation and editing
+*   of any given address easy to do. As an example, the following
+*   address string may be supplied:
+*
+* From: Joe Cool <Snoopy at Doghouse> (Say hello to Charlie)
+*
+*  Now, suppose that the mail file is being routed through an
+*  inter-network gateway and the return path ("at doghouse")
+*  has to have another host name added.  Clearly, we want to
+*  maintain the personal name ("Joe Cool") and the comment
+*  (in parens) while inserting the path specification.  By
+*  chaining down the path from MBXDML to NODDOWN we get to
+*  the TOKEND describing "doghouse".  Now it is a simple
+*  matter to allocate a new TOKEND for "at" and one for
+*  "Peanut-net" and insert these in the token list to obtain
+*  the following result:
+*
+* from: Joe Cool <Snoopy at Doghouse at Peanut-net> (Say hello...
+*
+*  Upon output of the new message header, all that has to be
+*  done is chain thru the token list and output each token along
+*  with assorted padding, etc. to make it look nice.
+         SPACE ,
+         BLOCKS ,
+         SPACE ,
+* REGISTER USAGE -
+R0 EQU 0 -
+R1 EQU 1 -
+R2 EQU 2 - WORK REGISTER
+R3 EQU 3 - WORK REGISTER
+R4 EQU 4 - WORK REGISTER
+R5 EQU 5 - NODE BASE
+R6 EQU 6 - STACK POINTER
+R7 EQU 7 - STACK LENGTH
+R8 EQU 8 - CURRENT TOKEN IN TOKEN LIST  (TOKEND BASE)
+R9 EQU 9 - CURRENT ADDRESS DESCRIPTOR (MBOX BASE)
+R10 EQU 10 - WORK REGISTER
+R11 EQU 11 - WORK REGISTER
+R12 EQU 12 - BASE REGISTER
+R13 EQU 13 - SAVE AREA
+R14 EQU 14 -
+R15 EQU 15 - RETURN CODE
+         PRINT NOGEN
+         SPACE 2                                                  UW002
+         WXTRN LCLADP                                             UW002
+         EJECT ,
+ADPARSE  CSECT ,
+         USING ADPARSE,R15   TEMPORARY ADDRESSABILITY
+         B     EYESKIP       SKIP EYE-CATCHER
+MYNAME   DC    CL8'ADPARSE',CL8'&SYSDATE'
+EYESKIP  DS    0H
+         DROP  R15
+         STM   R14,R12,12(R13)     SAVE CALLER'S REGISTERS
+         LR    R12,R15       GET PERM ADDRESSABILITY
+         USING ADPARSE,R12
+         LA    R15,SAVE      GET ADDRESS OF SAVE AREA
+         ST    R13,4(R15)    SAVE CALLER'S R13
+         ST    R15,8(R13)    CHAIN SAVE AREAS
+         LR    R13,R15       POINT AT MY SAVE AREA
+         ST    R1,PLIST      SAVE PLIST ADDRESS
+         USING PAB,R1        ADDRESS PARMS
+         L     R2,@STK       GET STACK POINTER ADDRESS
+         L     R6,0(R2)      GET STACK ADDRESS
+         L     R3,@LEN       GET STACK LENGTH  ADDRESS
+         L     R7,0(R3)      GET STACK LENGTH
+         LA    R6,3(R6)      MAKE A FULLWORD ALIGNED STACK
+         N     R6,=X'FFFFFFFC'
+         LR    R4,R6         COPY IT
+         S     R4,0(R2)      COMPARE TO SUPPLIED ADDRESS
+         SR    R7,R4         SUBTRACT ANY DIFFERENCE
+         BL    NOSPACE       OUT OF SPACE! ARGH!
+         ST    R6,0(R2)      ALSO STORE FIXED STACK POINTER
+         ST    R7,0(R3)      AND FIXED STACK LENGTH
+         DROP  R1            DONE WITH PLIST FOR NOW
+         SPACE ,
+*--------------------------------------------------------------------
+* FIRST CALL TOKENIZER ROUTINE TO TOKENIZE THE INPUT STRING
+* NOTE THAT TOKENIZR INPUT PLIST IS A SUBSET OF THIS ROUTINE'S
+* PLIST.
+*--------------------------------------------------------------------
+         L     R1,PLIST      MAKE SURE PLIST IS STILL POINTED TO
+         L     R15,=V(LCLADP) [1.20]GIVE USER EXIT A CHANCE TO CHANGE
+         LTR   R15,R15       [1.20] THE INPUT STRING
+         BZ    NOLCLADP      [1.20]IF NONE, SKIP CALL
+         BALR  R14,R15       [1.20]CALL USER EXIT
+NOLCLADP EQU   *             [1.20]
+         CALL  TOKENIZR,MF=(E,(1))
+         LTR   R15,R15       ANY ERRORS?
+         BNZ   RET           YES, RETURN
+         USING PAB,R1        GET PLIST AGAIN
+         L     R2,@STK       GET STACK POINTER
+         L     R6,0(R2)      GET UPDATED STACK POINTER
+         L     R2,@LEN       GET LENGTH POINTER
+         L     R7,0(R2)      GET UPDATED STACK LENGTH
+         BL    NOSPACE       OOOPS
+         L     R3,@PAR       ADDRESS FOR PARSE LIST
+         XC    0(4,R3),0(R3) INITIALLY ZERO THE PARSE LIST
+         L     R2,@TOK       ADDRESS OF RETURNED TOKEN LIST
+         L     R8,0(R2)      GET FIRST TOKEN ADDRESS INTO R8
+         USING TOKEND,R8     ADDRESS THE TOKEN DESCRIPTOR
+         CLI   TOKTYPE,X'00' EMPTY LIST?
+         BE    DONE          ALL DONE -- NO TOKENS
+         ST    R6,0(R3)      THIS IS ADDRESS OF PARSE LIST START
+         DROP  R1
+         SPACE ,
+*--------------------------------------------------------------------
+*        NOW PARSE THE TOKENIZED LIST.
+*--------------------------------------------------------------------
+         MVI   FLAGS,X'00'   CLEAR ALL FLAGS
+         XC    PREVADA,PREVADA  ZERO PREV MBOX POINTER
+START    EQU   *
+         S     R7,=A(MBXSIZ) DECREMENT STACK LENGTH OF MBOX
+         BL    NOSPACE       NO SPACE, SORRY
+         LR    R9,R6         USE R9 AS BASE OF MBOX
+         LA    R6,MBXSIZ(R6) BUMP STACK POINTER
+STARTA   EQU   *
+         USING MBOX,R9     ADDRESS IT
+         XC    0(MBXSIZ,R9),0(R9) INIT TO ALL ZEROS
+START0   EQU   *
+         CLI   TOKTYPE,TOKLTP START OF A COMMENT?
+         BNE   START0A
+         BAL   R14,EATCOMM   EAT EM UP
+START0A  EQU   *
+         CLI   TOKTYPE,X'00' END OF LIST?
+         BE    LISTEND       YES, QUIT
+         CLI   TOKTYPE,TOKCMA  COMMA?
+         BNE   START1        NO, TRY NEXT CHAR
+         L     R8,TOKNEXT          POINT AT NEXT ENTRY
+         B     START0        MUST BE 'A,,B,' STUFF
+START1   EQU   *
+         CLI   TOKTYPE,TOKLTB  START OF MACH-ID ?
+         BNE   START2        NO, TRY SOMETHING ELSE
+         L     R8,TOKNEXT            POINT AT NEXT ENTRY
+         OI    FLAGS,MACHID  INDICATE > EXPECTED
+START2   EQU   *
+         CLI   TOKTYPE,TOKATM  TOKEN IS AN ATOM
+         BE    USERNAME      YES, GET USER NAME
+         CLI   TOKTYPE,TOKQSTR [1.19]token is a quoted string
+         BE    USERNAME      [1.19]yes, get user name
+         LA    R15,20        ERROR
+         B     RET
+         SPACE ,
+*--------------------------------------------------------------------
+*        PARSE A USER NAME (ONE OR MORE ATOMS)
+*--------------------------------------------------------------------
+USERNAME EQU   *             GET SOME USERNAME TOKENS
+         LR    R5,R6         ALLOCATE AN NODE
+         S     R7,=A(NODSIZ) IS THERE ROOM FOR IT?
+         BL    NOSPACE       NOPE
+         LA    R6,NODSIZ(R6) UPDATE STACK POINTER
+         ST    R5,MBXLCL          STORE ADDRESS OF ULST ANCHOR
+         XC    MBXDML,MBXDML ZERO IN CASE HOST NEVER SPECIFIED    1.6
+         XC    MBXDCNT,MBXDCNT                                      1.6
+USERNAM1 EQU   *             MULTIPLE-TOKEN LOOP BACK POINT
+         USING NODE,R5     ADDRESS THE DESCRIPTOR
+         XC    0(NODSIZ,R5),0(R5) ZERO IT
+         CLI   TOKTYPE,X'00' LIST END?
+         BE    LISTEND
+         CLI   TOKTYPE,TOKLTB START OF MACH-ID?
+         BNE   USERNAM2      NO, TRY THE NEXT ONE
+         SPACE ,
+* 'PERSONAL-NAME <MACHINE-ID...' WAS GIVEN INSTEAD OF 'MACHINE-ID..'
+         TM    FLAGS,MACHID  ALREADY IN MACHINE ID?
+         BNE   MACHNEST      SORRY, CAN'T NEST THEM!
+         L     R8,TOKNEXT            SKIP OVER THE "<"
+         OI    FLAGS,MACHID  AND TURN ON '<>' FLAG
+         SR    R1,R1         GET ZERO
+         L     R1,MBXLCNT    GET # OF WRONG NODES ALLOCATTED
+         BCTR  R1,0          -1 FOR 1ST WHICH WE WILL REUSE
+         LTR   R1,R1         TEST IF THERE ARE ANY TO RELEASE
+         BNH   USENM11       DON'T RELEASE ANY
+         SLL   R1,3          MULTIPLY BY 8 TO GET AMOUNT TO RELEASE
+         AR    R7,R1         GIVE BACK TO STACK
+         SR    R6,R1         MOVE THE POINTER TOO
+USENM11  EQU   *
+         XC    MBXLCNT,MBXLCNT  SET NAME TOKEN COUNTER BACK TO 0
+         L     R5,MBXLCL            GET FIRST NODE AGAIN
+         B     USERNAM1      AND GET THE USER NAME
+         SPACE ,
+MACHNEST EQU   *             NESTED MACHINE-ID BRACKETS ("<FOO <...")
+         LA    R15,28        ERROR
+         B     RET
+USERNAM2 EQU   *
+         CLI   TOKTYPE,TOKAT IS IT ATSIGN?
+         BNE   USERNAM3      NO, TRY NEXT
+USERN21  EQU   *             AT-SIGN AND "AT" CODE
+         MVI   TOKTYPE,TOKAT SET IT TO '@' VALUE EVEN IF IT WAS 'AT'
+         L     R8,TOKNEXT            SKIP THE ATSIGN
+         B     HOSTNAME      AND GO GET HOST NAME
+USERNAM3 EQU   *             CHECK FOR KEYWORD "AT"
+         CLI   TOKTYPE,TOKATM IS STRING AN ATOM?
+         BNE   USERNAMA      [1.19] change to branch to A
+         CLC   TOKLEN,=F'2'  LENGTH 2?
+         BNE   USERN31       NO, IT CANT BE 'AT'
+         L     R4,TOKPTR          GET ADDRESS OF STRING
+         CLI   0(R4),C'A'    is it 'A'
+         BE    FIX001        yes,  maybe At
+         CLI   0(R4),C'a'    is it 'a'
+         BNE   USERN31       nope,  can't be at then.
+FIX001   EQU   *
+         CLI   1(R4),C'T'    is it 'T'
+         BE    USERN21       yes,  the token is 'at'
+         CLI   1(R4),C't'    or 't'
+         BE    USERN21       yes.
+*        TM    0(R4),C'a'    IS IT 'a' OR 'A'?
+*        BNO   USERN31       NOPE, CAN'T BE "AT" THEN
+*        TM    1(R4),C't'    IS IT 't' OR 'T'?
+*        BO    USERN21       YES, THIS IS AN '@' EQUIVALENT
+         SPACE ,
+USERN31  EQU   *             IT'S A USERID TOKEN
+         SR    R1,R1         GET ZERO
+         L     R1,MBXLCNT    GET USERNAME COUNT
+         LA    R1,1(R1)      BUMP IT UP ONE
+         ST    R1,MBXLCNT    AND PUT IT BACK
+         ST    R8,NODDOWN    SET DOWN POINTER TO TOKEN
+         S     R7,=A(NODSIZ) ROOM FOR A NEW NODE?
+         BL    NOSPACE       SIGH!
+         ST    R6,NODNEXT    SET NEXT POINTER IN CURRENT ONE
+         ST    R5,PREVADN    ADDRESS OF PREVIOUS ONE
+         LR    R5,R6         AND CHAIN ALONG
+         LA    R6,NODSIZ(R6) MOVE THE STACK POINTER
+         L     R8,TOKNEXT            GET NEXT TOKEN
+         B     USERNAM1      AND DO IT AGAIN....
+         SPACE ,
+USERNAMA EQU   *             [1.19]
+         CLI   TOKTYPE,TOKQSTR [1.19] QSTR == ATOM
+         BE    USERN31        [1.19]handle just like atom
+USERNAM4 EQU   *             MAYBE IT'S A COMMENT START
+         CLI   TOKTYPE,TOKLTP   IS IT A COMMENT?
+         BNE   USERNAM5      NO, TRY NEXT ONE
+         BAL   R14,EATCOMM   EAT COMMENT
+         B     USERNAM1      AND DO IT AGAIN
+USERNAM5 EQU   *             MAYBE COMMA: END OF THIS ADDRESS
+         CLI   TOKTYPE,TOKCMA  COMMA?
+         BNE   USERNAM6      NO, TRY NEXT
+USERN51  EQU   *             LOOP BACK HERE FROM '>'
+         L     R8,TOKNEXT            POINT AT NEXT TOKEN
+         S     R7,=A(MBXSIZ) ALLOCATE A NEW MBOX
+         BL    NOSPACE       OUT OF SPACE
+         ST    R6,MBXNEXT    SET NEXT POINTER
+         ST    R9,PREVADA    SAVE PREV ADA ADDRESS
+         LR    R9,R6         CHAIN ALONG
+         LA    R6,MBXSIZ(R6) BUMP THE STACK COUNTER
+         DROP  R5
+         L     R1,PREVADN    CLEAN UP THE PREV. NODE
+         USING NODE,R1     ADDRESS IT
+         XC    NODNEXT,NODNEXT ZERO THE NEXT POINTER
+         DROP  R1
+         USING NODE,R5     GET R5 BACK
+         B     STARTA        AND DO A NEW ADDRESS
+USERNAM6 EQU   *             MAYBE IT'S END OF MACH-ID (">")
+         CLI   TOKTYPE,TOKRTB  END OF MACH-ID?
+         BNE   USERNAM7      NO, TRY NEXT
+         TM    FLAGS,MACHID  WAS THERE A <?
+         BO    USERN51       YES, CLEAN UP
+         LA    R15,36        NEVER STARTED IT!!
+         B     RET
+USERNAM7 EQU   *
+         LA    R15,40        WHAT ELSE CAN THERE BE?
+         B     RET
+         SPACE 2
+*--------------------------------------------------------------------
+*        DONE PARSING USERID. NOW PARSE HOST NAME(S).
+*--------------------------------------------------------------------
+HOSTNAME EQU   *             GET HOST NAMES
+         DROP  R5            DROP NODE FOR A SEC
+         L     R1,PREVADN    GET LAST ONE ACTUALLY FILLED
+         USING NODE,R1     ADDRESS IT
+         XC    NODNEXT,NODNEXT ZERO NEXT POINTER
+         DROP  R1
+         USING NODE,R5     USE THE EXTRA ONE FOR FIRST HOST NODE
+         ST    R5,MBXDML          SET HOST LIST ANCHOR
+HOSTNAM1 EQU   *
+         XC    0(NODSIZ,R5),0(R5) ZERO THE NODE
+         CLI   TOKTYPE,TOKLTP MAYBE THEY MADE A COMMENT
+         BNE   HOSTNM11      NOPE, TRY NEXT
+         BAL   R14,EATCOMM   EAT UP THE COMMENT
+HOSTNM11 EQU   *
+         CLI   TOKTYPE,TOKATM BETTER BE AN ATOM
+         BNE   HOSTBAD       SORRY...
+         CLC   TOKLEN,=F'2'  MAKE SURE IT'S NOT THE ATOM 'AT'
+         BNE   HOSTNAM2      SAFE...
+         L     R4,TOKPTR          GET ADDRESS OF STRING
+         TM    0(R4),C'a'    IS IT 'a' OR 'A'?
+         BNO   HOSTNAM2      NO, CAN'T BE START OF 'AT'
+         TM    1(R4),C't'    IS IT 't' OR 'T'?
+         BO    HOSTBAD       YES, 'AT AT' IS ILLEGAL
+         SPACE ,
+HOSTNAM2 EQU   *             TOKEN WAS AN ATOM AS HOPED FOR
+         ST    R8,NODDOWN    SET THE DOWN POINTER
+         SR    R1,R1         GET ZERO
+         L     R1,MBXDCNT    GET HOST LIST COUNTER
+         LA    R1,1(R1)      INCREMENT BY 1
+         ST    R1,MBXDCNT    AND PUT IT BACK
+         SPACE ,
+* NOW CHECK FOR EITHER AN END TO THE HOST PATH OR ANOTHER ATSIGN
+HOSTNM21 EQU   *
+         L     R8,TOKNEXT            GET NEXT TOKEN
+         CLI   TOKTYPE,TOKLTP COMMENT MAYBE?
+         BNE   HOSTNM22      NOPE, TRY SOMETHING ELSE
+         BAL   R14,EATCOMM   EAT UP THE COMMENT
+HOSTNM22 EQU   *
+         CLI   TOKTYPE,X'00' LIST END?
+         BNE   HOSTNAM3      NOPE, TRY ANOTHER OPTION
+         TM    FLAGS,MACHID  WAS THERE AN OPEN MACH-ID?
+         BO    HOSTBAD       THAT'S AN ERROR...
+         B     LISTEND       NOW END UP
+HOSTNAM3 EQU   *
+         CLI   TOKTYPE,TOKCMA          COMMA?
+         BNE   HOSTNAM4      NO, CHECK NEXT ONE
+         L     R8,TOKNEXT            POINT AT NEXT TOKEN
+         S     R7,=A(MBXSIZ) ALLOCATE A NEW MBOX
+         BL    NOSPACE       OUT OF SPACE
+         ST    R6,MBXNEXT    SET NEXT POINTER
+         ST    R9,PREVADA    SAVE PREV MBOX ADDRESS
+         LR    R9,R6         CHAIN ALONG
+         LA    R6,MBXSIZ(R6) BUMP STACK POINTER
+         B     STARTA        AND DO A NEW ADDRESS
+HOSTNAM4 EQU   *
+         CLI   TOKTYPE,TOKRTB  END OF MACH-ID?
+         BNE   HOSTNAM5      NOPE, TRY SOMETHING ELSE
+         TM    FLAGS,MACHID  WAS THERE AN OPEN MACHID?
+         BNO   HOSTBAD       NOPE, SHOULDN'T HAVE A ">" THEN...
+         NI    FLAGS,255-MACHID RESET THE FLAG
+         B     HOSTNM21      AND CHECK FOR LIST END OR ...
+* WASN'T A LIST END, TRY FOR AN ATSIGN OR "AT"
+HOSTNAM5 EQU   *
+         CLI   TOKTYPE,TOKAT AT SIGN?
+         BNE   HOSTNAM6      TRY SOMETHING ELSE
+HOSTNM51 EQU   *
+         MVI   TOKTYPE,TOKAT SET CODE TO @, EVEN IF TOKEN WAS 'AT'
+         S     R7,=A(NODSIZ) ALLOCATE A NEW NODE
+         BL    NOSPACE       OUT OF SPACE
+         ST    R6,NODNEXT    SET NEXT POINTER IN CURRENT NODE
+         LR    R5,R6         CHAIN TO NEW NODE
+         LA    R6,NODSIZ(R6) BUMP STACK POINTER
+         B     HOSTNAM1      AND GO DO IT AGAIN
+HOSTNAM6 EQU   *             TEST FOR "AT"
+         CLI   TOKTYPE,TOKATM IF IT'S AN ATOM, IT BETTER BE "AT"
+         BNE   HOSTBAD       CAN'T BE ANYTHING ELSE AT THIS POINT
+         CLC   TOKLEN,=F'2'  "AT" IS 2 CHARS
+         BNE   HOSTBAD       SORRY. HOST NAMES ARE SINGLE ATOMS.
+         L     R4,TOKPTR         GET ADDRESS OF STRING
+         TM    0(R4),C'a'    IS IT 'a' OR 'A'?
+         BNO   HOSTBAD       SORRY, HOST NAMES ARE SINGLE ATOMS
+         TM    0(R4),C't'    IS IT 't' OR 'T'?
+         BO    HOSTNM51      IT'S 'AT'. GO DO THE @ CODE NOW
+HOSTBAD  EQU   *
+         LA    R15,99
+         B     RET
+         SPACE ,
+NOSPACE  EQU   *
+         LA    R15,44        INDICATE ERROR
+         B     RET
+LISTEND  EQU   *
+         L     R1,PLIST                GET PLIST ADDRESS
+         USING PAB,R1        ADDRESS PLIST
+         CLC   MBXLCNT,=F'0' IS THIS A NULL MBOX?
+         BNE   LIST1         NO, KEEP ON GOING
+         ICM   R9,B'1111',PREVADA GET PREVIOUS MBOX POINTER
+         BNZ   LIST1         A PREVIOUS ONE DOES EXIST
+         L     R2,@PAR       PARSE LIST POINTER ADDRESS
+         XC    0(4,R2),0(R2) ZERO THE ANCHOR IN THIS CASE
+LIST1    EQU   *
+         LTR   R9,R9               Do we have a MBOX ?          UW003
+         BZ    LIST2         ->    No - can't clear pointer      [1.24]
+         XC    MBXNEXT,MBXNEXT  KILL ANY DANGLING POINTERS
+LIST2    EQU   *             <- here when zero pointer           [1.24]
+         L     R2,@STK       GET STACK POINTER ADDRESS
+         ST    R6,0(R2)      SET NEW STACK POINTER
+         L     R2,@LEN       ADDRESS OF STACK LENGTH
+         ST    R7,0(R2)      AND STACK LENGTH
+         SPACE
+DONE     EQU   *
+         SR    R15,R15       ZERO ERRORS
+         SPACE ,
+RET      EQU       *
+         L     R13,4(R13)
+         L     R14,12(R13)
+         LM    R0,R12,20(R13)
+         BR    R14
+         SPACE ,
+EATCOMM  EQU   *
+         L     R8,TOKNEXT            GET NEXT TOKEN
+         CLI   TOKTYPE,X'00' UNEXPECTED LIST END?
+         BNE   EATCOM2       NOPE, KEEP TRUCKING
+         LA    R15,36        ERROR
+         B     RET
+EATCOM2  EQU   *
+         CLI   TOKTYPE,TOKRTP END OF COMMENT?
+         BNE   EATCOMM       NOPE, LOOP UNTIL END OF COMMENT
+         L     R8,TOKNEXT            POINT PAST COMMENT
+         BR    R14
+         SPACE ,
+         LTORG ,
+FLAGS    DS    X             FLAG BYTE
+MACHID   EQU   1             MACHINE ID "<>"'S
+SAVE     DS    18F
+PREVADN  DS    F             PREVIOUS NODE IN USERNAME SECTION
+PREVADA  DS    F             PREVIOUS MBOX
+PLIST    DS    F
+         END   ADPARSE

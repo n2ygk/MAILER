@@ -1,0 +1,572 @@
+/* ****************************************************************** */
+/*  FORWARDX - File transfer process driver                           */
+/* ****************************************************************** */
+/*                                                                    */
+/*  Command format:   FORWARDX < ( options >                          */
+/*                                                                    */
+/*  Options:                                                          */
+/*                                                                    */
+/*     LIstall  - List all userids being processed even if there      */
+/*                are no files in their reader.                       */
+/*     TEst     - Just lists what action would be taken, but does     */
+/*                not actually do anything.                           */
+/*     TRace    - Trace execution                                     */
+/*                                                                    */
+/*                                                                    */
+/*  FORWARDX, a part of the VM Network MAILER's forwarding system,    */
+/*  will look for files in user's readers that should be forwarded    */
+/*  but were not forwarded because they arrived via direct delivery   */
+/*  and not via MAILER.                                               */
+/*                                                                    */
+/* ****************************************************************** */
+
+address COMMAND                              /* Set environment       */
+signal on halt
+signal on syntax
+signal on novalue
+
+parse upper arg . '(' options ')'            /* Get command arguments */
+
+/* ************************************************************* */
+/*  The following code will not allow FORWARDX to execute        */
+/*  unless the local configuration process has been done.        */
+/*  Remove this code when you set the local configuration        */
+/*  values.                                                      */
+/* ************************************************************* */
+
+say '*** Note *** Local configuration not done *** Note ***'
+say '*** Note *** Exiting without doing any    *** Note ***'
+say '*** Note *** forwarding.                  *** Note ***'
+exit 8
+
+
+/* ************************ */
+/*  Static initializations  */
+/* ************************ */
+
+consoleto = ''                               /* Console dest          */
+
+listall = 0                                  /* Don't list all        */
+
+mailerid = 'MAILER'                          /* Mailer userid         */
+
+mailer191 = xxx                              /* Address at which      */
+                                             /* MAILER's 191 disk is  */
+                                             /* attached.             */
+
+serverids = 'MAILER'                         /* Don't forward files   */
+                                             /* from these servers    */
+
+sources = '*'                                /* Only transfer if from */
+                                             /*   this source         */
+                                             /* '*' allows any source */
+
+test = 0                                     /* Default to production */
+
+trace = 0                                    /* Default to no trace   */
+
+transferid. = mailerid                       /* Default transfer dest.*/
+
+/* ******************************* */
+/*  End of static initializations  */
+/* ******************************* */
+
+/* ********************************************* */
+/*  Special initialization values for SSI sites  */
+/* ********************************************* */
+
+cpu.0 = 0                                    /* Number of cpus        */
+cpu.1 = ''                                   /* CPU 1 name            */
+cpu.2 = ''                                   /* CPU 2 name            */
+
+cpuid.1 = ''                                 /* CPU 1 identifier      */
+cpuid.2 = ''                                 /* CPU 2 identifier      */
+
+/* ******************* */
+/*  End of SSI values  */
+/* ******************* */
+
+do i=1 to words(options)                     /* Process options       */
+   option = word(options,i)
+   select
+      when abbrev('LISTALL',option,2)  then  /* List all userids      */
+         listall = 1
+      when abbrev('TEST',option,2)  then     /* Run in test mode      */
+         test = 1
+      when abbrev('TRACE',option,2)  then    /* Run with tracing      */
+         trace = 1
+      otherwise                              /* Unkown option         */
+         say 'Unrecognized option, "'option'", ignored'
+      end
+   end
+
+
+/* ************************* */
+/*  Dynamic initializations  */
+/* ************************* */
+
+if trace  then                               /* Tracing wanted        */
+   if test  then  trace ?r                   /* In test mode          */
+   else  trace r                             /* Not test mode         */
+
+if test  then  consoleto = ''                /* No console log when   */
+                                             /*   testing             */
+
+parse value diag(8,'QUERY CPLEVEL') with ,   /* Get CP level          */
+   . . cplevel cpsystem .
+
+'IDENTIFY (LIFO'                             /* Get local node and    */
+parse upper pull . . localnode . rscsid .    /*    RSCS user id       */
+
+/* ******************************** */
+/*  End of dynamic initializations  */
+/* ******************************** */
+
+
+parse value diag(8,'QUERY' userid()) with ,  /* Check if running on   */
+   . '-' . ssicpuid . '15'x .                /* SSI system            */
+if ssicpuid <> ''  then  ssi = 1
+else ssi = 0
+
+
+if ssi & cpu.0 = 0  then  do                 /* Sanity check          */
+   say '*** WARNING ***'
+   say '*** WARNING *** Running on an SSI system, but number of SSI' ,
+      'CPUs is 0'
+   say '*** WARNING *** Processing for only' localnode
+   say '*** WARNING ***'
+   say ' '
+   ssi = 0                                   /* Turn off SSI flag     */
+   end
+
+if consoleto <> ''  then                     /* Start console spooling*/
+   'CP SPOOL CONS START TO' consoleto
+
+call getforwards(mailer191)                  /* Get list of ids       */
+
+if ssi  then  do                             /* Running SSI?          */
+   do i=1 to cpu.0                           /* Do all SSI systems    */
+      cpuname = cpu.i                        /*                       */
+      'CP SWITCH' cpuname                    /* Switch to next CPU    */
+      if rc <> 0  then  iterate              /* Skip on error         */
+      didwork = 0                            /* Nothing done yet      */
+      say ' '
+      say 'Processing for' cpuname 'begins'  /* Show where we are     */
+      say ' '
+      call heading                           /* Output heading        */
+      do j=1 to forwardids.0
+         call forwardfor forwardids.j ,      /* Do forwarding transfer*/
+            cplevel cpsystem cpuid.i         /* Do forwarding transfer*/
+         end
+      if consoleto <> '' then  do            /* Stop console spooling */
+
+         /* The following gyrations are needed so that the msg        */
+         /*    "CON FILE xxxx  TO  spoolid COPY 001   NOHOLD"         */
+         /* doesn't show up as a 1 record console file when the SSI   */
+         /* SWITCH command closes the console to switch cpus.         */
+
+         'CP SPOOL CONS STOP'                /* Stop spooling         */
+         if didwork  then                    /* Did something         */
+            'CP SPOOL CONS CLOSE'            /* Save console          */
+         else                                /* Nothing to do         */
+            'CP SPOOL CONS PURGE'            /* Don't save console    */
+         'CP SPOOL CONS START TO' consoleto  /* Restart spooling      */
+         end
+      end
+   if consoleto <> ''  then                  /* Stop console spooling */
+      'CP SPOOL CONSOLE STOP'
+   end
+else  do                                     /* Not an SSI system     */
+   didwork = 0                               /* Nothing done yet      */
+   call heading                              /* Output heading        */
+   do j=1 to forwardids.0
+      call forwardfor forwardids.j cplevel , /* Do the forwarding     */
+         cpsystem cpuid.i
+      end
+   if consoleto <> ''  then  do              /* Stop console spooling */
+      if didwork  then                       /* Did something         */
+         'CP SPOOL CONSOLE STOP CLOSE'       /* Save the console log  */
+      else                                   /* Nothing to do         */
+         'CP SPOOL CONS STOP PURGE'          /* Don't save console    */
+      end
+   end
+
+'RELEASE' mailer191                          /* Release MAILER 191    */
+                                             /*    disk               */
+
+if disc()  then  'CP LOGOFF'                 /* LOGOFF if running     */
+                                             /*    disconnected       */
+exit
+
+/* ********************** */
+/*  Internal subroutines  */
+/* ********************** */
+
+
+Disc:  procedure /* Determine if running disconnected */
+parse value diag(8,'QUERY V CONS') with . . status .
+if status = 'DISCONNECTED'  then
+   disc = 1
+else
+   disc = 0
+return disc
+
+
+ForwardFor: procedure , /* Forwarding central control */
+         expose didwork listall localnode mailerid rscsid serverids ,
+                sources ssi test
+parse upper arg userid cplevel cpsystem ssicpuid .
+
+class.  = ''                                 /* Default values        */
+date.   = ''
+name.   = ''
+origin. = ''
+reason. = ''
+type.   = ''
+
+transferclass.0 = 0                          /* File defaults         */
+transferdest.0  = 0
+transferlogon.0 = 0
+
+if ssi  then
+   spoolids = qrdrssi(userid ssicpuid)
+else
+   spoolids = qrdr(userid)
+
+if spoolids = ''  then  do                   /* Nothing to forward    */
+   if listall  then                          /* List all userids?     */
+      call listone userid, ' ', ' ', ' ', ' ', ' ', ,
+         'No files in reader'
+   end
+else  do                                     /* Something to forward  */
+   call getfileforwards(userid)              /*                       */
+   if ^loggedon(userid)  then
+      spoolids = forwardmail()
+   spoolids = forwardfiles()
+   end
+
+if spoolids <> ''  then  call inreader
+                                             /*                       */
+return
+
+
+ForwardFiles: /* Do the actual forwarding */
+notprocessed = ''
+do i=1 for words(spoolids)
+   parse var spoolids spoolid spoolids
+   if find(serverids,origin.spoolid) > 0  then do
+      reason.spoolid = 'origin of' origin.spoolid
+      notprocessed = notprocessed spoolid
+      iterate
+      end
+   if sources <> '*' & ,
+      find(sources,origin.spoolid) = 0  then  do
+      reason.spoolid = 'source of' origin.spoolid
+      notprocessed = notprocessed spoolid
+      iterate
+      end
+   if ismail()  then  do
+      reason.spoolid = 'Mail to transfer'
+      notprocessed = notprocessed spoolid
+      end
+   else  do
+      parse value getfiledest(class.spoolid) with logonok destaddress
+      parse var destaddress '<'destuserid'@'destnode'>'
+      select
+         when  destuserid = ''  then  do          /* No destination   */
+            notprocessed = notprocessed spoolid
+            reason.spoolid = 'No transfer destination'
+            end
+         when ^logonok & loggedon(userid) then do /* When logged off  */
+            notprocessed = notprocessed spoolid
+            reason.spoolid = 'User logged on'
+            end
+         when  destnode = localnode  then  do     /* Local destination*/
+            if test  then
+               call listone userid, spoolid, date.spoolid, ,
+                  class.spoolid, name.spoolid, type.spoolid, ,
+                  'File to transfer to' destuserid
+            else do
+               call transfer userid, spoolid, destuserid
+               call listone userid, spoolid, date.spoolid, ,
+                  class.spoolid, name.spoolid, type.spoolid, ,
+                  'Transferred to' destuserid
+               didwork = 1
+               end
+            end
+         otherwise  do                       /* Network destination   */
+            if test  then
+               call listone userid, spoolid, date.spoolid, ,
+                  class.spoolid, name.spoolid, type.spoolid, ,
+                  'File to transfer to' destaddress
+            else do
+               newspoolid = ,
+                  transfer(userid,spoolid,'*',cplevel cpsystem)
+               'CP TAG FILE' newspoolid destnode destuserid
+               call transfer '*', newspoolid, rscsid
+               call listone userid, spoolid, date.spoolid, ,
+                  class.spoolid, name.spoolid, type.spoolid, ,
+                  'Transferred to' destuserid
+               didwork = 1
+               end
+            end
+         end
+      end
+   end
+return notprocessed
+
+
+ForwardMail: /* Do the mail file processing */
+notmail = ''
+do i=1 for words(spoolids)
+   parse var spoolids spoolid spoolids
+   if find(serverids,origin.spoolid) > 0  then do
+      reason.spoolid = 'origin of' origin.spoolid
+      notmail = notmail spoolid
+      iterate
+      end
+   if sources <> '*' & ,
+      find(sources,origin.spoolid) = 0  then  do
+      reason.spoolid = 'source of' origin.spoolid
+      notmail = notmail spoolid
+      iterate
+      end
+   if ismail()  then
+      if test  then
+         call listone userid, spoolid, date.spoolid, class.spoolid, ,
+            name.spoolid, type.spoolid, 'Mail to transfer'
+      else do
+         'CP TRANSFER' userid 'RDR' spoolid mailerid 'RDR'
+         call listone userid, spoolid, date.spoolid, class.spoolid, ,
+            name.spoolid, type.spoolid, 'Transferred to mailer'
+         didwork = 1
+         end
+   else  do
+      reason.spoolid = 'not mail'
+      notmail = notmail spoolid
+      end
+   end
+return notmail
+
+
+GetFileDest: procedure ,/* Get forearding destination given class */
+             expose transferclass. transferdest. transferlogon.
+parse upper arg fileclass .                  /*                       */
+destid = ''                                  /* Set default           */
+logon  = 0                                   /*                       */
+do i=1 to transferclass.0                    /* Scanning classes      */
+   if transferclass.i = '*' | ,                   /* All classes or   */
+      pos(fileclass,transferclass.i) > 0  then do /* Specific class   */
+      destid = transferdest.i                /* Send file here        */
+      if transferlogon.i = 'YES'  then  logon = 1 /* Set logon        */
+      else                              logon = 0 /*   stealing flag  */
+      leave
+      end
+   end
+return logon destid
+
+
+GetFileForwards: procedure ,/* Get forwarding info for non-mail files */
+                 expose transferclass. transferdest. transferlogon.
+parse upper arg userid .
+'EXECIO * DISKR' userid 'FORWARD * (FINIS STEM LINE.'
+if rc <> 0  then  return
+
+j=0                                          /*                       */
+do i=1 for line.0                            /* Scan all the lines    */
+   if left(word(line.i,1),1) = '*'  then  do
+      parse upper var line.i '*' type':' .
+      if type = 'FILES'  then  do
+         j = j + 1
+         parse upper var line.i '*' . 'FILES:' transferdest.j . ,
+            'CLASSES:' transferclass.j . 'LOGGEDON:' transferlogon.j .
+         end
+      end
+   end
+transferclass.0 = j
+transferdest.0 = j
+transferlogon.0 = j
+return
+
+
+GetForwards: procedure , /* Get list of ids to forward mail for */
+         expose forwardids.
+parse upper arg diskaddr .
+
+'ACCESS' diskaddr 'Z'                        /* Access disk with      */
+                                             /*   FORWARD files       */
+if rc <> 0  then  do                         /* Have an error         */
+   say ' '                                   /* Write an error msg    */
+   say '*** Error' rc 'from "ACCESS' diskaddr 'Z" ***'
+   say ' '
+   forwardids.0 = 0                          /* Nothing to process    */
+   return
+   end
+
+'MAKEBUF'                                    /* A little protective   */
+onstack = queued()                           /*   code                */
+
+'LISTFILE * FORWARD Z (FIFO'                 /* List the forward files*/
+
+forwardids.0 = queued()-onstack              /* Number to process     */
+
+do i=1 to forwardids.0                       /* Get userids           */
+   parse upper pull forwardids.i .           /* Userid = filename     */
+   end
+
+return
+
+
+Heading: /* Generate output heading */
+say left('Userid',8) left('Spoolid',8) center('Date',8) 'Class' ,
+   left('Fileid',17) ,
+   'Comment'
+say '========' '========' '========' '=====' '=================' ,
+   '===================='
+return
+
+
+InReader: /* Handle the stuff left in the reader */
+if test  then  do
+   do i=1 for words(spoolids)
+      parse var spoolids spoolid spoolids
+      call listone userid, spoolid, date.spoolid, class.spoolid, ,
+         name.spoolid, type.spoolid, 'In reader,' reason.spoolid
+      end
+   end
+else
+   NOP                                       /* for now               */
+return
+
+
+IsMail: /*  Determine if a file is a mail file */
+if (class.spoolid = 'M' & type.spoolid = 'MAIL')  then
+   return 1                                  /* Mail                  */
+else  return 0                               /* Not mail              */
+
+ListOne:  procedure  /* Produce output line for 1 rdr file */
+parse arg userid, spoolid, date, class, name, type, comment
+say left(userid,8) center(spoolid,8) center(date,8) center(class,5) ,
+   left(name,8) left(type,8) comment
+return
+
+
+LoggedOn:  procedure  /* Function to determine if user is on system  */
+parse upper arg userid .
+parse value diagrc(8,'QUERY' userid) with diagrc .
+if diagrc = 0  then  exitrc = 1              /* User logged on        */
+else exitrc = 0                              /* User not logged on    */
+return exitrc
+
+
+QRDR:  procedure , /* Function to query number of files in rdr class */
+       expose class. date. name. origin. type.
+parse arg userid .
+spoollist = ''
+'EXECIO * CP ( STEM QRDRLINE. STRING QUERY RDR ALL' userid
+if qrdrline.1 <> 'NO RDR FILES'  then  do
+   do i = 2 to qrdrline.0
+      parse upper var qrdrline.i originid spoolid class dev . . . date ,
+         . 54 name +8 . +2 type +8 . +1 dist .
+      if space(originid spoolid class) = 'NO RDR FILES'  then iterate
+      spoollist = spoollist spoolid
+      origin.spoolid = originid
+      class.spoolid = class
+      date.spoolid = date
+      if class = 'T' & name = '' & type = ''  then  do
+         name = 'CONSOLE'
+         type = 'LOG'
+         end
+      name.spoolid = left(name,8)
+      type.spoolid = left(type,8)
+      end
+   end
+return strip(spoollist)
+
+
+QRDRSSI:  procedure , /* Get list of files in RDR on this cpu */
+          expose class. date. name. origin. type.
+parse arg userid ssicpuid .
+spoollist = ''
+   'EXECIO * CP ( STEM QRDRLINE. STRING SSI QUERY RDR ALL' userid
+   do i=1 to qrdrline.0
+      parse upper var qrdrline.i cpuid ':' originid spoolid class dev ,
+         . . . date . 57 name +8 . +2 type +8 . +1 dist .
+      if space(originid spoolid) = 'ORIGINID FILE'  then  iterate
+      if cpuid <> ssicpuid  then  iterate
+      if space(originid spoolid class) = 'NO RDR FILES'  then iterate
+      spoollist = spoollist spoolid
+      origin.spoolid = originid
+      class.spoolid = class
+      date.spoolid = date
+      if class = 'T' & name = '' & type = ''  then  do
+         name = 'CONSOLE'
+         type = 'LOG'
+         end
+      name.spoolid = left(name,8)
+      type.spoolid = left(type,8)
+      end
+return strip(spoollist)
+
+
+/* ****************************************************************** */
+/*  Transfer will issue the CP TRANSFER command to transfer a file    */
+/*  between users virtual readers.  If the CP system level and type   */
+/*  are given, it will decode the reponse and return the spoolid      */
+/*  number assigned by CP to the file after it was transferred.       */
+/*  This is only a problem with HPO release 5 and 6 (and maybe XA)    */
+/*  where each user has their own set of spool slots and the spool    */
+/*  file identifier changes everytime the file is passed between      */
+/*  users.                                                            */
+/* ****************************************************************** */
+
+Transfer:  procedure  /* Transfer a spoolfile, returning new spoolid  */
+parse arg fromid . , fromspoolid . , toid . , cplevel cpsystem .
+
+cmd = 'CP TRANSFER' fromid 'RDR' fromspoolid 'TO' toid 'RDR'
+ans = space(diagrc(8,cmd),1)
+
+if cplevel <> ''  then  do
+   select
+      when (cplevel > 4) & (cpsystem = 'HPO')  then  do
+         parse var ans retcode . 'RDR FILE' tospoolid . tofrom . ,
+            'FILE' spoolid2 '15'x
+         if spoolid2 <> ''  then  tospoolid = spoolid2
+         end
+      otherwise /* CP level release 4 or earlier */
+         parse var ans retcode . 'RDR FILE' tospoolid . tofrom . '15'x
+      end
+   end
+else  tospoolid = ''
+
+return tospoolid
+
+/* **************** */
+/*  Error handlers  */
+/* **************** */
+
+HALT:
+parse source . . myname .
+say "Halt in" myname "line" sigl":"
+say sourceline(sigl)
+exitrc = 16
+signal errexit
+
+NOVALUE:
+parse source . . myname .
+say "NOVALUE error in" myname "line" sigl":"
+say sourceline(sigl)
+exitrc = 16
+signal errexit
+
+SYNTAX:
+parse source . . myname .
+say "SYNTAX error in" myname "line" sigl": " errortext(rc)
+say sourceline(sigl)
+exitrc = 16
+signal errexit
+
+ERREXIT:
+trace ?r
+nop
+exit exitrc

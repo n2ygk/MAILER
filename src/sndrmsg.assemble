@@ -1,0 +1,142 @@
+*5/18/87 Merge in somebody's "MSGTODOT" mod (forget who - sorry) [1.24]
+*9/16/86 Put '*' in front of message                             [1.24]
+*[1.20]Don't need MAILSFLD is user is local
+SNDRMSG TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - SEND MESSAGE TO FILE*
+               SENDER'
+*---------------------------------------------------------------------*
+*      MAILER -- Copyright (c) 1982,1987 Columbia University.         *
+*    Program Property of the Trustees of Columbia University in the   *
+*    City of New York.                                                *
+*---------------------------------------------------------------------*
+SNDRMSG  CSECT ,
+* SNDRMSG -
+*  SENDS A MESSAGE VIA RSCS TO THE FILE SENDER.
+*
+*
+*  LAST EDIT:  10/26/82 BY ALAN CROSSWELL
+*
+* ENTRY   R1 - MESSAGE ADDRESS   R0 - MESSAGE LENGTH
+* REGISTER USAGE -
+R0  EQU  0 -
+R1  EQU  1 -
+R2  EQU  2 -
+R3  EQU  3 -
+R4  EQU  4 -
+R5  EQU  5 - MESSAGE ADDRESS
+R6  EQU  6 - MESSAGE LENGTH
+R7  EQU  7 -
+R8  EQU  8 -
+R9  EQU  9 -
+R10 EQU 10 -
+R11 EQU 11 - MAILBLOK BASE
+R12 EQU 12 - PROGRAM BASE
+R13 EQU 13 - SAVE AREA
+R14 EQU 14 - SUBROUTINE LINKAGE
+R15 EQU 15 - SUBROUTINE LINKAGE
+         PRINT NOGEN
+         BLOCKS ,
+         MAILBLOK ,
+         EJECT
+SNDRMSG  CSECT ,
+         USING SNDRMSG,R15   TEMP ADDRESSABILITY
+         B     EYESKIP
+MYNAME   DC    CL8'SNDRMSG',CL8'&SYSDATE'
+EYESKIP  DS    0H
+         STM   R14,R12,12(R13)
+         LR    R12,R15       GET PERM ADDRESSABILITY
+         DROP  R15
+         USING SNDRMSG,R12
+         LA    R15,SAVE
+         ST    R13,4(R15)
+         ST    R15,8(R13)
+         LR    R13,R15
+         LR    R5,R1         COPY MESSAGE ADDRESS
+         LR    R6,R0         AND MESSAGE LENGTH
+         L     R11,=V(MAILBLOK)
+         USING MAILBLOK,R11
+         ICM   R10,B'1111',MAILSFLD  GET FIELDD FOR SENDER          EAC
+         BZ    TRYLOCAL      [1.20]if a local user,  use MAILUSER
+         USING FIELDD,R10    ADDRESS IT
+         ICM   R10,B'1111',FIPARS   GET MBOX POINTER              EAC
+         BZ    RET                                                  EAC
+         USING MBOX,R10    ADDRESS IT
+         ICM   R9,B'1111',MBXLCL Get user node pointer
+         BZ    RET               ---> Quit if none there
+         USING NODE,R9     ADDRESS IT
+         L     R9,NODDOWN    GET POINTER TO USER NAME TOKEN
+         USING TOKEND,R9     ADDRESS IT
+         SR    R1,R1         GET A ZERO
+         L     R1,TOKLEN     GET LENGTH OF USER NAME
+         MVC   SENDER,=CL8' ' BLANK OUT SENDER
+         C     R1,=F'8'      12 OR LESS
+         BL    SEND1         OK
+         LA    R1,8          TRUNC IT
+SEND1    EQU   *
+         BCTR  R1,0          -1 FOR EXECUTE
+         LA    R2,SENDER     DEST OF COPY
+         L     R3,TOKPTR          SOURCE
+         EX    R1,COPY       COPY IT IN
+         EX    R1,UPIT       UPPER CASE
+         ICM   R9,B'1111',MBXDML Get host node pointer
+         BZ    RET               ---> None there
+         USING NODE,R9     ADDRESS IT
+         L     R9,NODDOWN    GET POINTER TO HOST NAME TOKEN
+         USING TOKEND,R9     ADDRESS IT
+         L     R1,TOKLEN     GET LENGTH OF USER NAME
+         MVC   HOSTNODE,=CL8' '  BLANK OUT HOST
+         C     R1,=F'8'      8 OR LESS
+         BL    SEND2         OK
+         LA    R1,8          TRUNC IT
+SEND2    EQU   *
+         LA    R2,HOSTNODE   DEST OF COPY
+         L     R3,TOKPTR          SOURCE
+MVCNL    DS    0H                                              MSGTODOT
+         CLI   0(R3),C'.'     Start of domain ?                MSGTODOT
+         BE    MVCNLD         Yes - we're done                 MSGTODOT
+         MVC   0(1,R2),0(R3)  Move characater                  MSGTODOT
+         TR    0(1,R2),UPCASE Uppercase the character          MSGTODOT
+         LA    R2,1(,R2)      Point to next character          MSGTODOT
+         LA    R3,1(,R3)      ...                              MSGTODOT
+         BCT   R1,MVCNL       Try all characters               MSGTODOT
+MVCNLD   DS    0H                                              MSGTODOT
+*-- COPY MESSAGE NOW
+LOCSEND  EQU   *             [1.20]
+         C     R6,=A(L'BUFFER) LONGER THAN BUFFER?
+         BNH   LENOK
+         LA    R6,L'BUFFER   TRUNC IT
+LENOK    EQU   *
+         BCTR  R6,0          -1 FOR EXECUTE
+         LA    R2,BUFFER
+         LR    R3,R5
+         EX    R6,COPY       COPY MESSAGE INTO BUFFER
+         MVC   XRSCS,RSCSNAME   NAME OF LOCAL RSCS MACHINE
+         LA    R1,MSG        ADDRESS OF MESSAGE
+         LA    R0,LPREFIX+1(R6) LENGTH OF IT
+         DC    X'83100008'   DO IT
+         LR    R15,R0        GET RC
+RET      EQU   *
+         L     R13,4(R13)
+         L     R14,12(R13)
+         LM    R0,R12,20(R13)
+         BR    R14
+         SPACE ,             [1.20]
+TRYLOCAL EQU   *             [1.20]
+         TM    MAILFLG1,MFLG1LCL [1.20] local file?
+         BNO   RET           [1.20]no,  forget it...
+         MVC   HOSTNODE,CPUSTR   [1.20]my node name
+         MVC   SENDER,MAILUSER [1.20]userid
+         B     LOCSEND       [1.20]and send it
+COPY     MVC   0(0,R2),0(R3)
+UPIT     TR    0(0,R2),UPCASE
+         LTORG ,
+SAVE     DS    18F
+MSG      DC    C'SMSG '
+XRSCS    DS    CL8           RSCS NAME
+         DC    C' MSG '
+HOSTNODE DS    CL8           HOST NAME
+         DC    C' '
+SENDER   DS    CL8
+         DC    C' *'                                             [1.24]
+LPREFIX  EQU   *-MSG
+BUFFER   DS    CL130
+         END   SNDRMSG

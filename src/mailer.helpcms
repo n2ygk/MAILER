@@ -1,0 +1,44 @@
++--------------------------------------------------------------------+
+|  MAILER General Commands:                                          |
+|                                                                    |
+|  CHECK - Check if another user has mail (not yet implemented).     |
+|                                                                    |
+|  FORWARD - Deliver mail to a userid other than the one specified   |
+|            in the headers.  It is legal to forward mail to more    |
+|            than 1 address.  If you want to continue to receive     |
+|            a copy of the mail at your userid, add a forward with   |
+|            an address of '<*>'.                                    |
+|                                                                    |
+|      FORWARD ADD    destaddr                                       |
+|              DELETE destaddr | ALL                                 |
+|              LIST                                                  |
+|                                                                    |
+|  HELP | ? - Get list of commands.                                  |
+|                                                                    |
+|  SHOW <show-options>  - Display assorted counters, etc.            |
+|                                                                    |
+|  show-options:                                                     |
+|                                                                    |
+|    STATUS                                                          |
+|     Various Mailer status variables are returned.  These are:      |
+|     Since: <date time> - time of last Mailer restart.              |
+|     Msgs in/out: Number of messages (mail) received and sent.      |
+|     Max Multi:  Maximum number of recipients for a single message. |
+|     Stack Max:  Percentage Mailer internal storage utilization.    |
+|                                                                    |
+|    DOMAINS <domain-name>                                           |
+|     Statistics on outgoing files to other domain Mailers.          |
+|                                                                    |
+|    INCOMING <nodename> <userid>                                    |
+|     Statistics on files received from other network Mailers.       |
+|                                                                    |
+|    OUTGOING <hostname>                                             |
+|     Statistics on outgoing files to other network Mailers.         |
+|                                                                    |
+|    SPECIAL <userid>                                                |
+|     Statistics on mail to special userids (i.e. SYSTEM).           |
+|                                                                    |
+|  SMSG - Used as a prefix to other commands causes the reply to     |
+|  be sent as a machine-readable SMSG.                               |
+|                                                                    |
++--------------------------------------------------------------------+

@@ -1,0 +1,240 @@
+*[1.22]Add test for sequential/right-adjusted lookup             [1.22]
+TBLUK    TITLE     'STRING TABLE LOOKUP'
+*---------------------------------------------------------------------*
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         *
+*    Program Property of the Trustees of Columbia University in the   *
+*    City of New York.                                                *
+*---------------------------------------------------------------------*
+TBLUK    CSECT
+* TBLUK    -  STRING TABLE LOOKUP. MODELLED AFTER DEC TOPS-20
+* JSYS BY THE SAME NAME.  THIS VERSION IS REENTRANT.
+*
+* LAST EDIT: 5/17/82 BY ALAN CROSSWELL
+*
+* CALLED VIA -
+*   CALL TBLUK,(TABLE,STRING,LENGTH,WORK)
+*
+PAB      DSECT ,
+@TABLE   DS    A             ADDRESS OF KEYWORD TABLE
+@STRING  DS    A             ADDRESS OF TEST STRING
+@LENGTH  DS    F             LENGTH OF TEST STRING
+@WORK    DS    A             WORK BUFFER
+*
+* NOTE: THE WORK BUFFER IS USED TO TRANSLATE THE TEST AND
+*   BASE STRINGS TO UPPER CASE.  NO LENGTH CHECKING IS DONE,
+*   SO THE BUFFER SHOULD BE AS LONG AS THE LONGEST TEST
+*   STRING AND THE LONGEST BASE STRING.  THIS HAS A MAXIMUM
+*   OF 2*256 = 512.
+*
+*
+* RETURNS -
+*        IN R1 - DISPATCH VALUE
+*        IN R0 - ADDRESS OF TABLE ENTRY
+*        IN R15 - RETURN CODE
+RETMATCH EQU       0                   EXACT MACTH
+RETSUBST EQU       4                   UNIQUE SUBSTRING
+RETAMB   EQU       8                   AMBIGUOUS SUBSTRING
+RETNOT   EQU       12                  NOT MATCHED
+*
+* TBTAB FORMAT -
+         SPACE
+         TBTAB     DSECT=YES
+         SPACE
+* BIT DEFINITIONS -
+         SPACE
+         COPY      TBBITS
+         SPACE
+* TABLE ENTRY AND STRING FORMAT -
+         SPACE
+         TBENTRY
+         SPACE
+*
+* FUNCTION -
+*   1) TRANSLATE TEST STRING TO UPPERCASE
+*   2) GET A TABLE ENTRY
+*   3) TRANSLATE THE ENTRY TO UPPERCASE
+*   4) FIND MINIMUM OF TEST AND BASE STRING LENGTHS.
+*   5) COMPARE THE STRINGS USING THE MINIMUM LENGTH FOUND.
+*      A) IF TEST=BASE
+*         1) IF TEST LENGTH <= BASE LENGTH THEN A MATCH IS
+*            FOUND. RETURN SUCCESFULLY (GOTO 6).
+*         2) IF TEST LENGTH > BASE LENGTH THEN A MATCH IS
+*            NOT FOUND. GO ON TO TRY AGAIN TO SEE IF THE
+*            NEXT ENTRY WILL WORK. (GOTO 2)
+*
+*      B) IF TEST<BASE
+*         TRY AGAIN. GET NEXT ENTRY (GOTO 2)
+*
+*      C) IF TEST>BASE
+*         RETURN NOT FOUND.
+*
+*   6) A MATCH HAS BEEN FOUND.  CHECK THE ENTRY OPTION BITS
+*      TO SEE HOW TO RETURN.
+*      A) TB#NOM - RETURN NOMATCH EVEN THOUGH THERE WAS A MATCH
+*      B) TB#AMB - RETURN AMBIGUOUS EVEN THOUGH THE MATCH WAS
+*         NOT AMBIGOUS. (GOOD WAY TO FORCE MINIMUM ABBREVIATIONS
+*         OF DANGEROUS KEYWORDS)
+*      C) NO FLAGS SET - RETURN SUCCESFULLY WITH POINTER IN R0
+*         AND DISPATCH VALUE IN R1.
+* REGISTER USAGE -
+R0  EQU  0 -
+R1  EQU  1 -
+R2  EQU  2 - WORK: USED AS A FLAG
+R3  EQU  3 -
+R4  EQU  4 - MAXIMUM TABLE ENTRY ADDRESS
+R5  EQU  5 - WORK AND MINIMUM OF TEST AND BASE LENGTHS - 1
+BL  EQU  6 - LENGTH OF CURRENT BASE STRING - 1
+R7  EQU  7 - TBS DSECT BASE
+R8  EQU  8 - TABLE ENTRY POINTER
+TL  EQU  9 - LENGTH OF TEST STRING - 1 (FOR EXECUTE)
+R10 EQU 10 - WORK REGISTER
+R11 EQU 11 - WORK AREA 1 (TEST STRING)
+R12 EQU 12 - PROGRAM BASE
+R13 EQU 13 - CALLER'S SAVE AREA
+R14 EQU 14 - WORK AREA 2 (BASE STRING)
+R15 EQU 15 - SUBROUTINE LINKAGE
+*
+         PRINT     NOGEN
+         EJECT
+TBLUK    CSECT ,
+         STM   R14,R12,12(R13)
+         LR    R12,R15       GET MY ADDRESS
+         USING TBLUK,R12
+         USING PAB,R1        ADDRESS THE PAB
+         L     R10,@STRING   GET STRING POINTER
+         L     TL,@LENGTH    TEST STRING LENGTH
+         L     R11,@WORK     WORK AREA
+         L     R1,@TABLE     TABLE POINTER
+         DROP  R1
+         LA    R14,0(TL,R11) WORK AREA 2
+         USING TBTAB,R1      ADDRESS THE TABLE
+         TM    TB$FLG,TBT#SEQ sequential?                        [1.22]
+         BO    CALLSEQ       call the sequential version         [1.22]
+         L     R8,TB$ADR     ADDRESS OF TABLE START
+         C     TL,=F'256'    MORE THAN 256 LONG?
+         BH    EMPTY         IT'S TOO LONG
+         LTR   TL,TL         MORE THAN ZERO LENGTH?
+         BNH   EMPTY
+         ICM   R4,B'1111',TB$LEN   # OF GOOD ENTRIES
+         BNZ   NOTEMPTY      IT'S NOT EMPTY
+         DROP  R1
+EMPTY    EQU   *
+         LR    R0,R8         ADDRESS OF TABLE START
+         SR    R1,R1         A ZERO DISPATCH VALUE
+         LA    R15,RETNOT    INDICATE NOT FOUND
+         B     RET           AND RETURN
+NOTEMPTY EQU   *
+         MH    R4,=Y(TBE$LEN)  TABLE LENGTH (BYTES)
+         AR    R4,R8         ADDR OF TABLE END
+         BCTR  TL,0          -1 FOR EXECUTE
+         EX    TL,COPY1      COPY IN TESTSTR
+         EX    TL,TRANS1     TRANSLATE TO UPPERCASE
+         SPACE 2
+* DONE WITH SET UP, NOW FOR THE SEARCH:
+         SPACE 2
+SEARCH   EQU   *             TOP OF SEARCH LOOP
+         SR    R2,R2         ZERO THE FLAG
+         USING TBENTRY,R8    ADDRESS THE CURRENT ENTRY
+         L     R7,TBE$STR    ADDRESS OF A BASE STRING
+         USING TBS,R7        ADDRESS THE STRING
+         SR    BL,BL         GET A ZERO
+         IC    BL,TBS$SIZ    LENGTH OF BASE STRING
+         BCTR  BL,0          -1 FOR EXECUTE
+         EX    BL,COPY2      COPY INTO BASESTR BUFFER
+         EX    BL,TRANS2     TRANSLATE TO UPPERCASE
+         CR    TL,BL         COMAPARE TEST LENGTH TO BASE L
+         BH    TLONGER       TEST IS LONGER, THEY WON'T
+         LR    R5,TL         USE SHORTER LENGTH
+         B     TESTEM        AND GO TEST
+TLONGER  EQU   *
+         LR    R5,BL         USE SHORTER BASE LENGTH
+         LA    R2,1          TEST IS LONGER; SET FLAG
+TESTEM   EQU   *
+         EX    R5,COMPARE    COMPARE THE STRINGS
+         BL    NOTFND        NOT FOUND
+         BH    DONEXT        TRY NEXT ENTRY
+         LTR   R2,R2         TEST STRING LONGER?
+         BNZ   DONEXT        NO MATCH; TRY NEXT
+         LR    R0,R8         REMEMBER R8 IN R0.
+         CR    BL,TL         LENGTHS MATCH EXACTLY?
+         BE    EXACT         YES, SUCCESS
+         LA    R8,TBE$LEN(R8)  BUMP TO NEXT ENTRY
+         CR    R8,R4         PAST END OF TABLE?
+         BNL   UNIQ          NO MORE ENTRIES, SO IT
+*                            IS A UNIQUE MATCH
+         L     R7,TBE$STR    ADDRESS OF STRING
+         SR    BL,BL         GET A ZERO
+         IC    BL,TBS$SIZ    GET STRING LENGTH
+         BCTR  BL,0          -1 FOR EXECUTE.
+         EX    BL,COPY2      MOVE IT INTO BUFFER
+         EX    BL,TRANS2     UPPERCASE IT
+         CR    TL,BL         TEST LEN VS BASE LEN
+         BH    UNIQ          NO WAY THAT TEST CAN MATCH
+         EX    TL,COMPARE    COMPARE THEM
+         BNE   UNIQ          NO MATCH --> UNIQUE ABBREV
+* NOT A UNIQUE ABBREVIATION...
+         LA    R15,RETAMB    LOAD AMBIGUOUS RETURN CODE
+         B     UNIQ2         AND LEAVE
+EXACT    EQU   *             EXACT MATCH
+         LA    R15,RETMATCH  EXACT MATCH
+         B     UNIQ1
+UNIQ     EQU   *
+* NOW SEE IF THE ENTRY HAS ANY FUNNY BITS SET TO CAUSE A DIFFERENT
+* RETURN CODE THAN EXPECTED...
+         LA    R15,RETSUBST  PROBABLY WILL BE THIS
+UNIQ1    EQU   *
+         TM    TBS$FLG,TB#NOM+TB#AMB  AMBIG. OR NOMATCH FLAGS?
+         BZ    UNIQ2         NOPE, ALL CLEAR
+         TM    TBS$FLG,TB#NOM  NOMATCH  BIT?
+         BNO   TRY2          NOPE, TRY AGAIN
+         LA    R15,RETNOT    SET NO MATCH RETCODE
+         B     UNIQ2
+TRY2     EQU   *
+         TM    TBS$FLG,TB#AMB      AMBIG. BIT?
+         BNO   TRY3          TRY AGAIN
+         LA    R15,RETAMB    SET AMBIG RETCODE
+         B     UNIQ2
+TRY3     EQU   *
+         SR    R15,R15       INDICATE UNIQUE MATCH FOUND
+UNIQ2    EQU   *
+*        R0 ALREADY HAS THE ENTRY ADDRESS IN IT
+         LR    R8,R0         GET IT HERE FOR DSECT
+         USING TBENTRY,R8
+         L     R1,TBE$DSP    DISPATCH VALUE
+         DROP  R8
+         B     RET           AND RETURN
+         SPACE ,
+NOTFND   EQU   *
+         LA    R15,RETNOT    INDICATE NOT FOUND
+         LR    R0,R8         RETURN ENTRY AT WHICH FAILED
+         SR    R1,R1         BUT NO DISPATCH VALUE
+         B     RET
+         SPACE ,
+DONEXT   EQU   *             SAME THING
+         LA    R8,TBE$LEN(R8) BUMP POINTER
+         CR    R8,R4         PAST END OF TABLE?
+         BL    SEARCH        GO DO IT AGAIN....
+* RAN OUT OF SPACE
+         LR    R0,R8         RETURN ENTRY WE FAILED AT
+         SR    R1,R1         BUT NO DISPATCH VAULE
+         LA    R15,RETNOT    INDICATE NOT FOUND
+RET      EQU   *
+         L     R14,12(R13)
+         LM    R2,R12,28(R13)
+         BR    R14
+         SPACE ,                                                 [1.22]
+CALLSEQ  DS    0H            here to call TBLUKS                 [1.22]
+         L     R15,=V(TBLUKS) address of TBLUKS                  [1.22]
+         L     R14,12(,R13)  restore regs to make it look like   [1.22]
+         LM    R0,R12,20(R13) we were never called               [1.22]
+         BR    R15           XCTL to TBLUKS and return from there[1.22]
+*
+* READ-ONLY (PURE) DATA -
+LOWUP    LOWUP     ,                   UPPER CASE TRANSLATE TABLE
+COPY1    MVC   0(0,R11),0(R10)   COPY TEST STRING INTO BUFFER
+TRANS1   TR    0(0,R11),LOWUP TRANSLATE TO UPPERCASE
+COPY2    MVC   0(0,R14),TBS$STR  COPY BASE STRING INTO BUFFER
+TRANS2   TR    0(0,R14),LOWUP    TRANSLATE TO UPPERCASE
+COMPARE  CLC   0(0,R11),0(R14)  COMPARE THE TWO STRINGS
+         LTORG ,
+         END   TBLUK

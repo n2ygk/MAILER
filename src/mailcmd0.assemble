@@ -1,0 +1,655 @@
+MAILCMD0 TITLE 'VM Network Mailer - 2nd level command processing routin*
+               e'
+**************************************************************
+**************************************************************
+***                                                        ***
+***        (c) Copyright Princeton University 1990         ***
+***                                                        ***
+**************************************************************
+**************************************************************
+         SPACE 3
+MAILCMD0 CSECT ,
+***********************************************************************
+*
+*  MAILCMD0 - Dequeue commands for processing
+*
+*  This routine will dequeue the MSGBLOKs queued by MAILSMSG and
+*  console processing, do some initial processing (such as echoing
+*  the command to the console, if appropriate) and then route the
+*  command to the appropriate command processor.
+*
+***********************************************************************
+         SPACE 1
+* Register usage -
+         SPACE 1
+R0  EQU  0 - Work reg
+R1  EQU  1 - Work reg
+R2  EQU  2 - Work reg in CHKAUTH
+R3  EQU  3 -
+R4  EQU  4 -
+R5  EQU  5 -
+R6  EQU  6 -
+R7  EQU  7 -
+R8  EQU  8 -
+R9  EQU  9 - MSGBLOK base
+R10 EQU 10 - Second base register
+R11 EQU 11 - MAILBLOK base
+R12 EQU 12 - Program base
+R13 EQU 13 - Save area
+R14 EQU 14 -
+R15 EQU 15 -
+         SPACE 1
+PAB      DSECT ,
+@MBLOK   DS    A             MAILBLOK
+         SPACE 1
+         BLOCKS ,
+         MAILBLOK ,
+         NUCON DSECT
+         COPY  IPARML
+         MSGBLOK ,
+         COPY  MAILEQU
+         EJECT
+MAILCMD0 CSECT ,
+         USING PAB,R1              Address parms
+         USING MAILCMD0,R15        Temporary addressability
+         SPACE 1
+         B     EYESKIP             Branch over eyeskip
+         DC    CL8'MAILCMD0',CL8'&SYSDATE'
+EYESKIP  DS    0H
+         SPACE 1
+         STM   R14,R12,12(R13)     Save caller's regs
+         LR    R12,R15             Set program base
+         L     R10,=F'4096'        Set up
+         LA    R10,0(R10,R12)           second base
+         SPACE 1
+         DROP  R15
+         USING MAILCMD0,R12,R10
+         SPACE 1
+         LA    R14,SAVE            My save area
+         ST    R13,4(R14)          Save caller's ptr
+         ST    R14,8(R13)          Chain mine back
+         LR    R13,R14             Set my save ptr
+         L     R11,@MBLOK          Get mailblok
+         SPACE 1
+         DROP  R1
+         USING MAILBLOK,R11
+         SPACE ,
+*--------------------------------------------------------------------
+*  Remove msg (command) list from the MAILCMDL chain.  Any SMSG
+*  or console interrupts that add more commands will have to wait
+*  for the next time this routine gets called.
+*--------------------------------------------------------------------
+         SPACE 1
+         SSM   =X'00'             Disable EXT & I/O interrupts
+         L     R9,MAILCMDL        Get list pointer
+         XC    MAILCMDL,MAILCMDL  Clear the chain pointer
+         NI    MAILCMD,255-MCMDCMD   Clear the command processing flag
+         SSM =X'FF'               Ok to have interrupts again
+         SPACE ,
+*--------------------------------------------------------------------
+*        Process each command on the list
+*--------------------------------------------------------------------
+         SPACE 1
+LOOP     EQU   *
+         LTR   R9,R9               End of list?
+         BZ    RET                 ---> Yes, quit
+         SPACE 1
+         USING MSGBLOK,R9          Address the DSECT
+         SPACE 1
+         MVC   MSGSENDR,SRCUSER    Initialize response userid
+         MVC   MSGNODE,=CL8' '     Blank out response node.
+         CLC   SRCCODE,=A(CMDNET)  Is it from the network?
+         BNE   LOOP0010            ---> No
+         MVC   MSGNODE,SRCNODE     Yes, initialize response node.
+         SPACE 1
+LOOP0010 EQU   *
+         MVI   MSGNODE+8,C' '      Make sure a blank lives here
+         MVC   MSGDATA-3(3),=C' * ' BLANK DELIMITER
+         SPACE ,
+         CLC   SRCCODE,=A(CMDCONS) Is it from the console?
+         BE    SKIPCON             Yes : Don't bother, he's seen it.
+         MVC   WORKBUF(24),=CL24'From         @        : '
+         LA    R4,SRCUSER          Get sending userid.
+         LA    R1,8(R4)            End of string
+         TRT   0(8,R4),TRTAB       Look for blank at end of id
+         LA    R3,8(R4)            Address of end
+         SR    R3,R1               Minus length gives leading blanks
+         LA    R3,WORKBUF+05(R3)   Start here
+         SR    R1,R4               Length of the userid
+         BZ    NOUSER2             No userid.
+         BCTR  R1,0                -1 for executed move
+         EX    R1,MOVEIT           MVC 0(0,R3),0(R4)
+NOUSER2  DS    0H
+         MVC   WORKBUF+14(8),MSGNODE
+         CLC   SRCCODE,=A(CMDNET)  Is it from the network?
+         BE    LOOP0020            Yes : Nodename is right.
+         MVC   WORKBUF+14(8),CPUSTR No : It's from here.
+LOOP0020 EQU   *
+         L     R15,@MESSAGE        Start of command
+         L     R1,@MSGLEN          Command length
+         BCTR  R1,0                   for EX.
+         EX    R1,CON$MVC          "MVC WORKBUF+24(*-*),0(R15)"
+         LA    R3,WORKBUF          Start of console line
+         LA    R4,25(,R1)          Length (24 + 1 for decrement)
+         WRTERM (R3),(R4)          Echo the command on the console.
+         WAITT ,                   Be nice.
+         B     SKIPCON
+         SPACE ,
+MOVEIT   MVC   0(0,R3),0(R4)
+CON$MVC  MVC   WORKBUF+24(*-*),0(R15) *** Executed ***
+         SPACE ,
+SKIPCON  DS    0H
+         LA    R0,ARGV             Token ptrs start here
+         L     R14,@MESSAGE        Start of command
+         L     R15,@MSGLEN         Length
+         CALL  UNIXSCAN,((0),ARGVL,(14),(15))
+         ST    R1,ARGC             Save count of tokens
+         LA    R1,ARGV             Initialize ARGV
+         ST    R1,ARGVP                index pointer
+FINDCMD  EQU   *
+         CLC   ARGC,=F'0'          Any tokens left?
+         BNH   BOGUS               ---> Bogus command
+         L     R15,ARGVP           Get ARGV index ptr
+         L     R14,0(R15)          Address of token
+         CLI   0(R14),C'*'         Was it an asterisk?
+         BE    TRYNEXT             ---> Yes, quietly ignore it
+         LA    R15,4(,R15)         Bump ARGV pointer to next token
+         ST    R15,ARGVP           Update ARGV pointer
+         L     R1,ARGC             Get remaining token count
+         BCTR  R1,0                Decrement
+         ST    R1,ARGC             Update it
+         LA    R0,CMDTAB           Table address
+         SRDL  R14,24              Length of token
+         SRL   R15,8               Address of token
+         CALL  TBLUK,((0),(15),(14),WORKBUF)
+         C     R15,=F'4'           Found a command entry?
+         BNHR  R1                  ---> Go to it
+         B     BOGUS               ---> Nope, its bogus
+         SPACE 1
+*  After processing, all commands return to TRYNEXT
+         SPACE 1
+TRYNEXT  EQU   *
+         L     R0,MSGBLEN          MSGBLOK length
+         LR    R1,R9                   and address
+         L     R9,MSGNEXT          Pick up next block pointer
+         SPACE 1
+         SPACE 1
+         DMSFRET LOC=(1),DWORDS=(0)
+         B     LOOP                --> Around again
+         SPACE 3
+RET      DS    0H
+         LA    R15,0               Set return code
+         L     R13,4(,R13)         Previous save area
+         L     R14,12(,R13)        Restore return address
+         LM    R0,R12,20(R13)          and rest of regs
+         BR    R14                 Return to caller
+         TITLE 'VM Network Mailer - Command processing routines'
+*  CMDTAB - The VM Network Mailer command table
+         SPACE 2
+*  To add new commands to the mailer, do the following:
+         SPACE 1
+*  1.  Add a 'T' entry to the CMDTAB giving the command name
+*
+*  2.  Add a processing routine to route the command to the
+*      correct MAILCMDn module.  Routine names are '$' followed by
+*      the first seven characters of the command name (unless a
+*      specific name is coded).
+*
+*      Only extremely short commands should do any processing here.
+*      See the SHOW command for a sample of how to handle long
+*      pieces of code.
+*
+*  3.  Add a command table entry to the CMDTAB in MAILCMDn if more
+*      than one command is handled there.
+*
+*  4.  Add the processing code to the MAILCMDn module (if appropriate).
+         SPACE 3
+CMDTAB   TBSTART ,
+         T '?',$HELP               General user help
+         T 'ACTIVATE'              Resume processing reader files
+         T 'CHECK'                 Check a user's mailbox
+         T 'CMS'                   Issue cms command
+         T 'CP'                    Issue cp command
+         T 'FORWARD'               Add to forwarding table
+         T 'HELP'                  General user help
+         T 'MAILLIST',$MLIST       Change a mailing list
+         T 'Q',$SHOW               Alias for show.
+         T 'QU',$SHOW              Alias for show.
+         T 'QUERY',$SHOW           Alias for show.
+         T 'QUIESCE'               Stop processing reader files
+         T 'RELOAD'                Reload the mailer
+         T 'SHOW'                  Show variables, status, etc.
+         T 'SMSG'                  Return reply as smsg
+         T 'STOP'                  Stop the mailer
+         TBEND ,
+         SPACE 3
+*-------------------------------------------------------------------
+* BOGUS command routine
+         SPACE 1
+* This routine is used when the command is invalid or the user
+* is not authorized to do what they have requested.
+*--------------------------------------------------------------------
+         SPACE 1
+BOGUS    DS    0H
+         L     R1,=A(BOGMSG)       Point to message
+         LA    R0,L'BOGMSG              and get length
+         BAL   R14,WRITEMSG        Write it
+         B     TRYNEXT
+         TITLE 'VM Network Mailer - Command processing routines'
+*--------------------------------------------------------------------
+*                            A C T I V A T E
+*
+*  Turns off MSTQSC flag to allow processing of reader files
+*--------------------------------------------------------------------
+$ACTIVAT DS    0H
+         BAL   R14,CHKAUTH         Authorized user?
+         B     BOGUS               ---> Not authorized
+         NI    MAILSTAT,255-MSTQSC Turn off quiesce flag
+         L     R1,=A(ACTMSG)       Point to the message we want
+         LA    R0,L'ACTMSG         Length of message
+         BAL   R14,WRITEMSG        Write it
+         B     TRYNEXT
+         EJECT ,
+*--------------------------------------------------------------------
+*                            C H E C K
+*
+*  Check to see if another user has mail.  Requires class D privs
+*  to query a reader for class m files generated by this userid.
+*
+*        *** Not currently implemented ***
+*--------------------------------------------------------------------
+         SPACE 1
+$CHECK   DS    0H
+         L     R1,=A(CHKMSG)       Point to message
+         LA    R0,L'CHKMSG              and get length
+         BAL   R14,WRITEMSG        Write the message
+         B     TRYNEXT
+         EJECT ,
+*--------------------------------------------------------------------
+*                            C M S
+*
+*  An authorized user may issue CMS commands.  The CMS command is
+*  processed by MAILCMD2.
+*--------------------------------------------------------------------
+         SPACE 1
+$CMS     DS    0H
+         BAL   R14,CHKAUTH         Check authority
+         B     BOGUS               ---> Not authorized
+         CLC   ARGC,=F'0'          Bare cms command...
+         BNH   BOGUS               Yes, complain
+         CALL  MAILCMD2,((R11),(R9))
+         B     TRYNEXT
+         SPACE 1
+         EJECT ,
+*--------------------------------------------------------------------
+*                            C P
+*
+*  CP commands issued by an authorized user.  The reply is returned
+*  in a buffer and sent back to the issuer.
+*--------------------------------------------------------------------
+         SPACE 1
+$CP      DS    0H
+         BAL   R14,CHKAUTH         Check authorization
+         B     BOGUS               ---> Not authorized
+         CLC   ARGC,=F'0'          Bare CP command?
+         BH    $CP1                ---> No
+         CLC   SRCCODE,=A(CMDCONS) Only allowed from console
+         BNE   BOGUS               ---> Not allowed
+         B     $CP2                Go do it
+$CP1     EQU   *
+         L     R1,ARGVP            Get pointer to next token
+         L     R1,0(R1)            Get address of next token
+         LA    R0,0(,R1)           Clean up high end
+         L     R14,@MESSAGE        Original msg start
+         A     R14,@MSGLEN         + Total length
+         SR    R14,R0              - Token start = length left
+         BCTR  R14,0               Decrement for EX
+         EX    R14,$CPTR            Upcase the CP command
+         A     R14,=F'1'           Correct length
+         LA    R1,WORKBUF          Address for reply
+         LA    R15,LWORKBUF        Length for reply
+         O     R14,=X'40000000'    Flag to indicate reply in buffer
+         DC    X'830E0008'         Issue the command
+         BC    4,$CPSHORT          Buffer was too short
+         LR    R0,R15              Length of reply
+         LA    R1,WORKBUF
+         BAL   R14,WRITEMSG        Send the reply back
+         B     TRYNEXT
+         SPACE 1
+$CPTR    TR    0(*-*,R1),UPCASE    *** Executed ***
+         SPACE 1
+$CPSHORT EQU   *
+         LA    R0,LWORKBUF         Truncated reply
+         LA    R1,WORKBUF
+         BAL   R14,WRITEMSG
+         B     TRYNEXT
+$CP2     EQU   *
+         SR    R0,R0               Enter cp with no data
+         DC    X'83000008'         Just like that
+         B     TRYNEXT             And issue no message
+         EJECT ,
+*--------------------------------------------------------------------
+*                           F O R W A R D
+*
+*  Automatic mail forwarding is done by issuing the FORWARD command
+*  to tell the mailer where to forward a user's mail.  Unauthorized
+*  users may only set their own forwarding value.  Users listed as
+*  a maintainer may set values for other users.
+*
+*  FORWARD is processed in MAILCMD2.
+*
+*--------------------------------------------------------------------
+         SPACE 1
+$FORWARD DS    0H
+         CALL  MAILCMD2,((R11),(R9))
+         B     TRYNEXT
+         EJECT ,
+*--------------------------------------------------------------------
+*                            H E L P
+*
+*  Provide the user with some help by listing the command names and
+*  options.  Leave extensive help in the MAIL HELPCMS file rather
+*  than wasting time with it here.
+*--------------------------------------------------------------------
+         SPACE 1
+$HELP    DS    0H
+         L     R1,=A(HLPMSG)       Help message address
+         LA    R0,LHLPMSG               and length
+         BAL   R14,WRITEMSG        Write it
+         B     TRYNEXT
+         EJECT ,
+*--------------------------------------------------------------------
+*                            M A I L L I S T
+*
+*  Creation, deletion and modification of mail distribution lists
+*  is done with the MAILLIST command.  Mailing lists are similar
+*  to FORWARD files, except that MAILLISTs are almost always created
+*  with names that do not match a real id on the system and mailing
+*  lists may have more than 1 owner (users allowed to make changes
+*  in the list's destination addressees).
+*
+*
+*  MAILLIST is processed in MAILCMD2.
+*
+*--------------------------------------------------------------------
+         SPACE 1
+$MLIST   DS    0H
+         CALL  MAILCMD2,((R11),(R9))
+         B     TRYNEXT
+         EJECT ,
+*--------------------------------------------------------------------
+*                            Q U I E S C E
+*
+*  Set the MSTQSC flag to prevent processing of reader files.
+*--------------------------------------------------------------------
+         SPACE 1
+$QUIESCE DS    0H
+         BAL   R14,CHKAUTH         Check authorization
+         B     BOGUS               ---> Not authorized
+         OI    MAILSTAT,MSTQSC     Set flag to quiet down
+         L     R1,=A(QUSMSG)       Load message address
+         LA    R0,L'QUSMSG              and length
+         BAL   R14,WRITEMSG        Write the message
+         B     TRYNEXT
+         EJECT ,
+*--------------------------------------------------------------------
+*                            R E L O A D
+*
+*  A privilidged user may tell the mailer to reload.  This causes it
+*  to read the mailer profile and load all user exits.
+*--------------------------------------------------------------------
+         SPACE 1
+$RELOAD  DS    0H
+         BAL   R14,CHKAUTH         Check authorization
+         B     BOGUS               ---> Not authorized
+         OI    RELDECB,POSTED      Tell MAILER to reload.
+         L     R1,=A(RELMSG)       Point to message
+         LA    R0,L'RELMSG              and get length
+         BAL   R14,WRITEMSG        Write the message
+         B     TRYNEXT
+         EJECT ,
+*--------------------------------------------------------------------
+*                            S H O W
+*
+*  Show current values of assorted counters and tables
+*
+*  The SHOW command is handled in MAILCMD1.
+*--------------------------------------------------------------------
+         SPACE ,
+$SHOW    DS    0H
+         CALL  MAILCMD1,((R11),(R9))
+         B     TRYNEXT
+         EJECT ,
+*--------------------------------------------------------------------
+*                            S M S G
+*
+*  The SMSG prefix to a command indicates that the user gets the
+*  reply as an SMSG rather than MSG/MSGNOH.
+*--------------------------------------------------------------------
+         SPACE 1
+$SMSG    DS    0H                  Reply wanted as SMSG
+         OI    FLAG,SMSFLG         Turn on SMSG flag
+         B     FINDCMD             Now get the real keyword
+         EJECT ,
+*--------------------------------------------------------------------
+*                            S T O P
+*
+*  An authorized user may issue the STOP command to cause the mailer
+*  to stop processing and exit.
+*--------------------------------------------------------------------
+         SPACE 1
+$STOP    DS    0H
+         BAL   R14,CHKAUTH         Check authorization
+         B     BOGUS               ---> Not authorized
+         OI    STOPECB,POSTED      Post the stop ECB
+         XC    HALTRC,HALTRC       Clear Return Code.
+         CLC   ARGC,=F'0'          Might there be a Return Code?
+         BNH   STOPMSG             No  : All done.
+         L     R1,ARGVP            Yes : Get the address
+         SR    R2,R2                        and length
+         IC    R2,0(,R1)                       of the next
+         L     R1,0(,R1)                          token.
+         SR    R3,R3               Clear accumulator.
+STOPLOOP DS    0H
+         MH    R3,=H'10'           Total = Total * 10
+         IC    R0,0(,R1)                      +
+         N     R0,=X'0000000F'                   new
+         AR    R3,R0                                digit.
+         LA    R1,1(,R1)
+         BCT   R2,STOPLOOP         Next!
+         ST    R3,HALTRC           Set requested Return Code.
+STOPMSG  DS    0H
+         L     R1,=A(STPMSG)       Get message address
+         LA    R0,L'STPMSG              and length
+         BAL   R14,WRITEMSG        Write the message
+         B     TRYNEXT
+         TITLE 'VM Network Mailer - Command processing support routinesX
+               '
+*----------------------------------------------------------------------
+*
+*  CHKAUTH - Check for authorized user
+*
+*  Regs at entry:
+*
+*    R9  - MSGBLOK base
+*    R14 - Return address: +0 = error, +4 = authorized
+*
+*  Regs at exit:
+*
+*    R2 - R13 unchanged
+*
+*  Exit made to:    R14+0  - Not authorized
+*                   R14+4  - Authorized user
+*
+*----------------------------------------------------------------------
+         SPACE 1
+         USING MSGBLOK,R9
+         SPACE 1
+CHKAUTH  EQU   *                   Check authorization
+         CLC   SRCCODE,=A(CMDCONS) Command from console?
+         BE    CHKOK
+         CLC   SRCCODE,=A(CMDSMSG) Command from smsg?
+         BE    CHKSMS              Check smsg source
+         CLC   SRCCODE,=A(CMDNET)  Command from network?
+         BE    CHKSMS              ---> Yes
+         B     CHKNOTOK            ---> Unknown source, not authorized
+CHKSMS   EQU   *
+         LA    R15,MAINTID         Point to first entry of table
+CHKSMS10 DS    0H
+         CLI   0(R15),X'FF'                   At end of list?
+         BE    CHKNOTOK                       ---> Yes, SMSG is illegal
+         CLC   MAINTNOD-MAINTID(,R15),=8X'00' No cpu specified?
+         BE    CHKSMS30                       ---> Yes, accept any
+         CLC   SRCCODE,=A(CMDNET)             Command from network?
+         BE    CHKSMS20                       ---> Yes
+         CLC   MAINTNOD-MAINTID(,R15),CPUSTR  Maintainer on this cpu?
+         BNE   CHKSMS40                       ---> No, go try next
+CHKSMS20 DS    0H
+         CLC   MAINTNOD-MAINTID(,R15),SRCNODE Maintainer node match?
+         BNE   CHKSMS40                       ---> No, go try next
+CHKSMS30 DS    0H
+         CLC   MAINTID-MAINTID(,R15),SRCUSER  Is sender on the list?
+         BE    CHKOK                          ---> Yes
+CHKSMS40 DS    0H
+         LA    R15,MAINTID2-MAINTID(R15)      To the next entry
+         B     CHKSMS10
+         SPACE 1
+CHKNOTOK EQU   *
+         B     0(,R14)
+CHKOK    EQU   *
+         B     4(,R14)
+         SPACE 1
+         DROP  R9
+         EJECT ,
+*--------------------------------------------------------------------
+* FIND15 - Finds next newline in a string
+*
+* Entry -
+*  R1 - address of string
+*  R2 - length of string
+*
+* Exit -
+*  R0 - length of substring
+*  R1 - updated to pointer after x'15'
+*  R2 - remaining string length
+*
+*--------------------------------------------------------------------
+         SPACE 1
+FIND15   EQU   *
+         SR    R0,R0               Character counter
+FIND15L  EQU   *
+         CLI   0(R1),X'15'         Find x'15'?
+         BE    F15RET              Yes... return
+         LA    R1,1(R1)            Bump pointer
+         A     R0,=F'1'            Bump length counter
+         BCT   R2,FIND15L          Loop back to test next character
+F15RET   EQU   *
+         LA    R1,1(R1)            Point past the x'15'
+         BCTR  R2,0                -1 for the x'15' from length
+         BR    R14
+         EJECT ,
+*--------------------------------------------------------------------
+*                            W R I T E M S G
+*
+*  Send reply to the command issuer.  Multiline replies are seperated
+*  by x'15' (newline) characters.  Registers are as follows:
+*        R1 - message address
+*        R0 - length
+*        R9 - MSGBLOK base
+*--------------------------------------------------------------------
+         SPACE 1
+         USING MSGBLOK,R9
+         SPACE 1
+WRITEMSG DS    0H
+         STM   R14,R12,12(R13)     Save regs
+         LR    R7,R1               Move parms to
+         LR    R8,R0                    better regs
+MESSAGE1 EQU   *
+         LTR   R2,R8               Length zero?
+         BNH   MSGRET              Just return
+         LR    R5,R7               Address of string
+         LR    R1,R5               Start x'15' scan here
+         BAL   R14,FIND15          Get end of string
+         LR    R7,R1               Copy for next pass thru loop
+         LR    R8,R2               Length remaining for next pass
+         LR    R3,R0               Length of string found
+         CLC   SRCCODE,=A(CMDCONS) Is it from the console?
+         BE    MSGCON              ---> Yes
+         CLC   SRCCODE,=A(CMDSMSG) Is it from SMSG?
+         BE    MSGMSG              ---> Yes, msg back via MSG cmd
+         CLC   SRCCODE,=A(CMDNET)  Is it from the network?
+         BE    MSGNET              Yes : Output via network.
+         B     MSGRET              Unknown code
+MSGCON   EQU   *
+         WRTERM (R5),(R3)          Write reply to console
+         B     MESSAGE1            Get the next line if there is one
+MSGNET   DS    0H
+         MVC   MSGBUF,=CL18'SMSG rscsname MSG '
+         MVC   MSGBUF+5(8),RSCSNAME
+         B     MSGCOMM
+MSGMSG   EQU   *
+         TM    FLAG,SMSFLG   WANT SMSG REPLY?
+         BNO   MSG2          NOPE
+         MVC   MSGBUF,=CL18'SMSG '
+         B     MSGCOMM
+MSG2     EQU   *
+         MVC   MSGBUF,=CL18'MSGNOH '
+         B     MSGCOMM
+MSGCOMM  DS    0H
+         C     R3,=A(L'MSGDATA)    Room for the data?
+         BNH   *+8
+         LA    R3,L'MSGDATA        Truncate it
+         BCTR  R3,0                -1 for execute
+         EX    R3,MOVEDATA         MVC MSGDATA(0),0(R5)
+         LA    R3,MSGLEN+1(R3)     Length of entire command
+         LA    R1,MSGBUF
+         LR    R0,R3               Get length
+         DC    X'83100008'         Message to sender
+         LTR   R0,R0               Ok retcode?
+         BZ    MESSAGE1            ---> Yes, try for next line
+         C     R0,=F'1'            MSGNOH unknown for this user?
+         BNE   MSGRET              No, other error (i.e. not logged in)
+         CLC   =C'MSGNOH ',MSGBUF  Was it MSGNOH?
+         BNE   MSGRET              No  : Can't fix it up then.
+         MVC   MSGBUF,=CL18'MSG '  Use MSG command instead
+MSG3     EQU   *
+         LA    R1,MSGBUF
+         LR    R0,R3
+         DC    X'83100008'         Send the msg
+         LTR   R0,R0               Ok retcode?
+         BZ    MESSAGE1            ---> Yes, do next line
+MSGRET   EQU   *
+         LM    R14,R12,12(R13)
+         BR    R14
+         SPACE 1
+MOVEDATA MVC   MSGDATA(0),0(R5)
+         SPACE 1
+         DROP  R9
+         EJECT ,
+*        Data areas
+         SPACE 2
+TRTAB    DC    256X'00'      TRAP TABLE FOR DELIMITERS
+         ORG   TRTAB+C' '
+         DC    X'FF'         TRAP BLANKS
+         ORG   ,
+         SPACE 2
+         LTORG ,
+         SPACE 2
+SAVE     DS    18F                 Save area
+         SPACE 1
+WORKBUF  DS    1000C               Lots of spare room
+LWORKBUF EQU   *-WORKBUF
+         SPACE 2
+*  Messages for the processing routines
+         SPACE 1
+ACTMSG   DC    C'Activate command accepted.'
+CHKMSG   DC    C'Checking not yet implemented.'
+HLPMSG   DC    C'General commands:  CHECK, FORWARD, HELP, SHOW'
+         DC    C'|QUERY, SMSG'
+*        DC    X'15',C'Type "HELP MAILER" for details.'
+LHLPMSG  EQU   *-HLPMSG
+QUSMSG   DC    C'Quiesce command accepted.'
+RELMSG   DC    C'Reload command accepted.'
+STPMSG   DC    C'Stop command accepted.'
+BOGMSG   DC    C'Command not allowed or invalid.'
+         END   ,

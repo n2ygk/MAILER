@@ -1,0 +1,142 @@
+*[1.21] Add EXTWTR (W=userid) to TAG for TSO/E.
+*[1.20] Take Jim Owen's changes virtually as is; renamed to DEFRT!
+*02/01/85 - Get TAGNODE from ROUTD instead of NODE; allows aliases.
+*01/25/85 - Exit renamed RSCS; this was originally the DEFRT exit.
+*11/23/83 - Put a real error msg in at FAIL.
+*12/14/83 - Add TRUNCATE parm to allow >8 char usernames for VMS.
+DEFRT    TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - RSCS ROUTING EXIT'
+*---------------------------------------------------------------------*
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         *
+*    Program Property of the Trustees of Columbia University in the   *
+*    City of New York.                                                *
+*---------------------------------------------------------------------*
+DEFRT    CSECT ,
+* DEFRT  -
+*  This routine punches individual files to RSCS sites that are
+*  either not running this Mailer or are running a different
+*  mailer that doesn't know how to handle the same message for
+*  several recipients as one file.
+*
+*  LAST EDIT: 4/19/82 BY ALAN CROSSWELL (AS DEFRT ASSEMBLE)
+*
+* CALLED VIA -
+*   CALL DEFRT,(MAILBLOK,ACTADR)
+PAB      DSECT ,
+@MBLOK   DS    F             ADDRESS OF MAILBLOK
+@ACT     DS    F             ADDRESS OF ACTADR BLOCK
+* REGISTER USAGE -
+R0  EQU  0 -
+R1  EQU  1 -
+R2  EQU  2 -
+R3  EQU  3 -
+R4  EQU  4 -
+R5  EQU  5 -
+R6  EQU  6 -
+R7  EQU  7 -
+R8  EQU  8 -
+R9  EQU  9 -
+R10 EQU 10 - ACTADR BASE
+R11 EQU 11 - MAILBLOK BASE
+R12 EQU 12 - PROGRAM BASE
+R13 EQU 13 - SAVE AREA
+R14 EQU 14 - SUBROUTINE LINKAGE
+R15 EQU 15 - SUBROUTINE LINKAGE
+         BLOCKS ,
+         MAILBLOK ,
+         EJECT ,
+DEFRT    CSECT ,
+         USING DEFRT,R15      TEMP ADDR
+         B     EYESKIP       SKIP EYE-CATCHER
+MYNAME   DC    CL8'DEFRT',CL8'&SYSDATE'
+EYESKIP  DS    0H
+         STM   R14,R12,12(R13)
+         LR    R12,R15       GET A BETTER BASE
+         DROP  R15
+         USING DEFRT,R12
+         LA    R15,SAVE
+         ST    R13,4(R15)
+         ST    R15,8(R13)
+         USING PAB,R1        PARMS
+         LR    R13,R15
+         L     R11,@MBLOK    GET MAILBLOK BASE
+         L     R10,@ACT      GET ACTADR BASE
+         USING MAILBLOK,R11
+         USING ACTADR,R10
+         L     R1,ACTRT      get routd pointer
+         USING ROUTD,R1      address it
+         MVC   TAGNODE,RTROUTE    put NODE NAME in TAG
+         MVI   TRUNC,0       clear truncation flag
+         MVI   TRUNCD,0      ditto for this flag
+         CLC   RTPARM,=CL8'TRUNCATE' OK to truncate userids?
+         BNE   NOTRUNC       nope
+         MVI   TRUNC,1       set the flag that says so
+NOTRUNC  EQU   *             here if not truncating
+         DROP  R1            done with ROUTD
+         L     R7,ACTMBOX    GET MBOX BLOCK
+         USING MBOX,R7
+         L     R7,MBXLCL         GET USER LIST
+         USING NODE,R7     ADDRESS IT
+         L     R7,NODDOWN    GET DOWN POINTER
+         USING TOKEND,R7     ADDRESS THE USER NAME TOKEN
+         SR    R4,R4         GET ZERO
+         L     R4,TOKLEN     LENGTH OF USERID STRING
+         C     R4,=F'8'      8 OR LESS?
+         BNH   OK1           it's ok
+         MVI   TRUNCD,1      set flag saying it was done
+         LA    R4,8          trunc it to 8
+OK1      EQU   *
+         BCTR  R4,0          -1 FOR EX
+         L     R3,TOKPTR               GET STRING
+         MVC   TAGUSER,=CL8' ' BLANK THE FIELD
+         LA    R2,TAGUSER
+         EX    R4,COPY       MVC TAGUSER(0),4(R3)
+         EX    R4,UPIT
+         MVC   TAGWTR,TAGUSER [1.21]copy it for TSO/E compat.
+         CLI   TRUNCD,1      did we truncate the name?
+         BNE   NOTRUNC1      nope
+         CLI   TRUNC,1       is truncation allowed?
+         BNE   FAIL          no,  then fail.
+NOTRUNC1 EQU   *             here when name is short enuf
+         MVC   RSCSID,RSCSNAME  GET RSCS NAME
+         LA    R1,TAGCMD     GET THE TAG COMMAND NOW
+         LA    R0,LTAGCMD
+         DC    X'83100008'   AND EXECUTE
+         L     R15,APUNHDR
+         CALL  (15),((R11))  PUNCH THE HEADER
+         LTR   R15,R15       ANY SCREW UPS?
+         BNZ   RET
+         L     R15,APUNTXT
+         CALL  (15),((R11))  PUNCH THE REST
+         LTR    R15,R15      ANY ERRORS?
+         BNZ   RET           OH WEEELLL....
+         L     R15,APUNCLS   ROUTINE TO CLOSE PUNCH
+         CALL  (15),((R11))  CALL IT
+         LTR   R15,R15       ERRORS?
+         BNZ   RET
+         LOG   DRT034,(CA,TAGUSER,CA,TAGNODE)
+RET      EQU       *
+         L         R13,4(R13)
+         L         R14,12(R13)
+         LM        R0,R12,20(R13)
+         BR        R14
+FAIL     EQU       *
+         LOG   DRT031,(CA,TAGUSER)
+         LA        R15,8
+         B         RET
+*
+COPY     MVC   0(0,R2),0(R3)
+UPIT     TR    0(0,R2),UPCASE
+         LTORG
+SAVE     DS        18F
+TRUNC    DS    X             flag saying trucating username is OK
+TRUNCD   DS    X             flag indicating truncation was done
+TAGCMD   DC    C'TAG DEV PUN '
+TAGNODE  DS    CL8
+         DC    C' '
+TAGUSER  DS    CL8
+         DC    C' 50 W='     [1.21]
+TAGWTR   DS    CL8           [1.21]
+         DC    X'15',C'SP PUN CLASS M TO '
+RSCSID   DS    CL8
+LTAGCMD  EQU   *-TAGCMD
+         END   DEFRT

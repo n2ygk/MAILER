@@ -1,0 +1,81 @@
+USERLOG  TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - USER LOG WTR'
+*---------------------------------------------------------------------*
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         *
+*    Program Property of the Trustees of Columbia University in the   *
+*    City of New York.                                                *
+*---------------------------------------------------------------------*
+USERLOG  CSECT
+* USERLOG  -
+* Userlog writes error messages to the disk user error log file
+* which is eventually returned to the sender of an errant mail file.
+* A later enhancement is planned to maintain the log file in core.
+*
+* LAST EDIT: 4/28/82 BY ALAN CROSSWELL
+*
+* ENTRY -  R1 MESSAGE ADDRESS, R0 - MESSAGE LENGTH
+         SPACE ,
+*
+         SPACE
+* REGISTER USAGE -
+R0  EQU  0 -
+R1  EQU  1 -
+R2  EQU  2 -
+R3  EQU  3 -
+R4  EQU  4 -
+R5  EQU  5 -
+R6  EQU  6 -
+R7  EQU  7 -
+R8  EQU  8 -
+R9  EQU  9 - MESSAGE ADDRESS
+R10 EQU 10 - MESSAGE LENGTH
+R11 EQU 11 - MAILBLOK BASE
+R12 EQU 12 - PROGRAM BASE
+R13 EQU 13 - SAVE AREA
+R14 EQU 14 - SUBROUTINE LINKAGE
+R15 EQU 15 - SUBROUTINE LINKAGE
+         SPACE
+         PRINT NOGEN
+         BLOCKS ,
+         MAILBLOK ,
+         EJECT
+USERLOG  CSECT ,
+         USING USERLOG,R15   TEMPORARY ADDRESSABILITY
+         B     EYESKIP       BRANCH OVER EYESKIP
+MYNAME   DC    CL8'USERLOG',CL8'&SYSDATE'
+EYESKIP  DS    0H
+         DROP  R15
+         STM   R14,R12,12(R13) SAVE CALLER'S REGS
+         LR    R12,R15       PERMANENT ADDRESSABILITY
+         USING USERLOG,R12
+         LA    R14,SAVE      MY SAVE AREA
+         ST    R13,4(R14)    SAVE CALLER'S PTR
+         ST    R14,8(R13)    CHAIN MINE BACK
+         LR    R13,R14       SET MY SAVE PTR
+         L     R11,@MBLOK    GET MAILBLOK BASE
+         USING MAILBLOK,R11
+         LR    R9,R1         GET MESSAGE ADDRESS
+         LR    R10,R0        GET MESSAGE LENGTH PTR
+         MVI   BUFFER,C' '
+         MVC   BUFFER+1(79),BUFFER
+         BCTR  R10,0         -1 FOR EXECUTE
+         BL    RET
+         C     R10,=F'79'    LINE TOO LONG
+         BNH   OK
+         LA    R10,79        TOO BAD
+OK       EQU   *
+         EX    R10,COPY       COPY INTO BUFFER
+         L     R5,MAILULFS   point to FSCB for it.               [1.23]
+         FSWRITE FSCB=(R5),BUFFER=BUFFER,BSIZE=80,RECFM=F        [1.23]
+RET      EQU   *
+         L     R13,4(R13)              GET CALLER'S SAVE PTR
+         L     R14,12(R13)             GET R14
+         LM    R0,R12,20(R13)          GET R0-R12
+         BR    R14                     RETURN
+         SPACE ,
+COPY     MVC   BUFFER(0),0(R9)
+         SPACE ,
+         LTORG ,
+@MBLOK   DC    V(MAILBLOK)
+SAVE     DS    18F                     SAVE AREA
+BUFFER   DS    CL80
+         END   USERLOG

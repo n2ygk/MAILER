@@ -1,0 +1,53 @@
+/* ****************************************************************** */
+/*  GENMAIL - Build mailer from TXTLIB files                          */
+/* ****************************************************************** */
+/*                                                                    */
+/*  command format:   GENMAIL  < userid >                             */
+/*                             < userid@node >                        */
+/*                                                                    */
+/*  GENMAIL will build a new MAILER module from the TXTLIB files.     */
+/*  If a userid or userid@node is provided it will then ship the      */
+/*  new mailer files to that userid.                                  */
+/*                                                                    */
+/* ****************************************************************** */
+
+address COMMAND
+parse upper arg dest .                       /*                       */
+if dest = '?'  then  do                      /*                       */
+   'EXEC CLEAR'                              /*                       */
+   do i=1 while sourceline(i) <> ''          /*                       */
+      say sourceline(i)                      /*                       */
+      end
+   exit
+   end
+                                             /*                       */
+if dest = ''  then  userid = ''              /*                       */
+else  do                                     /*                       */
+   parse var dest userid '@' node .          /*                       */
+   if node <> ''  then  userid = userid 'AT' node
+   end
+
+trace "Commands"
+
+'GLOBAL TXTLIB MAILLCL MAILGEN CLIB'
+
+signal off error
+'LOAD MAILER MAILPAL MAILLEX MAILLRP MAILDBG( CLEAR'
+if rc > 4 then exit rc
+signal on error
+'GEN MAILER'
+'CP CLOSE PRT NAME MAILER' version
+'CP SP PRT CLOSE NOCONT'
+
+signal off error
+address COMMAND 'ESTATEW MAILER MAP A'
+if rc = 0  then  address COMMAND 'ERASE MAILER MAP A'
+signal on error
+'RENAME LOAD MAP A MAILER MAP A'
+
+if userid <> ''  then  do
+   'EXEC SENDFILE MAILER  MODULE TO' userid
+   'EXEC SENDFILE MAILER  TXTLIB TO' userid
+   'EXEC SENDFILE MABNXIT EXEC   TO' userid
+   end
+error: exit rc

@@ -1,0 +1,160 @@
+MAILCMD2 TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - 2ND LEVEL COMMAND  *
+               PROCESSING ROUTINE'
+*---------------------------------------------------------------------*
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         *
+*    Program Property of the Trustees of Columbia University in the   *
+*    City of New York.                                                *
+*---------------------------------------------------------------------*
+MAILCMD2 CSECT ,
+* MAILCMD2 -
+*
+PAB      DSECT ,
+@MBLOK   DS    A             MAILBLOK
+         SPACE
+* REGISTER USAGE -
+R0  EQU  0 -
+R1  EQU  1 -
+R2  EQU  2 -
+R3  EQU  3 -
+R4  EQU  4 -
+R5  EQU  5 -
+R6  EQU  6 -
+R7  EQU  7 -
+R8  EQU  8 -
+R9  EQU  9 -
+R10 EQU 10 -
+R11 EQU 11 - MAILBLOK BASE
+R12 EQU 12 - PROGRAM BASE
+R13 EQU 13 - SAVE AREA
+R14 EQU 14 - SUBROUTINE LINKAGE
+R15 EQU 15 - SUBROUTINE LINKAGE
+         SPACE
+         PRINT NOGEN
+         BLOCKS ,
+         MAILBLOK ,
+         NUCON DSECT
+         EJECT
+MAILCMD2 CSECT ,
+         USING MAILCMD2,R15  TEMPORARY ADDRESSABILITY
+         B     EYESKIP       BRANCH OVER EYESKIP
+MYNAME   DC    CL8'MAILCMD2',CL8'&SYSDATE'
+EYESKIP  DS    0H
+         DROP  R15
+         STM   R14,R12,12(R13) SAVE CALLER'S REGS
+         LR    R12,R15       PERMANENT ADDRESSABILITY
+         USING MAILCMD2,R12
+         LA    R14,SAVE      MY SAVE AREA
+         ST    R13,4(R14)    SAVE CALLER'S PTR
+         ST    R14,8(R13)    CHAIN MINE BACK
+         LR    R13,R14       SET MY SAVE PTR
+         USING PAB,R1        ADDRESS PARMS
+         L     R11,@MBLOK    GET MAILBLOK
+         DROP  R1
+         USING MAILBLOK,R11
+         SPACE ,
+*--------------------------------------------------------------------
+*  REMOVE COMMAND LIST FROM THE MAILCMDL CHAIN.  ANY SMSG INTERRUPTS
+*  THAT ADD MORE COMMANDS WILL HAVE TO WAIT UNTIL THE NEXT TIME THIS
+*  ROUTINE GETS CALLED.
+*--------------------------------------------------------------------
+         SSM   =X'FE'        DISABLE SMSG INTERRUPTS
+         L     R9,MAILCMDL   GET COMMAND LIST POINTER
+         XC    MAILCMDL,MAILCMDL CLEAR THE CHAIN POINTER
+         NI    MAILCMD,255-MCMDCMD2  CLEAR THE MAILCMD2 FLAG
+         SSM =X'FF'          NOW WE ARE INTERRUPTABLE AGAIN
+         SPACE ,
+*--------------------------------------------------------------------
+*        PROCESS EACH COMMAND ON THE LIST
+*--------------------------------------------------------------------
+LOOP     EQU   *
+         LTR   R9,R9         END OF LIST?
+         BZ    RET           TIME TO QUIT
+         USING COMMAND,R9    ADDRESS THE DSECT
+         CLC   CMDCODE,=A(CMD202) ONLY ONE I KNOW ABOUT
+         BNE   DONE          JUST THROW IT AWAY
+* SVC 202 CODE:
+         LA    R1,CMDDATA    GET DATA ADDRESS
+         L     R0,CMDDLEN    GET DATA LENGTH
+         DMSKEY NUCLEUS      GET INTO NUCLEUS KEY
+         USING NUCON,0
+         L     R15,ASCANN    GET ADDRESS OF DMSCANN
+         BALR  R14,R15       CALL IT
+         DMSKEY RESET        BACK TO USER KEY
+         ST    R1,ATTNDATA   STUFF INTO ATTN PLIST
+         STC   R0,ATTNDATA   STUFF LENGTH TOO
+         LA    R1,ATTNPARM   GET ATTN PLIST
+         SVC   202           STACK THE DATA
+         DC    AL4(*+4)
+         LA    R1,SUBSET     CMS SUBSET PLIST
+         SVC   202           ISSUE THE COMMAND
+         DC    AL4(*+4)
+         LR    R5,R15        GET THE RETURN CODE
+         CVD   R5,DWORD      CONVERT IT TO SOMETHING READABLE
+         UNPK  MSGRETC,DWORD UNPACK IT
+         OI    MSGRETC+L'MSGRETC-1,X'F0' KILL THE ZONE
+         LTR   R5,R5         IS THE NUMBER NEGATIVE?
+         BNL   *+8
+         MVI   MSGRETC,C'-'
+         L     R5,CMDDLEN    GET DATA LENGTH
+         C     R5,=A(L'MSGDATA)  ROOM FOR IT?
+         BNH   *+8           SURE
+         LA    R5,L'MSGDATA  TRUNC IT
+         BCTR  R5,0          -1 FOR EXECUTE
+         EX    R5,MOVEMSG    COPY DATA INTO MESSAGE BUFFER
+         CLC   CMDSNDR,=CL8'*' REPLY TO CONSOLE?
+         BE    CONSOLE       SURE...
+*  REPLY VIA CP MSG/SMSG
+         MVC   MSGUSER,CMDSNDR ELSE USE CP (S)MSG COMMAND
+         MVC   MSGNODE,CMDNODE     Don't forget the nodename.
+         MVC   MSGTYPE,CMDMSG
+         LA    R1,MSG        ADDRESS OF THE MESSAGE
+         LA    R4,MSGLEN+1(R5)
+         DC    X'83140008'   ISSUE THE MESSAGE
+         C     R4,=F'1'      MSGNOH NOT RECOGNIZED?
+         BNE   DONE          DONE WITH THIS COMMAND
+         CLC   =C'MSGNOH ',MSGTYPE Was it a MSHNOG command?
+         BNE   DONE                No  : No retry then.
+         MVC   MSGTYPE,=CL8'MSG' USE GOOD OLD MSG INSTEAD
+         LA    R4,MSGLEN+1(R5)
+         DC    X'83140008'
+         B     DONE
+         SPACE ,
+CONSOLE  EQU   *             DO IT WITH A WRTERM
+         LA    R4,MSGCLEN+1(R5)
+         WRTERM MSGC,(R4)
+         SPACE ,
+*---- DONE WITH THIS COMMAND.  RETURN THE DMDFREE STORAGE ----
+DONE     EQU   *
+         L     R0,CMDLEN     DWORDS USED
+         LR    R1,R9
+         L     R9,CMDNEXT    GET NEXT COMMAND
+         DMSFRET DWORDS=(0),LOC=(1) RETURN TO CMS STORAGE POOL
+         B     LOOP          AND DO IT
+RET      EQU   *
+         L     R13,4(R13)              GET CALLER'S SAVE PTR
+         L     R14,12(R13)             GET R14
+         LM    R0,R12,20(R13)          GET R0-R12
+         BR    R14                     RETURN
+         SPACE ,
+MOVEMSG  MVC   MSGDATA(0),CMDDATA
+         DROP  R9
+         LTORG ,
+SAVE     DS    18F                     SAVE AREA
+DWORD    DS    D
+MSG      DS    0C
+MSGTYPE  DS    CL(L'CMDMSG)        Room for "SMSG rscsname MSG "
+MSGNODE  DS    CL8                 Sending user's nodename.
+         DC    C' '
+MSGUSER  DS    CL8           USERID
+         DC    C' * '
+MSGC     DC    C'R('
+MSGRETC  DS    CL5
+         DC    C') for: '
+MSGLEN   EQU   *-MSG
+MSGCLEN  EQU   *-MSGC
+MSGDATA  DS    CL100
+ATTNPARM DC    0D'0',CL8'ATTN',CL4'LIFO'
+ATTNDATA DS    F
+         DC    8X'FF'
+SUBSET   DC    0D'0',CL8'SUBSET',CL8'(RETURN',8X'FF'
+         END   MAILCMD2
