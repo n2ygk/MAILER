@@ -1203,6 +1203,7 @@ int l;
     }
     if ((r = find_routd(hs, hl)) == 0) {
         (*S.repf)("550 Mailbox not found.", 22);
+        mailblok.mailflg2 |= MFLG2BLD;
         return st;
     }
 
@@ -1362,6 +1363,13 @@ int l;
                 wrterm("==> s_getdata: Calling sendlst");
             switch (acall(sendlst,0,&plist)) {
             case 0:
+                if (mailblok.mailflg2 & MFLG2BLD) {
+                   if (mailblok.dbgflg[0] & TRACE_S_GETDATA) {
+                       wrterm("==> s_getdata: No errors from sendlst");
+                       wrterm("==> s_getdata: Errors in RCPT list");
+                   }
+                   return error;
+                }
                 (*S.repf)("250 Mail accepted for delivery.", 31);
                 break;
             case 12:
