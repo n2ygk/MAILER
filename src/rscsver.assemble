@@ -61,7 +61,7 @@ EYESKIP  DS    0H
          ICM   R10,B'1111',FIPARS    GET MBOX POINTER
          BZ    BADFLD
          USING MBOX,R10    ADDRESS IT
-         L     R9,MBXLCL          GET USER NODE POINTER
+         ICM   R9,B'1111',MBXLCL    Get userid node pointer
          BZ    BADFLD
          USING NODE,R9     ADDRESS IT
          L     R9,NODDOWN    GET POINTER TO USER NAME TOKEN
@@ -78,7 +78,7 @@ SEND1    EQU   *
          L     R3,TOKPTR          SOURCE
          EX    R1,COPY       COPY IT IN
          EX    R1,UPIT       UPPER CASE
-         L     R9,MBXDML          GET HOST NODE POINTER
+         ICM   R9,B'1111',MBXDML   Get host node pointer
          BZ    BADFLD
          USING NODE,R9     ADDRESS IT
          L     R9,NODDOWN    GET POINTER TO HOST NAME TOKEN

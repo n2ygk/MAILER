@@ -110,7 +110,7 @@ OK1      EQU   *
          EX    R4,COPY       copy it in
 * now do the same for host name
          MVC   THOST,=CL8'? ' blank out the host tag item        [1.22]
-         L     R1,MBXDML         point to list of host adnodes
+         ICM   R1,B'1111',MBXDML   point to list of host adnodes
          BZ    NOHOST1       sometimes these slip thru...        [1.22]
          USING NODE,R1     address a host node
          L     R1,NODDOWN    point down to host name token
