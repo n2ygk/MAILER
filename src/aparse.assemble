@@ -109,7 +109,8 @@ LOOPOUT  EQU   *
          L     R15,=V(SHOWTOKS)
          BALR  R14,R15             Go display token chain
 .NODBG00 ANOP
-         L     R2,FIPARS           Get parse list
+         ICM   R2,B'1111',FIPARS   Get parse list
+         BZ    COUNTOK             ---> Null field
          USING MBOX,R2
 FIXCOUNT DS    0H
          LA    R1,MBXRTL           Point to route list TOKEND base
@@ -124,6 +125,7 @@ FIXCOUNT DS    0H
          ICM   R2,B'1111',MBXNEXT  Point to next MBOX
          BNZ   FIXCOUNT            ---> Do counts for next one
          DROP  R2
+COUNTOK  DS    0H
          SR    R15,R15             Set return code
 RET      EQU   *
          L     R13,4(R13)              GET CALLER'S SAVE PTR
