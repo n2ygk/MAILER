@@ -688,7 +688,14 @@ int l;
                 return error;
             }
             /* NOTREACHED */
-        } /* if !check_sender */
+        } else {  /* not trusted, but sender checks out ok */
+            bcopy("250 ", buf, 4);
+            bcopy(s+10, &buf[4], l-10);     /* copy in from address */
+            len = 4 + l-10;
+            bcopy("... sender OK.", &buf[len], 14);
+            (*S.repf)(buf, len+14);
+            return seenmail;
+        }
     } else {                         /* a trusted mailer */
         bcopy("250 ", buf, 4);
         bcopy(s+10, &buf[4], l-10);     /* copy in from address */
@@ -745,10 +752,6 @@ struct mbox *a;
 
     if (mailflg2&MFLG2NLF) /* always fail */
       return 0;
-
-    /* see if address is properly formed */
-    if (a->mbxlcnt != 1 || a->mbxdcnt != 1)
-        return 0;
 
     /* (1) See if sender userid matches MAILUSER */
     ptr = TOKPTR(MBOXLCL(a)->noddown);
