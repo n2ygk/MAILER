@@ -126,6 +126,7 @@ TBLUK    CSECT ,
          USING TBTAB,R1      ADDRESS THE TABLE
          TM    TB$FLG,TBT#SEQ sequential?                        [1.22]
          BO    CALLSEQ       call the sequential version         [1.22]
+         DBGMSG 'TBLUK: Searching binary table'
          L     R3,TB$ADR           Set lower-bound to first entry.
          C     TL,=F'256'    MORE THAN 256 LONG?
          BH    EMPTY         IT'S TOO LONG
@@ -287,6 +288,7 @@ RET      EQU   *
          BR    R14
          SPACE ,                                                 [1.22]
 CALLSEQ  DS    0H            here to call TBLUKS                 [1.22]
+         DBGMSG 'TBLUK: Searching sequential table'
          L     R15,=V(TBLUKS) address of TBLUKS                  [1.22]
          L     R14,12(,R13)  restore regs to make it look like   [1.22]
          LM    R0,R12,20(R13) we were never called               [1.22]
