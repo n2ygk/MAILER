@@ -154,6 +154,7 @@ NOHOST1  EQU   *             here when avoiding null hostname    [1.22]
          CALL  (15),((R4),SUBJECT,L'SUBJECT,TWORK)
          LTR   R15,R15                 find Subject?
          BZ    SUBFOUND                yes, get it
+NOSUBJ   EQU   *
          MVC   PROFSUBJ(10),=C'NO SUBJECT' else: be explicit
          B     SUBJEND                 to endif
 SUBFOUND EQU   *
@@ -163,6 +164,7 @@ SUBFOUND EQU   *
          DROP  R1
          SR    R15,R3                  length-1 of string
          SH    R15,=H'1'               trim trailing LF
+         BNP   NOSUBJ                  ---> No subject text
 TRIMSUBJ EQU   *
          CLI   0(R3),C' '              leading blank?
          BNE   SUBJTRIM                all done
