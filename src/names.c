@@ -93,18 +93,45 @@ struct names nm[];
     char *curtag, *curdata;
     static enum {intag, indata, initial, nickseen} state = initial;
     static int firsttime = 1;
+    static int cardcol = 0;
     int leading;
     struct names *n;
+#ifdef DEBUG
+    static char cbuf[256], *cb;
+#endif DEBUG
 
     if (feof(fp)) {
         state = initial;
         firsttime = 1;
+        cardcol = 0;
         return 0;
     }
 
     for (;;) {
-        if (c == EOF) return 1;
+        if (c == EOF) {
+          cardcol = 1;
+          return 1;
+        }
         c = getc(fp);
+        cardcol++;
+        if ((cardcol == 1) && (c == '*')) {
+#ifdef DEBUG
+          cbuf[0] = '*';
+          cb = &cbuf[1];
+#endif DEBUG
+          while ((c != '\n') && (c != EOF)) {
+            c = getc(fp);
+#ifdef DEBUG
+            *cb++ = c;
+#endif DEBUG
+          }
+#ifdef DEBUG
+          *cb++ = '\0';
+          printf("%s\n",cbuf);
+#endif DEBUG
+          cardcol = 0;
+          continue;
+        }
         switch(state) {
           case initial:
             leading = 1;
@@ -115,7 +142,9 @@ struct names nm[];
                      break;
               case ' ':
               case '\t':
+                     break;
               case '\n':
+                     cardcol = 0;
                      break;
               case EOF:
                      return 0;
@@ -146,6 +175,7 @@ struct names nm[];
               case '.':                 /* end of tag */
               case '\n':
               case EOF:
+                if (c == '\n') cardcol=0;
                 assert((db < maxdb),"db < maxdb");
                 *db++ = '\0';
                 curdata = db;
@@ -183,6 +213,7 @@ struct names nm[];
             switch (c) {
               case '\n':
                 leading = 1;            /* leading blanks flag */
+                cardcol = 0;
                 assert((db < maxdb),"db < maxdb");
                 *db++ = ' ';
 #ifdef DEBUG
