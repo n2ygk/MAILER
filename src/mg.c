@@ -261,9 +261,7 @@ char *mailer, *nick;
     if (*mailer == '\0') {
         r = default2;               /* use DEFRT */
         r.host = r.node = nick;
-        if ((strfind(netsoft,"jnet") != 0)
-            || (strfind(netsoft,"urep") != 0)) /* ok to truncate */
-          r.parm = "TRUNCATE";
+        r.parm = "";
         return;
     }
     r = default1;

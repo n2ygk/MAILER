@@ -3,8 +3,7 @@
 *02/01/85 - Get TAGNODE from ROUTD instead of NODE; allows aliases.
 *01/25/85 - Exit renamed RSCS; this was originally the DEFRT exit.
 *11/23/83 - Put a real error msg in at FAIL.
-*12/14/83 - Add TRUNCATE parm to allow >8 char usernames for VMS.
-DEFRT    TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - RSCS ROUTING EXIT'
+DEFRT    TITLE 'VM Network Mailer release 2.04 - RSCS routing exit'
 *---------------------------------------------------------------------*
 *      MAILER -- Copyright (c) 1982,1985 Columbia University.         *
 *    Program Property of the Trustees of Columbia University in the   *
@@ -65,12 +64,6 @@ EYESKIP  DS    0H
          L     R1,ACTRT      get routd pointer
          USING ROUTD,R1      address it
          MVC   TAGNODE,RTROUTE    put NODE NAME in TAG
-         MVI   TRUNC,0       clear truncation flag
-         MVI   TRUNCD,0      ditto for this flag
-         CLC   RTPARM,=CL8'TRUNCATE' OK to truncate userids?
-         BNE   NOTRUNC       nope
-         MVI   TRUNC,1       set the flag that says so
-NOTRUNC  EQU   *             here if not truncating
          DROP  R1            done with ROUTD
          L     R7,ACTMBOX    GET MBOX BLOCK
          USING MBOX,R7
@@ -83,7 +76,6 @@ NOTRUNC  EQU   *             here if not truncating
          L     R4,LSTRL      Length of it
          C     R4,=F'8'      8 OR LESS?
          BNH   OK1           it's ok
-         MVI   TRUNCD,1      set flag saying it was done
          LA    R4,8          trunc it to 8
 OK1      EQU   *
          BCTR  R4,0          -1 FOR EX
@@ -92,11 +84,6 @@ OK1      EQU   *
          EX    R4,COPY       MVC TAGUSER(0),4(R3)
          EX    R4,UPIT
          MVC   TAGWTR,TAGUSER [1.21]copy it for TSO/E compat.
-         CLI   TRUNCD,1      did we truncate the name?
-         BNE   NOTRUNC1      nope
-         CLI   TRUNC,1       is truncation allowed?
-         BNE   FAIL          no,  then fail.
-NOTRUNC1 EQU   *             here when name is short enuf
          MVC   RSCSID,RSCSNAME  GET RSCS NAME
          LA    R1,TAGCMD     GET THE TAG COMMAND NOW
          LA    R0,LTAGCMD
@@ -128,8 +115,6 @@ COPY     MVC   0(0,R2),0(R3)
 UPIT     TR    0(0,R2),UPCASE
          LTORG
 SAVE     DS        18F
-TRUNC    DS    X             flag saying trucating username is OK
-TRUNCD   DS    X             flag indicating truncation was done
 TAGCMD   DC    C'TAG DEV PUN '
 TAGNODE  DS    CL8
          DC    C' '
