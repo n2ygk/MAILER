@@ -502,7 +502,7 @@ VALID    DC    CL8'Incoming'
 *  here so avg user doesn't even need a MAILER TXTLIB anymore.   [1.22]
 *----------------------------------------------------------------[1.22]
          EXTRN BITNET,BSMTP,DEFRT,FWDMAIL,LOCAL,NOMAIL,RSCSVER   [1.22]
-         EXTRN RSMAIL,DISTLIST                                   [1.24]
+         EXTRN RSMAIL,DISTLIST,TRYRSCS                           [1.24]
 BUILTINS TBSTART ,                                               [1.22]
 *           12345678   <- pad to 8 chars to make lookup easier   [1.22]
          T 'BITNET  ',BITNET                                     [1.22]
@@ -514,6 +514,7 @@ BUILTINS TBSTART ,                                               [1.22]
          T 'NOMAIL  ',NOMAIL                                     [1.22]
          T 'RSCSVER ',RSCSVER                                    [1.22]
          T 'RSMAIL  ',RSMAIL                                     [1.22]
+         T 'TRYRSCS ',TRYRSCS
          TBEND ,                                                 [1.22]
          SPACE ,
 *--------------------------------------------------------------------
