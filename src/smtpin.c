@@ -549,27 +549,33 @@ int l;
         return 0;
     }
 
-    /* Check if BSMTP line is continued on second record.
-     * If continuation exists, read in next record and update total
-     * length
-     */
-    if (s[79] == 0x15) {
-       if (mailblok.dbgflg[0] & TRACE_S_INPUT)
-           wrterm("==> BSMTP: Continue line being processed");
-       if ((rlen = rdcard(&s[l],(int)mailblok.mailsfb.sfbrecsz)) >= 0)
-          l = l+rlen;
-       if (mailblok.dbgflg[0] & TRACE_S_INPUT) {
-           sprintf(dbgmsg,
-               "==> BSMTP: Continued line - new length is %d" , l);
-           wrterm(dbgmsg);
-       }
-    }
-
     if (mailblok.dbgflg[0] & TRACE_S_INPUT) {
         bcopy("==> BSMTP:>", dbgmsg , 11);
         bcopy(s, &dbgmsg[11], l);
         bcopy("<", &dbgmsg[11+l], 2);
         wrterm(dbgmsg);
+        sprintf(dbgmsg, "==> BSMTP: Line length is %d" , l);
+        wrterm(dbgmsg);
+    }
+
+    /* Check if BSMTP line is continued on second record.
+     * If continuation exists, read in next record and update total
+     * length
+     */
+    if ((l==79 && s[79] == 0x15) || (l==80 && s[79] == '<')) {
+       if (mailblok.dbgflg[0] & TRACE_S_INPUT)
+           wrterm("==> BSMTP: Continue line being processed");
+       if ((rlen = rdcard(&s[79],(int)mailblok.mailsfb.sfbrecsz)) >= 0)
+          l = 79+rlen;
+       if (mailblok.dbgflg[0] & TRACE_S_INPUT) {
+           bcopy("==> BSMTP:>", dbgmsg , 11);
+           bcopy(s, &dbgmsg[11], l);
+           bcopy("<", &dbgmsg[11+l], 2);
+           wrterm(dbgmsg);
+           sprintf(dbgmsg,
+               "==> BSMTP: Continued line - new length is %d" , l);
+           wrterm(dbgmsg);
+       }
     }
 
     /* always echo the command */
