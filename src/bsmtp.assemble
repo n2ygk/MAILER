@@ -302,7 +302,7 @@ NOTFILE  EQU   *
          MVI   0(R2),C'>'         end of the mail from
 NODEF    EQU   *
          LR    R15,R2             Copy buffer pointer
-         S     R15,=A(MAIL)       Compute length
+         S     R15,=A(MAIL-1)     Compute length
          C     R15,=F'80'         Longer than 80?
          BH    NODEF2             ---> Yes
          TM    DBGFLG6,DBGNOOUT   Producing mail?
@@ -461,7 +461,7 @@ KLUDGE99 EQU   *
          SPACE 1
 NOPARM2  EQU   *                  <- here if no kludge-route     [1.24]
          LR    R15,R2             Copy buffer ptr
-         S     R15,=A(RCPT)       Compute length
+         S     R15,=A(RCPT-1)     Compute length
          C     R15,=F'80'         Longer than 80?
          BH    NOPARM3            ---> Yes
          TM    DBGFLG6,DBGNOOUT   Producing mail?
