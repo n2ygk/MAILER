@@ -273,20 +273,27 @@ LCHDONE  EQU   *
 *--------------------------------------------------------------------
 *        End of profile validation
 *--------------------------------------------------------------------
-         SPACE 1
+         EJECT ,
 *--------------------------------------------------------------------
 *        LOAD USER ROUTING EXITS
 *--------------------------------------------------------------------
+         SPACE 1
+         XC    LOADRC,LOADRC Zero highest RC from LOAD
+         SPACE 1
          L     R1,MAILRTAB   ROUTING TABLE
          BAL   R14,LOADRTAB
          LTR   R15,R15
          BNZ   NOROUT        NEED A ROUTING TABLE!
+         SPACE 1
          L     R1,MAILSTAB   SPECIAL TABLE
          BAL   R14,LOADRTAB
+         SPACE 1
          L     R1,MAILOTAB   [1.20]Origins table
          BAL   R14,LOADRTAB  [1.20]
+         SPACE 1
          L     R1,MAILDTAB   Domains table                       [1.22]
          BAL   R14,LOADRTAB                                      [1.22]
+         SPACE 1
 *--------------------------------------------------------------------
 *        DUPLICATE ABOVE FOR VALIDATION USER EXITS NOW
 *--------------------------------------------------------------------
@@ -319,6 +326,9 @@ VALLOOP  EQU   *
          BNZ   GOTIT2        YES, IT'S ALREADY LOADED
          LA    R3,VAPROG     ADDRESS OF NAME TO LOAD
          BAL   R14,LOADIT    LOAD IT IN (ADDRESS RETURNED IN R1)
+         C     R15,LOADRC    Highest so far?
+         BNP   GOTIT2        ---> No
+         ST    R15,LOADRC    Remember it
 GOTIT2   EQU   *
          ST    R1,VAADDR     SAVE ADDRESS OF USER EXIT ROUTINE
 **-- CLEAR THE STATISTICS COUNTERS
@@ -331,7 +341,7 @@ GOTIT2   EQU   *
          SPACE ,
 *-------- RESTORE STACK POINTERS AND RETURN -------------------------
          STM   R9,R10,STACK
-         SR    R15,R15
+         L     R15,LOADRC     Pick up return code
 RET      EQU   *
          L     R13,4(R13)              GET CALLER'S SAVE PTR
          L     R14,12(R13)             GET R14
@@ -417,6 +427,9 @@ LOAD2    EQU   *
          BNZ   GOTIT         YES, IT'S ALREADY LOADED
          LA    R3,RTPROG     ADDRESS OF NAME TO LOAD
          BAL   R14,LOADIT    LOAD IT IN (ADDRESS RETURNED IN R1)
+         C     R15,LOADRC    Highest so far?
+         BNP   GOTIT         ---> No
+         ST    R15,LOADRC    Remember it
 GOTIT    EQU   *
          ST    R1,RTADDR     SAVE ADDRESS OF USER EXIT ROUTINE
          BXLE  R8,R6,LOADLOOP  LOOP BACK FOR NEXT ENTRY
@@ -465,8 +478,9 @@ FOUNDIT  EQU   *
          BR    R14           AND RETURN IT
          SPACE ,
 *--------------------------------------------------------------------
-* LOADIT SUBROUTINE - LOADS THE NAMED USER EXIT INTO STACK SPACE
-* AND RETURNS ADDRESS OF LOADED ROUTINE IN R1/
+* LOADIT subroutine - loads the named user exit into CMS storage
+* and returns address of loaded routine in R1
+*
 * REGISTERS ON ENTRY -
 *  R3 - ADDRESS OF CL8 PROGRAM NAME
 *  R9,R10 - STACK POINTERS
@@ -478,16 +492,22 @@ LOADIT   EQU   *
          CALL  TBLUK,(BUILTINS,(R3),8,TWORK)   check for builtin [1.22]
          LTR   R15,R15       is it a builtin?                    [1.22]
          BZ    LOADED        yes,  already loaded                [1.22]
-         STM   R9,R10,STK    STACK POINTERS
          CALL  LOAD,((R3),STK)  LOAD THE CODE
          LTR   R15,R15       DID IT LOAD OK?
          BNZ   BADLOAD       NOPE
-         LM    R9,R10,STK    GET UPDATED STACK POINTERS
 LOADED   EQU   *                                                 [1.22]
          LR    R4,R1         COPY LOAD ADDRESS
          WTR   STI018,(CA,(R3),X,(R4))  WRITE LOAD MSG
          LR    R1,R4         RETURN LOAD ADDRESS
          L     R14,SAVE14    RESTORE RETURN ADDRESS
+         SR    R15,R15       Set return code
+         BR    R14
+         SPACE 1
+BADLOAD  EQU   *
+         LR    R4,R15        Save return code
+         WTR   STI017,(CA,(R3),D,(R15))
+         LR    R15,R4        Restore return code
+         L     R14,SAVE14    Restore return address
          BR    R14
          SPACE ,
 *--------------------------------------------------------------------
@@ -507,10 +527,6 @@ BADTYPE  EQU   *             BAD ROUTING ENTRY
          B     RET
 NOVAL   EQU   *             VAL TABLE IS EMPTY
          WTR   STI016,(CA,VALID)
-         LA    R15,4
-         B     RET
-BADLOAD  EQU   *
-         WTR   STI017,(CA,(R3),D,(R15))
          LA    R15,4
          B     RET
          SPACE ,
@@ -653,6 +669,8 @@ STK      DS    2F
 FINDSAVE DS    2F
          SPACE 1
 SAVE14   DS    F
+         SPACE 1
+LOADRC   DS    F                   Highest RC from LOAD
          SPACE 1
 LOADS14  DS    F
          SPACE 1

@@ -6,24 +6,28 @@ LOAD     TITLE 'CUCCA VM NETWORK MAILER - VERSION 1 - LOADER'
 *---------------------------------------------------------------------*
 LOAD     CSECT
 * LOAD     -
-*  LOADS THE NAMED TEXT DECK OR TXTLIB MEMBER VIA THE CMS LOAD
-*  COMMAND.  THE ROUTINE IS LOADED IN THE STACK SPACE PROVIDED
-*  AND A CHECK AFTER THE FACT IS MADE TO SEE IF THE STACK LIMIT
-*  HAS BEEN BYPASSED.  THIS MEANS THAT A STACK OVERFLOW WILL
-*  RESULT IN DATA PAST THE STACK BEING CLOBBERED (SORRY).
+*  Loads the named TEXT deck or TXTLIB member with the OS LOAD
+*  SVC.  The routine is loaded in the free storage returned at
+*  initialization.  This can fail if the virtual machine size is
+*  too small.
 *
-*  LAST EDIT: 2/2/82  BY  ALAN CROSSWELL
+         SPACE 1
 *
-*  INVOKED VIA CALL LOAD,(NAME,STACK)
-*        NAME - CL8 NAME OF EXIT TO LOAD
-*        STACK - STACK POINTER DWORD
+*  Invoked via: CALL LOAD,(name)
+*
+*        name  - CL8, name of exit to load
+*
+         SPACE 1
 PAB      DSECT ,
 @NAME    DS    A             ADDRESS OF NAME
-@STACK   DS    A             ADDRESS OF STACK
-*  RETURNS
-*        R1 - ADDRESS OF LOADED ROUTINE
-*        R15 - CMS LOADER RETURN CODE
-*  CALLS THE CMS LOADER VIA SVC202
+         SPACE 1
+*
+*  Returns:
+*        R1  - Address of loaded routine
+*        R15 - CMS loader return code
+*
+*  Calls the loader via the LOAD SVC
+*
          SPACE ,
 * REGISTER USAGE -
 R0  EQU  0 -
@@ -35,19 +39,24 @@ R5  EQU  5 -
 R6  EQU  6 -
 R7  EQU  7 -
 R8  EQU  8 -
-R9  EQU  9 - STACK POINTER
-R10 EQU 10 - STACK LENGTH
+R9  EQU  9 -
+R10 EQU 10 -
 R11 EQU 11 - PAB DSECT BASE
 R12 EQU 12 - PROGRAM BASE
 R13 EQU 13 - SAVE AREA
 R14 EQU 14 - SUBROUTINE LINKAGE
 R15 EQU 15 - SUBROUTINE LINKAGE
+         SPACE 1
+         PRINT NOGEN
          NUCON DSECT
+         FSCBD ,
+         DMSABW ,                  Abend work area mapping
+         PRINT GEN
          EJECT
 LOAD     CSECT ,
          STM   R14,R12,12(R13)         SAVE CALLER'S REGS
-         BALR  R12,0                   GET ADDRESSABILITY
-         USING *,R12
+         LR    R12,R15                 GET ADDRESSABILITY
+         USING LOAD,R12
          LA    R14,SAVE                MY SAVE AREA
          ST    R13,4(R14)              SAVE CALLER'S PTR
          ST    R14,8(R13)              CHAIN MINE BACK
@@ -57,53 +66,61 @@ LOAD     CSECT ,
          USING PAB,R11       DSECT THEM
          SPACE ,
          WAITT ,             [1.13]???
+         SPACE 1
 *--------------------------------------------------------------------
-*        COPY ROUTINE NAME TO THE LOADER PLIST
+*        Set up abend recovery environment (in case LOAD fails)
 *--------------------------------------------------------------------
-         L     R1,@NAME      GET ADDRESS OF NAME
-         MVC   LOADNAME,0(R1)  COPY IT IN
+         SPACE ,
+         ABNEXIT SET,EXIT=LOADFAIL,UWORD=(R12)
          SPACE ,
 *--------------------------------------------------------------------
-*        CONVERT STACK ADDRESS TO HEXADECIMAL CHARACTERS
-*        BUT FIRST MAKE IT DWORD ALIGNED
+*        Load TEXT file
 *--------------------------------------------------------------------
-         L     R9,@STACK     ADDRESS OF STACK POINTER
-         L     R10,4(R9)     GET STACK LENGTH
-         L     R9,0(R9)      AND STACK ADDRESS
-         LR    R1,R9         COPY STACK PTR FOR A SEC
-         LA    R9,7(R9)      BUMP IT  A BIT
-         N     R9,=X'FFFFFFF8'  AND ZAP THE LOW 3 BITS
-         SR    R1,R9         GET ANY DIFFERENCE
-         AR    R10,R1        AND ADJUST STACK LENGTH
-         LINEDIT TEXT='........',RENT=NO,DOT=NO,DISP=NONE,             *
-               BUFFA=HEXCHARS,SUB=(HEX,(R9))
-         MVC   LOADORG,HEXCHARS+1      GET RID OF THE LENGTH
          SPACE ,
+         L     R1,@NAME            Point to name
+         LOAD  EPLOC=(1)           Load TEXT file
+         LR    R2,R0               Get entry address in R2
+*                                  (R1 will be destroyed below)
+         SPACE 1
 *--------------------------------------------------------------------
-*        NOW ISSUE THE LOAD
+*        Clear abend recovery environment
 *--------------------------------------------------------------------
-         LA    R1,LOADLIST   LOAD PARM LIST
-         SVC   202           DO THE SVC
-         DC    AL4(LOADERR)  ERROR RETURN
          SPACE ,
-*--------------------------------------------------------------------
-*        LOOK IN LOADER TABLES AND CALCULATE AMOUNT OF STACK USED
-*--------------------------------------------------------------------
-         USING NUCON,0       GRAB NUCON DSECT
-         L     R3,LOCCNT     GET LOADER LOCATION COUNTER
-         SR    R3,R9         GET AMOUNT OF STACK USED
-         SR    R10,R3        TAKE SPACE OF OF STACK LENGTH
-         BL    NOSPACE       OUT OF STACK SPACE
-         L     R9,LOCCNT     GET NEW STACK POINTER
+         ABNEXIT CLR,EXIT=LOADFAIL
          SPACE ,
+         LR    R1,R2               Get entry address in R1
+         SR    R15,R15             Set return code
+         B     RET                 Go return
+         SPACE 1
+         DROP  R12
+         SPACE 2
 *--------------------------------------------------------------------
-*        RETURN LOAD ADDRESS IN R1 AND UPDATED STACKP IN @STACK
+*        Abend recovery routine
 *--------------------------------------------------------------------
-         L     R1,STRTADDR   GET MODULE START ADDRESS
-         L     R2,@STACK     ADDRESS OF STACK
-         STM   R9,R10,0(R2)  SET RETURNED STACK POINTER
-         SR    R15,R15
+         SPACE 1
+LOADFAIL DS    0D
+         USING LOADFAIL,R15
+         STM   R14,R12,12(R13)     Save registers
+         L     R12,=A(LOAD)        Get a better base
+         DROP  R15
+         USING LOAD,R12
+         LR    R2,R1               Copy ABWSECT address
+         USING ABWSECT,R2
+         L     R1,=A(RET16)        Where we want to restart
+         STCM  R1,B'0111',ABNPSW+5 Fix up PSW
+         ABNEXIT RESET             Reset exit taken flag
+         LA    R13,SAVE            Restore R13
+         LPSW  ABNPSW              Continue on
+         SPACE 2
+*--------------------------------------------------------------------
+*        Return
+*--------------------------------------------------------------------
          SPACE ,
+RET16    EQU   *
+         WAITT ,                   Let error message get displayed
+         SR    R1,R1               Return 0 for load address
+         LA    R15,16              Dummy up return code
+         SPACE 1
 RET      EQU   *
          L     R13,4(R13)              GET CALLER'S SAVE PTR
          L     R14,12(R13)             GET R14
@@ -111,23 +128,7 @@ RET      EQU   *
          LM    R2,R12,28(R13)          GET R2-R12 (RETURN R1)
          BR    R14                     RETURN
          SPACE ,
-*--------------------------------------------------------------------
-*        ERROR RETURNS
-*--------------------------------------------------------------------
-LOADERR  EQU   *
-         SR    R1,R1
-         B     RET
-NOSPACE  EQU   *
-         SR    R1,R1
-         LA    R15,100       INDICATE FATAL ERROR
-         BR    R14
-         SPACE ,
          LTORG ,
 SAVE     DS    18F                     SAVE AREA
-LOADLIST DC    0D'0',CL8'LOAD'
-LOADNAME DS    CL8           NAME TO LOAD
-         DC    CL8'(',CL8'NOMAP',CL8'ORIGIN'
-LOADORG  DS    CL8
-         DC    8X'FF'        FENCE
-HEXCHARS DS    CL9
+         SPACE 1
          END   LOAD
