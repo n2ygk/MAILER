@@ -336,7 +336,8 @@ do i=1 for words(spoolids)
          call listone userid, spoolid, date.spoolid, class.spoolid, ,
             name.spoolid, type.spoolid, 'Mail to transfer'
       else do
-         'CP TRANSFER' userid 'RDR' spoolid mailerid 'RDR'
+         cmd = 'CP TRANSFER' userid 'RDR' spoolid mailerid 'RDR'
+         ans = space(diag(8,cmd),1)
          call listone userid, spoolid, date.spoolid, class.spoolid, ,
             name.spoolid, type.spoolid, 'Transferred to mailer'
          didwork = 1
