@@ -60,13 +60,14 @@ EYESKIP  DS    0H
          ICM   R10,B'1111',FIPARS  GET MBOX POINTER
          BZ    SFLDNG        BAD SENDER FIELD
          USING MBOX,R10    ADDRESS IT
-         ICM   R9,B'1111',MBXLCL  GET USER NODE POINTER
-         BZ    SFLDNG
-         USING NODE,R9     ADDRESS IT
-         L     R9,NODDOWN    GET POINTER TO USER NAME TOKEN
-         USING TOKEND,R9     ADDRESS IT
-         SR    R1,R1         GET A ZERO
-         L     R1,TOKLEN     GET LENGTH OF USER NAME
+         ICM   R1,B'1111',MBXLCL Get local address node pointer
+         BZ    SFLDNG            ---> Bad sender field
+         ST    R1,NODEA          Save for GENLIST call
+         LA    R14,STACKP        Stack pointer address ptr
+         LA    R15,STACKP+4      Stack size address ptr
+         CALL  GENLIST,(NODEA,LSTRA,LSTRL,(14),(15))
+         L     R3,LSTRA      Address of user name token
+         L     R1,LSTRL      Length of it
          MVC   SENDER,=CL8' ' BLANK OUT SENDER
          C     R1,=F'8'      12 OR LESS
          BL    SEND1         OK
@@ -74,8 +75,7 @@ EYESKIP  DS    0H
 SEND1    EQU   *
          BCTR  R1,0          -1 FOR EXECUTE
          LA    R2,SENDER     DEST OF COPY
-         L     R3,TOKPTR          SOURCE
-         EX    R1,COPY       COPY IT IN
+         EX    R1,COPY       Copy it in:  MVC 0(0,R2),0(R3)
          ICM   R9,B'1111',MBXDML  GET HOST NODE POINTER
          BZ    SFLDNG
          USING NODE,R9     ADDRESS IT
@@ -88,15 +88,10 @@ SEND1    EQU   *
          BL    SEND2         OK
          LA    R1,8          TRUNC IT
 SEND2    EQU   *
+         BCTR  R1,0          -1 FOR EXECUTE
          LA    R2,CLOSNODE   DEST OF COPY
          L     R3,TOKPTR          SOURCE
-SEND2LP  EQU   *
-         MVC   0(1,R2),0(R3) Copy 1 character
-         LA    R2,1(,R2)     Bump output pointer
-         LA    R3,1(,R3)     Bump input pointer
-         CLI   0(R3),C'.'    Next one a dot?
-         BE    CLOSE         ---> Yes, all done
-         BCT   R1,SEND2LP    ---> More to process
+         EX    R1,COPY       Copy it in:  MVC 0(0,R2),0(R3)
 CLOSE    EQU   *
          LA    R1,CPCLOSE    ADDRESS OF CLOSE COMMAND
          LA    R0,CLOSELEN   LENGTH OF IT
@@ -123,4 +118,8 @@ SENDER   DS    CL8
          DC    C' MAIL',X'15',C'SP PUN CLOSE',X'15',C'SP PUN OFF'
          DC    X'15',C'TAG DEV PUN'
 CLOSELEN EQU   *-CPCLOSE
+         SPACE 1
+NODEA    DC    A(0)                Address of node for GENLIST
+LSTRA    DC    A(0)                Address of local part
+LSTRL    DC    A(0)                Length of local part
          END   PUNCLS

@@ -74,19 +74,19 @@ NOTRUNC  EQU   *             here if not truncating
          DROP  R1            done with ROUTD
          L     R7,ACTMBOX    GET MBOX BLOCK
          USING MBOX,R7
-         L     R7,MBXLCL         GET USER LIST
-         USING NODE,R7     ADDRESS IT
-         L     R7,NODDOWN    GET DOWN POINTER
-         USING TOKEND,R7     ADDRESS THE USER NAME TOKEN
-         SR    R4,R4         GET ZERO
-         L     R4,TOKLEN     LENGTH OF USERID STRING
+         L     R1,MBXLCL         pointer to list of user adnodes
+         ST    R1,NODEA          Save for GENLIST call
+         LA    R14,STACKP        Stack pointer address ptr
+         LA    R15,STACKP+4      Stack size address ptr
+         CALL  GENLIST,(NODEA,LSTRA,LSTRL,(14),(15))
+         L     R3,LSTRA      Address of user name token
+         L     R4,LSTRL      Length of it
          C     R4,=F'8'      8 OR LESS?
          BNH   OK1           it's ok
          MVI   TRUNCD,1      set flag saying it was done
          LA    R4,8          trunc it to 8
 OK1      EQU   *
          BCTR  R4,0          -1 FOR EX
-         L     R3,TOKPTR               GET STRING
          MVC   TAGUSER,=CL8' ' BLANK THE FIELD
          LA    R2,TAGUSER
          EX    R4,COPY       MVC TAGUSER(0),4(R3)
@@ -139,4 +139,8 @@ TAGWTR   DS    CL8           [1.21]
          DC    X'15',C'SP PUN CLASS M TO '
 RSCSID   DS    CL8
 LTAGCMD  EQU   *-TAGCMD
+         SPACE 1
+NODEA    DC    A(0)                Address of node for GENLIST
+LSTRA    DC    A(0)                Address of local part
+LSTRL    DC    A(0)                Length of local part
          END   DEFRT
