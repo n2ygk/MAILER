@@ -214,6 +214,7 @@ static struct mailblok {
 #define DBGHDRSC          0x20  /* Trace HDRSCAN processing          */
 #define DBGGETHD          0x10  /* Trace GETHDR processing           */
 #define DBGLOCAL          0x08  /* Trace LOCAL processing            */
+#define DBGSNDLS          0x04  /* Trace SENDLST processing          */
 } ;
 
 /* MAILBLOK is created by MAILBLOK ASSEMBLE file during MAILER gen   */

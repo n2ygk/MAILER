@@ -61,7 +61,7 @@ R5  EQU  5 -
 R6  EQU  6 -
 R7  EQU  7 -
 R8  EQU  8 -
-R9  EQU  9 -
+R9  EQU  9 - Second program base
 R10 EQU 10 - ACTADR BASE
 R11 EQU 11 - MAILBLOK BASE
 R12 EQU 12 - PROGRAM BASE
@@ -72,6 +72,7 @@ R15 EQU 15 - SUBROUTINE LINKAGE
          FBLOCK ,
          BLOCKS ,
          MAILBLOK ,
+         TRACETBL ,
          EJECT ,
 LOCAL    CSECT ,
          USING *,R15               Temp addressability
@@ -80,8 +81,10 @@ MYNAME   DC    CL8'LOCAL   ',CL8'&SYSDATE'
 EYESKIP  DS    0H
          DROP  R15                 Done with R15 for now
          STM   R14,R12,12(R13)
-         BALR  R12,0
-         USING *,R12
+         LR    R12,R15             Set up first program base
+         LA    R9,2048(,R12)       Set up second program base
+         LA    R9,2048(,R9)
+         USING LOCAL,R12,R9
          LA    R14,SAVE
          ST    R13,4(R14)
          ST    R14,8(R13)
@@ -104,7 +107,9 @@ SKIP001  EQU   *
          ST    R1,NODEA          Save for GENLIST call
          LA    R14,STACKP        Stack pointer address ptr
          LA    R15,STACKP+4      Stack size address ptr
+         MAILTRC CALL,GENLIST
          CALL  GENLIST,(NODEA,LSTRA,LSTRL,(14),(15))
+         MAILTRC RETURN,GENLIST,(R15)
          L     R3,LSTRA          address of user name token
          L     R4,LSTRL          length of it
          DROP  R6
@@ -266,8 +271,10 @@ DBG0030  EQU   *
          L     R15,LSTRL         Length of string
          BCTR  R15,0             Decrement for EX
          EX    R15,COPY          Move string to parm list
+         MAILTRC CALL,DISTSUB
          L     R15,=V(DISTSUB)   Subroutine address
          CALL  (15)              Call it
+         MAILTRC RETURN,DISTSUB,(R15)
          B     RET
          EJECT ,
 *--------------------------------------------------------------------
@@ -293,8 +300,10 @@ OK0      EQU   *
 *    SEE IF THE USERID IN RECVR IS IN THE LIST OF 'HOT' ONES
 *--------------------------------------------------------------------
          L     R5,MAILSTAB   SPECIAL MAILBOX TABLE
+         MAILTRC CALL,TBLUK
          L     R15,ATBLUK    ADDRESS OF TBLUK ROUTINE
          CALL  (15),((R5),(R3),(R4),TWORK)  LOOK FOR THE ID
+         MAILTRC RETURN,TBLUK,(R15)
          LTR   R15,R15       FIND IT?
          BNZ   CHKRET        NOT FOUND -- DO REGULAR STUFF
          LR    R8,R1         GET A HANDLE ON THE ROUTD
@@ -303,15 +312,18 @@ OK0      EQU   *
          BNO   DBG0044             ---> No
          WRTERM DBGMSG07,L'DBGMSG07
 DBG0044  EQU   *
+         LA    R1,RTPROG           Point to exit name
          ICM   R15,B'1111',RTADDR  IS THERE A ROUTINE?
          DROP  R8            [1.20]
          BZ    NOFILES       THAT'S ILLEGAL
+         MAILTRC CALL,(R1)         Create trace table entry
          ST    R11,MYPAB     COPY MAILBLOK POINTER
          MVC   MYACT(ACTLEN),0(R10) COPY ACTADR
          ST    R8,MYACT+ACTRT-ACTADR REPLACE ROUTD POINTER
          ST    R8,ACTRT      AND MAILSTAB ROUTD POINTER
          LA    R1,MYPAB      POINT TO PLIST
          BALR  R14,R15       AND CALL THE SPECIAL EXIT WITH IT
+         MAILTRC RETURN,userexit,(R15)
          B     RET
          EJECT ,
 *--------------------------------------------------------------------
@@ -439,8 +451,10 @@ DBG0060  EQU   *
          SPACE 1
          ST    R11,0(,R2)          MAILBLOK base
          ST    R3,4(,R2)           Address of FBLOCK
+         MAILTRC CALL,DISTSUB
          L     R15,=V(DISTSUB)     Subroutine address
          CALL  (15)                Call it
+         MAILTRC RETURN,DISTSUB,(R15)
          LTR   R15,R15             Successful?
          BNZ   CHKLCLF             ---> No, see if local forward
          LOG   LCL077,(CA,RECVR)   Tell sender about forward
@@ -476,7 +490,9 @@ DBG0070  EQU   *
          ST    R1,NODEA          Save for GENLIST call
          LA    R14,STACKP        Stack pointer address ptr
          LA    R15,STACKP+4      Stack size address ptr
+         MAILTRC CALL,GENLIST
          CALL  GENLIST,(NODEA,LSTRA,LSTRL,(14),(15))
+         MAILTRC RETURN,GENLIST,(R15)
          L     R3,LSTRA          address of user name token
          L     R4,LSTRL          length of it
          MVC   TUSER,=CL8' '  blank out the user tag item
@@ -530,12 +546,16 @@ PUNHDR   EQU   *
          TM    DBGFLG6,DBGNOOUT    Sending mail?
          BO    NOMAIL              ---> No
          L     R15,APUNHDR
+         MAILTRC CALL,PUNHDR
          CALL  (15),((R11))  PUNCH THE HEADER
+         MAILTRC RETURN,PUNHDR,(R15)
          LTR   R15,R15       ANY SCREW UPS?
          BNZ   RET
 NOPUNHDR EQU   *
          L     R15,APUNTXT
+         MAILTRC CALL,PUNTXT
          CALL  (15),((R11))  PUNCH THE REST
+         MAILTRC RETURN,PUNTXT,(R15)
          LTR   R15,R15      ANY ERRORS?
          BNZ   RET           OH WEEELLL....
 *[EMU1] BEGIN
@@ -549,8 +569,10 @@ NOPUNHDR EQU   *
          MVI   PROFSUBJ,C' '
          MVC   PROFSUBJ+1(PROFCLEN-1),PROFSUBJ  fill with blanks
          L     R4,MAILKTAB             get keyword table
+         MAILTRC CALL,TBLUK
          L     R15,ATBLUK              tbluk address
          CALL  (15),((R4),SUBJECT,L'SUBJECT,TWORK)
+         MAILTRC RETURN,TBLUK,(R15)
          LTR   R15,R15                 find Subject?
          BZ    SUBFOUND                yes, get it
          MVC   PROFSUBJ(10),=C'NO SUBJECT' else: be explicit
@@ -577,15 +599,19 @@ MOVESUBJ EQU   *
 SUBJEND  EQU   *                       subject text moved
 * Now see if Forward or Reply and if so set indicator      [EMU2]
 * Reply to Forwarded note removes Resent- fields           [EMU2]
+         MAILTRC CALL,TBLUK
          L     R15,ATBLUK         tbluk address            [EMU2]
          CALL  (15),((R4),RESENT,L'RESENT,TWORK)           [EMU2]
+         MAILTRC RETURN,TBLUK,(R15)
          LTR   R15,R15            find Resent-?            [EMU2]
          BNZ   FWDEND             Not found; not forward   [EMU2]
          MVI   PROFTYPE,C'F'      set forwarded            [EMU2]
          B     PUNSUBJ            go punch subj card       [EMU2]
 FWDEND   EQU   *                                           [EMU2]
+         MAILTRC CALL,TBLUK
          L     R15,ATBLUK         tbluk address            [EMU2]
          CALL  (15),((R4),NREPLYTO,L'NREPLYTO,TWORK)       [EMU2]
+         MAILTRC RETURN,TBLUK,(R15)
          LTR   R15,R15            find In-Reply-To?        [EMU2]
          BNZ   REPLYEND           Not found; not reply     [EMU2]
          MVI   PROFTYPE,C'R'      set reply                [EMU2]
@@ -598,7 +624,9 @@ PUNSUBJ  EQU   *                                           [EMU2]
 NOTPROF2 EQU   *
 *[EMU1] END
          L     R15,APUNCLS   ROUTINE TO CLOSE PUNCH
+         MAILTRC CALL,PUNCLS
          CALL  (15),((R11))  CALL IT
+         MAILTRC RETURN,PUNCLS,(R15)
          LTR   R15,R15       ANY ERRORS?
          BNZ   RET           SORRY...
 NOMAIL   EQU   *
@@ -619,10 +647,12 @@ NOMAIL   EQU   *
          BO    NOMAIL2             ---> No, no msg either
          LA    R6,MSGBUF               [2] message buffer
          L     R3,MAILPTAB             [2] parameter table
+         MAILTRC CALL,TBLUK
          L     R15,ATBLUK              [2] tbluk routine
          LA    R4,=C'MSGNOH'           [2] default msgcmd
          LA    R5,6                    [2] Length
          CALL  (15),((R3),MSGCMD,L'MSGCMD,TWORK)
+         MAILTRC RETURN,TBLUK,(R15)
          LTR   R15,R15                 [2] find it?
          BNZ   NOMSGCMD                [2] nope - use default
          LA    R4,1(R1)                [2]msgcmd name
@@ -642,8 +672,10 @@ NOMSGCMD EQU   *
          LA    R6,1(R6)
 *--- see if msgprefix is defined...
          L     R3,MAILPTAB             [2]get parmater table
+         MAILTRC CALL,TBLUK
          L     R15,ATBLUK              [2]
          CALL  (15),((R3),MSGPREF,L'MSGPREF,TWORK) [2]
+         MAILTRC RETURN,TBLUK,(R15)
          LTR   R15,R15                 [2] not found?
          BNZ   NOPREFIX                [2] just as well
          LA    R4,1(R1)                [2] start of data
@@ -662,8 +694,10 @@ NOPREFI2 EQU   *                       <- here when had prefix   [1.24]
          LA    R6,L'NEWMSG(R6)         [2]
 *-- now (finally) add the from field from the memo header [2]
          L     R4,MAILKTAB             [1]get keyword table
+         MAILTRC CALL,TBLUK
          L     R15,ATBLUK              [1]tbluk address
 *[4]     CALL  (15),((R4),FROM,L'FROM,TWORK)     [1]
+         MAILTRC RETURN,TBLUK,(R15)
 *[4]     LTR   R15,R15                 [1]find it?
 *[4]     BNZ   RET                     [1]nope - just return
          L     R1,MAILSFLD             [4]get sender FIELDD

@@ -39,6 +39,7 @@ R14 EQU 14 - SUBROUTINE LINKAGE
 R15 EQU 15 - SUBROUTINE LINKAGE
          BLOCKS ,
          MAILBLOK ,
+         TRACETBL ,
          EJECT
 SENDLST CSECT ,
          USING SENDLST,R15  TEMPORARY ADDRESSABILITY
@@ -66,6 +67,11 @@ EYESKIP  DS    0H
 *  3) CALL USER RTPROG
 *--------------------------------------------------------------------
          XC    RETCODE,RETCODE  ZERO RETURN CODE
+         TM    DBGFLG7,DBGSNDLS    Tracing?
+         BNO   SNDDBG01            ---> No
+         LINEDIT TEXT='SENDLST : **** Start processing of ACTADR chain X
+               ****',DOT=NO
+SNDDBG01 EQU   *
          LA    R7,MAILCHN
 LOOP     EQU   *
          ICM   R8,B'1111',0(R7)        GET NEXT ACTADR BLOCK
@@ -74,8 +80,20 @@ LOOP     EQU   *
          LA    R7,ACTNEXT    POINT TO NEXT POINTER
          L     R5,ACTRT      POINT TO ROUTD
          USING ROUTD,R5      ADDRESS IT
+         TM    DBGFLG7,DBGSNDLS    Tracing?
+         BNO   SNDDBG10            ---> No
+         LINEDIT TEXT='SENDLST : Destination ........@........ using ..X
+               ...... exit (entry address = ........)',                X
+               SUB=(CHARA,RTUSER,CHARA,RTROUTE,CHARA,RTPROG,HEX4A,RTADDX
+               R),                                                     X
+               DOT=NO,COMP=YES,RENT=NO
+SNDDBG10 EQU   *
+         LA    R1,RTPROG           Point to exit name
+         MAILTRC CALL,(R1)         Create trace table entry
          ICM   R15,B'1111',RTADDR    ADDRESS OF ROUTING EXIT
-         CALL  (15),((R11),(R8))  CALL IT
+         CALL  (15),((R11),(R8))     Call it
+         LA    R1,RTPROG             Point to exit name
+         MAILTRC RETURN,(R1),(R15)   Create trace table entry
          LTR   R15,R15       CHECK RETURN CODE
          BNZ   FAILED        EXIT FAILED
          L     R1,RTMSGCNT   GET MSG COUNTER
@@ -101,6 +119,11 @@ FAILED   EQU   *
          WTR   SLS013,(CA,(R3),D,(R15)) ERROR MESSAGE
          B     LOOP          LOOP BACK
 DONE     EQU   *
+         TM    DBGFLG7,DBGSNDLS    Tracing?
+         BNO   SNDDBG99            ---> No
+         LINEDIT TEXT='SENDLST : **** All ACTADRs processed ****',     X
+               DOT=NO
+SNDDBG99 EQU   *
          L     R15,RETCODE
 RET      EQU   *
          L     R13,4(R13)              GET CALLER'S SAVE PTR

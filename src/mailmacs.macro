@@ -706,6 +706,7 @@ DBGTBLUK EQU   X'40'               Trace TBLUK processing
 DBGHDRSC EQU   X'20'               Trace HDRSCAN processing
 DBGGETHD EQU   X'10'               Trace GETHDR processing
 DBGLOCAL EQU   X'08'               Trace LOCAL processing
+DBGSNDLS EQU   X'04'               Trace SENDLST processing
          DS    0D            Just for pretty
 MAILBLEN EQU   *-MAILXXXX    LENGTH IN BYTES
          POP   PRINT

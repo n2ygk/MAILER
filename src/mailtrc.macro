@@ -5,7 +5,8 @@
 .*       Generate a trace table entry for the mailer
 .*       Also generates code to initialize trace table pointers
 .*
-.*       Uses registers 14 and 15
+.*       Uses registers 14 and 15, which are saved and restored across
+.*       trace table entry creation.
 .*
 .*       The following TYPE codes are recognized:
 .*
@@ -48,6 +49,7 @@ $&SYSNDX EQU   *                   Label for trace entry address
 .*       Code common to remaining entry types
 .*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 .*
+         STM   R14,R15,12(R13)     Save R14 and R15
          L     R14,TRTBLCUR        Get current entry pointer
          A     R14,=A(TRCENTL)     Bump to next entry
          C     R14,TRTBLEND        Past end?
@@ -72,6 +74,8 @@ $&SYSNDX.B EQU *
          AIF   ('&TYPE' EQ 'RETURN').RETURN
          MNOTE 4,'TYPE value of &TYPE not recognized'
          MNOTE ,'Default entry type generated'
+         DROP  R14
+         LM    R14,R15,12(R13)     Restore R14 and R15
          MEXIT
 .*
 .*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -82,8 +86,18 @@ $&SYSNDX.B EQU *
 .*
 .CALL    ANOP
 .*
+         AIF   ('&ARG1'(1,1) NE '(').CALL010
+         LCLA  &LENGTH
+         LCLC  &REG
+&LENGTH  SETA  K'&ARG1
+&REG     SETC  '&ARG1'(2,&LENGTH-2)
+         MVC   TRCDATA(8),0(&REG)       Move in entity type
+         AGO   .CALL020
+.CALL010 ANOP
          MVC   TRCDATA(8),=CL8'&ARG1'   Move in entity type
+.CALL020 ANOP
          DROP  R14
+         LM    R14,R15,12(R13)     Restore R14 and R15
          MEXIT
 .*
 .*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -95,14 +109,25 @@ $&SYSNDX.B EQU *
 .*
 .CREATE  ANOP
 .*
-         MVC   TRCDATA(8),=CL8'&ARG1'   Move in entity type
-         AIF   ('&ARG2'(1,1) NE '(').CREA010
-         ST    &ARG2,TRCDATA+8          Save entity address
-         AGO   .CREA020
+         AIF   ('&ARG1'(1,1) NE '(').CREA010
+         LCLA  &LENGTH
+         LCLC  &REG
+&LENGTH  SETA  K'&ARG1
+&REG     SETC  '&ARG1'(2,&LENGTH-2)
+         MVC   TRCDATA(8),0(&REG)      Move in entity type
+         AGO   .CREA019
 .CREA010 ANOP
-         MVC   TRCDATA+8(4),=A(&ARG2)   Save entity address
+         MVC   TRCDATA(8),=CL8'&ARG1'   Move in entity type
+.*
+.CREA019 ANOP
+         AIF   ('&ARG2'(1,1) NE '(').CREA020
+         ST    &ARG2,TRCDATA+8          Save entity address
+         AGO   .CREA030
 .CREA020 ANOP
+         MVC   TRCDATA+8(4),=A(&ARG2)   Save entity address
+.CREA030 ANOP
          DROP  R14
+         LM    R14,R15,12(R13)     Restore R14 and R15
          MEXIT
 .*
 .*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -217,6 +242,7 @@ $&SYSNDX.Z EQU *
 .*
 .INIT    ANOP
 .*
+         MNOTE 0,'Registers 14, 15 and 0 destroyed by this code'
          LM    R14,R15,STACK       Pick up stack pointers
          L     R0,=A(1024*TRCENTL) Length for 1024 entres
          CR    R0,R15              Will 1K worth of entries fit?
@@ -245,6 +271,7 @@ $&SYSNDX.B EQU *
 .ENTER   ANOP
 .*
          DROP  R14
+         LM    R14,R15,12(R13)     Restore R14 and R15
          MEXIT
 .*
 .*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -262,6 +289,7 @@ $&SYSNDX.B EQU *
          MVC   TRCDATA(4),=A(&ARG1)     Save return code
 .EXIT020 ANOP
          DROP  R14
+         LM    R14,R15,12(R13)     Restore R14 and R15
          MEXIT
 .*
 .*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -272,13 +300,24 @@ $&SYSNDX.B EQU *
 .*
 .RETURN  ANOP
 .*
-         MVC   TRCDATA(8),=CL8'&ARG1'   Move in routine name
-         AIF   ('&ARG2'(1,1) NE '(').RETU010
-         ST    &ARG2,TRCDATA+8          Save return code
-         AGO   .RETU020
+         AIF   ('&ARG1'(1,1) NE '(').RETU010
+         LCLA  &LENGTH
+         LCLC  &REG
+&LENGTH  SETA  K'&ARG1
+&REG     SETC  '&ARG1'(2,&LENGTH-2)
+         MVC   TRCDATA(8),0(&REG)      Move in entity type
+         AGO   .RETU019
 .RETU010 ANOP
-         MNOTE 8,'Return code value must be in register'
+         MVC   TRCDATA(8),=CL8'&ARG1'   Move in routine name
+.*
+.RETU019 ANOP
+         AIF   ('&ARG2'(1,1) NE '(').RETU020
+         ST    &ARG2,TRCDATA+8          Save return code
+         AGO   .RETU999
 .RETU020 ANOP
+         MNOTE 8,'Return code value must be in register'
+.RETU999 ANOP
          DROP  R14
+         LM    R14,R15,12(R13)     Restore R14 and R15
 .*
          MEND
