@@ -169,6 +169,39 @@ static struct mailblok {
     char *lclhost[MAXLCLHOST]; /* local-domain strings */
 #define MAXRSCSDOM 9
     char *rscsdom[MAXRSCSDOM]; /* rscs-domain strings */
+    char dbgflg[8];          /* Debugging flag bytes                 */
+                             /* Flags defined in dbgflg[0]           */
+#define TRACE_CALLS              0x80  /* Procedure call trace       */
+#define TRACE_CHECK_LOCAL        0x40  /* Trace check_local routine  */
+#define TRACE_FIND_ROUTD         0x20  /* Trace find_routd routine   */
+#define TRACE_IS_MAILER          0x10  /* Trace is_mailer routine    */
+#define TRACE_REP_MAIL           0x08  /* Trace rep_mail routine     */
+#define TRACE_S_GETDATA          0x04  /* Trace s_getdata routine    */
+#define TRACE_S_INPUT            0x02  /* Trace s_input routine      */
+#define TRACE_S_RCPT             0x01  /* Trace s_rcpt routine       */
+
+                             /* Flags defined in dbgflg[1]           */
+#define TRACE_S_MAIL             0x80  /* Trace s_mail routine       */
+#define TRACE_PARSE_DATA_HEADER  0x40  /* Trace parse_data_header    */
+
+                             /* Flags defined in dbgflg[2]           */
+                             /*    Not used (yet)                    */
+
+                             /* Flags defined in dbgflg[3]           */
+                             /*    Not used (yet)                    */
+
+                             /* Flags defined in dbgflg[4]           */
+                             /*    Not used (yet)                    */
+
+                             /* Flags defined in dbgflg[5]           */
+                             /*    Not used (yet)                    */
+
+                             /* Flags defined in dbgflg[6]           */
+                             /*    Not used (yet)                    */
+
+                             /* Flags defined in dbgflg[7]           */
+                             /*   used for assembler routines        */
+#define DBGBLDLS                 0x80  /* Trace BUILDLST processing  */
 } ;
 
 /* MAILBLOK is created by MAILBLOK ASSEMBLE file during MAILER gen   */

@@ -652,6 +652,37 @@ RSCSDOM7 DC    A(0)                Domain #7 for the RSCS network.
 RSCSDOM8 DC    A(0)                Domain #8 for the RSCS network.
 RSCSDOM9 DC    A(0)                Domain #9 for the RSCS network.
 RSCSDOM  EQU   RSCSDOM1,*-RSCSDOM1 The whole array.
+         SPACE 1
+* Debugging flag bytes
+         SPACE 1
+DBGFLG0  DC    X'0'                SMTPIN tracing flags
+*        EQU   X'80'               Procedure call trace
+*        EQU   X'40'               Trace check_local
+*        EQU   X'20'               Trace find_routd
+*        EQU   X'10'               Trace is_mailer
+*        EQU   X'08'               Trace rep_mail
+*        EQU   X'04'               Trace s_getdata
+*        EQU   X'02'               Trace s_input
+*        EQU   X'01'               Trace s_rcpt
+         SPACE 1
+DBGFLG1  DC    X'0'                More SMTPIN tracing flags
+*        EQU   X'80'               Trace s_mail
+*        EQU   X'40'               Trace parse_data_header
+*        EQU   X'20'               Unused
+*        EQU   X'10'               Unused
+*        EQU   X'08'               Unused
+*        EQU   X'04'               Unused
+*        EQU   X'02'               Unused
+*        EQU   X'01'               Unused
+         SPACE 1
+DBGFLG2  DC    X'0'                Unused
+DBGFLG3  DC    X'0'                Unused
+DBGFLG4  DC    X'0'                Unused
+DBGFLG5  DC    X'0'                Unused
+DBGFLG6  DC    X'0'                Unused
+         SPACE 1
+DBGFLG7  DC    X'0'                Various assembler routines
+DBGBLDLS EQU   X'80'               Trace BUILDLST processing
          DS    0D            Just for pretty
 MAILBLEN EQU   *-MAILXXXX    LENGTH IN BYTES
          POP   PRINT
