@@ -218,6 +218,7 @@ SHUTDOWN EQU   *             HALT COMMAND
          B     RET
          SPACE ,
 RELOAD   EQU   *
+         CALL  MAILSMSD           Disable SMSGs (turn 'em on later)
          WTR   LER039        ISSUE RELOADING MESSAGE
          NI    MAILCMD,255-MCMDRELD  TURN OFF RELOAD FLAG
          B     RELENT        GOTO RELOAD ENTRY
