@@ -84,12 +84,17 @@ WTRX&SYSNDX DS      0H
          MEND
          MACRO
          RSCSTAG
+         PUSH  PRINT
+         AIF   ('&SYSPARM' NE 'SUP').NOSUP
+         PRINT OFF,NOGEN
+.NOSUP   ANOP
 RSCSTAG  DSECT
          DC    C'FILE ('
 RSCSIF   DC    C'0000'
          DC    C') ORIGIN '
 RSCSNODE DC    CL8' ',C' '
 RSCSUSER DC    CL8' '
+         POP   PRINT
          MEND
        MACRO
 &LABEL LOWUP
@@ -97,7 +102,9 @@ RSCSUSER DC    CL8' '
 &COUNT SETA     0
 &LABEL DS   0C
          PUSH  PRINT
+         AIF   ('&SYSPARM' NE 'SUP').NOSUP
          PRINT OFF,NOGEN
+.NOSUP   ANOP
 .LOOP  ANOP
        AIF ('&COUNT' EQ '256').EXIT
        DC       AL1(&COUNT)
@@ -119,7 +126,9 @@ RSCSUSER DC    CL8' '
 &N       SETA      &LEN
 &LABEL   EQU       *
          PUSH  PRINT
+         AIF   ('&SYSPARM' NE 'SUP').NOSUP
          PRINT OFF,NOGEN
+.NOSUP   ANOP
 .LOOP    ANOP
 &N       SETA      &N-1
          DC        AL1(&N)
@@ -210,9 +219,9 @@ WTRX&SYSNDX DS      0H
          MACRO
          BLOCKS
          PUSH  PRINT
-         AIF ('&SYSECT' EQ 'MAILER').PRINT
+         AIF   ('&SYSPARM' NE 'SUP').NOSUP
          PRINT OFF,NOGEN
-.PRINT   ANOP
+.NOSUP   ANOP
          EJECT
 **=================================================================**
 **        CUCCA VM NETWORK MAILER - VERSION 1                      **
@@ -446,10 +455,6 @@ CMD202   EQU   0             ISSUE AN SVC 202 WITH THE DATA.
          AIF   ('&VERSION' NE '').OK                             [1.22]
 &VERSION SETC  ' '                                               [1.22]
 .OK      ANOP                                                    [1.22]
-         PUSH  PRINT
-         AIF ('&SYSECT' EQ 'MAILBLOK').PRINT
-         PRINT OFF,NOGEN
-.PRINT   ANOP
          EJECT ,
 *--------------------------------------------------------------------
 *        CUCCA VM NETWORK MAILER VERSION 1   1/28/82
@@ -459,7 +464,11 @@ CMD202   EQU   0             ISSUE AN SVC 202 WITH THE DATA.
 *  LAST EDIT: 8/6/82  BY ALAN CROSSWELL
 *
 *--------------------------------------------------------------------
+         PUSH  PRINT
          AIF ('&DSECT' EQ 'NO').DC
+         AIF   ('&SYSPARM' NE 'SUP').NOSUP
+         PRINT OFF,NOGEN
+.NOSUP   ANOP
 MAILBLOK DSECT
          AGO .DSECT
 .DC      ANOP
@@ -645,6 +654,10 @@ MAILBLEN EQU   *-MAILXXXX    LENGTH IN BYTES
          MEND
          MACRO
          TRACETBL
+         PUSH  PRINT
+         AIF   ('&SYSPARM' NE 'SUP').NOSUP
+         PRINT OFF,NOGEN
+.NOSUP   ANOP
 TRCENT   DSECT
 TRCTYPE  DS    CL8                 Entry type
 TRCROUTN DS    CL8                 Name of routine making entry
@@ -665,4 +678,5 @@ TRCENTL  EQU   *-TRCENT
          SPACE 1
 *+0      DS    CL8                 Name of routine called
 *+8      DS    F                   Return code
+         POP   PRINT
          MEND  ,

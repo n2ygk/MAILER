@@ -93,7 +93,6 @@ R12 EQU 12 - BASE REGISTER
 R13 EQU 13 - SAVE AREA
 R14 EQU 14 -
 R15 EQU 15 - RETURN CODE
-         PRINT NOGEN
          SPACE 2                                                  UW002
          WXTRN LCLADP                                             UW002
          EJECT ,

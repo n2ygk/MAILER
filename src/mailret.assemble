@@ -67,9 +67,6 @@ R13 EQU 13 - SAVE AREA
 R14 EQU 14 - SUBROUTINE LINKAGE
 R15 EQU 15 - SUBROUTINE LINKAGE
          SPACE
-         AIF   ('&SYSPARM' NE 'SUP').NOSUP                       [1.23]
-         PRINT NOGEN
-.NOSUP   ANOP  ,                                                 [1.23]
          BLOCKS
          MAILBLOK
          EJECT

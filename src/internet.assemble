@@ -132,7 +132,6 @@ R15 EQU 15 - SUBROUTINE LINKAGE
          BLOCKS ,
          MAILBLOK ,
          EJECT ,
-         PRINT NOGEN
          PUNCH 'SPB'            TELL LOADER TO START ON NEW PAGE
 INTERNET CSECT ,
          SAVE  (14,12),,*        SAVE CALLER'S REGISTERS

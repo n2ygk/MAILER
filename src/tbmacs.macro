@@ -6,6 +6,10 @@
 * Table lookup routine macros
          MACRO
          TBENTRY
+         PUSH  PRINT
+         AIF   ('&SYSPARM' NE 'SUP').NOSUP
+         PRINT OFF,NOGEN
+.NOSUP   ANOP
 TBENTRY  DSECT
 TBE$STR  DS        A
 TBE$DSP  DS        A
@@ -16,6 +20,7 @@ TBS$FLG  DS        X
 TBS$SIZ  DS        X
 TBS$STR  DS        0C
 TBS$LEN  EQU   *-TBS
+         POP   PRINT
          MEND  ,
          MACRO
 &LABEL   TBSTART   &MAX=0
@@ -33,7 +38,12 @@ TBS$LEN  EQU   *-TBS
          MEND
          MACRO
          TBINI
+         PUSH  PRINT
+         AIF   ('&SYSPARM' NE 'SUP').NOSUP
+         PRINT OFF,NOGEN
+.NOSUP   ANOP
          COPY      TBBITS
+         POP   PRINT
          MEND
          MACRO
          TBEND
@@ -82,6 +92,10 @@ TB#&TBCNT&TBLEN DC  C&STR
          MEND
          MACRO
 &LABEL   TBTAB     &FLAG=0,&LEN=0,&MAX=0,&ADDRESS=0,&DSECT=NO
+         PUSH  PRINT
+         AIF   ('&SYSPARM' NE 'SUP').NOSUP
+         PRINT OFF,NOGEN
+.NOSUP   ANOP
          LCLC      &TFLAG,&TLEN,&TMAX,&TADDR
          AIF ('&DSECT' EQ 'YES').DSECT
 &LABEL   DS        0F                  FULLWORD ALIGNED
@@ -98,4 +112,5 @@ TBTAB    DSECT
 &TLEN    DC        A(&LEN)             CURRENT TABLE LENGTH
 &TMAX    DC        A(&MAX)             MAXIMUM TABLE LENGTH
 &TADDR   DC        A(&ADDRESS)         ADDRESS OF TABLE
+         POP   PRINT
          MEND  ,

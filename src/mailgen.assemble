@@ -142,13 +142,6 @@ GEN      TITLE 'MAILGEN     Columbia Univ Network MAILER (Rel. 2)      *
 *-------------------------------------------------------------------*
 *        Local Macros                                               *
 *-------------------------------------------------------------------*
-         SPACE ,
-         AIF   ('&SYSPARM' EQ 'SUP').NOGEN
-         PRINT GEN
-         AGO   .SKIPIT
-.NOGEN   ANOP
-         PRINT NOGEN
-.SKIPIT  ANOP
          EJECT ,
 *-------------------------------------------------------------------*
 *        Parameters                                                 *

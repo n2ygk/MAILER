@@ -166,12 +166,6 @@ DBG&SYSNDX DS  0H
          MEND
          GBLA  &DODEBUG
 &DODEBUG SETA  0             set to 1 for debugging
-         AIF   ('&SYSPARM' EQ 'SUP').NOGEN
-         PRINT GEN
-         AGO   .SKIPIT
-.NOGEN   ANOP
-         PRINT NOGEN
-.SKIPIT  ANOP
          EJECT ,
 *-------------------------------------------------------------------*
 *        Parameter List definition                                  *

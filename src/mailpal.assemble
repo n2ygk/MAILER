@@ -220,12 +220,6 @@ PAL      TITLE 'MAILPAL     Columbia Univ Network MAILER (Rel. 2)      *
          ENTRY SEMADDRL
          ENTRY SEMGOAL
 .DB00    ANOP
-         AIF   ('&SYSPARM' EQ 'SUP').NOGEN
-         PRINT GEN
-         AGO   .SKIPIT
-.NOGEN   ANOP
-         PRINT NOGEN
-.SKIPIT  ANOP
          EJECT ,
 *-------------------------------------------------------------------*
 *        Parameters                                                 *

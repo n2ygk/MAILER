@@ -35,8 +35,6 @@ R14 EQU 14 -
 BR  EQU 14 - C base register
 R15 EQU 15 -
 AR  EQU 15 - C parms and autos
-        SPACE ,
-        PRINT NOGEN
         EJECT ,
 CFUNC   CSECT ,
         ENTRY SVC202,CPCMD,ACALL,CTBLUK

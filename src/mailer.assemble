@@ -7,7 +7,6 @@ MAIL     TITLE 'CUCCA VM NETWORK MAILER - VERSION 1'
 *    City of New York.                                                *
 *---------------------------------------------------------------------*
 MAILER   CSECT ,
-         PRINT NOGEN
 * MAILER - MAIL DISTRIBUTION DISCONNECTED MACHINE.
 *
 * THIS IS THE TOP LEVEL PROGRAM FOR THE MAILER DISCONNECTED
@@ -30,8 +29,6 @@ MAILER   CSECT ,
          DEVTAB ,
          SPACE 2                                                  UW002
          WXTRN LCLMOD                                             UW002
-         SPACE 2
-         PRINT GEN
          EJECT ,
 MAILER   CSECT ,
          USING MAILER,R15    TEMP ADDRESSABILITY

@@ -85,9 +85,7 @@ LOCSIZE  EQU   *-LOCALS      length of this dsect
          BLOCKS ,
          REGEQU ,
          SPACE 1
-         PRINT NOGEN
          NUCON DSECT
-         PRINT GEN
          EJECT ,
 MAILDBG  CSECT ,
 SHOWTOKS MENTRY STK=NONE

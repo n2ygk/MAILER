@@ -49,9 +49,6 @@ R12 EQU 12 - program base
 R13 EQU 13 - save area
 R14 EQU 14 - linkage
 R15 EQU 15 - linkage
-         AIF ('&SYSPARM' NE 'SUP').GEN
-         PRINT NOGEN
-.GEN     ANOP
          BLOCKS ,
          MAILBLOK ,
          FSCBD  ,

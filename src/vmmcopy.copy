@@ -1,4 +1,8 @@
 *COPY    VMM
+         PUSH  PRINT
+         AIF   ('&SYSPARM' NE 'SUP').NOSUP
+         PRINT OFF,NOGEN
+.NOSUP   ANOP
 *---------------------------------------------------------------------*
 *      MAILER -- Copyright (c) 1982,1987 Columbia University.         *
 *    Program Property of the Trustees of Columbia University in the   *
@@ -22,3 +26,4 @@ VMMKEY   DC    CL8' '        SEARCH KEYWORD
 VMMFLAGS DC    CL3' '        USER SPECIFIED FLAGS
 VMMLAST  DC    C';'          EACH CARD ENDS WITH A SEMICOLON
 VMMLEN   EQU   *-VMMIDENT    LENGTH
+         POP   PRINT
