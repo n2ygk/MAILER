@@ -446,7 +446,7 @@ return exitrc
 
 DeleteAll:  /* Do processing for a DELETE * operation */
 
-'ERASE' foruser 'FORWARD A'                  /* Kill forward file     */
+'ERASE' foruser 'FORWARD' diskmode           /* Kill forward file     */
 'EXECDROP' foruser 'FORWARD'                 /* Drop in memory copy   */
 call msg 'Forward:  Deleting all forwardings'
 j=0                                          /* Initialize            */
