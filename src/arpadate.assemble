@@ -94,7 +94,9 @@ DAYO     EQU   *
          CLI   ZONE,C'+'     FIRST CHARACTER OF ZONE '+'?
          BE    EXTZONE       YES, EXTEND ZONE
          CLI   ZONE,C'-'     FIRST CHARACTER OF ZONE '-'?
-         BNE   EXTZONEE      NEITHER
+         BE    EXTZONE       Yes, extend zone
+         MVC   0(2,R9),=C'  ' Fill in with blanks
+         B     EXTZONEE      Join common code
 EXTZONE  DS    0H
          MVC   0(2,R9),=C'00' EXTEND ZONE WITH '00'
          LA    R9,2(,R9)     UPDATE TO END OF STRING
