@@ -99,6 +99,7 @@ SHOTAB   TBSTART ,           SHOW COMMAND OPTIONS
          T 'INCOMING'
          T 'ORIGINS'
          T 'OUTGOING'
+         T 'PATH'
          T 'SPECIAL'
          T 'STATUS'
          T 'VERSION'
@@ -133,7 +134,8 @@ $ACTIVE  DS    0H                  SHOW ACTIVE
 *--------------------------------------------------------------------
          SPACE 1
 $STATUS  DS    0H
-         MVC   WORKBUF(LSTMSG),STMSG    Copy msg skeleton
+         L     R15,=A(STMSG)
+         MVC   WORKBUF(LSTMSG),0(R15)   Copy msg skeleton
          TM    MAILSTAT,MSTINWT         In wait state?
          BO    $STAT1                   ---> Yes
          MVC   WORKBUF+STSTAT(8),=CL8'RUNNING'
@@ -176,20 +178,6 @@ $STAT3   EQU   *
          LA    R0,LSTMSG
          BAL   R14,WRITEMSG
          B     RET
-STMSG    DC    C'Since: 00/00/00 00:00:00  Status: WAITING'
-         DC    C'  Reader: QUIESCENT  ',X'15'
-         DC    C'Msgs in: 00000  out: 00000'
-         DC    C'  Max Multi: 00000  Stack max: **% of 0000K'
-LSTMSG   EQU   *-STMSG
-STTIME   EQU   7
-STSTAT   EQU   34
-STRDR    EQU   51
-STMIN    EQU   72
-STMOUT   EQU   84
-STMUL    EQU   102
-STSTKM   EQU   120
-STSTKA   EQU   127
-STLEN    EQU   131
          EJECT ,
 *--------------------------------------------------------------------
 *                   S H O W    A U T H O R I Z E D
@@ -354,8 +342,98 @@ PRINTVA  DS    0H            ROUTINE TO PRINT VALD
          OI    INMAX+5(R2),X'F0'
          LM    R14,R12,12(R13)
          BR    R14
-         SPACE ,
-         SPACE 3
+         EJECT ,
+*--------------------------------------------------------------------
+*        S H O W    P A T H
+*
+*  Shows information about the routing that will be used for a
+*  destination address.
+*
+*  Finds the routing using the FNROUTD routine (also used by BUILDLST
+*  and SMTPIN).  Prints the ROUTD (if one is found).
+*
+*--------------------------------------------------------------------
+         SPACE 1
+$PATH    DS    0H
+         CLC   ARGC,=F'0'          Any argument?
+         BE    $PATHHLP            ---> No, go tell them how
+         L     R1,=A(PATHMSG)      Point to title lines
+         LA    R0,LPATHMSG
+         BAL   R14,WRITEMSG        Print title lines
+$PATH000 EQU   *
+         CLC   ARGC,=F'0'          Done?
+         BE    $PATHEND            ---> Yes
+         L     R1,ARGVP            Get token address
+         L     R4,0(R1)            Get ptr
+         LA    R1,4(,R1)           Bump ARGV pointer to next token
+         ST    R1,ARGVP            Update ARGV pointer
+         L     R1,ARGC             Get remaining token count
+         BCTR  R1,0                Decrement
+         ST    R1,ARGC             Update it
+         MVI   WORKBUF,C' '        Put blanks in output buffer
+         MVC   WORKBUF+1(PATHLEN-1),WORKBUF
+         SRDL  R4,24               Get length here
+         SRL   R5,8                   and address here
+         CALL  FNROUTD,((R5),(R4)) Find ROUTD
+         LTR   R1,R15              Found it?
+         BZ    $PATHNF             ---> Nope
+         USING ROUTD,R1
+         C     R4,=A(PATHNODE-1)   Too long?
+         BNH   $PATH100            ---> No
+         LA    R4,=A(PATHNODE-1)   Use only this much
+$PATH100 EQU   *
+         LA    R2,WORKBUF               Format ROUTD here
+         LR    R3,R5                    Copy string pointer
+         BCTR  R4,0                     Decrement for EX
+         EX    R4,MOVEAL                MVC 0(0,R2),0(R3)
+         CLC   RTROUTE,CPUSTR           Is this my node?
+         BNE   $PATH105                 ---> No
+         MVC   PATHNODE(8,R2),=CL8'   *' Show local node
+         B     $PATH110
+$PATH105 EQU   *
+         MVC   PATHNODE(8,R2),RTROUTE   Node from ROUTD
+$PATH110 EQU   *
+         CLC   RTUSER,MAILVMID          Is this my userid?
+         BNE   $PATH115                 ---> No
+         MVC   PATHID(8,R2),=CL8'   *'  Show local id
+         B     $PATH120
+$PATH115 EQU   *
+         MVC   PATHID(8,R2),RTUSER      Userid from ROUTD
+$PATH120 EQU   *
+         MVC   PATHEXIT(8,R2),RTPROG    Exit name from ROUTD
+         DROP  R1
+         B     $PATH300                 ---> Join common code
+         SPACE 1
+$PATHNF  EQU   *                        ROUTD not found for destination
+         C     R4,=A(PATHLEN-10)        Too long?
+         BNH   $PATH200                 ---> No
+         LA    R4,=A(PATHLEN-10)        Use only this much
+$PATH200 EQU   *
+         LA    R2,WORKBUF               Message goes here
+         LR    R3,R5                    Copy string pointer
+         BCTR  R4,0                     Decrement for EX
+         EX    R4,MOVEAL                MVC 0(0,R2),0(R3)
+         LA    R2,2(R4,R2)              Start here for next part
+         LA    R3,=CL9'not found'       Point to next part
+         LA    R4,8                     Decremented length
+         EX    R4,MOVEAL                MVC 0(0,R2),0(R3)
+         B     $PATH300                 ---> Join common code
+         SPACE 1
+$PATH300 EQU   *
+         LA    R0,PATHLEN               Length of msg
+         LA    R1,WORKBUF               Msg is here
+         BAL   R14,WRITEMSG             Print the message
+         B     $PATH000                 ---> Around again
+         SPACE 1
+$PATHEND EQU   *
+         B     RET
+         SPACE 2
+$PATHHLP EQU   *
+         L     R1,=A(PATHHELP)
+         LA    R0,L'PATHHELP
+         BAL   R14,WRITEMSG             Write usage message
+         B     RET
+         EJECT ,
 *--------------------------------------------------------------------
 *        S H O W    O U T G O I N G   /   S P E C I A L
 *                   D O M A I N S   /  O R I G I N S
@@ -470,6 +548,18 @@ OUTMAX   EQU   59
 OUTTOT   EQU   66
 OUTLEN   EQU   72
          SPACE ,
+*--------------------------------------------------------------------
+*  Routine for format a ROUTD
+*
+*  Regs at entry:
+*
+*    R0  - TBENTRY pointer
+*    R1  - ROUTD pointer
+*    R2  - Buffer in which to format output
+*
+*  Regs at exit: Restored to entry values
+*
+*--------------------------------------------------------------------
 PRINTRT  DS    0H            ROUTINE TO PRINT ROUTD
          STM   R14,R12,12(R13)
          MVI   0(R2),C' '    BLANK IT
@@ -676,11 +766,32 @@ MOVEDATA MVC   MSGDATA(0),0(R5)
 MOVEVAL  MVC   WORKBUF(0),0(R5)
 MOVEVAL2 MVC   WORKBUF+8(0),0(R5)
          LTORG ,
-SHLPMSG  DC    C'SHOW options:  STatus | Version | [ACtive] '
-         DC    C'{Domains | ORigins | OUtgoing | SPecial}'
-LSHLP    EQU   *-SHLPMSG
+         SPACE 1
+MSGCMD   DC    C'Msgcmd'           For TBLUK lookup
+         SPACE 1
+SAVEAREA DS    18F           SAVE AREA
+         SPACE 1
+WRITSAVE DS    18F                 WRITEMSG save area
+         SPACE 1
+DWORD    DS    D
+         SPACE 1
+TWORK    DS    64F           TBLUK WORK AREA
+         SPACE 1
+$OUTTAB  DS    F
+         SPACE 1
+WORKBUF  DS    1000C         SHOULD BE ENUF FOR MOST COMMANDS
+LWORKBUF EQU   *-WORKBUF
+         SPACE 2
+*  Messages
+         SPACE 1
+BOGMSG   DC    C'Command not allowed or invalid.'
+         SPACE 1
+ENDMESG  DC    C'- output complete.'
+         SPACE 1
 INHLP    DC    C'Specify a mail server node name and userid.'
+         SPACE 1
 INMSG2   DC    C'Incoming server not found.'
+         SPACE 1
 INMSG    DC    C'      Server      Validity  Msg  '
          DC    C'Error   Avg    Max   Total',X'15'
          DC    C'  Node    Userid    Exit   count '
@@ -688,19 +799,44 @@ INMSG    DC    C'      Server      Validity  Msg  '
          DC    C'======== ======== ======== ===== '
          DC    C'===== ====== ====== ======'
 LINMSG  EQU   *-INMSG
+         SPACE 1
 OUTHLP   DC    C'Specify a network host or alias name.'
+         SPACE 1
 OUTMSG2  DC    C'Host (or alias) not found.'
-ENDMESG  DC    C'- output complete.'
-BOGMSG   DC    C'Command not allowed or invalid.'
          SPACE 1
-MSGCMD   DC    C'Msgcmd'           For TBLUK lookup
+PATHMSG  DC    C'    Host                                             '
+         DC    C' Server  Punching'
+         DC    X'15'
+         DC    C' (or alias)                                   Node   '
+         DC    C' Userid    Exit'
+         DC    X'15'
+         DC    C'=========================================== ======== '
+         DC    C'======== ========'
+LPATHMSG EQU   *-PATHMSG
+PATHNODE EQU   44                  Offset to field in output
+PATHID   EQU   53
+PATHEXIT EQU   62
+PATHLEN  EQU   72                  Total message length
          SPACE 1
-SAVEAREA DS    18F           SAVE AREA
-WRITSAVE DS    18F                 WRITEMSG save area
-DWORD    DS    D
-TWORK    DS    64F           TBLUK WORK AREA
-$OUTTAB  DS    F
+PATHHELP DC    C'Specify one or more host or alias names.'
          SPACE 1
-WORKBUF  DS    1000C         SHOULD BE ENUF FOR MOST COMMANDS
-LWORKBUF EQU   *-WORKBUF
+SHLPMSG  DC    C'SHOW options:  STatus | Version | [ACtive] '
+         DC    C'{Domains | ORigins | OUtgoing | SPecial} | Path'
+LSHLP    EQU   *-SHLPMSG
+         SPACE 1
+STMSG    DC    C'Since: 00/00/00 00:00:00  Status: WAITING'
+         DC    C'  Reader: QUIESCENT  ',X'15'
+         DC    C'Msgs in: 00000  out: 00000'
+         DC    C'  Max Multi: 00000  Stack max: **% of 0000K'
+LSTMSG   EQU   *-STMSG
+STTIME   EQU   7
+STSTAT   EQU   34
+STRDR    EQU   51
+STMIN    EQU   72
+STMOUT   EQU   84
+STMUL    EQU   102
+STSTKM   EQU   120
+STSTKA   EQU   127
+STLEN    EQU   131
+         SPACE 2
          END   MAILCMD1
