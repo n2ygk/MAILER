@@ -1723,11 +1723,12 @@ int l;
 
 /*
  * find_routd:  Return pointer to ROUTD given hostname string
- *   (1) see if RSCS-domains are found and if so,  see if hostname
- *       ends in it.  If so,  strip it off before (2).
- *   (2) look for the hostname in MAILRTAB
- *   (3) if not found,  look for it in MAILDTAB
- *   (4) if not found and MOPTAUN true,  look for *DEFAULT* in MAILRTAB
+ *   (1) Look up full host string in MAILRTAB
+ *   (2) If not found, look for full host string in MAILDTAB
+ *   (3) If not found and RSCS-domains are found strip RSCS domain
+ *   (4) look for the hostname in MAILRTAB
+ *   (5) if not found,  look for it in MAILDTAB
+ *   (6) if not found and MOPTAUN true,  look for *DEFAULT* in MAILRTAB
  *  Returns ptr to ROUTD or NULL if not found.
  */
 _fnroutd(s, l)     /* assembly-language callable stub */
@@ -1764,7 +1765,23 @@ int l;
     wrterm(dbgmsg);
 #endif
 
-    /* (1) see if it ends in .<RSCS-domain> */
+    /* (1) see if it is in MAILRTAB */
+    if (ctbluk(&te, mailblok.mailrtab, s, l) == TBMATCH) {
+#ifdef DEBUG_FIND_ROUTD
+        wrterm("==> find_routd: Found in MAILRTAB");
+#endif
+        return te->tbe_dsp;        /* table dispatch value is *routd */
+    }
+
+    /* (2) see if it is in MAILDTAB */
+    if (ctbluk(&te, mailblok.maildtab, s, ol) == TBMATCH) {
+#ifdef DEBUG_FIND_ROUTD
+        wrterm("==> find_routd: Found in MAILDTAB");
+#endif
+        return te->tbe_dsp;
+    }
+
+    /* (3) see if it ends in .<RSCS-domain> */
     if (mailblok.rscsdom[0] != 0) {
         int ri;
 #ifdef DEBUG_FIND_ROUTD
@@ -1793,7 +1810,7 @@ int l;
         }
     }
 
-    /* (2) see if it is in MAILRTAB */
+    /* (4) see if it is in MAILRTAB */
     if (ctbluk(&te, mailblok.mailrtab, s, l) == TBMATCH) {
 #ifdef DEBUG_FIND_ROUTD
         wrterm("==> find_routd: Found in MAILRTAB");
@@ -1801,7 +1818,7 @@ int l;
         return te->tbe_dsp;        /* table dispatch value is *routd */
     }
 
-    /* (3) see if it is in MAILDTAB */
+    /* (5) see if it is in MAILDTAB */
     if (ctbluk(&te, mailblok.maildtab, s, ol) == TBMATCH) {
 #ifdef DEBUG_FIND_ROUTD
         wrterm("==> find_routd: Found in MAILDTAB");
@@ -1809,7 +1826,7 @@ int l;
         return te->tbe_dsp;
     }
 
-    /* (4) see if MOPTAUN and *DEFAULT* is in MAILRTAB */
+    /* (6) see if MOPTAUN and *DEFAULT* is in MAILRTAB */
     if (mailblok.mailopts&MOPTAUN
         && ctbluk(&te, mailblok.mailrtab, "*DEFAULT*", 9)
                                                    == TBMATCH) {
