@@ -516,11 +516,20 @@ BADLOC   EQU   *             LOCAL USER GAVE BAD ADDRESS
          SPACE ,
 *----------------------------------------------------------------[1.23]
 *    Get here if sender is not in the table and file is from     [1.23]
-*    the network.  Check to see if Allow-Unknown-Nodes is true   [1.23]
-*    and try the *DEFAULT* entry in the table before giving up   [1.23]
+*    the network.  Check to see if sending userid is a generic
+*    id (identified as '*DEFAULT* userid' in the INCOMING table.
+*
+*    If a generic id is not found, check to see if Allow-Unknown-Nodes
+*    is true and try the *DEFAULT* entry in the table before giving up
 *    on him.                                                     [1.23]
 *----------------------------------------------------------------[1.23]
 NETWORK  EQU   *             UNKNOWN NETWORK SENDER              [1.23]
+         MVC   GENERICU,MAILUSER       Source user
+         CALL  TBLUK,((R5),GENERIC,L'GENERIC,TWORK)
+         LR    R8,R1         Get a better handle
+         LTR   R15,R15       Found it?
+         BZ    DEFAUN        Do default unknown node processing
+         SPACE 1
 *  SEE IF THE ALLOW-UNKNOWN-NODES FLAG IS ON. IF SO, IGNORE THIS
 *  ERROR.
          TM    MAILOPTS,MOPTAUN        CHECK FLAG
@@ -625,6 +634,11 @@ DATE     DC    C'DATE'
 RSENDER  DC    C'RESENT-SENDER'        [1.16]
 RFROM    DC    C'RESENT-FROM'          [1.16]
 RDATE    DC    C'RESENT-DATE'          [1.16]
+         SPACE 1
+GENERIC  DS    0CL16
+         DC    CL8'*DEFAULT*'
+GENERICU DC    CL8'userid   '          Replaced with sender's id
+         SPACE 1
 DEFAULT  DC    0CL16' ',CL8'*DEFAULT*',CL8'*DEFAULT*'
 SAVE     DS    18F                     SAVE AREA
 TWORK    DS    64F

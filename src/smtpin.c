@@ -131,6 +131,20 @@ check_incoming()
         if (acall(v->vaaddr, 0, &val_plist) == 0)
             return 1;               /* user exit trusts him */
     }
+
+    /* 'mailuser@mailnode' not found. Check for generic id specified */
+    /* 'mailuser@*default*'.                                         */
+
+    bcopy("*DEFAULT*",key,8);
+    bcopy(mailuser,&key[8],8);
+    if (ctbluk(&te, mailvtab, key, 16) == TBMATCH) {
+        struct vald *v = (struct vald *)te->tbe_dsp;
+        if (v->vaaddr == 0)         /* no user-supplied exit */
+            return 1;               /* so trust him now */
+        val_plist.mb = &mailblok;
+        if (acall(v->vaaddr, 0, &val_plist) == 0)
+            return 1;               /* user exit trusts him */
+    }
     return 0;                       /* not in table - don't trust */
 }
 
@@ -1862,7 +1876,8 @@ struct fscb *fp;    /* fscb for data or zero for none */
  *  2. Look up routd for given domain and compare RTUSER to userid
  *  3. If not that, compare RTNODE/user to CPUSTR/MAILVMID.
  *  4. If not that, use RTNODE and user to check MAILVTAB.
- *  5. If not that, then return false:  not a mailer.
+ *  5. If not that, use '*DEFAULT*' and user to check MAILVTAB.
+ *  6. If not that, then return false:  not a mailer.
  *  If there are any bogus data structures, return true to play it
  *  safe (the idea is to prevent loops).
  */
@@ -1905,7 +1920,11 @@ struct fieldd *f;
     /* 4. look in mailvtab */
     if (ctbluk(&te, mailvtab, &key, 16) == TBMATCH)
       return 1;
-    /* 5. must not be a mailer! */
+    /* 5. look in mailvtab for '*default* userid' */
+    bcopy("*DEFAULT*",key.part.node,8);
+    if (ctbluk(&te, mailvtab, &key, 16) == TBMATCH)
+      return 1;
+    /* 6. must not be a mailer! */
     return 0;
 }
 
