@@ -77,7 +77,13 @@ TRIMOUT  EQU   *             here when have length in r4
          LA    R3,MAILUSER   address of userid
          CALL  TBLUK,((R5),(R3),(R4),TWORK) look for userid
          LTR   R15,R15       find it?
+         BZ    FOUND         ---> Yes
+         LA    R3,=CL8'*DEFAULT*'
+         LA    R4,8
+         CALL  TBLUK,((R5),(R3),(R4),TWORK) look for default entry
+         LTR   R15,R15       find it?
          BNZ   NOTFOUND      no, just return then
+FOUND    EQU   *
          LR    R8,R1         get a handle on the routd
          USING ROUTD,R8      address it
          ICM   R15,B'1111',RTADDR address of exit routine
