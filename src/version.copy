@@ -1,4 +1,4 @@
 *COPY VERSION
 *[1.22]new file:  contains mailer version number.                [1.22]
          GBLC  &VERSION                                          [1.22]
-&VERSION SETC  'R2.08 R208002'
+&VERSION SETC  'R2.08 R208004'

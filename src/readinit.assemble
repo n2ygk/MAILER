@@ -209,6 +209,11 @@ PASS1    EQU   *
          L     R1,FILELINE   GET LINE COUNTER
          LA    R1,1(R1)      INCREMENT IT
          ST    R1,FILELINE   AND RESTORE IT
+         L     R1,FSCBBUFF   Get buffer address
+         L     R15,FSCBSIZE  Get buffer length
+         S     R15,=F'2'     Decrement for MVC and EX
+         MVI   0(R1),C' '    Blank out the buffer
+         EX    R15,CLRBUFF
          FSREAD FSCB=(R8),ERROR=EOF1
 *--------  GET LENGTH OF THE RECORD ---------------------------------
          BAL   R14,GETLEN    GET LENGTH INTO R1
@@ -417,6 +422,13 @@ TREAD    EQU   *
          L     R1,FILELINE   GET LINE COUNTER
          LA    R1,1(R1)      INCREMENT IT
          ST    R1,FILELINE   AND RESTORE IT
+         USING FSCBD,R8      ADDRESS THE FSCB
+         L     R1,FSCBBUFF   Get buffer address
+         L     R15,FSCBSIZE  Get buffer length
+         DROP  R8
+         S     R15,=F'2'     Decrement for MVC and EX
+         MVI   0(R1),C' '    Blank out the buffer
+         EX    R15,CLRBUFF
          FSREAD FSCB=(R8),ERROR=EOF2  READ NEXT LINE
          BAL   R14,GETLEN    GET LENGHT OF IT
          LTR   R4,R1         IS IT A NULL LINE?
@@ -856,6 +868,7 @@ BADTBL   EQU   *             BAD TABLE ID
 *--------------------------------------------------------------------
 *        READ/ONLY DATA AND EXCUTABLE CODE
 *--------------------------------------------------------------------
+CLRBUFF  MVC   1(0,R1),0(R1)       Used to clear input buffer
 COPY     MVC   0(0,R3),0(R2)
 TRAPSEMI TRT   0(0,R3),0(R2)
 TRANSUP  TR    0(0,R3),UPCASE
