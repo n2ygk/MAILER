@@ -1506,7 +1506,7 @@ log_errors()
            rbuf[3] = '-';
            (*S.repf)(rbuf,rblen);
            (*S.repf)("554 Mailer problem: can't read error log.",
-                     &buf[4], 41);
+                     41);
            break;
         }
     } while (rc == 0);
