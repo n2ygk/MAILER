@@ -33,6 +33,15 @@
 #include "cmsbloks.h"
 #include "mailblok.h"
 
+/* Debugging flags (define at compile time) */
+
+/* DEBUG_CHECK_LOCAL        Trace check_local routine                */
+/* DEBUG_FIND_ROUTD         Trace find_routd routine                 */
+/* DEBUG_S_GETDATA          Trace s_getdata routine                  */
+/* DEBUG_S_INPUT            Trace s_input routine                    */
+/* DEBUG_S_RCPT             Trace s_rcpt routine                     */
+/* TRACE                    Procedure call trace                     */
+
 struct routd *find_routd();
 
 typedef enum {                    /* states of the server */
@@ -93,6 +102,10 @@ smtpin()
     int rlen;
     int rep_wrt();
 
+#ifdef TRACE
+    wrterm("==> Entered smtpin");
+#endif
+
     cpcmd("CLOSE 00C",9);
     if (cpcmd("READY 00C",9)) return 12;
     rep_init();                      /* init the reply file */
@@ -117,6 +130,10 @@ check_incoming()
     struct {
         int *mb;
     } val_plist;
+
+#ifdef TRACE
+    wrterm("==> Entered check_incoming");
+#endif
 
     if (mailblok.mailflg1&MFLG1LCL &&
         bcmp(mailblok.mailuser,mailblok.mailvmid,8) == 0)
@@ -153,6 +170,10 @@ rep_init()
 {
     int rc;
 
+#ifdef TRACE
+    wrterm("==> Entered rep_init");
+#endif
+
     fserase("smtp.reply.a");
     rc = fsinit(&repfile, "smtp.reply.a");
     repfile.fscbfv = 'V';
@@ -175,6 +196,10 @@ int l;
 {
     int rc,len,olen, olen2;
     char *cp,obuf[81];
+
+#ifdef TRACE
+    wrterm("==> Entered rep_wrt");
+#endif
 
     for (len = l-4, cp = &s[4]; len > 0; len -= olen, cp += olen) {
         olen = (len > 76)?76:len;   /* max(len,76) */
@@ -220,6 +245,10 @@ rep_send()
     register i = (int) S.rply;
     register j = ((S.verb==noverb)?0:2) + (S.error?0:1);
 
+#ifdef TRACE
+    wrterm("==> Entered rep_send");
+#endif
+
     fsclose(&repfile);
     if (mailblok.mailflg2&(MFLG2NLF|MFLG2NOH)) {
         /* Was an SMTP error (FROM: <>) or no host (FROM: <user>      */
@@ -242,6 +271,10 @@ rep_smtp()
     int buflen;
     int rc, rc2;
     int verbmode = 0;
+
+#ifdef TRACE
+    wrterm("==> Entered rep_smtp");
+#endif
 
     /* point punch at sender */
     bcopy("SPOOL 00D COPY 1 NOCONT CLASS M TO ",buf, buflen = 35);
@@ -310,6 +343,10 @@ rep_mail()
     struct fscb *fscbptr = (S.disk_error != diskother) ? &S.data_file
                                                        : 0;
 
+#ifdef TRACE
+    wrterm("==> Entered rep_mail");
+#endif
+
     if (mailblok.mailsfld) {  /* there was a valid MAIL FROM */
         if (!is_mailer(mailblok.mailsfld))
          err_mail(mailblok.mailsfld->fistr+1,
@@ -377,6 +414,10 @@ int (*func)();                    /* function to write replies to */
     char buf[200];
     int len;
 
+#ifdef TRACE
+    wrterm("==> Entered s_init");
+#endif
+
     mailblok.mailflg2 |= MFLG2SMT;
     mailblok.mailflg2 |= MFLG2NOR;   /* we build our own received */
     wtr("SMT",54,0);
@@ -398,6 +439,10 @@ s_init0(func)                       /* common init code */
 int (*func)();
 {
     int vrb = S.verb;
+
+#ifdef TRACE
+    wrterm("==> Entered s_init0");
+#endif
 
     bzero(&S, sizeof(S));          /* zero the whole mess */
     S.repf = func;
@@ -423,6 +468,10 @@ int bl;                         /* limit on result length */
 {
     u_char *lcldp;
     int  lcldl;
+
+#ifdef TRACE
+    wrterm("==> Entered mydomain");
+#endif
 
     if (mailblok.lclhost[0] == (char *)0) { /*user didn't provide one*/
         bcopy(mailblok.cpustr,bp,lcldl = mailblok.cpuslen);
@@ -453,6 +502,13 @@ int l;
     char buf[200];
     register int i;
     int rlen;
+#ifdef DEBUG_S_INPUT
+    char dbgmsg[133];
+
+#endif
+#ifdef TRACE
+    wrterm("==> Entered s_input");
+#endif
 
     if (S.state == error)     /* remember errors across state */
       S.error = 1;            /* transitions. */
@@ -469,9 +525,24 @@ int l;
      * length
      */
     if (s[79] == 0x15) {
+#ifdef DEBUG_S_INPUT
+       wrterm("==> BSMTP: Continue line being processed");
+#endif
        if ((rlen = rdcard(&s[l],(int)mailblok.mailsfb.sfbrecsz)) >= 0)
           l = l+rlen;
+#ifdef DEBUG_S_INPUT
+       sprintf(dbgmsg, "==> BSMTP: Continued line - new length is %d" ,
+               l);
+       wrterm(dbgmsg);
+#endif
     }
+
+#ifdef DEBUG_S_INPUT
+    bcopy("==> BSMTP:>", dbgmsg , 11);
+    bcopy(s, &dbgmsg[11], l);
+    bcopy("<", &dbgmsg[11+l], 2);
+    wrterm(dbgmsg);
+#endif
 
     /* always echo the command */
     bcopy("050 ",buf,4);      /* stuff in the echo code */
@@ -499,6 +570,11 @@ int l;
  */
 s_finish()
 {
+
+#ifdef TRACE
+    wrterm("==> Entered s_finish");
+#endif
+
     mailblok.mailflg2 &= ~MFLG2SMT;
     mailblok.mailflg2 &= ~MFLG2NOR;           /* restore the flag */
     mailblok.mailflg2 &= ~MFLG2NLF;
@@ -514,6 +590,10 @@ int l;
 {
     char *p, buf[200];
     int len, buflen;
+
+#ifdef TRACE
+    wrterm("==> Entered s_helo");
+#endif
 
     for (p = &s[5], l -= 5; *p != ' ' && l > 0; p++, l--);
     if (!(S.domain = (char *)salloc(len = p - &s[5])))
@@ -574,10 +654,25 @@ int l;
 {
     int ri;
     struct tbentry *te;
+#ifdef DEBUG_CHECK_LOCAL
+    char dbgmsg[133];
+#endif
+
+#ifdef TRACE
+    wrterm("==> Entered check_local");
+#endif
 
     /* (1) Compare domain to mailnode */
     if (mailblok.mailnlen == l && xcmp(mailblok.mailnode,s,l) == 0)
         return 1;
+#ifdef DEBUG_CHECK_LOCAL
+    else {
+        bcopy("==> No match: <", dbgmsg , 15);
+        bcopy(mailblok.mailnode, &dbgmsg[15], mailblok.mailnlen);
+        bcopy(">", &dbgmsg[15+mailblok.mailnlen], 2);
+        wrterm(dbgmsg);
+    }
+#endif
 
     /* (2) Compare domain concatenated w/RSCS-domains to mailnode */
     if (mailblok.rscsdom[0] != 0) {
@@ -591,6 +686,12 @@ int l;
                if (mailblok.mailnlen == i &&
                    xcmp(s, mailblok.mailnode, i) == 0)
                    return 1;
+#ifdef DEBUG_CHECK_LOCAL
+           BCOPY("==> No match: <", dbgmsg , 15);
+           bcopy(rp ,&dbgmsg[15], rl);
+           bcopy(">", &dbgmsg[15+rl], 2);
+           wrterm(dbgmsg);
+#endif
         }
     }
 
@@ -600,6 +701,14 @@ int l;
         if (*mailblok.lclhost[ri] == l &&
              xcmp(&mailblok.lclhost[ri][1], s, l) == 0)
             return 1;
+#ifdef DEBUG_CHECK_LOCAL
+        else {
+            bcopy("==> No match: <", dbgmsg , 15);
+            bcopy(rp ,&dbgmsg[15], rl);
+            bcopy(">", &dbgmsg[15+rl], 2);
+            wrterm(dbgmsg);
+        }
+#endif
 
     /* time to give up */
     return 0;
@@ -622,6 +731,10 @@ int l;
 {
     int ri;
     struct tbentry *te;
+
+#ifdef TRACE
+    wrterm("==> Entered check_domain");
+#endif
 
     /* (1) Compare domain to mailnode */
     if (mailblok.mailnlen == l && xcmp(mailblok.mailnode,s,l) == 0)
@@ -683,6 +796,10 @@ int l;
     struct tbentry *te;
     struct tbs *ts;
     struct mbox *a;
+
+#ifdef TRACE
+    wrterm("==> Entered s_state");
+#endif
 
     mailblok.mailsfld = 0;
     if (xcmp(" FROM:", &s[4], 6) != 0)     /* check syntax */
@@ -791,6 +908,10 @@ struct fieldd *f;
     char *dummied;
     int dl = 0;
 
+#ifdef TRACE
+    wrterm("==> Entered do_null_from");
+#endif
+
     wtr("SMT",67,2,"ca",mailblok.mailnode,"ca",mailblok.mailuser);
     mailblok.mailflg2 |= MFLG2NLF;
     dummied = (char *)salloc(20);   /* <mailuser@mailnode>\0 */
@@ -833,6 +954,10 @@ struct mbox *a;
       int *hostlen;
     } plist;
     int i;
+
+#ifdef TRACE
+    wrterm("==> Entered check_sender");
+#endif
 
     if (mailblok.mailflg2&MFLG2NLF) /* always fail */
       return 0;
@@ -899,6 +1024,13 @@ int l;
       int *delmbox;
     } plist2;
     int i;
+#ifdef DEBUG_S_RCPT
+    char dbgmsg[133];
+#endif
+
+#ifdef TRACE
+    wrterm("==> Entered s_rcpt");
+#endif
 
     if (xcmp(" TO:", &s[4], 4) != 0)    /* check syntax */
         return s_syntax(st, s, l);
@@ -958,6 +1090,9 @@ int l;
      * processing occurs.                                            */
 
     while (a->mbxrtl != 0) {
+#ifdef DEBUG_S_RCPT
+       wrterm("==> s_rcpt: Processing routeaddr");
+#endif
        n = MBOXRTL(a)->noddown;
        plist.node = &n;
        plist.hs = &hs;
@@ -968,7 +1103,16 @@ int l;
        hostlen = sizeof(hoststring);
        plist.hostlen = &hostlen;
        acall(genlist, 0, &plist);
+#ifdef DEBUG_S_RCPT
+       bcopy("==> s_rcpt: <", dbgmsg, 13);
+       bcopy(hs,&dbgmsg[13],hl);
+       bcopy(">",&dbgmsg[hl+13],2);
+       wrterm(dbgmsg);
+#endif
        if (check_local(hs,hl)) {
+#ifdef DEBUG_S_RCPT
+          wrterm("==> s_rcpt: Removing route address");
+#endif
           plist2.delmbox = &a;
           acall(delroute, 0, &plist2);        /* Remove route addr */
           f->fiflg1 |= FIEDIFLG;              /* Remember changed  */
@@ -980,6 +1124,9 @@ int l;
     /* If address was just 'userid' fix it to be 'userid@local-host' */
 
     if (a->mbxdml == 0) {
+#ifdef DEBUG_S_RCPT
+       wrterm("==> s_rcpt: Adding @local-host to userid");
+#endif
        fakenode = (struct node *)salloc(sizeof(*fakenode));
        if (!fakenode) return s_nosp(st,s,l);
        faketoke = (struct tokend*)salloc(sizeof(*faketoke));
@@ -993,10 +1140,18 @@ int l;
 
     /* (2) Look up the host name in MAILRTAB, MAILDTAB */
 
-    if (a->mbxrtl == 0)
+    if (a->mbxrtl == 0) {
+#ifdef DEBUG_S_RCPT
+       wrterm("==> s_rcpt: Using domain for lookup");
+#endif
        n = a->mbxdml;
-    else
+    }
+    else {
+#ifdef DEBUG_S_RCPT
+       wrterm("==> s_rcpt: Using route-addr for lookup");
+#endif
        n = MBOXRTL(a)->noddown;
+    }
     plist.node = &n;
     plist.hs = &hs;
     plist.hl = &hl;
@@ -1006,6 +1161,12 @@ int l;
     hostlen = sizeof(hoststring);
     plist.hostlen = &hostlen;
     acall(genlist, 0, &plist);
+#ifdef DEBUG_S_RCPT
+    bcopy("==> s_rcpt routing with: <", dbgmsg, 26);
+    bcopy(hs,&dbgmsg[26],hl);
+    bcopy(">",&dbgmsg[hl+26],2);
+    wrterm(dbgmsg);
+#endif
     if ((r = find_routd(hs, hl)) == 0) {
         (*S.repf)("550 Mailbox not found.", 22);
         return st;
@@ -1039,6 +1200,10 @@ struct fieldd *f;
 struct routd *r;
 {
     struct actadr *a, *b;
+
+#ifdef TRACE
+    wrterm("==> Entered add_mailchn");
+#endif
 
     switch (r->rtflags&(RTP1|RTP2|RTP3)) {
     case RTP1:
@@ -1101,6 +1266,11 @@ s_state st;
 char *s;
 int l;
 {
+
+#ifdef TRACE
+    wrterm("==> Entered s_data");
+#endif
+
     mailblok.mailhrec = mailblok.mailhlin = 0;
     add_received();                /* add received: stamp to data */
     (*S.repf)("354 Start mail input.  End with <crlf>.<crlf>", 45);
@@ -1128,6 +1298,13 @@ int l;
     struct {
         int *mb;
     } plist;
+#ifdef DEBUG_S_GETDATA
+    char dbgmsg[133];
+#endif
+
+#ifdef TRACE
+    wrterm("==> Entered s_getdata");
+#endif
 
     if (l == 0) S.pasthdr = 1;     /* end of header portion of data */
     if (l == 1 && *s == '.') {     /* end of data */
@@ -1152,13 +1329,22 @@ int l;
             wtr("SMT",43,1,"d",S.rcpts);
             plist.mb = &mailblok;
             mailblok.mailflg1 |= MFLG1HDS;  /* header scanned ok */
+#ifdef DEBUG_S_GETDATA
+            wrterm("==> s_getdata: Calling sendlst");
+#endif
             switch (acall(sendlst,0,&plist)) {
             case 0:
                 (*S.repf)("250 Mail accepted for delivery.", 31);
                 break;
             case 12:
+#ifdef DEBUG_S_GETDATA
+                wrterm("==> s_getdata: RC=12 from sendlst");
+#endif
                 return s_nosp(st, s, l);    /* croak */
             default:
+#ifdef DEBUG_S_GETDATA
+                wrterm("==> s_getdata: Errors from sendlst");
+#endif
                 log_errors();               /* copy into bsmtp.reply */
                 return error;
             }
@@ -1174,6 +1360,12 @@ int l;
     } else {                       /* a regular data line */
         int rc;
 
+#ifdef DEBUG_S_GETDATA
+        bcopy("==> s_getdata: >", dbgmsg, 16);
+        bcopy(s, &dbgmsg[16], l);
+        bcopy("<", &dbgmsg[16+l], 2);
+        wrterm(dbgmsg);
+#endif
         if (S.disk_error != disknone) return st;
         if (*s == '.') ++s, --l;   /* de-double the dot */
         else if (l == 0) s = " ", l = 1;
@@ -1203,6 +1395,11 @@ s_state st;
 char *s;
 int l;
 {
+
+#ifdef TRACE
+    wrterm("==> Entered s_rset");
+#endif
+
     if (s_init0(S.repf))
         return s_nosp(st, s, l);
     (*S.repf)("250 Service reset OK.", 21);
@@ -1214,6 +1411,11 @@ s_state st;
 char *s;
 int l;
 {
+
+#ifdef TRACE
+    wrterm("==> Entered s_noop");
+#endif
+
     (*S.repf)("250 Ok", 6);
     return st;
 }
@@ -1225,6 +1427,10 @@ int l;
 {
     char buf[200];
     int len;
+
+#ifdef TRACE
+    wrterm("==> Entered s_quit");
+#endif
 
     bcopy("221 ",buf, 4);
     len = mydomain(&buf[4], sizeof(buf)-4);
@@ -1239,6 +1445,11 @@ s_state st;
 char *s;
 int l;
 {
+
+#ifdef TRACE
+    wrterm("==> Entered s_verb");
+#endif
+
     if (l == 7 && xcmp(" ON", &s[4], 3) == 0) {
         S.verb = on;
         (*S.repf)(Verbonmsg,sizeof(Verbonmsg)-1);
@@ -1257,6 +1468,11 @@ char *s;
 int l;
 {
     char buf[200];
+
+#ifdef TRACE
+    wrterm("==> Entered s_tick");
+#endif
+
     if (l > 5) {
         bcopy("250 ",buf,4);
         bcopy(&s[5], &buf[4], l-5);
@@ -1273,6 +1489,11 @@ s_state st;
 char *s;
 int l;
 {
+
+#ifdef TRACE
+    wrterm("==> Entered s_rply");
+#endif
+
     if (l == 9 && xcmp(" MAIL", &s[4], 5) == 0) {
         S.rply = mail;
         (*S.repf)("250 Error replies will be sent as mail.",39);
@@ -1290,6 +1511,11 @@ s_state st;
 char *s;
 int l;
 {
+
+#ifdef TRACE
+    wrterm("==> Entered s_read");
+#endif
+
     if (l > 4 && xcmp("D", &s[4], 1) == 0) {
         (*S.repf)("200 :READ card ignored.", 23);
         return st;
@@ -1303,6 +1529,11 @@ s_state st;
 char *s;
 int l;
 {
+
+#ifdef TRACE
+    wrterm("==> Entered s_oseq");
+#endif
+
     (*S.repf)("500 Command out of sequence", 27);
     return error;
 }
@@ -1312,6 +1543,11 @@ s_state st;
 char *s;
 int l;
 {
+
+#ifdef TRACE
+    wrterm("==> Entered s_badc");
+#endif
+
     (*S.repf)("500 Invalid command", 19);
     return error;
 }
@@ -1321,6 +1557,11 @@ s_state st;
 char *s;
 int l;
 {
+
+#ifdef TRACE
+    wrterm("==> Entered s_errr");
+#endif
+
     (*S.repf)("500 Command ignored due to a previous error.",44);
     return error;
 }
@@ -1332,6 +1573,10 @@ int l;
 {
     char buf[200];
     int len;
+
+#ifdef TRACE
+    wrterm("==> Entered s_nosp");
+#endif
 
     bcopy("421 ", buf, 4);
     len = mydomain(&buf[4], sizeof(buf)-4);
@@ -1347,6 +1592,10 @@ char *s;
 int l;
 {
 
+#ifdef TRACE
+    wrterm("==> Entered s_syntax");
+#endif
+
     (*S.repf)("501 Parameter syntax error.", 27);
     return error;
 }
@@ -1357,6 +1606,10 @@ s_state st;
 char *s;
 int l;
 {
+
+#ifdef TRACE
+    wrterm("==> Entered s_syntax553");
+#endif
 
     (*S.repf)("553 Mailbox syntax error.", 25);
     return error;
@@ -1369,6 +1622,10 @@ char *s;
 int l;
 {
     char buf[200];
+
+#ifdef TRACE
+    wrterm("==> Entered s_maxr");
+#endif
 
     wtr("SMT",63,0);
     (*S.repf)("554 Mail aborted.  Maximum hop count exceeded.",46);
@@ -1387,6 +1644,11 @@ static
 _aparse(f)
 struct fieldd *f;
 {
+
+#ifdef TRACE
+    wrterm("==> Entered _aparse");
+#endif
+
     a_plist.mb = &mailblok;
     a_plist.fd = f;
     a_plist.sp[0] = &mailblok.stackp[0];
@@ -1417,6 +1679,10 @@ int l;
         int *mb;
     } pl;
     struct tbentry *te;
+
+#ifdef TRACE
+    wrterm("==> Entered parse_data_hdr");
+#endif
 
     if ((mailblok.mailhbuf[0] =
                  (int)salloc(mailblok.mailhbuf[1] = resid)) <= 0)
@@ -1464,6 +1730,11 @@ _fnroutd(s, l)     /* assembly-language callable stub */
 char *s;
 int l;
 {
+
+#ifdef TRACE
+    wrterm("==> Entered _fnroutd");
+#endif
+
     return find_routd(s, l);
 }
 
@@ -1474,34 +1745,80 @@ int l;
 {
     struct tbentry *te;
     int ol = l;              /* original length */
+#ifdef DEBUG_FIND_ROUTD
+    char dbgmsg[133];
+#endif
+
+#ifdef TRACE
+    wrterm("==> Entered find_routd");
+#endif
+
+#ifdef DEBUG_FIND_ROUTD
+    bcopy("==> find_routd: >", dbgmsg, 17);
+    bcopy(s, &dbgmsg[17], l);
+    bcopy("<", &dbgmsg[17+l], 2);
+    wrterm(dbgmsg);
+#endif
 
     /* (1) see if it ends in .<RSCS-domain> */
     if (mailblok.rscsdom[0] != 0) {
         int ri;
+#ifdef DEBUG_FIND_ROUTD
+        wrterm("==> find_routd: Checking RSCS domains");
+#endif
         for (ri = 0; mailblok.rscsdom[ri] != 0 &&
               ri < MAXRSCSDOM; ri++) {
            int rl = mailblok.rscsdom[ri][0];
            char *rp = &mailblok.rscsdom[ri][1];
 
-           if (rl < l && xcmp(rp, &s[l-rl], rl) == 0)
+           if (rl < l && xcmp(rp, &s[l-rl], rl) == 0) {
                l -= rl;           /* chop of the RSCS-domain */
+#ifdef DEBUG_FIND_ROUTD
+              bcopy("==> find_routd: >", dbgmsg, 17);
+              bcopy(rp, &dbgmsg[17], rl);
+              bcopy("< dropped", &dbgmsg[17+rl], 10);
+              wrterm(dbgmsg);
+           }
+           else {
+              bcopy("==> find_routd: >", dbgmsg, 17);
+              bcopy(rp, &dbgmsg[17], rl);
+              bcopy("< no match", &dbgmsg[17+rl], 11);
+              wrterm(dbgmsg);
+#endif
+           }
         }
     }
 
     /* (2) see if it is in MAILRTAB */
-    if (ctbluk(&te, mailblok.mailrtab, s, l) == TBMATCH)
+    if (ctbluk(&te, mailblok.mailrtab, s, l) == TBMATCH) {
+#ifdef DEBUG_FIND_ROUTD
+        wrterm("==> find_routd: Found in MAILRTAB");
+#endif
         return te->tbe_dsp;        /* table dispatch value is *routd */
+    }
 
     /* (3) see if it is in MAILDTAB */
-    if (ctbluk(&te, mailblok.maildtab, s, ol) == TBMATCH)
+    if (ctbluk(&te, mailblok.maildtab, s, ol) == TBMATCH) {
+#ifdef DEBUG_FIND_ROUTD
+        wrterm("==> find_routd: Found in MAILDTAB");
+#endif
         return te->tbe_dsp;
+    }
 
     /* (4) see if MOPTAUN and *DEFAULT* is in MAILRTAB */
     if (mailblok.mailopts&MOPTAUN
-        && ctbluk(&te, mailblok.mailrtab, "*DEFAULT*", 9) == TBMATCH)
+        && ctbluk(&te, mailblok.mailrtab, "*DEFAULT*", 9)
+                                                   == TBMATCH) {
+#ifdef DEBUG_FIND_ROUTD
+        wrterm("==> find_routd: Using *DEFAULT*");
+#endif
         return te->tbe_dsp;
+    }
 
     /* give up */
+#ifdef DEBUG_FIND_ROUTD
+    wrterm("==> find_routd: Not found");
+#endif
     return 0;
 }
 
@@ -1513,6 +1830,10 @@ log_errors()
 {
     int rc,buflen,rblen;
     char buf[80], rbuf[200];
+
+#ifdef TRACE
+    wrterm("==> Entered log_errors");
+#endif
 
     bcopy("554 Mail not delivered to some or all recipients:",
           rbuf,rblen=49);
@@ -1577,6 +1898,10 @@ add_received()
     int len;
     extern arpadate();
 
+#ifdef TRACE
+    wrterm("==> Entered add_received");
+#endif
+
     if (S.fakefrom)
       foldwrite(&S.data_file,Deliv,sizeof(Deliv)-1);
     bcopy("Received: from ",buf,len=15);
@@ -1627,6 +1952,10 @@ int len;
 {
     int i,l,l2;
 
+#ifdef TRACE
+    wrterm("==> Entered foldwrite");
+#endif
+
     i = 0;
     while (len > 0) {
         if (len > 80) {        /* fold the line (search back for */
@@ -1655,6 +1984,10 @@ count_received()
     struct fieldd *f;
     int i;
 
+#ifdef TRACE
+    wrterm("==> Entered count_received");
+#endif
+
     if (ctbluk(&te,mailblok.mailktab,"received",8) != TBMATCH)
       return 0;
     for (i = 0, f = (struct fieldd *)te->tbe_dsp;
@@ -1664,6 +1997,11 @@ count_received()
 }
 _cntrcvd()               /* assembler-called stub */
 {
+
+#ifdef TRACE
+    wrterm("==> Entered _cntrcvd");
+#endif
+
     return count_received();
 }
 
@@ -1692,6 +2030,10 @@ smtprep()
     char rbuf[133];
     int rlen;
 
+#ifdef TRACE
+    wrterm("==> Entered smtprep");
+#endif
+
     r_init();
     cpcmd("CLOSE 00C",9);
     if (cpcmd("READY 00C",9)) return 12;
@@ -1713,6 +2055,11 @@ smtprep()
  */
 r_init()
 {
+
+#ifdef TRACE
+    wrterm("==> Entered r_init");
+#endif
+
     wtr("SMT",57,0);
     bzero(&R,sizeof(R));
     fserase("smtp.reply");
@@ -1729,6 +2076,11 @@ r_init()
  */
 r_finish()
 {
+
+#ifdef TRACE
+    wrterm("==> Entered r_finish");
+#endif
+
     fsclose(&R.repfile);
     if (!R.parserr && R.error && R.mailfrom)
       err_mail(R.mailfrom,R.mflen,0);
@@ -1752,6 +2104,10 @@ char *rbuf;
 int rlen;
 {
     int rc, l;
+
+#ifdef TRACE
+    wrterm("==> Entered r_input");
+#endif
 
     if (mailblok.mailopts & MOPTVL)      /* verbose log */
       wrterm(rbuf);
@@ -1812,6 +2168,10 @@ struct fscb *fp;    /* fscb for data or zero for none */
     int bl,rc,fl,dl;
     extern arpadate();
     struct fscb repfile;
+
+#ifdef TRACE
+    wrterm("==> Entered err_mail");
+#endif
 
     /* build my from address */
     myfrom[0] = '<';
@@ -1920,6 +2280,10 @@ struct fieldd *f;
     char *us,*hs;
     int ul,hl,i;
 
+#ifdef TRACE
+    wrterm("==> Entered is_mailer");
+#endif
+
     if (a == 0)
       return 1;                          /* is a mailer */
     for (i = 0; i < sizeof(key.both); i++)
@@ -1963,6 +2327,10 @@ struct fscb *f;
     char buf[25];
     int bl;
 
+#ifdef TRACE
+    wrterm("==> Entered err_loop");
+#endif
+
     wtr("SMT",28,0);
     bcopy(mailblok.maintid,buf,bl=8);
     while (buf[bl-1] == ' ') --bl;
@@ -1978,6 +2346,10 @@ char *buf;                      /* since the only possible error is */
 int buflen;                     /* device not ready which means spool */
 {                               /* system is SNAFU */
     int rc;
+
+#ifdef TRACE
+    wrterm("==> Entered punch");
+#endif
 
     if (buflen > 80) buflen = 80;  /* xxx */
     if (rc = punchc(buf, buflen) != 0) {
