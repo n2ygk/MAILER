@@ -35,6 +35,46 @@ return disc                                  /*                       */
 
 
 /* ****************************************************************** */
+/*  SAMPPROF2 - Sample profile for the mail/file scavenger server     */
+/* ****************************************************************** */
+
+address 'COMMAND'                            /*                       */
+
+'SET RDYMSG SMSG'
+'SET BLIP OFF'
+'CP SET EMSG ON'
+'CP SPOOL RDR NOH'
+
+/*  The following line assumes the standard disk configuration as     */
+/*  described in the Mailer Installation and Maintenance Guide        */
+
+'ACCESS 193 C/A'
+
+do while disc()
+   'EXEC FORWARDX'                           /* Do some forwarding    */
+   'CP SLEEP 15 MIN'                         /* Wait a while          */
+   end
+
+exit
+
+/* ******************* */
+/*  Internal Routines  */
+/* ******************* */
+
+Disc:  procedure /* Determine if running disconnected */
+parse value diag(8,'QUERY V CONS') with ,    /*                       */
+   . . status .                              /*                       */
+if status = 'DISCONNECTED'  then             /*                       */
+   disc = 1                                  /*                       */
+else                                         /*                       */
+   disc = 0                                  /*                       */
+return disc                                  /*                       */
+
+
+
+
+
+/* ****************************************************************** */
 /*  MAILER - VM Mailer driver EXEC                                    */
 /* ****************************************************************** */
 /*                                                                    */

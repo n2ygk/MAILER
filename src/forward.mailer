@@ -4,10 +4,18 @@
 /*                                                                    */
 /*  Command syntax:                                                   */
 /*                                                                    */
-/*     FORWARD  < FOR userid >  ADD      destid                       */
-/*                              DELETE   destid                       */
-/*                                        ALL                         */
-/*                              LIST                                  */
+/*   FORWARD  < FOR userid >  <MAIL>   ADD      destid                */
+/*                                                                    */
+/*                            <MAIL>   DELETE   destid                */
+/*                                               ALL                  */
+/*                                                                    */
+/*                            FILES    destid  < CLASS  classlist >   */
+/*                                             <           '*'    >   */
+/*                                             < DELETE >             */
+/*                                             < LOGGEDON | ANYTIME > */
+/*                                             < LOGGEDOFF >          */
+/*                                                                    */
+/*                            LIST                                    */
 /*                                                                    */
 /*                                                                    */
 /*  This EXEC provides the code to maintain the user forwarding files.*/
@@ -22,6 +30,33 @@
 /*  This code expects that the 'destid' will be in standard RFC822    */
 /*  format OR specified as 'userid AT node'.  All other formats       */
 /*  should be rejected.                                               */
+/*                                                                    */
+/*  FORWARD uses comment lines in the file for control information.   */
+/*  Comment lines are identified by having an '*' as the first        */
+/*  non-blank character on the line.                                  */
+/*                                                                    */
+/*  The first line of the FORWARD file is always a comment and        */
+/*  contains:                                                         */
+/*                                                                    */
+/*  *  Created: mm/dd/yy hh:mm:ss    Updated: mm/dd/yy hh:mm:ss       */
+/*                                                                    */
+/*  The FILES operand works in conjunction with the FILEFWD exec to   */
+/*  provide forwarding of non-mail files.  Unlike mail files, non-mail*/
+/*  files will only be forwarded to other NJE nodes.                  */
+/*                                                                    */
+/*  The file information is contained in the following comment lines: */
+/*                                                                    */
+/*  * Files: destid  Classes: class-list  LoggedOn: Yes               */
+/*                            *                     No                */
+/*                                                                    */
+/*  The list of classes may contain '*' to say any class, or a list   */
+/*  of explicit classes to transfer.  When '*' is not used and the    */
+/*  the class lists do not overlap, more than 1 transfer destination  */
+/*  may be specified.                                                 */
+/*                                                                    */
+/*  If 'LoggedOn' is set to YES, files will be extracted from the     */
+/*  reader even if the userid is logged on.  Normally if the user     */
+/*  is logged on they are skipped for processing.                     */
 /*                                                                    */
 /* ****************************************************************** */
 
@@ -46,7 +81,8 @@ if diskmode = ''  then  diskmode = 'A'       /* Disk mode on which    */
 foruser = ''                                 /*                       */
 if msgcmd = ''  then                         /* Set msg cmd default   */
    msgcmd  = 'MSGNOH'                        /*    if none given      */
-operations = 'ADD DELETE LIST'               /*                       */
+operations = 'ADD DELETE FILES LIST MAIL'    /*                       */
+mailoperations = 'ADD DELETE'                /*                       */
 requestor = '*CONSOLE*'                      /*                       */
 
 'IDENTIFY (LIFO'                             /*                       */
@@ -89,7 +125,7 @@ say '       :  Diskmode  = "'diskmode'"'
 /* Do some command checking */
 
 if cmdstring = ''  then  do                  /*                       */
-   call msg 'No action (ADD, DELETE or LIST) has been specified'
+   call msg 'No action (ADD, DELETE, FILES or LIST) has been specified'
    exitrc = 8                                /*                       */
    signal exit                               /*                       */
    end
@@ -172,26 +208,26 @@ Add:  procedure ,  /* Do processing for an ADD operation */
 
 parse var cmdstring . destination            /*                       */
 
+call readforwardfile                         /*                       */
+if result <> 0  then                         /*                       */
+   call createforwardfile                    /*                       */
+
 if validdest()  then  do                     /*                       */
-   exitrc = 0                                /*                       */
+   matches = addresscan(destination)         /* Look for a match      */
+   if matches = 0  then  do                  /* None found, that's ok */
+      call addone(destination)               /* Add new address       */
+      exitrc = writeforwardfile()            /* Rewrite FORWARD file  */
+      end
+   else  do                                  /* Address exists        */
+      call msg '"'destination'" is a duplicate address'
+      exitrc = 4
+      end
    end
 else  do                                     /*                       */
    call msg '"'destination'" is not valid: ' failure
    exitrc = 8                                /*                       */
    end
 
-if exists(foruser 'FORWARD' diskmode)  then  do
-   'EXECIO * DISKR' foruser 'FORWARD' diskmode '(FINIS STEM FORWARD.'
-   matches = addresscan(destination)         /*                       */
-   if matches = 0  then                      /*                       */
-      exitrc = addone(destination)
-   else  do                                  /*                       */
-      call msg '"'destination'" is a duplicate address'
-      exitrc = 4                             /*                       */
-      end
-   end
-else                                         /*                       */
-   exitrc = addone(destination)              /*                       */
 
 if exitrc = 0  then                          /*                       */
    call msg 'Forward:  Added' destination    /*                       */
@@ -199,16 +235,22 @@ if exitrc = 0  then                          /*                       */
 return exitrc
 
 
+/* *****************************************************************  */
+/*                                                                    */
+/*  Add one address to FORWARD file                                   */
+/*                                                                    */
+/* *****************************************************************  */
+
 Addone:  procedure ,  /* Write a line to end of FORWARD file */
-         expose diskmode foruser
+         expose diskmode foruser forward.
 
-parse arg destination                        /*                       */
-'EXECIO 1 DISKW' foruser 'FORWARD' diskmode '(FINIS VAR DESTINATION'
-exitrc = rc                                  /*                       */
-if rc = 0  then                              /*                       */
-   'EXECDROP' foruser 'FORWARD'              /*                       */
+parse arg destination                        /* New destination       */
+last = forward.0 + 1                         /* New number of lines   */
+call updatehdr                               /* Set update date       */
+forward.last = destination                   /* Put in new dest       */
+forward.0 = last                             /* Update count          */
 
-return exitrc
+return 0
 
 
 /* *****************************************************************  */
@@ -231,22 +273,104 @@ parse upper arg destination .                /*                       */
 matches = 0                                  /*                       */
 
 do i=1 for forward.0                         /*                       */
+   matching.i = 0                            /* Set default value     */
+   if left(word(forward.i,1),1) = '*'  then  iterate
    if translate(forward.i) = destination  then  do
       matches = matches + 1                  /*                       */
       matching.i = 1                         /*                       */
       end
-   else                                      /*                       */
-      matching.i = 0                         /*                       */
    end
 
 return matches
 
 
-ChkFOR:  procedure  /* Check string for FOR parameter */
-parse upper arg word1 .                      /*                       */
-if word1 = 'FOR'  then  return 1             /*                       */
+/* ****************************************************************** */
+/*                                                                    */
+/*  BuildFileEntry formats the Files: line                            */
+/*                                                                    */
+/* ****************************************************************** */
+
+BuildFileEntry:  procedure ,  /* Build a Files: lines */
+                 expose forward.             /*                       */
+parse arg type index , destination , newclasses , logon logoff .
+
+if type = 'OLD'  then  do                    /* Updating an old entry */
+
+   /* OLD entries always retain their original destination.  The      */
+   /* classes to be processed may change and the logged on/off status */
+   /* may change.  When these values are not to change, they are not  */
+   /* provided on the call (i.e. they are null) so they must be       */
+   /* updated from the current values before processing can continue. */
+
+   parse upper var forward.index ,           /* Get old values        */
+      '*' . 'FILES:' . 'CLASSES:' classes . 'LOGGEDON:' loggedon .
+   end
+
+if type = 'NEW'  then  do                    /* Set the defaults      */
+
+   /* NEW entries need to have the default values for classes and     */
+   /* the logged on/off status before continuing processing.          */
+   /* The default for classes is '*' (transfer all classes)           */
+   /* The default for logon status is logged off                      */
+
+   classes = '*'                             /* Default value         */
+   loggedon = 'No'                           /* Default value         */
+   end
+
+if newclasses <> ''  then
+   classes = newclasses                      /* Take supplied value   */
+if logon  then  loggedon = 'Yes'             /* Take supplied value   */
+if logoff then  loggedon = 'No'              /* Take supplied value   */
+
+forward.index = '*  Files:' destination '  Classes: ' classes ,
+                '  LoggedOn:' loggedon
+return
+
+
+/* ****************************************************************** */
+/*                                                                    */
+/*  Check for FOR parameter                                           */
+/*                                                                    */
+/* ****************************************************************** */
+
+ChkFOR:  procedure
+parse upper arg word1 .
+if word1 = 'FOR'  then  return 1
 return 0
 
+
+/* *****************************************************************  */
+/*                                                                    */
+/*  Create a new FORWARD file control line                            */
+/*                                                                    */
+/*  *** Note ***                                                      */
+/*  This routine expects 'foruser' to contain the userid (filename)   */
+/*  of the FORWARD file being processed when it is simply adding      */
+/*  a new control record to an existing file.                         */
+/*                                                                    */
+/* *****************************************************************  */
+
+CreateForwardFile:
+if forward.0 > 0  then  do                   /* Creating control rec. */
+   'MAKEBUF'                                 /* Protective code       */
+   'LISTFILE' foruser 'FORWARD A (LIFO DATE' /* Get file date info    */
+   if rc <> 0  then  do                      /* Huh? Shouldn't happen */
+      date = date('U')                       /*   but better safe     */
+      time = time()                          /*   than sorry.         */
+      end
+   else do                                   /* Stacked file info     */
+      parse upper pull . . . . . . . date time .
+      date = right('0'date,8)                /* Standardize           */
+      end
+   forward.1 = '*  Created: ' date time ,
+               '   Updated: ' date('U') time()
+   end
+else  do                                     /* Creating new file     */
+   forward.1 = '*  Created: ' date('U') time() ,
+               '   Updated: ' date('U') time()
+   forward.0 = 1
+   end
+return
 
 /* *****************************************************************  */
 /*                                                                    */
@@ -272,69 +396,69 @@ Delete:  procedure ,  /* Do processing for a DELETE operation */
 
 parse var cmdstring . destination            /*                       */
 
-if translate(destination) = 'ALL'  then      /*                       */
-   return deleteall()                        /*                       */
+call readforwardfile
+if result <> 0  then  do
+   exitrc = result
+   call msg 'No forwarding in effect for' foruser
+   return exitrc
+   end
+
+if translate(destination) = 'ALL'  then      /* ALL request?          */
+   return deleteall()                        /* Yes, do all           */
 
 if validdest()  then  do                     /*                       */
-   exitrc = 0                                /*                       */
+   matches = addresscan(destination)         /* Look for match        */
+   if matches > 0  then  do                  /* Found atleast 1?      */
+      call updatehdr                         /* Set update date       */
+      call msg 'Forward: ' matches 'forwarding id(s) deleted'
+      j=0                                    /* Initialize counter    */
+      do i=1 to forward.0                    /* Loop through all lines*/
+         if matching.i  then                 /* This one being dropped*/
+            call msg '    ' forward.i        /*   so tell requestor   */
+         else  do                            /* This one being kept   */
+            j=j+1                            /* Increment line ctr    */
+            if j<>i  then                    /* If 1 or more dropped  */
+               forward.j = forward.i         /*   copy line forward   */
+            end
+         end
+      forward.0 = j                          /* Update line count     */
+      exitrc = writeforwardfile()            /* Rewrite file          */
+      end
+   else  do                                  /* No match found        */
+      call msg 'Forward:  No destinations match address requested'
+      exitrc = 0
+      end
    end
 else  do                                     /*                       */
    call msg '"'destination'" is not valid: ' failure
-   exitrc = 8                                /*                       */
+   exitrc = 8
    end
 
-if exists(foruser 'FORWARD' diskmode)  then  do
-   'EXECIO * DISKR' foruser 'FORWARD' diskmode '(FINIS STEM FORWARD.'
-   if rc <> 0  then  do                      /*                       */
-      exitrc = rc                            /*                       */
-      call msg '"'destination'" not found in forwarding file'
+return exitrc
+
+
+/* ****************************************************************** */
+/*                                                                    */
+/*  DeleteAll will delete all forwardings (including file forwarding  */
+/*  info).                                                            */
+/*                                                                    */
+/* ****************************************************************** */
+
+DeleteAll:  /* Do processing for a DELETE * operation */
+
+'ERASE' foruser 'FORWARD A'                  /* Kill forward file     */
+'EXECDROP' foruser 'FORWARD'                 /* Drop in memory copy   */
+call msg 'Forward:  Deleting all forwardings'
+j=0                                          /* Initialize            */
+do i=1 to forward.0                          /*                       */
+   if left(word(forward.i,1),1) = '*'  then  nop /* Comment line      */
+   else  do                                  /* Id to delete          */
+      call msg '    ' forward.i 'deleted'
+      j = j + 1                              /* Count deletions       */
       end
-   else  do                                  /*                       */
-      matches = addresscan(destination)      /*                       */
-      if matches > 0  then  do               /*                       */
-         'ERASE' foruser 'FORWARD' diskmode  /* Erase old file        */
-         call msg 'Forward: ' matches 'forwarding id(s) deleted'
-         do i=1 to forward.0                 /*                       */
-            if matching.i  then              /*                       */
-               call msg '    ' forward.i     /*                       */
-            else                             /*                       */
-               'EXECIO 1 DISKW' foruser 'FORWARD' diskmode '(FINIS' ,
-                  'VAR FORWARD.'i            /* Rewrite file line     */
-            end
-         'EXECDROP' foruser 'FORWARD'        /*                       */
-         end
-      else                                   /*                       */
-         call msg 'Forward:  No destinations match address requested'
-      end
-   end
-else  do                                     /*                       */
-   call msg 'No forwarding in effect for' foruser
-   exitrc = 4                                /*                       */
    end
 
-return exitrc                                /*                       */
-
-
-DeleteAll:  procedure ,  /* Do processing for a DELETE * operation */
-            expose cmdstring console diskmode foruser localnode msgcmd ,
-                   requestor
-
-if exists(foruser 'FORWARD' diskmode)  then  do
-   'EXECIO * DISKR' foruser 'FORWARD' diskmode '(FINIS STEM FORWARD.'
-   'ERASE' foruser 'FORWARD' diskmode        /* Erase old file        */
-   call msg 'Forward: ' forward.0 'forwarding id(s) deleted'
-   do i=1 to forward.0                       /*                       */
-      call msg '    ' forward.i              /*                       */
-      end
-   'EXECDROP' foruser 'FORWARD'              /*                       */
-   exitrc = 0                                /*                       */
-   end
-else  do                                     /*                       */
-   call msg 'No forwarding in effect for' foruser
-   exitrc = 4                                /*                       */
-   end
-
-return exitrc                                /*                       */
+return 0
 
 
 Exists:  procedure  /* Check for existance of a file */
@@ -348,6 +472,244 @@ if fm = ''  then  fm = '*'                   /*                       */
 'ESTATE' fn ft fm                            /*                       */
 if rc = 0  then  return 1                    /*                       */
 return 0
+
+
+/* *****************************************************************  */
+/*  Files will create the non-mail file forwarding criteria line in   */
+/*  the 'userid FORWARD' file.  This information is used by the       */
+/*  PUFILFWD EXEC to do forwarding of non-mail files.                 */
+/*                                                                    */
+/*  The FILES control line is stored as a comment in the file.  Its   */
+/*  format is:                                                        */
+/*                                                                    */
+/*  *  Files:  destid    Classes: list of classes to transfer         */
+/*                                                                    */
+/* *****************************************************************  */
+
+Files:  procedure , /* Do processing for FILES operation */
+        expose cmdstring console diskmode foruser localnode msgcmd ,
+               requestor
+
+parse upper var cmdstring . destination extra
+
+call readforwardfile
+if result <> 0  then  do
+   exitrc = result
+   call msg 'No forwarding in effect for' foruser
+   return exitrc
+   end
+
+classes    = ''                              /* Set default           */
+delete     = 0                               /* Assume addition       */
+loggedon   = 0                               /* LoggedOn flag         */
+loggedoff  = 0                               /* LoggedOff flag        */
+
+if destination = ''  then  do
+   call msg 'Missing file transfer destination'
+   return 8
+   end
+
+if extra = ''  then  do                      /* No operation request  */
+   call msg 'No operation requested for' destination', specify' ,
+      'CLASS or DELETE keyword(s)'
+   return 8
+   end
+
+do while extra <> ''
+   parse var extra keyword extra
+   select
+      when abbrev('CLASSES',keyword,5)  then  do
+         parse var extra value extra
+         if value = ''  then  do
+            call msg 'Missing classes for "CLASS" keyword'
+            return 8
+            end
+         classes = value
+         end
+      when abbrev('DELETE',keyword,3)  then
+         delete = 1                          /* Remember deleting     */
+      when keyword = 'LOGGEDON' | keyword = 'ANYTIME'  then
+         loggedon = 1
+      when keyword = 'LOGGEDOFF'  then
+         loggedoff = 1
+      otherwise  do
+         call msg 'Invalid keyword "'keyword'"'
+         return 8
+         end
+      end
+   end
+
+if extra <> ''  then  do
+   call msg 'Too many operands on FILES command'
+   return 8
+   end
+
+if length(classes) > 0  then  do             /* Standardize format    */
+   newclasses = left(classes,1)
+   do i=2 for length(classes)
+      class = substr(classes,i,1)            /* Next character        */
+      if pos(class,newclasses) = 0  then     /* Not in class string   */
+         newclasses = newclasses||class      /* Add it in             */
+      end
+   end
+else  newclasses = ''                        /* Remember nothing given*/
+
+if loggedon & loggedoff  then  do            /* Check usage           */
+   call msg 'LoggedON and LoggedOFF are mutually exclusive, supply' ,
+      'only 1'
+   return 8
+   end
+
+if validdest('NJE')  then  do                /* Must be NJE address   */
+   match. = 0                                /* No match found        */
+   overlap. = 0                              /* No overlap problems   */
+   call findfiles                            /* Find File: lines      */
+   if filelines.0 = 0  then  do              /* No lines found        */
+      select
+         when  delete  then  do              /* A deletion            */
+            call msg 'Deletion failed, destination not found'
+            exitrc = 8
+            end
+         when newclasses = ''  then  do      /* An addition but no    */
+                                             /*   class(es) provided  */
+            call msg 'Addition of' destination 'failed, no spool' ,
+               'class(es) specified'
+            exitrc = 8
+            end
+         otherwise  do                       /* An addition           */
+            i=forward.0+1                    /* Take first open line  */
+            call buildfileentry 'NEW' i, destination, newclasses, ,
+                                loggedon loggedoff
+            forward.0 = i                    /* Update count          */
+            call msg destination 'will receive files in class(es)' ,
+               newclasses
+            call updatehdr                   /* Remember update time  */
+            exitrc = writeforwardfile()      /* Write it to disk      */
+            end
+         end
+      end
+   else  do                                  /* Existing lines found  */
+      select
+         when overlap.0 > 0  then  do        /* Class overlap found   */
+            call msg 'The classes specified ('classes') overlap' ,
+               'with the following other destination ids:'
+            do i=1 to forward.0              /* Show the              */
+               if overlap.i  then            /*     overlap line(s)   */
+                  call msg forward.i
+               end
+            exitrc = 8
+            end
+         when (match.0=0) & delete  then do  /* New destination       */
+                                             /*   deletion request    */
+               call msg 'Deletion failed, destination not found'
+               exitrc = 8
+               end
+         when (match.0=0) then  do           /* New destination       */
+            if newclasses = ''  then  do     /* No classes given      */
+               call msg 'No class(es) supplied, assuming all classes' ,
+                  'are to be transferred'
+               newclasses = '*'
+               end
+            i=forward.0+1                    /* Take first open line  */
+            call buildfileentry 'NEW' i, destination, newclasses, ,
+                                loggedon loggedoff
+            forward.0 = i                    /* Update count          */
+            call msg destination 'will receive files in class(es)' ,
+               classes
+            call updatehdr                   /* Remember update time  */
+            exitrc = writeforwardfile()      /* Write it to disk      */
+            end
+         when (match.0 = 1) & delete then do /* One match to be       */
+                                             /*   deleted             */
+            i=filelines.1                    /* This will be gone     */
+            deletedclasses = getvalue(i,'CLASSES')
+            do i=filelines.1 to forward.0-1  /* Delete the line       */
+               j=i+1                         /*    by moving the      */
+               forward.i = forward.j         /*    rest forward 1.    */
+               end
+            forward.0 = forward.0 - 1        /* Update the count      */
+            call msg destination 'deleted, files in class(es)' ,
+               deletedclasses 'will no longer be transferred'
+            call updatehdr                   /* Remember update time  */
+            exitrc = writeforwardfile()      /* Write it to disk      */
+            end
+         when (match.0 = 1)  then  do        /* One match to be       */
+                                             /*   replaced            */
+            i=filelines.1                    /* Match line number     */
+            call buildfileentry 'OLD' i, destination, newclasses, ,
+                                loggedon loggedoff
+            forward.0 = i                    /* Update count          */
+            classes = getvalue(i,'CLASSES')
+            call msg destination 'will receive files in class(es)' ,
+               classes
+            call updatehdr                   /* Remember update time  */
+            exitrc = writeforwardfile()      /* Write it to disk      */
+            end
+         otherwise  do                       /*                       */
+            end
+         end
+      end
+   end
+else  do                                     /* Bad destination       */
+   call msg '"'destination'" is not valid: ' failure
+   exitrc = 8
+   end
+
+return exitrc
+
+
+/* *****************************************************************  */
+/*                                                                    */
+/*  FindFiles does a scan through the FORWARD file looking for        */
+/*  the Files: lines and remembering some info about them.            */
+/*                                                                    */
+/* *****************************************************************  */
+
+FindFiles:  /* Find Files: comments */
+
+filelines.0 = 0                              /*                       */
+do i=1 to forward.0                          /* Scan for FILES: line  */
+   if left(word(forward.i,1),1) = '*'  then  do
+      parse upper var forward.i '*' x ':' filedest . 'CLASSES:' ,
+         fileclasses 'LOGGEDON:' .
+      if x = 'FILES'  then  do
+         j = filelines.0 + 1
+         filelines.j = i
+         filelines.0 = j
+         if destination = filedest then  do  /* Destination matches   */
+            match.i = 1                      /* Remember the match    */
+            match.0 = match.0 + 1            /* Update the count      */
+            end
+         else  do                            /* Check class overlap   */
+            if overlap(classes,fileclasses)  then  do
+               overlap.i = 1                 /* Remember the overlap  */
+               overlap.0 = overlap.0 + 1     /* Update the count      */
+               end
+            end
+         end
+      end
+   end
+
+return
+
+
+/* *****************************************************************  */
+/*                                                                    */
+/*  GetValue returns the value for the specified field                */
+/*                                                                    */
+/* *****************************************************************  */
+
+GetValue:  procedure , /* Get a field value from a forward record */
+           expose forward.
+parse upper arg index , field .
+
+i = find('FILES CLASSES LOGGEDON',field)     /* Get index value       */
+if i=0  then  return ''                      /* Safest way out        */
+
+parse upper var forward.index ,              /* Get field values      */
+   '*' . 'FILES:' field.1 'CLASSES:' field.2 . 'LOGGEDON:' field.3 .
+
+return field.i
 
 
 /* *****************************************************************  */
@@ -372,6 +734,7 @@ if extra <> ''  then  do                     /*                       */
    return 8
    end
 
+                                             /*                       */
 if ^exists(foruser 'FORWARD' diskmode)  then  do
    call msg 'No forwarding in effect for' foruser
    exitrc = 4                                /*                       */
@@ -387,7 +750,7 @@ else  do                                     /*                       */
       'LISTFILE' foruser 'FORWARD' diskmode '(DATE STACK'
       parse upper pull . . . . . records .   /*                       */
       'DROPBUF'                              /*                       */
-      if records > 2  then  do               /*                       */
+      if records > 4  then  do               /*                       */
          call msg 'Sending a copy of forwarding file to  you'
          parse var requestor userid '@' node /*                       */
          if node = ''  then                  /*                       */
@@ -410,6 +773,32 @@ else  do                                     /*                       */
    end
 
 return exitrc                                /*                       */
+
+
+/* *****************************************************************  */
+/*                                                                    */
+/*  Mail handles the MAIL operations                                  */
+/*                                                                    */
+/*  The MAIL operation actually exists to provide an aesthetic        */
+/*  niceness to the command syntax (it balances FILE).  Operations    */
+/*  on mail forwarding entries are the defaults.                      */
+/*                                                                    */
+/* *****************************************************************  */
+
+Mail:  procedure , /* Do processing for MAIL operation */
+       expose cmdstring console diskmode foruser localnode ,
+              mailoperations msgcmd operations requestor
+
+parse var cmdstring . cmdstring              /* Remove 'MAIL'         */
+
+parse upper var cmdstring operation .
+if find(mailoperations,operation) = 0  then  do
+   call msg 'The "'operation'" request is not supported'
+   result = 8
+   end
+else
+   interpret  'call' operation
+return result
 
 
 /* *****************************************************************  */
@@ -442,6 +831,74 @@ else  do                                     /*                       */
 
 return
 
+
+/* *****************************************************************  */
+/*                                                                    */
+/*  Read forwarding file from disk                                    */
+/*                                                                    */
+/* *****************************************************************  */
+
+ReadForwardFile:  procedure  expose diskmode foruser forward.
+
+if ^exists(foruser 'FORWARD' diskmode)  then  exitrc = 28
+else  do
+   'EXECIO * DISKR' foruser 'FORWARD' diskmode '(FINIS STEM FORWARD.'
+   exitrc = rc
+   if exitrc = 0  then  do
+      if left(word(forward.1,1),1) <> '*'  then  do
+         do i=forward.0 to 1 by -1           /* Bump all lines up 1   */
+            j=i+1
+            forward.j = forward.i
+            end
+         forward.0 = forward.0+1             /* Update line count     */
+         call createforwardfile              /* Build the control rec.*/
+         end
+      end
+   end
+if exitrc <> 0  then  forward.0 = 0          /* Need to set default   */
+
+return exitrc
+
+
+/* *****************************************************************  */
+/*                                                                    */
+/*  Overlap checks to see if there are any classes in common betwen   */
+/*  two class strings.                                                */
+/*                                                                    */
+/*  Class strings may be in any order.  A class value of '*' means    */
+/*  all classes.                                                      */
+/*                                                                    */
+/* *****************************************************************  */
+
+Overlap: procedure  /* Check for class overlaps */
+parse upper arg list1 , list2
+if list1 = '' | list2 = ''  then  return 0   /* By definition         */
+if list1 = '*'  then  return 1               /* By definition         */
+if list2 = '*'  then  return 1               /* By definition         */
+
+list1 = strip(list1)                         /* Get rid of pesky      */
+list2 = strip(list2)                         /*     blanks            */
+
+do i=1 to length(list1)                      /* Scan all characters   */
+   if pos(substr(list1,i,1),list2) > 0  then  return 1
+   end
+
+return 0                                     /* No match              */
+
+/* *****************************************************************  */
+/*                                                                    */
+/*  UpDateHdr will set the Update date/time field in the header       */
+/*                                                                    */
+/* *****************************************************************  */
+
+UpDateHdr:  procedure  expose  forward.
+
+parse var forward.1 oldpart 'Updated:' .     /* Get creation date     */
+forward.1 = oldpart || 'Updated:' date('U') time()
+
+return
+
+
 /* *****************************************************************  */
 /*                                                                    */
 /*  ValidDest will validate an address against RFC822 (I hope).       */
@@ -456,7 +913,9 @@ return
 /* *****************************************************************  */
 
 ValidDest:  procedure , /* Validate a destination address */
-            expose destination failure
+            expose destination failure localnode
+parse upper arg type .                       /*                       */
+if type = ''  then  type = 'RFC822'          /* Default type          */
 
 workdest = strip(destination)                /*                       */
 
@@ -520,9 +979,20 @@ if routeaddr <> '' & domain = ''  then  do   /*                       */
    routeaddr = reverse(routeaddr)            /*                       */
    end
 
+if type = 'NJE'  then  do                    /* Validate for NJE      */
+   if routeaddr <> '' | ,                    /* Not allowed           */
+      pos('.',domain) > 0  then  do          /* Only 1 token          */
+      failure = 'Not a valid NJE address'
+      return 0                               /*                       */
+      end
+   end
+
 select                                       /*                       */
    when routeaddr = '' & domain = ''  then  do  /*                    */
-      destination = '<'userid'>'             /*                       */
+      if type = 'NJE'  then                  /*                       */
+         destination = '<'userid'@'localnode'>'
+      else                                   /*                       */
+         destination = '<'userid'>'
       end
    when routeaddr = '' & domain <> '' then  do  /*                    */
       upper domain                           /*                       */
@@ -541,6 +1011,37 @@ do i=1 to quoted.0                           /*                       */
    end
 
 return 1
+
+
+/* *****************************************************************  */
+/*                                                                    */
+/*  Write FORWARDing file to disk                                     */
+/*                                                                    */
+/* *****************************************************************  */
+
+WriteForwardFile:  procedure  expose diskmode foruser forward.
+
+if exists(foruser 'FORWARD' diskmode)  then
+   'ERASE' foruser 'FORWARD' diskmode
+
+onlycomments = 1                             /* Assume only comments  */
+do i=1 to forward.0
+   if left(word(forward.i,1),1) <> '*'  then  do
+      onlycomments = 0                       /* A real destination    */
+      leave
+      end
+   end
+
+if onlycomments  then  exitrc = 0            /* Only comments left    */
+else  do                                     /* Real lines, rewrite   */
+   'EXECIO' forward.0 'DISKW' foruser 'FORWARD' diskmode '(FINIS STEM' ,
+      'FORWARD.'
+   exitrc = rc
+   end
+if exitrc = 0  then
+   'EXECDROP' foruser 'FORWARD'
+
+return exitrc
 
 /* **************** */
 /*  Error handlers  */

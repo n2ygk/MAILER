@@ -27,8 +27,13 @@
   |            a copy of the mail at your userid, add a forward with   |
   |            an address of '<*>'.                                    |
   |                                                                    |
-  |      FORWARD ADD    destaddr                                       |
-  |              DELETE destaddr | ALL                                 |
+  |      FORWARD <MAIL>   ADD       destaddr                           |
+  |              <MAIL>   DELETE    destaddr | ALL                     |
+  |              FILES    destid    < CLASS classlist >                |
+  |                                 <         '*'     >                |
+  |                                 < DELETE >                         |
+  |                                 < LOGGEDON | ANYTIME >             |
+  |                                 < LOGGEDOFF >                      |
   |              LIST                                                  |
   |                                                                    |
   |  HELP | ? - Get list of commands.                                  |
