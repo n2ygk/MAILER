@@ -59,6 +59,7 @@ SKIP001  EQU   *
          USING     ROUTD,R8
          MVC       TAGNODE,RTROUTE     GET NODE NAME TO TAG
          MVC       TAGUSER,RTUSER      GET MAILER NAME TO TAG
+         MVC       TAGWTR,RTUSER       Also to writer
          MVC   XFERUSER,RSCSNAME   GET NAME OF RSCS SYSTEM
          CLC       TAGNODE,CPUSTR      same as my node?          [1.24]
          BNE       RMTNODE             no, remote                [1.24]
@@ -155,7 +156,9 @@ CPCOM    DC        C'TAG DEV PUN '
 TAGNODE  DS        CL8
          DC        C' '
 TAGUSER  DS        CL8
-         DC        C' 50 ENQMSG=NO SENTMSG=NO FINALMSG=NO'
+         DC        C' 50 W='
+TAGWTR   DS        CL8' '
+         DC        C' ENQMSG=NO SENTMSG=NO FINALMSG=NO'
          DC        X'15',C'SP PUN CLASS M TO '                   [1.22]
 XFERUSER DS        CL8
 CPCOML   EQU       *-CPCOM
