@@ -580,6 +580,8 @@ MFLG2VLF EQU   X'40'         Validate failed                     [1.23]
 MFLG2NOR EQU   X'20'         no Received: stamp wanted.          [1.24]
 MFLG2NLF EQU   X'10'         MAIL FROM:<>
 MFLG2NOH EQU   X'08'         MAIL FROM:<userid>  (i.e. no host)
+MFLG2BLD EQU   X'04'         BUILDLST incomplete (some mail to send,
+*                                but some destinations not found)
          DC    X'00'         reserved                            [1.22]
 ULFSCB   FSCB  'MAILER USERLOG A',RECFM=F,BSIZE=80,FORM=E        [1.23]
 MAILTRAC DS    0D            Trace table pointers

@@ -155,8 +155,8 @@ RFILTCON EQU   *                                                 [1.22]
          LTR   R15,R15       ANY ERRORS?
          BNZ   RTS           YES... RETURN TO SENDER
          SPACE ,
-         LTR   R15,R15       ANY BUGS?
-         BNZ   RTS           RETURN TO SENDER
+         TM    MAILFLG2,MFLG2BLD   Any problems in BUILDLST?
+         BO    RTS           ---> Yes, return to sender
 PURGE    EQU   *
          ABNEXIT CLR,EXIT=ABENDXIT
          L     R4,MAILFILE   GET FILE NUMBER

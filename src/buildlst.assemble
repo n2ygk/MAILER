@@ -101,6 +101,8 @@ EYESKIP  DS    0H
          DROP  R1
          USING MAILBLOK,R11  ADDRESSABILITY
          SPACE ,
+         NI    MAILFLG2,X'FF'-MFLG2BLD  Clear our problem flag
+         SPACE ,
 *--------------------------------------------------------------------
 *  CHECK FOR EXISTENCE OF "*DESTINATION" FIELD (MFLGDEST ON)
 *--------------------------------------------------------------------
@@ -338,6 +340,7 @@ BLDNF1   EQU   *
 * Whole mess here deleted due to use of new FNROUTD, above.      [1.22]
 *----------------------------------------------------------------[1.22]
          WTR BLS027,(CA,(R3))          UNKNOW HOST OR ALIAS
+         OI    MAILFLG2,MFLG2BLD   Remember we had a problem
          B     BLDSKP1       SKIP THIS ADDRESS
          SPACE ,
 DELRMBX  DC    A(0)                Addr of MBOX for DELROUTE call
