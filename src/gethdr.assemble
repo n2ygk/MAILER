@@ -93,13 +93,15 @@ RDLOOP1  EQU   *
          SR    R2,R1         LENGTH OF STRING
 * NOW ADD THE STRING TO THE BUFFER AND THEN APPEND A LINEND (X'15')
          SR    R8,R2         PAST END OF BUFFER?
-         BL    NOSPACE       YES, GO DIE
+         BL    HDRENDOV      YES, Pretend at end of headers
          BCTR  R2,0                MINUS 1 FOR EXECUTE
          EX    R2,COPY       COPY INTO BUFFER
          LA    R7,1(R7,R2)   END OF NEW STRING
          MVI   0(R7),X'15'   TACK ON A LINEND
          LA    R7,1(R7)      POISE PTR. FOR NEXT STRING
          B     RDLOOP
+HDRENDOV EQU   *
+         AR    R8,R2         Add length not used back in
 HDREND   EQU   *
          BCTR  R8,0          -1 FROM STACK FOR THE LINEND
          LTR   R8,R8         TEST IF THERE IS ROOM
