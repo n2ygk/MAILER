@@ -50,6 +50,18 @@ address 'COMMAND'                            /*                       */
 
 'ACCESS 193 C/A'
 
+/*  The following code assumes you want the file forwarding code run  */
+/*  every 15 minutes.  This is certainly one way to run the code but  */
+/*  you could also remove this loop and have another server (such as  */
+/*  SMART) autolog the MAILFWD id whenever you want FORWARDX run.     */
+/*  **** Note ****                                                    */
+/*  If you want to use this loop, then you must remove the            */
+/*                                                                    */
+/*     if disc()  then  'CP LOGOFF'                                   */
+/*                                                                    */
+/*  line when modifying the FORWARDX EXEC.                            */
+
+
 do while disc()
    'EXEC FORWARDX'                           /* Do some forwarding    */
    'CP SLEEP 15 MIN'                         /* Wait a while          */

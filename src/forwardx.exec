@@ -194,6 +194,11 @@ else  do                                     /* Not an SSI system     */
 'RELEASE' mailer191                          /* Release MAILER 191    */
                                              /*    disk               */
 
+/*  The following line assumes that FORWARDX is run only 1 time if    */
+/*  the server is running disconnected.  If you want to use the       */
+/*  CP SLEEP loop in the sample PROFILE EXEC you must delete this     */
+/*  line.                                                             */
+
 if disc()  then  'CP LOGOFF'                 /* LOGOFF if running     */
                                              /*    disconnected       */
 exit
