@@ -459,7 +459,7 @@ int (*func)();                    /* function to write replies to */
     bcopy("220 ",buf,len = 4);
     len += mydomain(&buf[len], sizeof(buf)-len);
     bcopy(" Columbia MAILER ", &buf[len], 17); len += 17;
-    bcopy(mailblok.mailvers,&buf[len],8); len += 8;
+    bcopy(mailblok.mailvers,&buf[len],16); len += 16;
     while (buf[len-1] == ' ') --len; /* trim blanks from version */
     bcopy(" BSMTP service ready.", &buf[len], 21); len += 21;
     (*func)(buf, len);
@@ -2343,7 +2343,7 @@ add_received()
         }
     }
     bcopy(" (Mailer ",&buf[len],9); len += 9;
-    bcopy(mailblok.mailvers,&buf[len],8); len += 8;
+    bcopy(mailblok.mailvers,&buf[len],16); len += 16;
     while (buf[len-1] == ' ') --len;
     bcopy(") with BSMTP id ",&buf[len],16); len += 16;
     bcopy(mailblok.mailftxt,&buf[len],4); len += 4;

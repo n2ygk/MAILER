@@ -114,8 +114,8 @@ TRIM05   EQU   *             [1.20] trim trailing blanks
 TRIM06   EQU   *             [1.20]
          LA     R2,1(R2)     [1.20]
          MVC    0(9,R2),=CL9' (Mailer ' [1.20] "by NODE( Mailer "
-         MVC    9(8,R2),MAILVERS [1.20] "by NODE(mailer version"
-         LA     R2,16(R2)     [1.20]
+         MVC    9(16,R2),MAILVERS [1.20] "by NODE(mailer version"
+         LA     R2,24(R2)     [1.20]
 TRIM07   EQU    *            [1.20] trim trailers from version #
          CLI    0(R2),C' '   [1.20]
          BNE    TRIM08       [1.20] end of version #

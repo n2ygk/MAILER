@@ -67,12 +67,13 @@ static struct mailblok {
     char rscsname[8];        /* rscs vmid */
     char mailvmid[8];        /* mail vmid */
     char mailtime[16];       /* time of last start/reload */
-    char mailvers[28];       /* mailer version, assembly date */
-                             /*  0 -  7 Version id                   */
-                             /*  8 - 15 Assembly date                */
+    char mailvers[36];       /* mailer version, assembly date */
+                             /*  0 - 15 Version id                   */
                              /* 16 - 16 Blank                        */
-                             /* 17 - 24 HH:MM:00                     */
-                             /* 25 - 27 Blank                        */
+                             /* 17 - 24 Assembly date                */
+                             /* 25 - 25 Blank                        */
+                             /* 26 - 33 HH:MM:00                     */
+                             /* 34 - 35 Blank                        */
     int haltrc;              /* Return code from STOP command        */
     char mailnode[8];        /* Origin node name                     */
     char mailuser[8];        /* Origin userid                        */
