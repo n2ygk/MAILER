@@ -2397,7 +2397,7 @@ struct fscb *fp;    /* fscb for data or zero for none */
     }
     punch(".",1);
     punch("QUIT",4);
-    cpcmd("CLOSE 00D NAME ERROR MAIL",26);
+    cpcmd("CLOSE 00D NAME ERROR MAIL",25);
     wtr("SMT",59,0);
 }
 
