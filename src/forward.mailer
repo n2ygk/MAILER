@@ -380,7 +380,7 @@ else  do                                     /*                       */
          if node = ''  then                  /*                       */
             'EXEC SENDFILE' foruser 'FORWARD A TO' requestor
          else                                /*                       */
-            'EXEC SENDFILE' foruser 'FORWARD A TO' requestor 'AT' node
+            'EXEC SENDFILE' foruser 'FORWARD A TO' userid 'AT' node
          end
       else  do                               /*                       */
          'EXECIO * DISKR' foruser 'FORWARD A (FINIS STEM FORWARDS.'
