@@ -50,12 +50,11 @@ isspace(c)
   {
     switch(c)
      {
-        case ' '  :
-        case '\t' :
-        case '\v' :
-        case '\f' :
-        case '\r' :
-        case '\n' :
+        case ' '  :              /* Blank           */
+        case '\t' :              /* Horizontal tab  */
+        case '\f' :              /* Form feed       */
+        case '\r' :              /* Return          */
+        case '\n' :              /* Newline         */
           return ( 1 );
         default :
           return ( 0 );
