@@ -37,6 +37,8 @@
 
 /* DEBUG_CHECK_LOCAL        Trace check_local routine                */
 /* DEBUG_FIND_ROUTD         Trace find_routd routine                 */
+/* DEBUG_IS_MAILER          Trace is_mailer routine                  */
+/* DEBUG_REP_MAIL           Trace rep_mail routine                   */
 /* DEBUG_S_GETDATA          Trace s_getdata routine                  */
 /* DEBUG_S_INPUT            Trace s_input routine                    */
 /* DEBUG_S_RCPT             Trace s_rcpt routine                     */
@@ -348,6 +350,9 @@ rep_mail()
 #endif
 
     if (mailblok.mailsfld) {  /* there was a valid MAIL FROM */
+#ifdef DEBUG_REP_MAIL
+        wrterm("==> Valid MAIL FROM");
+#endif
         if (!is_mailer(mailblok.mailsfld))
          err_mail(mailblok.mailsfld->fistr+1,
          (mailblok.mailsfld->fiend-mailblok.mailsfld->fistr-2),fscbptr);
@@ -357,13 +362,20 @@ rep_mail()
         char buf[20];         /* to send reply mail to rscs origin */
         int bl;
 
+#ifdef DEBUG_REP_MAIL
+        wrterm("==> No valid MAIL FROM & not a trusted mailer");
+#endif
         bcopy(mailblok.mailuser,buf,bl = mailblok.mailulen);
         buf[bl++] = '@';
         bcopy(mailblok.mailnode,&buf[bl],mailblok.mailnlen);
         bl += mailblok.mailnlen;
         err_mail(buf,bl,fscbptr);
-    } else                    /* From a trusted mailer (shouldn't */
+    } else {                  /* From a trusted mailer (shouldn't */
+#ifdef DEBUG_REP_MAIL
+      wrterm("==> No valid MAIL FROM & a trusted mailer");
+#endif
       err_loop(fscbptr);  /* happen -- haha) */
+    }
 }
 
 
@@ -798,7 +810,7 @@ int l;
     struct mbox *a;
 
 #ifdef TRACE
-    wrterm("==> Entered s_state");
+    wrterm("==> Entered s_mail");
 #endif
 
     mailblok.mailsfld = 0;
@@ -2374,11 +2386,24 @@ struct fieldd *f;
         struct { char node[8], user[8]; } part;
         char both[16];
     } key;
+    struct node *n;
+    char hoststring[256]; int hostlen;
+    char *hoststringptr;
+    struct {
+      int *node;
+      int *hs;
+      int *hl;
+      int *hoststringptr;
+      int *hostlen;
+    } plist;
     struct mbox *a = (struct mbox *)f->fipars;
     struct tbentry te;
     struct routd *r;
     char *us,*hs;
     int ul,hl,i;
+#ifdef DEBUG_IS_MAILER
+    char dbgmsg[133];
+#endif
 
 #ifdef TRACE
     wrterm("==> Entered is_mailer");
@@ -2391,29 +2416,91 @@ struct fieldd *f;
     /* 1. Convert and pad the userid */
     us = TOKPTR(MBOXLCL(a)->noddown);
     ul = MBOXLCL(a)->noddown->toklen;
-    if (ul > 8)                          /* not a mailer since userid */
+#ifdef DEBUG_IS_MAILER
+    bcopy("==> is_mailer: userid=<", dbgmsg, 23);
+    bcopy(us, &dbgmsg[23], ul);
+    bcopy(">", &dbgmsg[23+ul], 2);
+    wrterm(dbgmsg);
+#endif
+    if (ul > 8) {                        /* not a mailer since userid */
+#ifdef DEBUG_IS_MAILER
+      wrterm("===> is_mailer: Not a mailer, userid too long");
+#endif
       return 0;                          /* is longer than a VMID */
+    }
     bcopy(us,key.part.user,ul);               /* copy in the userid */
     /* 2. Look up the routd. */
-    hs = TOKPTR(MBOXDML(a)->noddown);
-    hl = MBOXDML(a)->noddown->toklen;
+    n = MBOXDML(a);
+    plist.node = &n;
+    plist.hs = &hs;
+    plist.hl = &hl;
+    for (i=0; i < sizeof(hoststring); hoststring[i] = ' ',i++);
+    hoststringptr = &hoststring[0];
+    plist.hoststringptr = &hoststringptr;
+    hostlen = sizeof(hoststring);
+    plist.hostlen = &hostlen;
+    acall(genlist, 0, &plist);
+#ifdef DEBUG_IS_MAILER
+    bcopy("==> is_mailer: node=<", dbgmsg, 21);
+    bcopy(hs, &dbgmsg[21], hl);
+    bcopy(">", &dbgmsg[21+hl], 2);
+    wrterm(dbgmsg);
+#endif
     if ((r = find_routd(hs, hl)) == 0)
       return 1;
+#ifdef DEBUG_IS_MAILER
+    wrterm("==> is_mailer: Found in OUTGOING or DOMAINS table");
+#endif
     if (xcmp(key.part.user,r->rtuser,8)==0)/*user matches mailer id*/
       return 1;
-    /* 3. compare rtnode to cpustr and rtuser to mailvmid */
-    bcopy(r->rtuser,key.part.user,8);            /* fill in the key */
+#ifdef DEBUG_IS_MAILER
+    bcopy("==> is_mailer: <", dbgmsg, 16);
+    bcopy(key.part.user, &dbgmsg[16], 8);
+    bcopy("> != <", &dbgmsg[24], 6);
+    bcopy(r->rtuser, &dbgmsg[30], 8);
+    bcopy(">", &dbgmsg[38], 2);
+    wrterm(dbgmsg);
+#endif
+    /* 3. compare rtnode to userid and rtuser to mailvmid */
+    bcopy(r->rtroute,key.part.node,8);           /* fill in the key */
     if (xcmp(mailblok.cpustr,key.part.node,8)==0 &&
         xcmp(mailblok.mailvmid,key.part.user,8)==0)
       return 1;
+#ifdef DEBUG_IS_MAILER
+    bcopy("==> is_mailer: <", dbgmsg, 16);
+    bcopy(key.part.node, &dbgmsg[16], 8);
+    bcopy("> != <", &dbgmsg[24], 6);
+    bcopy(mailblok.cpustr, &dbgmsg[30], 8);
+    bcopy(">  |  <", &dbgmsg[38], 7);
+    bcopy(key.part.user, &dbgmsg[45], 8);
+    bcopy("> != <", &dbgmsg[53], 6);
+    bcopy(mailblok.mailvmid, &dbgmsg[59], 8);
+    bcopy(">", &dbgmsg[67], 2);
+    wrterm(dbgmsg);
+#endif
     /* 4. look in mailvtab */
+#ifdef DEBUG_IS_MAILER
+    bcopy("==> is_mailer: search incoming table for >", dbgmsg, 42);
+    bcopy(&key, &dbgmsg[42], 16);
+    bcopy("<", &dbgmsg[58], 2);
+    wrterm(dbgmsg);
+#endif
     if (ctbluk(&te, mailblok.mailvtab, &key, 16) == TBMATCH)
       return 1;
     /* 5. look in mailvtab for '*default* userid' */
     bcopy("*DEFAULT*",key.part.node,8);
+#ifdef DEBUG_IS_MAILER
+    bcopy("==> is_mailer: search incoming table for >", dbgmsg, 42);
+    bcopy(&key, &dbgmsg[42], 16);
+    bcopy("<", &dbgmsg[58], 2);
+    wrterm(dbgmsg);
+#endif
     if (ctbluk(&te, mailblok.mailvtab, &key, 16) == TBMATCH)
       return 1;
     /* 6. must not be a mailer! */
+#ifdef DEBUG_IS_MAILER
+      wrterm("===> is_mailer: Not a mailer");
+#endif
     return 0;
 }
 
