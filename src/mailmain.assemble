@@ -83,8 +83,19 @@ FILELOOP EQU   *
          LA    R5,MAILULFN                                       [1.24]
          FSERASE (R5)                                            [1.24]
          LM    R14,R15,STACK       Start of stack/length of stack
-         SR    R1,R1               Have 0 length input w/zero fill
-         MVCL  R14,R0              Clear it all to zeros
+         C     R15,=F'4095'        Any full pages possible?
+         BNH   NODIAG10            ---> No
+         AR    R15,R14             Ending
+         BCTR  R15,0                    stack address
+         LA    R14,4095(,R14)      Round to starting
+         N     R14,=X'00FFF000'        page address
+         SRL   R15,12              Round to ending
+         BCTR  R15,0                    page
+         SLL   R15,12                        address
+         CR    R14,R15             Anything to free
+         BP    NODIAG10            ---> No
+         DIAG  R14,R15,X'0010'     Release pages
+NODIAG10 DS    0H
          MVC   STACKP,STACK  RESET STACK POINTER
          MAILTRC CALL,GETSPOOL
          CALL  GETSPOOL,((R11))   GET NEXT READER FILE
