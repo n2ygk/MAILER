@@ -41,6 +41,7 @@ R15 EQU 15 - SUBROUTINE LINKAGE
          MSGBLOK ,
          MAILBLOK ,
          COPY  MAILEQU
+         TRACETBL ,
          EJECT
 MAILCMD2 CSECT ,
          USING MAILCMD2,R15  TEMPORARY ADDRESSABILITY
@@ -173,7 +174,7 @@ $FWD0010 EQU   *
          MVC   $EXCFBLK(16),=CL16'FORWARD MAILER'     name
          MVC   $EXCREQ,$EXCREQ-1   Blank out field
          CLC   ARGC,=F'0'          Anything left?
-         BZ    $FWD0100            ---> No data
+         BZ    $FWD0040            ---> No data
          L     R1,ARGVP            Get pointer to next token
          L     R1,0(R1)            Get address of next token
          LA    R1,0(,R1)           Clean up high end
@@ -186,9 +187,22 @@ $FWD0010 EQU   *
 $FWD0020 EQU   *
          BCTR  R15,0               Decrement for execute
          EX    R15,MOVEFWD         Move in command arguments
+$FWD0040 EQU   *
+         CLC   =F'0',$EXCARG2      MSGCMD argument set?
+         BNE   $FWD0100            ---> Yes
+         L     R14,MAILPTAB        Parameter table
+         MAILTRC CALL,TBLUK        Trace the call
+         L     R15,ATBLUK          Pick up TBLUK routine address
+         CALL  (15),((R14),MSGCMD,L'MSGCMD,TWORK)
+         MAILTRC RETURN,TBLUK,(R15) Trace the return
+         LTR   R15,R15             Found an entry?
+         BNZ   $FWD0100            ---> No MSGCMD value
+         LA    R0,1(,R1)           Point to start of string
+         ST    R0,$EXCARG2         Put address into argument
+         MVC   $EXCARG2+7(1),0(R1) Put length into argument
 $FWD0100 EQU   *
          LA    R1,$EXCPL           Point to tokenized plist
-         ICM   R1,B'1000',=X'01'   Tell REXX using extended plist
+         ICM   R1,B'1000',=X'05'   Doing REXX function call
          LA    R0,$EXCEPL          Point to extended plist
          SVC   202                 Run the FORWARD exec
          DC    AL4(1)              Continue with next instruction
@@ -201,6 +215,7 @@ $FWD0100 EQU   *
 $FWD0120 EQU   *
          BAL   R14,RCMSG           Format return code msg
          BAL   R14,WRITEMSG        Write rc message
+         BAL   R14,FREEEVAL        Go free up the EVAL block
          B     DONE                All done
          SPACE 1
 MOVEFWD  MVC   $EXCREQ(0),0(R1)
@@ -225,7 +240,7 @@ $MLS0010 EQU   *
          MVC   $EXCFBLK(16),=CL16'MAILLISTMAILER'     name
          MVC   $EXCREQ,$EXCREQ-1   Blank out field
          CLC   ARGC,=F'0'          Anything left?
-         BZ    $FWD0100            ---> No data
+         BZ    $MLS0040            ---> No data
          L     R1,ARGVP            Get pointer to next token
          L     R1,0(R1)            Get address of next token
          LA    R1,0(,R1)           Clean up high end
@@ -238,9 +253,22 @@ $MLS0010 EQU   *
 $MLS0020 EQU   *
          BCTR  R15,0               Decrement for execute
          EX    R15,MOVEMLS         Move in command arguments
+$MLS0040 EQU   *
+         CLC   =F'0',$EXCARG2      MSGCMD argument set?
+         BNE   $MLS0100            ---> Yes
+         L     R14,MAILPTAB        Parameter table
+         MAILTRC CALL,TBLUK        Trace the call
+         L     R15,ATBLUK          Pick up TBLUK routine address
+         CALL  (15),((R14),MSGCMD,L'MSGCMD,TWORK)
+         MAILTRC RETURN,TBLUK,(R15) Trace the return
+         LTR   R15,R15             Found an entry?
+         BNZ   $MLS0100            ---> No MSGCMD value
+         LA    R0,1(,R1)           Point to start of string
+         ST    R0,$EXCARG2         Put address into argument
+         MVC   $EXCARG2+7(1),0(R1) Put length into argument
 $MLS0100 EQU   *
          LA    R1,$EXCPL           Point to tokenized plist
-         ICM   R1,B'1000',=X'01'   Tell REXX using extended plist
+         ICM   R1,B'1000',=X'05'   Doing REXX function call
          LA    R0,$EXCEPL          Point to extended plist
          SVC   202                 Run the FORWARD exec
          DC    AL4(1)              Continue with next instruction
@@ -253,6 +281,7 @@ $MLS0100 EQU   *
 $MLS0120 EQU   *
          BAL   R14,RCMSG           Format return code msg
          BAL   R14,WRITEMSG        Write rc message
+         BAL   R14,FREEEVAL        Go free up the EVAL block
          B     DONE                All done
          SPACE 1
 MOVEMLS  MVC   $EXCREQ(0),0(R1)
@@ -394,6 +423,22 @@ F15RET   EQU   *
          BR    R14
          EJECT ,
 *--------------------------------------------------------------------
+*                          F R E E E V A L
+*
+*  Free an EVALBLOK returned from REXX function call
+*
+*--------------------------------------------------------------------
+         SPACE 1
+FREEEVAL DS    0H
+         CLC   $EXCFUNR,=F'0'      Anything to free?
+         BER   R14                 ---> No
+         L     R1,$EXCFUNR         Pick up EVALBLOK ptr
+         L     R0,4(,R1)           Get length in dblwords
+         XC    $EXCFUNR,$EXCFUNR   Clear the pointer
+         DMSFRET LOC=(1),DWORDS=(0) Free the EVALBLOK
+         BR    R14                 Return to caller
+         EJECT ,
+*--------------------------------------------------------------------
 *                           W R I T E M S G
 *
 *  Send reply to the command issuer.  Multiline replies are seperated
@@ -484,6 +529,8 @@ DWORD    DS    D
          SPACE 1
 TWORK    DS    64F                 TBLUK work area
          SPACE 1
+MSGCMD   DC    C'Msgcmd'           For TBLUK lookup
+         SPACE 1
 MSGRC    DS    C'R('               Return code message
 MSGRCRC  DS    CL5
          DS    C') for: '
@@ -505,6 +552,13 @@ $EXCEPL  DC    A($EXCPL)           Point to 'EXEC'
          DC    A($EXCARGS)         Start of arguments
          DC    A($EXCARGE)         End of arguments
          DC    A($EXCFBLK)         File block pointer
+         DC    A($EXCARGL)         Argument list ptr
+$EXCFUNR DC    A(0)                Function return
+         SPACE 1
+$EXCARGL DS    0F                  REXX argument list
+         DC    A($EXCARGS),A($EXCARGE-$EXCARGS)
+$EXCARG2 DC    A(0),A(0)           Address/length of 'MSGCMD' value
+         DC    8X'FF'
          SPACE 1
 $EXCFBLK DS    0F
          DC    CL8'FORWARD'        FN = FORWARD | MAILLIST

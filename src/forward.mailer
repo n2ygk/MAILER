@@ -32,7 +32,7 @@ signal on syntax
 signal on novalue
 
 parse arg '(' requestorid '@' requestornode ')'  maintainer ,
-          cmdstring                          /*                       */
+          cmdstring , msgcmd .               /*                       */
 cmdstring = strip(cmdstring)                 /*                       */
 if translate(word(cmdstring,1)) = 'FORWARD'  then
    cmdstring = subword(cmdstring,2)          /*                       */
@@ -42,7 +42,8 @@ if translate(word(cmdstring,1)) = 'FORWARD'  then
 console = 0                                  /* Not from console      */
 exitrc  = 0                                  /*                       */
 foruser = ''                                 /*                       */
-msgcmd  = 'MSGNOH'                           /*                       */
+if msgcmd = ''  then                         /* Set msg cmd default   */
+   msgcmd  = 'MSGNOH'                        /*    if none given      */
 operations = 'ADD DELETE LIST'               /*                       */
 requestor = '*CONSOLE*'                      /*                       */
 
@@ -79,6 +80,7 @@ else  mflag = ''                             /*                       */
 say 'Forward:  Cmd       = "'strip(original)'"'
 say '       :  Requestor = "'requestor'"' mflag
 say '       :  Cmdline   = "'cmdstring'"'
+say '       :  Msgcmd    = "'msgcmd'"'
 
 
 /* Do some command checking */
@@ -156,7 +158,7 @@ exit:  exit exitrc                           /*                       */
 /* *****************************************************************  */
 
 Add:  procedure ,  /* Do processing for an ADD operation */
-      expose cmdstring console foruser msgcmd requestor
+      expose cmdstring console foruser localnode msgcmd requestor
 
 parse var cmdstring . destination            /*                       */
 
@@ -188,7 +190,7 @@ return exitrc
 
 
 Addone:  procedure ,  /* Write a line to end of FORWARD file */
-         expose console foruser requestor
+         expose foruser
 
 parse arg destination                        /*                       */
 'EXECIO 1 DISKW' foruser 'FORWARD A (FINIS VAR DESTINATION'
@@ -255,7 +257,7 @@ return 0
 /* *****************************************************************  */
 
 Delete:  procedure ,  /* Do processing for a DELETE operation */
-         expose cmdstring console foruser msgcmd requestor
+         expose cmdstring console foruser localnode msgcmd requestor
 
 parse var cmdstring . destination            /*                       */
 
@@ -303,7 +305,7 @@ return exitrc                                /*                       */
 
 
 DeleteAll:  procedure ,  /* Do processing for a DELETE * operation */
-            expose cmdstring console foruser msgcmd requestor
+            expose cmdstring console foruser localnode msgcmd requestor
 
 if exists(foruser 'FORWARD A')  then  do     /*                       */
    'EXECIO * DISKR' foruser 'FORWARD A (FINIS STEM FORWARD.'
@@ -348,7 +350,7 @@ return 0
 /* *****************************************************************  */
 
 List:  procedure ,  /* Do processing for a LIST operation */
-       expose cmdstring console foruser msgcmd requestor
+       expose cmdstring console foruser localnode msgcmd requestor
 
 parse var cmdstring . extra                  /*                       */
 
@@ -405,7 +407,7 @@ return exitrc                                /*                       */
 /* *****************************************************************  */
 
 Msg:  procedure , /* Send reply to requestor */
-      expose console msgcmd requestor
+      expose console localnode msgcmd requestor
 
 parse arg msgstring                          /*                       */
 
@@ -413,10 +415,10 @@ if console  then                             /*                       */
    say msgstring                             /*                       */
 else  do                                     /*                       */
    parse var requestor userid '@' node       /*                       */
-   if node = ''  then  do                    /*                       */
+   if node = localnode  then  do             /* On local node         */
       'CP' msgcmd userid msgstring           /*                       */
       if rc <> 0 & ,                         /* Behave like msg code  */
-         msgcmd = 'MSGNOH'  then             /*    in MAILER          */
+         msgcmd <> 'MSG'  then               /*    in MAILER          */
          'CP MSG' userid msgstring           /*                       */
       end
    else                                      /*                       */

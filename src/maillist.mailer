@@ -60,7 +60,7 @@ signal on syntax
 signal on novalue
 
 parse arg '(' requestorid '@' requestornode ')'  maintainer ,
-          cmdstring                          /*                       */
+          cmdstring , msgcmd                 /*                       */
 cmdstring = strip(cmdstring)                 /*                       */
 if translate(word(cmdstring,1)) = 'MAILLIST'  then
    cmdstring = subword(cmdstring,2)          /*                       */
@@ -69,7 +69,8 @@ if translate(word(cmdstring,1)) = 'MAILLIST'  then
 
 console = 0                                  /* Not from console      */
 exitrc  = 0                                  /*                       */
-msgcmd  = 'MSGNOH'                           /*                       */
+if msgcmd = ''  then                         /* Set msg cmd default   */
+   msgcmd  = 'MSGNOH'                        /*    if none given      */
 operations = 'ADD ADDOWNER CREATE DELETE DELOWNER DESTROY LIST'
 requestor = '*CONSOLE*'                      /*                       */
 
@@ -105,6 +106,7 @@ else  mflag = ''                             /*                       */
 say 'Maillist:  Cmd       = "'strip(original)'"'
 say '        :  Requestor = "'requestor'"' mflag
 say '        :  Cmdline   = "'cmdstring'"'
+say '        :  Msgcmd    = "'msgcmd'"'
 
 
 /* Do some command checking */
@@ -150,7 +152,7 @@ exit:  exit exitrc                           /*                       */
 /* ****************************************************************** */
 
 Add:  procedure ,  /* Do processing for an ADD operation */
-      expose cmdstring console maillist. maintainer msgcmd ,
+      expose cmdstring console localnode maillist. maintainer msgcmd ,
       requestor
 
 parse var cmdstring . listid destination     /*                       */
@@ -202,7 +204,7 @@ return exitrc
 /* *****************************************************************  */
 
 Addone:  procedure ,
-         expose console foruser maillist. requestor
+         expose maillist.
 
 parse arg destination                        /* New destination       */
 last = maillist.0 + 1                        /* New number of lines   */
@@ -220,7 +222,7 @@ return 0
 /* *****************************************************************  */
 
 Addoneowner:  procedure ,
-              expose console maillist. msgcmd requestor
+              expose console localnode maillist. msgcmd requestor
 
 parse arg ownerid                            /* New owner             */
 if owner(ownerid)  then  do                  /* Have a duplicate      */
@@ -252,8 +254,8 @@ return exitrc
 /* ****************************************************************** */
 
 AddOwner:  procedure ,  /* Do processing for an ADDOWNER operation */
-           expose cmdstring console maillist. maintainer msgcmd ,
-           requestor
+           expose cmdstring console localnode maillist. maintainer ,
+                  msgcmd requestor
 
 parse var cmdstring . listid owners          /*                       */
 upper listid                                 /*                       */
@@ -335,7 +337,7 @@ return matches
 
 
 Create:  procedure ,  /* Create a distribution list  */
-         expose cmdstring console maintainer msgcmd requestor
+         expose cmdstring console localnode maintainer msgcmd requestor
 
 parse upper var cmdstring . listid owners
 upper listid                                 /*                       */
@@ -402,8 +404,8 @@ return result
 /* *****************************************************************  */
 
 Delete:  procedure ,  /* Do processing for a DELETE operation */
-         expose cmdstring console maillist. maintainer msgcmd ,
-         requestor
+         expose cmdstring console localnode maillist. maintainer ,
+                msgcmd requestor
 
 parse var cmdstring . listid destination     /*                       */
 upper listid                                 /*                       */
@@ -465,7 +467,8 @@ return exitrc
 /* *****************************************************************  */
 
 DeleteAll:  procedure ,  /* Do processing for a DELETE * operation */
-            expose cmdstring console listid maillist. msgcmd requestor
+            expose cmdstring console listid localnode maillist. msgcmd ,
+                   requestor
 
 call msg 'Deleting all ids on list'          /* Header msg            */
 j=0                                          /* Initialize counter    */
@@ -496,7 +499,7 @@ return result
 /* *****************************************************************  */
 
 DelOneOwner:  procedure ,
-              expose console maillist. msgcmd requestor
+              expose maillist.
 
 parse upper arg ownerid                      /* Id to delete          */
 
@@ -531,8 +534,8 @@ return deletedone
 /* ****************************************************************** */
 
 DelOwner:  procedure ,  /* Do processing for an DELOWNER operation */
-           expose cmdstring console maillist. maintainer msgcmd ,
-           requestor
+           expose cmdstring console localnode maillist. maintainer ,
+                  msgcmd requestor
 
 parse var cmdstring . listid owners          /*                       */
 upper listid                                 /*                       */
@@ -594,7 +597,7 @@ return 0
 
 
 Destroy:  procedure ,
-          expose cmdstring console maintainer msgcmd requestor
+          expose cmdstring console localnode maintainer msgcmd requestor
 
 parse upper var cmdstring . listid .
 upper listid                                 /*                       */
@@ -630,7 +633,7 @@ return 0
 /* *****************************************************************  */
 
 List:  procedure ,  /* Do processing for a LIST operation */
-       expose cmdstring console msgcmd requestor
+       expose cmdstring console localnode msgcmd requestor
 
 parse var cmdstring . listid extra           /*                       */
 upper listid                                 /*                       */
@@ -674,17 +677,17 @@ return exitrc                                /*                       */
 /* *****************************************************************  */
 
 Msg:  procedure , /* Send reply to requestor */
-      expose console msgcmd requestor
+      expose console localnode msgcmd requestor
 
 parse arg msgstring
 
 say msgstring                                /* Duplicate on console  */
 if ^console  then  do
    parse var requestor userid '@' node
-   if node = ''  then  do
+   if node = localnode  then  do             /* On local node         */
       'CP' msgcmd userid msgstring
       if rc <> 0 & ,                         /* Behave like msg code  */
-         msgcmd = 'MSGNOH'  then             /*    in MAILER          */
+         msgcmd <> 'MSG'  then               /*    in MAILER          */
          'CP MSG' userid msgstring
       end
    else
@@ -742,7 +745,7 @@ return rc
 /*                                                                    */
 /* *****************************************************************  */
 
-ScanOwners:  procedure  expose owners. requestor
+ScanOwners:  procedure  expose localnode msgcmd owners. requestor
 parse arg ownerlist
 i = owners.0
 
