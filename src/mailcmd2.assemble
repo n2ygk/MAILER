@@ -68,6 +68,8 @@ LOOP     EQU   *
          LTR   R9,R9         END OF LIST?
          BZ    RET           TIME TO QUIT
          USING COMMAND,R9    ADDRESS THE DSECT
+         CLC   CMDCODE,=A(CMDMLS) Is it distlist?
+         BE    $CMDMLS            ---> Yes
          CLC   CMDCODE,=A(CMDFWD) Is it forward?
          BE    $CMDFWD            ---> Yes
          CLC   CMDCODE,=A(CMD202) Is it CMS (SVC202)?
@@ -92,27 +94,29 @@ $CMD202  DS    0H
 * FORWARD command:
          SPACE 1
 $CMDFWD  DS    0H
-         MVC   $FWDRID,CMDSNDR     Copy requestor's userid
-         MVC   $FWDRNOD,CMDNODE    Copy requestor's node
-         MVI   $FWDMNT,C'0'        Assume not maintainer
+         MVC   $EXCRID,CMDSNDR     Copy requestor's userid
+         MVC   $EXCRNOD,CMDNODE    Copy requestor's node
+         MVI   $EXCMNT,C'0'        Assume not maintainer
          LR    R1,R9               Copy COMMAND block pointer
          BAL   R14,CHKAUTH         Is user authorized?
          B     $FWD0010            ---> No
-         MVI   $FWDMNT,C'1'        Yes, pass it along
+         MVI   $EXCMNT,C'1'        Yes, pass it along
 $FWD0010 EQU   *
-         MVC   $FWDREQ,$FWDREQ-1   Blank out field
+         MVC   $EXCPLFN,=CL8'FORWARD'             Move in command
+         MVC   $EXCFBLK(16),=CL16'FORWARD MAILER'     name
+         MVC   $EXCREQ,$EXCREQ-1   Blank out field
          ICM   R5,B'1111',CMDDLEN  Get data length
          BZ    $FWD0100            ---> No data
-         C     R5,=A(L'$FWDREQ)    Enough space?
+         C     R5,=A(L'$EXCREQ)    Enough space?
          BNH   $FWD0020            ---> Yes
-         LA    R5,L'$FWDREQ        No, truncate
+         LA    R5,L'$EXCREQ        No, truncate
 $FWD0020 EQU   *
          BCTR  R5,0                Decrement for execute
          EX    R5,MOVEFWD          Move in command arguments
 $FWD0100 EQU   *
-         LA    R1,$FWDPL           Point to tokenized plist
+         LA    R1,$EXCPL           Point to tokenized plist
          ICM   R1,B'1000',=X'01'   Tell REXX using extended plist
-         LA    R0,$FWDEPL          Point to extended plist
+         LA    R0,$EXCEPL          Point to extended plist
          SVC   202                 Run the FORWARD exec
          DC    AL4(1)              Continue with next instruction
          C     R15,=F'10001'       Is it exec not found?
@@ -142,6 +146,48 @@ RCMSG010 EQU   *
          LA    R5,MSGDATA-MSGC+1(,R5)   Total length
          BAL   R10,SENDMSG              Send the message
          B     DONE
+         EJECT ,
+***********************************************************************
+*
+*        M A I L L I S T
+*
+***********************************************************************
+         SPACE 2
+$CMDMLS  DS    0H
+         MVC   $EXCRID,CMDSNDR     Copy requestor's userid
+         MVC   $EXCRNOD,CMDNODE    Copy requestor's node
+         MVI   $EXCMNT,C'0'        Assume not maintainer
+         LR    R1,R9               Copy COMMAND block pointer
+         BAL   R14,CHKAUTH         Is user authorized?
+         B     $MLS0010            ---> No
+         MVI   $EXCMNT,C'1'        Yes, pass it along
+$MLS0010 EQU   *
+         MVC   $EXCPLFN,=CL8'MAILLIST'            Move in command
+         MVC   $EXCFBLK(16),=CL16'MAILLISTMAILER'     name
+         MVC   $EXCREQ,$EXCREQ-1   Blank out field
+         ICM   R5,B'1111',CMDDLEN  Get data length
+         BZ    $MLS0100            ---> No data
+         C     R5,=A(L'$EXCREQ)    Enough space?
+         BNH   $MLS0020            ---> Yes
+         LA    R5,L'$EXCREQ        No, truncate
+$MLS0020 EQU   *
+         BCTR  R5,0                Decrement for execute
+         EX    R5,MOVEMLS          Move in command arguments
+$MLS0100 EQU   *
+         LA    R1,$EXCPL           Point to tokenized plist
+         ICM   R1,B'1000',=X'01'   Tell REXX using extended plist
+         LA    R0,$EXCEPL          Point to extended plist
+         SVC   202                 Run the FORWARD exec
+         DC    AL4(1)              Continue with next instruction
+         C     R15,=F'10001'       Is it exec not found?
+         BNE   RCMSG               ---> No
+         MVC   $NOMLS,$MLSNONE     Move in message
+         LA    R5,L'$NOMLS         Length of message
+         BAL   R10,SENDMSG         Send message
+         L     R15,=F'10001'       Restore return code
+         B     RCMSG
+         SPACE 1
+$MLSNONE DC    C'MAILLIST command not implemented'
          EJECT ,
 *---- Done with this command.  Return the DMSFREE storage ----
          SPACE 2
@@ -196,7 +242,8 @@ CONSOLE  DS    0H                  Do it with a WRTERM
          BR    R10                 ---> Return to caller
          SPACE ,
 MOVEMSG  MVC   MSGDATA(0),CMDDATA
-MOVEFWD  MVC   $FWDREQ(0),CMDDATA
+MOVEFWD  MVC   $EXCREQ(0),CMDDATA
+MOVEMLS  MVC   $EXCREQ(0),CMDDATA
          DROP  R9
          EJECT ,
 *        Data areas
@@ -224,6 +271,9 @@ MSGDATA  DS    CL100
          ORG   MSGDATAX            Forward not implemented msg
 $NOFWD   DS    CL(L'$FWDNONE)
          SPACE 1
+         ORG   MSGDATAX            Distlist not implemented msg
+$NOMLS   DS    CL(L'$MLSNONE)
+         SPACE 1
          ORG   ,
          SPACE 3
 ATTNPARM DC    0D'0',CL8'ATTN',CL4'LIFO'
@@ -231,35 +281,35 @@ ATTNDATA DS    F
          DC    8X'FF'
 SUBSET   DC    0D'0',CL8'SUBSET',CL8'(RETURN',8X'FF'
          SPACE 2
-*  Data areas for FORWARD command processing
+*  Data areas for FORWARD & MAILLIST command processing
          SPACE 2
          DS    0D
-$FWDPL   DC    CL8'EXEC'           Tokenized plist
-         DC    CL8'FORWARD'
+$EXCPL   DC    CL8'EXEC'           Tokenized plist
+$EXCPLFN DC    CL8'xxxxxxxx'       FORWARD | MAILLIST
          DC    8X'FF'              Fence for pretty
          SPACE 1
-$FWDEPL  DC    A($FWDPL)           Point to 'EXEC'
-         DC    A($FWDARGS)         Start of arguments
-         DC    A($FWDARGE)         End of arguments
-         DC    A($FWDFBLK)         File block pointer
+$EXCEPL  DC    A($EXCPL)           Point to 'EXEC'
+         DC    A($EXCARGS)         Start of arguments
+         DC    A($EXCARGE)         End of arguments
+         DC    A($EXCFBLK)         File block pointer
          SPACE 1
-$FWDFBLK DS    0F
-         DC    CL8'FORWARD'        FN = FORWARD
+$EXCFBLK DS    0F
+         DC    CL8'FORWARD'        FN = FORWARD | MAILLIST
          DC    CL8'MAILER'         FT = MAILER
          DC    CL2'*'              FM = *
          DC    H'0'                No extension
          SPACE 1
-$FWDARGS DS    0C                  Arguments start here
+$EXCARGS DS    0C                  Arguments start here
          DC    C'REQUESTOR ('      Wrapping for id@host
-$FWDRID  DC    CL8' '              Requestor's id
+$EXCRID  DC    CL8' '              Requestor's id
          DC    C'@'
-$FWDRNOD DC    CL8' '                   and node
+$EXCRNOD DC    CL8' '                   and node
          DC    C')'                Wrapping for id@host
          DC    C' '
-$FWDMNT  DC    C'0'                Is requestor a maintainer?
-         DC    C' '                Used to blank $FWDREQ
-$FWDREQ  DC    CL256' '            Original forward command arguments
-$FWDARGE EQU   *                   End of arguments
+$EXCMNT  DC    C'0'                Is requestor a maintainer?
+         DC    C' '                Used to blank $EXCREQ
+$EXCREQ  DC    CL256' '            Original forward command arguments
+$EXCARGE EQU   *                   End of arguments
          EJECT ,
 ***********************************************************************
 *                                                                     *

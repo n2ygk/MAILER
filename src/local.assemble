@@ -33,6 +33,10 @@ LOCAL    CSECT ,
 *  file and then punch the resulting mail back to MAILER for further
 *  processing.
 *
+*  If a "FORWARD" file is not found for this local destination, a
+*  check will be made for a "MAILLIST" (mailing list) file.
+*  Processing is similar to forwarding.
+*
 *  This routine is also responsible for supporting the '%' kludge
 *  for rerouting mail.
 *
@@ -216,26 +220,54 @@ OK0      EQU   *
          BALR  R14,R15       AND CALL THE SPECIAL EXIT WITH IT
          B     RET
          EJECT ,
+*--------------------------------------------------------------------
+*    Must be local userid
+*
+*    Verify 8 characters of less in length (VM limit)
+*    See if user has set up mail forwarding (destid FORWARD file)
+*    See if id is really a mailing list (destid MAILLIST file)
+*    Otherwise must be a real local delivery attempt
+*
+*--------------------------------------------------------------------
+         SPACE 1
 CHKRET   EQU   *
          C     R4,=F'8'            8 or less?
          BH    ILLEGAL             ---> All locals/forwards must be
 *                                       8 characters or less
          MVC   FWDFN,RECVR         Copy in local id
+         MVC   EXECLDFN,RECVR      Here also
+         SPACE 1
+*  Check for 'destid FORWARD' file
+         SPACE 1
 CHKFWD   EQU   *
+         MVC   FWDFT,=CL8'FORWARD'      Fill in filetype
+         MVC   EXECLDFT,=CL8'FORWARD'
          LA    R1,FWDSTAT          Point to EXECSTAT command
          SVC   202                 Issue command
          DC    AL4(1)              Always return to next instruction
          LTR   R15,R15             Forward file exist?
          BZ    HAVEFWD             ---> No
          C     R15,=F'4'           Found on disk?
-         BNE   NOFWD               ---> No, no forward file
+         BE    ONDISK              ---> Yes
          SPACE 1
-*  Forward file found on disk
+*  Check for 'destid MAILLIST' file
+         SPACE 1
+         MVC   FWDFT,=CL8'MAILLIST'     Fill in filetype
+         MVC   EXECLDFT,=CL8'MAILLIST'
+         LA    R1,FWDSTAT          Point to EXECSTAT command
+         SVC   202                 Issue command
+         DC    AL4(1)              Always return to next instruction
+         LTR   R15,R15             MAILLIST file exist?
+         BZ    HAVEFWD             ---> No
+         C     R15,=F'4'           Found on disk?
+         BE    ONDISK              ---> Yes
+         BNE   NOFWD               ---> No, no forward/distlist file
+         SPACE 1
+*  FORWARD or MAILLIST file found on disk
 *
 *  Load it into memory using EXECLOAD
          SPACE 1
 ONDISK   EQU   *
-         MVC   EXECLDFN,RECVR      Move in filename
          LA    R1,EXECLOAD         Point to EXECLOAD command
          SVC   202                 Go load forwarding file
          DC    AL4(1)              Always return at next instruction
@@ -246,12 +278,24 @@ ONDISK   EQU   *
          BAL   R2,DIE              ---> No, big trouble
          SPACE 1
 TRYDROP  EQU   *
+         MVC   EXECDRFT,=CL8'FORWARD'   Drop FORWARD files
          LA    R1,EXECDROP         Point to EXECDROP command
          SVC   202                 Go load forwarding file
          DC    AL4(1)              Always return at next instruction
-         LTR   R15,R15             Succesful?
-         BZ    ONDISK              ---> Yes, try again
+         C     R15,=F'4'           Succesful?
+         BNH   TRYDROP2            ---> Yes, do another
          BAL   R2,DIE              ---> No, big trouble
+         DC    H'0'                Should never get here
+         SPACE
+TRYDROP2 EQU   *
+         MVC   EXECDRFT,=CL8'MAILLIST'  Drop MAILLIST files
+         LA    R1,EXECDROP         Point to EXECDROP command
+         SVC   202                 Go load forwarding file
+         DC    AL4(1)              Always return at next instruction
+         C     R15,=F'4'           Succesful?
+         BNH   ONDISK              ---> Yes, try again
+         BAL   R2,DIE              ---> No, big trouble
+         DC    H'0'                Should never get here
          SPACE 1
 *--------------------------------------------------------------------
 *  Process FORWARDing file
@@ -277,7 +321,7 @@ HAVEFWD  EQU   *
          LTR   R15,R15             Successful?
          BZ    RET                 ---> Yes
          C     R15,=F'4'           Need local delivery also?
-         BNE   RET                 ---> Yes
+         BNE   RET                 ---> No, error
          EJECT ,
 NOFWD    EQU   *
          ST    R4,RCVRLEN    [2]save receiver length for later
@@ -605,13 +649,13 @@ LSTRL    DC    A(0)                Length of local part
 FWDSTAT  DS    0D
          DC    CL8'EXECSTAT'
 FWDFN    DC    CL8' '
-         DC    CL8'FORWARD'
+FWDFT    DC    CL8'FORWARD'        FORWARD or MAILLIST
          DC    8X'FF'
          SPACE 1
 EXECLOAD DS    0D
          DC    CL8'EXECLOAD'
 EXECLDFN DC    CL8' '
-         DC    CL8'FORWARD'
+EXECLDFT DC    CL8'FORWARD'        FORWARD or MAILLIST
          DC    CL8'A'
          DC    CL8'='
          DC    CL8'='
@@ -622,7 +666,7 @@ EXECLDFN DC    CL8' '
 EXECDROP DS    0D
          DC    CL8'EXECDROP'
          DC    CL8'*'
-         DC    CL8'FORWARD'
+EXECDRFT DC    CL8'FORWARD'        FORWARD or MAILLIST
          DC    CL8'('
          DC    CL8'USER'
          DC    8X'FF'

@@ -58,9 +58,10 @@ signal on error
 'RENAME LOAD MAP A MG MAP A'
 
 if userid <> ''  then  do
-   'EXEC SENDFILE MAILER  MODULE TO' userid
-   'EXEC SENDFILE MAILER  TXTLIB TO' userid
-   'EXEC SENDFILE MABNXIT EXEC   TO' userid
-   'EXEC SENDFILE FORWARD MAILER TO' userid
+   'EXEC SENDFILE MAILER   MODULE TO' userid
+   'EXEC SENDFILE MAILER   TXTLIB TO' userid
+   'EXEC SENDFILE MABNXIT  EXEC   TO' userid
+   'EXEC SENDFILE FORWARD  MAILER TO' userid
+   'EXEC SENDFILE MAILLIST MAILER TO' userid
    end
 error: exit rc

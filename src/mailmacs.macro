@@ -425,6 +425,7 @@ CMDSIZE  EQU   (*-COMMAND)/8+1
 * COMMAND CODES:
 CMD202   EQU   0             ISSUE AN SVC 202 WITH THE DATA.
 CMDFWD   EQU   1             FORWARD command
+CMDMLS   EQU   2             MAILLIST command
          SPACE 3
          COPY  SPOOL         CP SFBLOKS
          POP    PRINT

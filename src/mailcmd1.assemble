@@ -184,6 +184,7 @@ CMDTAB   TBSTART ,
          T 'CP'              ISSUE CP COMMAND
          T 'FORWARD'         ADD TO FORWARDING TABLE
          T 'HELP'            GENERAL USER HELP
+         T 'MAILLIST',$MLIST Change a mailing list
          T 'Q',$SHOW         alias for SHOW.                     [1.24]
          T 'QU',$SHOW        alias for SHOW.                     [1.24]
          T 'QUERY',$SHOW     alias for SHOW.                     [1.24]
@@ -193,7 +194,7 @@ CMDTAB   TBSTART ,
          T 'SMSG'            RETURN REPLY AS SMSG
          T 'STOP'            STOP THE MAILER
          TBEND ,
-         SPACE 3
+         EJECT ,
 *--------------------------------------------------------------------
 *                            A C T I V A T E
 *
@@ -206,7 +207,7 @@ $ACTIVAT DS    0H
          LA    R0,L'ACTMSG
          BAL  R14,MESSAGE
          B     RET
-         SPACE 3
+         EJECT ,
 *--------------------------------------------------------------------
 *                            C H E C K
 *
@@ -218,7 +219,7 @@ $CHECK   DS    0H
          LA    R0,L'CHKMSG
          BAL  R14,MESSAGE
          B     RET
-         SPACE 3
+         EJECT ,
 *--------------------------------------------------------------------
 *                            C P
 *
@@ -262,7 +263,7 @@ $CP2     EQU   *
          SR    R0,R0         ENTER CP WITH NO DATA
          DC    X'83000008'   JUST LIKE THAT
          B     RET           AND ISSUE NO MESSAGE
-         SPACE 3
+         EJECT ,
 *--------------------------------------------------------------------
 *                            C M S
 *
@@ -288,28 +289,7 @@ $CMS     DS    0H
          LR    R6,R1               Copy address where expected
          BCTR  R8,0                -1 for EX
          EX    R8,MOVECMD          MVC CMDDATA(0),0(R9)
-         SPACE ,
-*--- NOW ADD THE COMMAND ONTO THE MAILCMDL LIST ---
-         CLC   @CODE,=A(CMDCONS)   FROM CONSOLE?
-         BNE   $CMS5         NO, SMSG
-         SSM   =X'FE'        TURN OFF EXTERNAL INTERRUPTS
-$CMS5    EQU   *
-         LA    R2,MAILCMDL   ADDRESS OF LIST
-$CMSLOOP EQU   *
-         ICM   R1,B'1111',0(R2) GET NEXT COMMAND POINTER
-         BZ    $CMSOUT       FOUND END OF CHAIN
-         USING COMMAND,R1
-         LA    R2,CMDNEXT    CHAIN ALONG
-         DROP  R1
-         B     $CMSLOOP
-$CMSOUT  EQU   *
-         ST    R6,0(R2)      ADD ONTO CHAIN
-         OI    MAILCMD,MCMDCMD2  INDICATE THERE IS WORK FOR MAILCMD2
-         OI    CMDECB,POSTED        And post the command ECB.
-         CLC   @CODE,=A(CMDCONS)   CONSOLE?
-         BNE   $CMS6         NO, SMSG
-         SSM   =X'FF'        ENABLE SMSG AGAIN
-$CMS6    EQU   *
+         BAL   R14,CHAINIT         Add to MAILCMDL list
          L     R1,=A(CMSMSG)       Get msg
          LA    R0,L'CMSMSG
          BAL  R14,MESSAGE
@@ -318,7 +298,7 @@ $CMS6    EQU   *
          USING COMMAND,R6
 MOVECMD  MVC   CMDDATA(0),0(R9)
          DROP  R6
-         SPACE 3
+         EJECT ,
 *--------------------------------------------------------------------
 *                            F O R W A R D
 *
@@ -339,34 +319,12 @@ $FORWARD DS    0H
          LR    R6,R1               Get into a better register
          BCTR  R8,0                -1 for executed
          EX    R8,MOVECMD          MVC CMDDATA(0),0(R9)
-         SPACE ,
-*--- Now add the command onto the MAILCMDL list ---
-         SPACE ,
-         CLC   @CODE,=A(CMDCONS)   From console?
-         BNE   $FWD5               No, SMSG
-         SSM   =X'FE'              Turn off external interrupts
-$FWD5    EQU   *
-         LA    R2,MAILCMDL         Address of list
-$FWDLOOP EQU   *
-         ICM   R1,B'1111',0(R2)    Get next command pointer
-         BZ    $FWDOUT             Found end of chain
-         USING COMMAND,R1
-         LA    R2,CMDNEXT          Chain along
-         DROP  R1
-         B     $CMSLOOP
-$FWDOUT  EQU   *
-         ST    R6,0(R2)            Add onto chain
-         OI    MAILCMD,MCMDCMD2    Indicate there is work for MAILCMD2
-         OI    CMDECB,POSTED        and post the command ECB.
-         CLC   @CODE,=A(CMDCONS)   Console?
-         BNE   $FWD6               No, smsg
-         SSM   =X'FF'              Enable smsg again
-$FWD6    EQU   *
+         BAL   R14,CHAINIT         Chain command block
          L     R1,=A(FWDMSG)       Get msg
          LA    R0,L'FWDMSG
          BAL  R14,MESSAGE
          B     RET
-         SPACE 3
+         EJECT ,
 *--------------------------------------------------------------------
 *                            H E L P
 *
@@ -379,7 +337,35 @@ $HELP    DS    0H
          LA    R0,LHLPMSG
          BAL  R14,MESSAGE
          B     RET
-         SPACE 3
+         EJECT ,
+*--------------------------------------------------------------------
+*                            M A I L L I S T
+*
+*  Creation, deletion and modification of mail distribution lists
+*  is done with the MAILLIST command.  Mailing lists are similar
+*  to FORWARD files, except that MAILLISTs are almost always created
+*  with names that do not match a real id on the system and mailing
+*  lists may have more than 1 owner (users allowed to make changes
+*  in the list's destination addressees).
+*
+*  Since MAILER may be running disabled, MAILLIST commands are added
+*  to the MAILCMDL chain for later processing by MAILCMD2.
+*
+*--------------------------------------------------------------------
+$MLIST   DS    0H
+         LR    R0,R8               Size of data field
+         LA    R1,CMDMLS           Command type
+         BAL   R14,BLDCMDBL        Build a command block
+         B     RET                 ---> Error building block
+         LR    R6,R1               Get into a better register
+         BCTR  R8,0                -1 for executed
+         EX    R8,MOVECMD          MVC CMDDATA(0),0(R9)
+         BAL   R14,CHAINIT         Chain command block
+         L     R1,=A(DLSMSG)       Get msg
+         LA    R0,L'DLSMSG
+         BAL   R14,MESSAGE
+         B     RET
+         EJECT ,
 *--------------------------------------------------------------------
 *                            Q U I E S C E
 *
@@ -392,7 +378,7 @@ $QUIESCE DS    0H
          LA    R0,L'QUSMSG
          BAL  R14,MESSAGE
          B     RET
-         SPACE 3
+         EJECT ,
 *--------------------------------------------------------------------
 *                            R E L O A D
 *
@@ -406,7 +392,7 @@ $RELOAD  DS    0H
          LA    R0,L'RELMSG
          BAL  R14,MESSAGE
          B     RET
-         SPACE 3
+         EJECT ,
 *--------------------------------------------------------------------
 *                            S M S G
 *
@@ -416,7 +402,7 @@ $RELOAD  DS    0H
 $SMSG    DS    0H            REPLY WANTED AS SMSG
          OI    FLAG,SMSFLG   TURN ON SMSG FLAG
          B     FINDKEY       NOW GET THE REAL KEYWORD
-         SPACE 3
+         EJECT ,
 *--------------------------------------------------------------------
 *                            S T O P
 *
@@ -447,7 +433,7 @@ STOPMSG  DS    0H
          LA    R0,L'STPMSG
          BAL  R14,MESSAGE
          B     RET
-         SPACE 3
+         EJECT ,
 *--------------------------------------------------------------------
 *                            S H O W
 *
@@ -1064,6 +1050,41 @@ BLDCMD04 EQU   *
          SPACE 1
 BLDCMD06 EQU   *
          EJECT ,
+*--------------------------------------------------------------------
+*
+*  Add command block to MAILCMDL chain
+*
+*  Regs at entry:
+*
+*    R6  - Command block base
+*    R10 - Savearea dsect
+*    R14 - Return address
+*
+*--------------------------------------------------------------------
+         SPACE 1
+CHAINIT  DS    0H
+         CLC   @CODE,=A(CMDCONS)   From console?
+         BNE   CHAIN05             No, SMSG
+         SSM   =X'FE'              Turn off external interrupts
+CHAIN05  EQU   *
+         LA    R15,MAILCMDL        Address of list
+CHAIN10  EQU   *
+         ICM   R1,B'1111',0(R15)   Get next command pointer
+         BZ    CHAIN20             Found end of chain
+         USING COMMAND,R1
+         LA    R15,CMDNEXT         Chain along
+         DROP  R1
+         B     CHAIN10
+CHAIN20  EQU   *
+         ST    R6,0(R15)           Add onto chain
+         OI    MAILCMD,MCMDCMD2    Indicate there is work for MAILCMD2
+         OI    CMDECB,POSTED       And post the command ECB.
+         CLC   @CODE,=A(CMDCONS)   Console?
+         BNE   CHAIN30             No, SMSG
+         SSM   =X'FF'              Enable SMSG again
+CHAIN30  EQU   *
+         BR    R14                 Return to caller
+         EJECT ,
 *  Check if user authorized
          SPACE 1
 CHKAUTH  EQU   *             CHECK AUTHORIZATION
@@ -1138,6 +1159,7 @@ ACTMSG   DC    C'Activate command accepted.'
 CHKMSG   DC    C'Checking not yet implemented.'
 CMSMSG   DC    C'CMS command accepted.'
 FWDMSG   DC    C'FORWARD command accepted.'
+DLSMSG   DC    C'MAILLIST command accepted.'
 HLPMSG   DC    C'General commands:  CHECK, FORWARD, HELP, SHOW'  [1.24]
          DC    C'|QUERY, SMSG'                                   [1.24]
 *        DC    X'15',C'Type "HELP MAILER" for details.'          [1.24]
