@@ -246,6 +246,7 @@ BLDACT   EQU   *
 BLDLOOP1 EQU   *
          CLC   MBXLCNT,=F'0' NULL BLOCK? **********************
          BE    BLDEND        END OF LIST **********************
+BLDLOOP2 EQU   *
          ICM   R7,B'1111',MBXRTL   Point to route list
          BZ    BLDNORTE            ---> No route list
          USING NODE,R7
@@ -263,7 +264,7 @@ BLDLOOP1 EQU   *
          BZ    BLDHOK              ---> Yes
          ST    R8,DELMBOX          Store MBOX address
          CALL  DELROUTE,(DELMBOX)  Delete routeaddr
-         B     BLDLOOP1            ---> Try again
+         B     BLDLOOP2            ---> Try again
          SPACE 1
 BLDNORTE DS    0H
          ICM   R7,B'1111',MBXDML  Point to node
@@ -304,7 +305,6 @@ BLDHOK   EQU   *                                                    1.6
          BNZ   BLDSKP1       NO MATCH, SKIP THIS ADDRESS
 * -- END OF TEST FOR *DESTINATION JUNK --
 BLDND    EQU   *
-         SR    R2,R2         GET A ZERO
          L     R2,TOKLEN     LENGTH OF STRING
          L     R3,TOKPTR
          CALL  FNROUTD,((R3),(R2)) find routd                    [1.22]
