@@ -64,6 +64,7 @@ EYESKIP  DS    0H
 *--------------------------------------------------------------------
 *  Initialize fields in the MAILBLOK to aid in detection of double
 *  definition of variable values important to MAILER.
+*  List values as we go
 *--------------------------------------------------------------------
          SPACE ,
 *        Clear PTAB fields in MAILBLOK
@@ -134,6 +135,11 @@ PTABSET0 EQU   *
          EX    R1,COPY       COPY THE STRING INTO TABLE
          TR    0(8,R3),UPCASE MAKE SURE IT IS UPPER CASE
 SET1     EQU   *
+         MVC   MSGBUFF,MSGBUFF-1   Clear to blanks
+         LINEDIT TEXT='.............................. = ''........''', X
+               SUB=(CHARA,((R7),(R4)),CHARA,(R3)),                     X
+               DISP=NONE,BUFFA=MSGBUFF,DOT=NO,COMP=YES,RENT=NO
+         WTR   STI075,(CA,MSGBUFF+1)   Write msg
          LA    R6,8(R6)      GET NEXT ENTRY
          BCT   R5,PTABLOOP   GET NEXT ONE
 *----------------------------------------------------------------[1.22]
@@ -161,6 +167,15 @@ PPTRLOOP EQU   *                                                 [1.22]
          WTR   STI071,(CA,FIELDNAM)
 PPTRSET0 EQU   *
          ST    R2,0(R3)      Stuff the string address
+         MVC   MSGBUFF,MSGBUFF-1   Clear to blanks
+         XR    R14,R14             Clear register
+         IC    R14,0(R2)           Pick up length
+         LA    R2,1(,R2)           Start of string
+         LINEDIT TEXT='.............................. = ''.............X
+               ......................''',                              X
+               SUB=(CHARA,((R7),(R4)),CHARA,((R2),(R14))),             X
+               DISP=NONE,BUFFA=MSGBUFF,DOT=NO,COMP=YES,RENT=NO
+         WTR   STI075,(CA,MSGBUFF+1)   Write msg
 SET$1    EQU   *                                                 [1.22]
          LA    R6,8(R6)      GET NEXT ENTRY                      [1.22]
          BCT   R5,PPTRLOOP   GET NEXT ONE                        [1.22]
@@ -178,10 +193,12 @@ PBITLOOP EQU   *
          LA    R7,2(R7)      ADDRESS
          CALL  TBLUK,((R8),(R7),(R4),TWORK)
          LTR   R15,R15       FIND IT?
+         LA    R15,=CL5'False'     Set default value
          BNZ   SET2          NOPE, TAKE THE DEFAULT
          OI    1(R1),X'40'   MAKE IT UPPER CASE
          CLI   1(R1),C'T'    SET BIT TRUE?
          BNE   PBITFALS      SET IT FALSE
+         LA    R15,=CL5'True'      Remember the correct value
          L     R1,8(R6)      GET VALUE TO SET
          SR    R2,R2         GET ZERO
          IC    R2,0(R3)      GET CURRENT VALUE
@@ -196,6 +213,11 @@ PBITFALS EQU   *             SET THE FLAG FALSE
          NR    R2,R1         AND THEM
          STC   R2,0(R3)      PUT NEW FLAG BACK
 SET2     EQU   *
+         MVC   MSGBUFF,MSGBUFF-1   Clear to blanks
+         LINEDIT TEXT='.............................. = ''.....''',    X
+               SUB=(CHARA,((R7),(R4)),CHARA,(R15)),                    X
+               DISP=NONE,BUFFA=MSGBUFF,DOT=NO,COMP=YES,RENT=NO
+         WTR   STI075,(CA,MSGBUFF+1)   Write msg
          LA    R6,12(R6)
          BCT   R5,PBITLOOP
          SPACE ,
@@ -210,6 +232,48 @@ SET2     EQU   *
          IC    R0,0(R1)      get the string length               [1.22]
          ST    R0,CPUSLEN    and save it for later               [1.22]
 NOSETLEN EQU   *                                                 [1.22]
+*--------------------------------------------------------------------
+*        Do some cursory validation of profile
+*        This is anything but complete
+*--------------------------------------------------------------------
+         SPACE 1
+         LA    R3,LCLHOST          Address of LocalHost array.
+         LA    R4,L'LCLHOST/4      Number of entries in LCLHOST.
+LCHLOOP  DS    0H
+         ICM   R1,B'0111',1(R3)    Is there a LocalHost ptr?
+         BZ    LCHDONE             ---> No, all done.
+         SR    R6,R6               Get Local-Host
+         ICM   R6,B'0001',0(R1)       length.
+         BZ    LCHNEXT             ---> Zero length
+         LA    R7,1(,R1)           Start of string
+         L     R8,MAILRTAB         Point to OUTGOING table
+         CALL  TBLUK,((R8),(R7),(R6),TWORK)
+         LTR   R15,R15             Was it found?
+         BZ    LCHNEXT             ---> Yes
+         LR    R15,R6              Copy field name length
+         BCTR  R15,0               Decrement
+         MVC   LCHOSTNM,=CL40' '   Clear to blanks
+         EX    R15,COPYNAME        Move into field for msg processing
+         WTR   STI072,(CA,LCHOSTNM)  Issue msg
+         L     R8,MAILDTAB         Point to DOMAINS table
+         CALL  TBLUK,((R8),(R7),(R6),TWORK)
+         LTR   R15,R15             Was it found?
+         BZ    LCHNDOM             ---> Yes
+         WTR   STI073,(CA,LCHOSTNM)  Issue msg
+         B     LCHNEXT
+         SPACE 1
+LCHNDOM  EQU   *
+         WTR   STI074,(CA,LCHOSTNM)  Issue msg
+         SPACE 1
+LCHNEXT  DS    0H
+         LA    R3,4(,R3)           Update pointer
+         BCT   R4,LCHLOOP             and loop.
+LCHDONE  EQU   *
+         SPACE 1
+*--------------------------------------------------------------------
+*        End of profile validation
+*--------------------------------------------------------------------
+         SPACE 1
 *--------------------------------------------------------------------
 *        LOAD USER ROUTING EXITS
 *--------------------------------------------------------------------
@@ -461,7 +525,9 @@ PTABARR  DC    A(CPUSTR-MAILBLOK,STRTHIS)
          DC    A(RSCSNAME-MAILBLOK,STRRSCS)
          DC    A(RSCSALT-MAILBLOK,STRRALT)       [1.13]
          DC    A(MAINTID-MAILBLOK,STRMUSE)
+         DC    A(MAINTNOD-MAILBLOK,STRMNOD)
          DC    A(MAINTID-MAILBLOK,STRMUSE1)     MAINTUSER1 = MAINTUSER
+         DC    A(MAINTNOD-MAILBLOK,STRMNOD1)    MAINTNODE1 = MAINTNODE
          DC    A(MAINTID2-MAILBLOK,STRMUSE2)
          DC    A(MAINTNO2-MAILBLOK,STRMNOD2)
          DC    A(MAINTID3-MAILBLOK,STRMUSE3)
@@ -478,16 +544,14 @@ PTABARR  DC    A(CPUSTR-MAILBLOK,STRTHIS)
          DC    A(MAINTNO8-MAILBLOK,STRMNOD8)
          DC    A(MAINTID9-MAILBLOK,STRMUSE9)
          DC    A(MAINTNO9-MAILBLOK,STRMNOD9)
-         DC    A(MAINTNOD-MAILBLOK,STRMNOD)
-         DC    A(MAINTNOD-MAILBLOK,STRMNOD1)    MAINTNODE1 = MAINTNODE
 PTABLEN  EQU   (*-PTABARR)/8
 PBITARR  DC    A(MAILOPTS-MAILBLOK,STRALLOW,MOPTAUN)
          DC    A(MAILOPTS-MAILBLOK,STRSUPPL,MOPTDEF)
          DC    A(MAILOPTS-MAILBLOK,STRCHAR,MOPTAC)               [1.24]
          DC    A(MAILOPTS-MAILBLOK,STRVL,MOPTVL)                 [1.24]
 PBITLEN  EQU   (*-PBITARR)/12
-PPTRARR  DC    A(RSCSDOM1-MAILBLOK,STRDOMAI)
-         DC    A(RSCSDOM1-MAILBLOK,STRDOM1)
+PPTRARR  DC    A(RSCSDOM1-MAILBLOK,STRDOMAI) RSCS-Domain =
+         DC    A(RSCSDOM1-MAILBLOK,STRDOM1)       RSCS-Domain1
          DC    A(RSCSDOM2-MAILBLOK,STRDOM2)
          DC    A(RSCSDOM3-MAILBLOK,STRDOM3)
          DC    A(RSCSDOM4-MAILBLOK,STRDOM4)
@@ -496,8 +560,8 @@ PPTRARR  DC    A(RSCSDOM1-MAILBLOK,STRDOMAI)
          DC    A(RSCSDOM7-MAILBLOK,STRDOM7)
          DC    A(RSCSDOM8-MAILBLOK,STRDOM8)
          DC    A(RSCSDOM9-MAILBLOK,STRDOM9)
-         DC    A(LCLHOST1-MAILBLOK,STRLCLDO)
-         DC    A(LCLHOST1-MAILBLOK,STRLCLH1)
+         DC    A(LCLHOST1-MAILBLOK,STRLCLDO) Local-Domain =
+         DC    A(LCLHOST1-MAILBLOK,STRLCLH1)      Local-Host1
          DC    A(LCLHOST2-MAILBLOK,STRLCLH2)
          DC    A(LCLHOST3-MAILBLOK,STRLCLH3)
          DC    A(LCLHOST4-MAILBLOK,STRLCLH4)
@@ -581,11 +645,26 @@ BUILTINS TBSTART ,                                               [1.22]
 *        READ/WRITE DATA
 *--------------------------------------------------------------------
 SAVE     DS    18F                     SAVE AREA
+         SPACE 1
 STK      DS    2F
+         SPACE 1
 FINDSAVE DS    2F
+         SPACE 1
 SAVE14   DS    F
+         SPACE 1
 LOADS14  DS    F
+         SPACE 1
 TABLE    DS    F
-TWORK    DS    64F
+         SPACE 1
+         DC    C' '
+MSGBUFF  DC    CL81' '             Formatting of MAISTI075 msgs
+*                                  First byte will get length from
+*                                  LINEDIT macro
+         SPACE 1
+         DS    0D
+TWORK    DS    256X
+         SPACE 1
 FIELDNAM DS    CL30                    For dup. init. msg
+         ORG   FIELDNAM                Reuse
+LCHOSTNM DS    CL40                    Must match length of 072 msg
          END   SETINIT
