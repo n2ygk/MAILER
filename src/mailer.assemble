@@ -85,6 +85,7 @@ NOPROF   EQU   *                                           [1]
          SPACE ,
          LA    R15,MAILVERS        Point at version id
          WTR   LER001,(CA,(R15),CA,MYNAME+8,CA,ASMTIME)
+         WTR   LER076
          MVI   MAILSTAT,0    STATUS FLAG INITIALLY ZERO
          MVI   MAILCMD,0     COMMAND FLAGS INITIALLY ZERO
          XC    MAILCMDL,MAILCMDL SAME FOR COMMAND LIST
