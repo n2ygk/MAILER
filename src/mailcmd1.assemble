@@ -948,21 +948,29 @@ CHKAUTH  EQU   *             CHECK AUTHORIZATION
          BE    CHKOK
          CLC   @CODE,=A(CMDSMSG)   COMMAND FROM SMSG?
          BE    CHKSMS        CHECK SMSG SOURCE
+         CLC   @CODE,=A(CMDNET)    Command from network?
+         BE    CHKSMS        ---> Yes
          B     BOGUS         HMMM....
 CHKSMS   EQU   *
          LA    R15,MAINTID   Point to first entry of table
          L     R2,@SENDUSR   Get sender id address
+         L     R1,@SENDNOD   Get sender node address
 CHKSMS01 DS    0H
          CLI   0(R15),X'FF'               At end of list?
          BE    BOGUS                      ---> Yes, SMSG is illegal
          CLC   MAINTNOD-MAINTID(,R15),=8X'00' No cpu specified?
-         BE    CHKSMS02                   ---> Yes, accept any
+         BE    CHKSMS30                   ---> Yes, accept any
+         CLC   @CODE,=A(CMDNET)           Command from network?
+         BE    CHKSMS20                   ---> Yes
          CLC   MAINTNOD-MAINTID(,R15),CPUSTR Maintainer on this cpu?
-         BNE   CHKSMS04                   ---> No, go try next
-CHKSMS02 DS    0H
+         BNE   CHKSMS40                   ---> No, go try next
+CHKSMS20 DS    0H
+         CLC   MAINTNOD-MAINTID(,R15),0(R1) Maintainer node match?
+         BNE   CHKSMS40                   ---> No, go try next
+CHKSMS30 DS    0H
          CLC   MAINTID-MAINTID(,R15),0(R2) Is the sender on the list?
          BE    CHKOK                      ---> Yes
-CHKSMS04 DS    0H
+CHKSMS40 DS    0H
          LA    R15,MAINTID2-MAINTID(R15)  To the next entry
          B     CHKSMS01
 CHKOK    EQU   *
