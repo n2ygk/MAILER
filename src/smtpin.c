@@ -1783,7 +1783,7 @@ struct fieldd *f;
     char *us,*hs;
     int ul,hl,i;
 
-    if (a == 0 || a->mbxdcnt != 1 || a->mbxlcnt != 1)
+    if (a == 0)
       return 1;                          /* is a mailer */
     for (i = 0; i < sizeof(key.both); i++)
       key.both[i] = ' ';                 /* init key to blanks */
