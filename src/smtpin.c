@@ -831,8 +831,8 @@ int l;
     int buflen;
     struct fieldd *f;
     struct tokend *t;
+    struct tokend  *faketoke;
     struct tbs *ts;
-    struct tokend *faketok;
     struct mbox *a;
     struct routd *r;
     struct tbentry *te;
@@ -841,6 +841,7 @@ int l;
     char hoststring[256]; int hostlen;
     char *hoststringptr;
     struct node *n;
+    struct node *fakenode;
     struct {
       int *node;
       int *hs;
@@ -936,6 +937,20 @@ int l;
           acall(delroute, 0, &plist2);        /* Remove route addr */
           f->fiflg1 |= FIEDIFLG;              /* Remember changed  */
        }
+    }
+
+    /* If address was just 'userid' fix it to be 'userid@local-host' */
+
+    if (a->mbxdml == 0) {
+       fakenode = (struct node *)salloc(sizeof(*fakenode));
+       if (!fakenode) return s_nosp(st,s,l);
+       faketoke = (struct tokend*)salloc(sizeof(*faketoke));
+       if (!faketoke) return s_nosp(st,s,l);
+       a->mbxdml = fakenode;
+       fakenode->noddown = faketoke;
+       faketoke->tokptr = &cpustr[0];
+       faketoke->toklen = cpuslen;
+       faketoke->toktype = TOKATM;
     }
 
     /* (2) Look up the host name in MAILRTAB, MAILDTAB */
