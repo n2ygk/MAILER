@@ -507,7 +507,7 @@ MOPTDEF  EQU   X'80'         SUPPLY DEFAULTS FOR OMITTED FIELDS
 MOPTAUN  EQU   X'40'         ALLOW UNKNOWN NODES TO SEND ME MAIL
 MOPTAC   EQU   X'20'         Allow charlatans                    [1.24]
 MOPTVL   EQU   X'10'         Verbose console logging             [1.24]
-MOPTTBD  EQU   X'08'         Print debugging info in TBLUK.
+*        EQU   X'08'         Unused
 MOPTALLM EQU   X'04'         Print all messages received
 MOPTNO82 EQU   X'02'         Do not look for RFC822 headers in BSMTP
 MOPTFIOK EQU   X'01'         Accept FILE FROM:
@@ -693,6 +693,7 @@ DBGFLG6  DC    X'0'                Unused
          SPACE 1
 DBGFLG7  DC    X'0'                Various assembler routines
 DBGBLDLS EQU   X'80'               Trace BUILDLST processing
+DBGTBLUK EQU   X'40'               Trace TBLUK processing
          DS    0D            Just for pretty
 MAILBLEN EQU   *-MAILXXXX    LENGTH IN BYTES
          POP   PRINT

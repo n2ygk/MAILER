@@ -8,7 +8,7 @@ TBLUK    TITLE     'STRING TABLE LOOKUP'
 &NAME    STM   R0,R15,SAVEAREA
          L     R1,=V(MAILBLOK)
          USING MAILBLOK,R1
-         TM    MAILOPTS,MOPTTBD   Is debugging wanted?
+         TM    DBGFLG7,DBGTBLUK   Is debugging wanted?
          BZ    DBG&N.N            No  : skip
          LINEDIT TEXT=&TEXT,SUB=&SUB,RENT=NO
 DBG&N.N  LM    R0,R15,SAVEAREA

@@ -45,7 +45,7 @@ static struct mailblok {
 #define MOPTAUN  0x40        /* Allow unknown nodes to send me mail  */
 #define MOPTAC   0x20        /* Allow charlatans                     */
 #define MOPTVL   0x10        /* Verbose console logging              */
-#define MOPTTBD  0x08        /* Print debugging info in TBLUK        */
+/*               0x08           Unused                               */
 #define MOPTALLM 0x04        /* Print all messages received          */
 #define MOPTNO82 0x02        /* Don't look for RFC822 inside BSMTP   */
 #define MOPTFIOK 0x01        /* Accept FILE FROM:                    */
@@ -208,6 +208,7 @@ static struct mailblok {
                              /* Flags defined in dbgflg[7]           */
                              /*   used for assembler routines        */
 #define DBGBLDLS                 0x80  /* Trace BUILDLST processing  */
+#define DBGTBLUK          0x40  /* Trace TBLUK processing            */
 } ;
 
 /* MAILBLOK is created by MAILBLOK ASSEMBLE file during MAILER gen   */
