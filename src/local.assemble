@@ -123,16 +123,14 @@ CHKRET   EQU   *
          USING FIELDD,R6     address the field
          L     R6,FIPARS     pointer to adaddr
          DROP  R6
-         USING MBOX,R6     address list thing
-         L     R1,MBXLCL         point to list of user adnodes
-         USING NODE,R1     address a user node
-         L     R1,NODDOWN    point down to user name token
-         DROP  R1
-         USING TOKEND,R1     address the tokend
-         L     R3,TOKPTR         address of user name token
-         SR    R4,R4
-         L     R4,TOKLEN     length of it
-         DROP  R1
+         USING MBOX,R6           address list thing
+         L     R1,MBXLCL         pointer to list of user adnodes
+         ST    R1,NODEA          Save for GENLIST call
+         LA    R14,STACKP        Stack pointer address ptr
+         LA    R15,STACKP+4      Stack size address ptr
+         CALL  GENLIST,(NODEA,LSTRA,LSTRL,(14),(15))
+         L     R3,LSTRA          address of user name token
+         L     R4,LSTRL          length of it
          MVC   TUSER,=CL8' '  blank out the user tag item
          C     R4,=F'8'      if > 8 trunc it.
          BNH   OK1           it's ok
@@ -412,4 +410,8 @@ PROFSUBJ DS    CL65                    [EMU1]
 PROFTYPE DS    CL1                     [EMU1]    R=REPLY F=FORWARD
 PROFCLEN EQU   *-PROFSUBJ              [EMU1]    LENGTH TO CLEAR
          ORG   ,
+         SPACE 1
+NODEA    DC    A(0)                Address of node for GENLIST
+LSTRA    DC    A(0)                Address of local part
+LSTRL    DC    A(0)                Length of local part
          END   LOCAL
