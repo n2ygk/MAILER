@@ -535,6 +535,7 @@ GENLST   DS    0H            generate a list
          B     GENLST        and itterate
 GENLST1  EQU   *             here when done looping
          BCTR  R8,0          remove the extra trailing dot
+         MVI   0(R8),C' '        in all forms
          LA    R9,1(,R9)     add one to remainder length
          B     4(,R14)       and return
          SPACE 1
