@@ -153,7 +153,6 @@ char **argv;
                 if (--argc <= 0 || di >= MAXNAMES) break;
                 domnames[di++] = *++argv;
                 domnames[di] = NULL;
-                --argc;
             } else {
                 if (ni >= MAXNAMES) break;
                 names[ni++] = *argv;
