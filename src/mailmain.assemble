@@ -62,6 +62,15 @@ EYESKIP  DS    0H
          L     R11,@MBLOK    GET MAILBLOK BASE
          DROP  R1            DONE WITH PARM LIST
          USING MAILBLOK,R11  ADDRESS IT
+         SPACE ,
+*--------------------------------------------------------------------
+*        Set up abend recovery environment info
+*--------------------------------------------------------------------
+         SPACE ,
+         ST    R13,ABENDR13        Save R13 in case of abend
+         ABNEXIT SET,EXIT=ABENDXIT,UWORD=(R11)
+         XC    MAILFILE,MAILFILE   Not processing a file yet
+         SPACE ,
          MAILTRC ENTER
          SPACE ,
 *--------------------------------------------------------------------
@@ -125,8 +134,6 @@ FILTCONT EQU   *             [1.20] continue
          B     RET           other rc's indicate a hard error    [1.22]
 RFILTCON EQU   *                                                 [1.22]
          MAILTRC CALL,GETHDR
-         ST    R13,ABENDR13        Save R13 in case of abend
-         ABNEXIT SET,EXIT=ABENDXIT,UWORD=(R11)
          CALL  GETHDR,((R11))     READ MESSAGE HEADER IN
          MAILTRC RETURN,GETHDR,(R15)
          LTR   R15,R15       ANY ERRORS?
@@ -156,10 +163,10 @@ RFILTCON EQU   *                                                 [1.22]
          TM    MAILFLG2,MFLG2BLD   Any problems in BUILDLST?
          BO    RTS           ---> Yes, return to sender
 PURGE    EQU   *
-         ABNEXIT CLR,EXIT=ABENDXIT
          L     R4,MAILFILE   GET FILE NUMBER
          LINEDIT TEXT='PURGE RDR ....',DOT=NO,RENT=NO,DISP=CPCOMM,     *
                SUB=(DEC,(R4))
+         XC    MAILFILE,MAILFILE   Not processing a file any more
          B     FILELOOP
          SPACE ,
 *-------------------------------------------------------------------*
@@ -170,13 +177,14 @@ PURGE    EQU   *
 *-------------------------------------------------------------------*
 RTS      EQU   *
          C     R15,=F'12'    FATAL ERROR
-         BNL   RETCLR                  DIE
+         BNL   RET                     DIE
          CALL  MAILRET,((R11))         RETURN THE FILE TO SENDER
          B     PURGE         ALL DONE, PURGE THE FILE
-         SPACE ,
-RETCLR   EQU   *
-         ABNEXIT CLR,EXIT=ABENDXIT
+         SPACE 1
 RET      EQU   *
+         LR    R3,R15              Save return code
+         ABNEXIT CLR,EXIT=ABENDXIT Clear abend exit
+         LR    R15,R3              Restore return code
          MAILTRC EXIT,(R15)
          L     R13,4(R13)
          L     R14,12(R13)
@@ -203,7 +211,8 @@ ABENDXIT DS    0D
          L     R11,ABNUWRD         Get base for MAILBLOK
          USING MAILBLOK,R11
          LINEDIT TEXT='CLOSE RDR HOLD',DOT=NO,RENT=NO,DISP=CPCOMM
-         L     R4,MAILFILE   GET FILE NUMBER
+         ICM   R4,B'1111',MAILFILE Get file number
+         BZ    MAILEX02            ---> Not processing a file yet
          LINEDIT TEXT='CHANGE RDR .... NOHOLD',DOT=NO,RENT=NO,         *
                DISP=CPCOMM,SUB=(DEC,(R4))
          MVC   EXECMID,MAINTID     Move in maintainer's id & node
@@ -223,6 +232,13 @@ ABENDXIT DS    0D
          BE    MAILEX10            ---> Yes, let it slide
          L     R1,=A(RTS)          Continue here instead
          STCM  R1,B'0111',ABNPSW+5 Fix up PSW
+         B     MAILEX10
+         SPACE 1
+MAILEX02 EQU   *                   Abend when not procssing files
+         LA    R3,16               Set return code
+         L     R1,=A(RET)          Where we want to continue
+         STCM  R1,B'0111',ABNPSW+5 Fix up PSW
+         SPACE 1
 MAILEX10 DS    0H
          ABNEXIT RESET             Reset exit taken flag
          LR    R15,R3              Restore EXEC return code
