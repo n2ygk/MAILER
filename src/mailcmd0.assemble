@@ -96,7 +96,24 @@ LOOP     EQU   *
          SPACE 1
          USING MSGBLOK,R9          Address the DSECT
          SPACE 1
-         MVC   MSGSENDR,SRCUSER    Initialize response userid
+*  Get the sender's userid into the MSGSENDER field.  This field has
+*  the userid right justified so that messages sent using it will
+*  have a constant number of blanks between the end of the userid
+*  and the beginning of the msg.  If you need the userid left justified
+*  use the SRCUSER field.
+         SPACE 1
+         MVC   MSGSENDR,=CL8' '    Blank out field
+         LA    R4,SRCUSER          Get sending userid.
+         LA    R1,8(R4)            End of string
+         TRT   0(8,R4),TRTAB       Look for blank at end of id
+         LA    R3,8(R4)            Address of end
+         SR    R3,R1               Minus length gives leading blanks
+         LA    R3,MSGSENDR(R3)     Start here
+         SR    R1,R4               Length of the userid
+         BZ    NOUSER2             No userid.
+         BCTR  R1,0                -1 for executed move
+         EX    R1,MOVEIT           MVC 0(0,R3),0(R4)
+NOUSER2  DS    0H
          MVC   MSGNODE,=CL8' '     Blank out response node.
          CLC   SRCCODE,=A(CMDNET)  Is it from the network?
          BNE   LOOP0010            ---> No
@@ -109,17 +126,7 @@ LOOP0010 EQU   *
          CLC   SRCCODE,=A(CMDCONS) Is it from the console?
          BE    SKIPCON             Yes : Don't bother, he's seen it.
          MVC   WORKBUF(24),=CL24'From         @        : '
-         LA    R4,SRCUSER          Get sending userid.
-         LA    R1,8(R4)            End of string
-         TRT   0(8,R4),TRTAB       Look for blank at end of id
-         LA    R3,8(R4)            Address of end
-         SR    R3,R1               Minus length gives leading blanks
-         LA    R3,WORKBUF+05(R3)   Start here
-         SR    R1,R4               Length of the userid
-         BZ    NOUSER2             No userid.
-         BCTR  R1,0                -1 for executed move
-         EX    R1,MOVEIT           MVC 0(0,R3),0(R4)
-NOUSER2  DS    0H
+         MVC   WORKBUF+5(8),MSGSENDR  Get sending userid.
          MVC   WORKBUF+14(8),MSGNODE
          CLC   SRCCODE,=A(CMDNET)  Is it from the network?
          BE    LOOP0020            Yes : Nodename is right.
