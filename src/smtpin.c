@@ -957,7 +957,7 @@ int l;
     /* Check for routeaddr and if it is us, drop it before any other
      * processing occurs.                                            */
 
-    if (a->mbxrtl != 0) {
+    while (a->mbxrtl != 0) {
        n = MBOXRTL(a)->noddown;
        plist.node = &n;
        plist.hs = &hs;
@@ -973,6 +973,8 @@ int l;
           acall(delroute, 0, &plist2);        /* Remove route addr */
           f->fiflg1 |= FIEDIFLG;              /* Remember changed  */
        }
+       else
+          break;
     }
 
     /* If address was just 'userid' fix it to be 'userid@local-host' */
