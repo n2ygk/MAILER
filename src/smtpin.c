@@ -1865,7 +1865,7 @@ int l;
 #ifdef DEBUG_FIND_ROUTD
         wrterm("==> find_routd: Allow unknown nodes set");
 #endif
-       if (strnindex(s, '.', ol) == 0) {
+       if (strnindex(s, '.', ol) < 0) {
        /* (5A) No '.' in original address string */
 #ifdef DEBUG_FIND_ROUTD
            wrterm("==> find_routd: Checking MAILRTAB with *DEFAULT*");
