@@ -1024,8 +1024,21 @@ struct mbox *a;
     }
 
     /* (2) See if domain checks out */
-    return check_domain(TOKPTR(MBOXDML(a)->noddown),
-                        MBOXDML(a)->noddown->toklen);
+
+    if (a->mbxdml == 0)  return 0;
+
+    n = MBOXDML(a);
+    plist.node = &n;
+    plist.hs = &hs;
+    plist.hl = &hl;
+    for (i=0; i < sizeof(hoststring); hoststring[i] = ' ',i++);
+    hoststringptr = &hoststring[0];
+    plist.hoststringptr = &hoststringptr;
+    hostlen = sizeof(hoststring);
+    plist.hostlen = &hostlen;
+    acall(genlist, 0, &plist);
+
+    return check_domain(hs,hl);
 }
 
 /*
