@@ -440,6 +440,8 @@ int (*func)();
     S.state = initial;
     S.verb = vrb;
     mailblok.mailchn = 0;          /* zero the mailchn ptr */
+    mailblok.mailrcnb = 0;         /* zero recipient blocks */
+    mailblok.mailrcnt = 0;         /* zero count of recipients */
     fserase("smtp.data");
     if (fsinit(&S.data_file, "smtp.data") != 0) {
         S.state = s_nosp(error, 0, 0);
@@ -578,6 +580,7 @@ int l;
 
     if (mailblok.dbgflg[0] & TRACE_CALLS)
        wrterm("==> Entered s_helo");
+
 
     for (p = &s[5], l -= 5; *p != ' ' && l > 0; p++, l--);
     if (!(S.domain = (char *)salloc(len = p - &s[5])))
@@ -1129,8 +1132,9 @@ int l;
      * processing occurs.                                            */
 
     while (a->mbxrtl != 0) {
-       if (mailblok.dbgflg[0] & TRACE_S_RCPT)
-          wrterm("==> s_rcpt: Processing routeaddr");
+       if ((mailblok.dbgflg[0] & TRACE_S_RCPT) ||
+           (mailblok.dbgflg[7] & DBGBLDLS))
+          wrterm("s_rcpt  : Processing routeaddr");
        n = MBOXRTL(a)->noddown;
        plist.node = &n;
        plist.hs = &hs;
@@ -1141,28 +1145,38 @@ int l;
        hostlen = sizeof(hoststring);
        plist.hostlen = &hostlen;
        acall(genlist, 0, &plist);
-       if (mailblok.dbgflg[0] & TRACE_S_RCPT) {
-          bcopy("==> s_rcpt: <", dbgmsg, 13);
-          bcopy(hs,&dbgmsg[13],hl);
-          bcopy(">",&dbgmsg[hl+13],2);
+       if ((mailblok.dbgflg[0] & TRACE_S_RCPT) ||
+           (mailblok.dbgflg[7] & DBGBLDLS)) {
+          bcopy("s_rcpt  : Route address <", dbgmsg, 25);
+          bcopy(hs,&dbgmsg[25],hl);
+          bcopy(">",&dbgmsg[hl+25],2);
           wrterm(dbgmsg);
        }
        if (check_local(hs,hl)) {
-          if (mailblok.dbgflg[0] & TRACE_S_RCPT)
-             wrterm("==> s_rcpt: Removing route address");
+          if ((mailblok.dbgflg[0] & TRACE_S_RCPT) ||
+              (mailblok.dbgflg[7] & DBGBLDLS)) {
+             bcopy("s_rcpt  : Destination is local host,", dbgmsg, 36);
+             bcopy("removing route address", &dbgmsg[36], 22);
+             wrterm(dbgmsg);
+          }
           plist2.delmbox = &a;
           acall(delroute, 0, &plist2);        /* Remove route addr */
           f->fiflg1 |= FIEDIFLG;              /* Remember changed  */
        }
-       else
+       else {
+          if ((mailblok.dbgflg[0] & TRACE_S_RCPT) ||
+              (mailblok.dbgflg[7] & DBGBLDLS))
+            wrterm("s_rcpt  : No route list found");
           break;
+       }
     }
 
     /* If address was just 'userid' fix it to be 'userid@local-host' */
 
     if (a->mbxdml == 0) {
-       if (mailblok.dbgflg[0] & TRACE_S_RCPT)
-          wrterm("==> s_rcpt: Adding @local-host to userid");
+       if ((mailblok.dbgflg[0] & TRACE_S_RCPT) ||
+           (mailblok.dbgflg[7] & DBGBLDLS))
+          wrterm("s_rcpt  : No host name, using default");
        fakenode = (struct node *)salloc(sizeof(*fakenode));
        if (!fakenode) return s_nosp(st,s,l);
        faketoke = (struct tokend*)salloc(sizeof(*faketoke));
@@ -1178,12 +1192,12 @@ int l;
 
     if (a->mbxrtl == 0) {
        if (mailblok.dbgflg[0] & TRACE_S_RCPT)
-          wrterm("==> s_rcpt: Using domain for lookup");
+          wrterm("s_rcpt  : Using domain for lookup");
        n = a->mbxdml;
     }
     else {
        if (mailblok.dbgflg[0] & TRACE_S_RCPT)
-          wrterm("==> s_rcpt: Using route-addr for lookup");
+          wrterm("s_rcpt  : Using route-addr for lookup");
        n = MBOXRTL(a)->noddown;
     }
     plist.node = &n;
@@ -1195,22 +1209,39 @@ int l;
     hostlen = sizeof(hoststring);
     plist.hostlen = &hostlen;
     acall(genlist, 0, &plist);
-    if (mailblok.dbgflg[0] & TRACE_S_RCPT) {
-       bcopy("==> s_rcpt routing with: <", dbgmsg, 26);
-       bcopy(hs,&dbgmsg[26],hl);
-       bcopy(">",&dbgmsg[hl+26],2);
+    if ((mailblok.dbgflg[0] & TRACE_S_RCPT) ||
+        (mailblok.dbgflg[7] & DBGBLDLS)) {
+       bcopy("s_rcpt  : Destination address <", dbgmsg, 31);
+       bcopy(hs,&dbgmsg[31],hl);
+       bcopy(">",&dbgmsg[hl+31],2);
        wrterm(dbgmsg);
     }
     if ((r = find_routd(hs, hl)) == 0) {
         (*S.repf)("550 Mailbox not found.", 22);
         mailblok.mailflg2 |= MFLG2BLD;
         return st;
+    } else {
+       if ((mailblok.dbgflg[0] & TRACE_S_RCPT) ||
+           (mailblok.dbgflg[7] & DBGBLDLS)) {
+          bcopy("s_rcpt  : Destination address <", dbgmsg, 31);
+          bcopy(hs,&dbgmsg[31],hl);
+          bcopy(">",&dbgmsg[hl+31],2);
+          wrterm(dbgmsg);
+       }
+    }
+    if ((mailblok.dbgflg[0] & TRACE_S_RCPT) ||
+        (mailblok.dbgflg[7] & DBGBLDLS)) {
+       if (!(mailblok.mailflg1 & (MFLG1LCL+MFLG1GTW)) &&
+           (xcmp(mailblok.cpustr,r->rtroute,8)!=0))
+         wrterm("s_rcpt  : Routing file from network");
     }
 
     /* add to mailchn */
     if (add_mailchn(f,r)) {
         /* now that everything has worked,  add to fieldd extension */
         ++S.rcpts;
+        if (S.rcpts > mailblok.mailrmax)
+           mailblok.mailrmax = S.rcpts;
         bcopy("250 ", buf, buflen=4);
         bcopy(f->fistr, &buf[buflen], f->fiend-f->fistr);
         buflen += f->fiend - f->fistr;
@@ -1247,6 +1278,7 @@ struct routd *r;
         mailblok.mailchn = a;
         a->actmbox = f->fipars;
         a->actrt = r;
+        mailblok.mailrcnb++;
         return 1;
     case RTP2:
         /* search for a matching rtroute/rtuser/rtprog/rtparm */
@@ -1263,6 +1295,7 @@ struct routd *r;
         mailblok.mailchn = a;
         a->actmbox = f->fipars;
         a->actrt = r;
+        mailblok.mailrcnb++;
         return 1;
     case RTP3:
         /* search for matching rtroute/rtuser/rtprog */
@@ -1276,6 +1309,7 @@ struct routd *r;
                 a->actchn = b;
                 b->actmbox = f->fipars;
                 b->actrt = r;
+                mailblok.mailrcnb++;
                 return 1;
             }
         /* didn't find it so create a new one */
@@ -1285,6 +1319,7 @@ struct routd *r;
         mailblok.mailchn = a;
         a->actmbox = f->fipars;
         a->actrt = r;
+        mailblok.mailrcnb++;
         return 1;
 
     default:
@@ -1356,7 +1391,9 @@ int l;
               return st;
             if (mailblok.maxrcvd && count_received() > mailblok.maxrcvd)
               return s_maxr(st, s, l);
-            wtr("SMT",43,1,"d",S.rcpts);
+            wtr("SMT",43,1,"d",mailblok.mailrcnb);
+            if (mailblok.mailrcnb > 0)
+              mailblok.mailrtot = mailblok.mailrtot+mailblok.mailrcnb;
             plist.mb = &mailblok;
             mailblok.mailflg1 |= MFLG1HDS;  /* header scanned ok */
             if (mailblok.dbgflg[0] & TRACE_S_GETDATA)
