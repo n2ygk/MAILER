@@ -26,6 +26,8 @@
 
 #define assert(X,Y) if(!(X)) error("assertion failed: %s\n",Y)
 
+ /* use case-insensitve compare instead: */
+#define strcmp(A,B) Xstrcmp(A,B)
 int namenode = 1;
 
 namefind(file, names, func)

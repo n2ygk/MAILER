@@ -115,6 +115,7 @@ MSG1     DS    0H
          BNE   RCVLOOP             No  : Ignore it.
 MSG2     DS    0H
          L     R2,0(,R1)           Is it
+         TR    0(4,R2),UPCASE      Upcase it before testing.
          CLC   =C'FROM',0(R2)         "FROM"?
          BNE   RCVLOOP             No  : Exit.
          L     R2,8(,R1)           Is it

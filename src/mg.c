@@ -131,6 +131,7 @@ char **argv;
     for (; argc > 1 && *argv[1]  == '-'; --argc, ++argv)
       switch(argv[1][1]) {
         case 'i':         /* initial installation */
+        case 'I':
           iniflag++;
           break;
         default:
