@@ -76,7 +76,58 @@ SKIPSAVE DS    0H
          L     R7,ACTMBOX        GET MBOX BLOCK
          USING MBOX,R7           GET USER LIST
          CLC   MBXDCNT,=F'1'     More than 1 domain token?
-         BNE   FAIL              ---> Yes, bad RSCS node name
+         BE    GETNODE           ---> No, continue
+         MVC   NODEA,MBXDML      Store node address
+         LA    R14,STACKP        Stack pointer address ptr
+         LA    R15,STACKP+4      Stack size address ptr
+         CALL  GENLIST,(NODEA,LSTRA,LSTRL,(14),(15))
+*                                Expand local part
+         LTR   R15,R15           Successful?
+         BNZ   FAIL              ---> No, call it bad RSCS node name
+         L     R4,LSTRL          Length of string
+         BCTR  R4,0              Decrement for later EXs
+         L     R2,LSTRA          Address of string
+         EX    R4,UPIT           Uppercase domain name
+FINDDOT  DS    0H
+         CLI   0(R2),C'.'        This the period?
+         BE    FOUNDDOT          ---> Yes
+         LA    R2,1(,R2)         Bump ptr
+         BCT   R4,FINDDOT        ---> Try again
+         WRTERM '**> TRYRSCS logic error 1'
+         B     FAIL              ---> Should never have gotten here
+         SPACE 1
+FOUNDDOT DS    0H
+         LA    R5,1(,R2)         Skip over '.'
+         BCTR  R4,0              Fix up length
+* R4 - Length of domain string after first '.' minus 1
+* R5 - Address of first character of domain string after '.'
+         SPACE 1
+         LA    R14,L'RSCSDOM/4   Number of RSCS-Domains.
+         LA    R15,RSCSDOM       First RSCS-Domain.
+DOMLOOP0 DS    0H
+         ICM   R3,B'1111',0(R15) no RSCS domain string defined?
+         BZ    FAIL              ---> No match found
+         SR    R0,R0             get a zero
+         IC    R0,0(R1)          get length of domain string
+         S     R0,=F'1'          decrement
+* R0 - Length of RSCS domain string minus 1
+* R3 - Start of RSCS domain string
+         CR    R0,R4             lengths match?
+         BNE   DOMNEXT           ---> No
+         LA    R2,WORK           Point to work area
+         MVI   0(R2),C' '        Clear work area
+         MVC   1(L'WORK-1,R2),0(R2)     to blanks
+         EX    R4,COPY           Copy RSCS domain into work area
+         EX    R4,UPIT           Uppercase it
+         EX    R4,CLCIT          Compare
+         BE    GETNODE           ---> Have match, ignore domain stuff
+         SPACE 1
+DOMNEXT  DS    0H
+         LA    R15,4(,R15)         Try the next RSCS-Domain
+         BCT   R14,DOMLOOP0           if there is one.
+         B     FAIL              ---> Bad RSCS node name
+         SPACE 1
+GETNODE  DS    0H
          L     R7,MBXDML         Point to domain list
          USING NODE,R7           ADDRESS IT
          L     R7,NODDOWN        GET DOWN POINTER
@@ -204,6 +255,7 @@ FAIL     EQU   *
 ***********************************************************************
 *
 UPIT     TR    0(0,R2),UPCASE
+CLCIT    CLC   0(0,R2),0(R5)
 TAGCMD   DC    C'TAG DEV PUN '
 TAGHOST  DS    CL8
          DC    C' '
@@ -214,7 +266,7 @@ LTAGCMD  EQU   *-TAGCMD
 *
 COPY     MVC   0(*-*,R2),0(R3)         COPY USER NAME TOKEN
          SPACE 1
-WORK     DS    CL70
+WORK     DS    CL255
          SPACE 1
 EMSG     DC    CL19'Node name too long '
          SPACE 1
