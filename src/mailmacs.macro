@@ -525,11 +525,11 @@ CPUSTR   DC    CL8'&NODE'    LOCAL RSCS NODE NAME
 RSCSNAME DC    CL8'&RSCS'    RSCS MACHINE NAME
 MAILVMID DC    CL8' '        MAILER MACHINE VM USERID
 MAILTIME DC    CL16'00/00/0000:00:00'  TIME OF LAST START/RELOAD
-MAILVERS DC    0CL25' ',CL8'&VERSION',CL8'&SYSDATE',C' '
+MAILVERS DC    0CL26' ',CL8'&VERSION',C' ',CL8'&SYSDATE',C' '
          LCLC  &TIME
 &TIME    SETC  '&SYSTIME'(1,2).':'.'&SYSTIME'(4,2).':00'
          DC    CL8'&TIME'
-         DC    CL3' '              Unused
+         DC    CL2' '              Unused
 HALTRC   DC    F'0'                Return Code from STOP command.
 MAILNODE DC    CL8' '        MAIL ORIGIN NODE NAME
 MAILUSER DC    CL8' '        MAIL ORIGIN USERID
