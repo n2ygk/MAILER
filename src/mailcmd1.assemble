@@ -79,20 +79,21 @@ EYESKIP  DS    0H
          BNH   RET
 *--- INTIALIZE MESSAGE BUFFER ---
          MVI   FLAG,0        CLEAR THE FLAG BYTE
-         MVC   MSGSENDR,=CL8' '
+         MVC   SRCUSER,=CL8' '
          L     R4,@SENDUSR         Get sending userid.
          LA    R1,8(R4)      END OF STRING
          TRT   0(8,R4),TRTAB LOOK FOR BLANK AT END OF ID
          LA    R3,8(R4)      ADDRESS OF END
          SR    R3,R1         MINUS LENGTH GIVES # OF LEADING BLANKS
-         LA    R3,MSGSENDR(R3) LEFT PAD TO THIS ADDRESS
+         LA    R3,SRCUSER(R3)      Left pad to this address.
          SR    R1,R4         LENGTH OF THE USERID
          BZ    NOUSER              No userid.
          BCTR  R1,0          -1 FOR EXECUTED MOVE
          EX    R1,MOVEIT     MVC 0(0,R3),0(R4)
 NOUSER   DS    0H
+         MVC   MSGSENDR,SRCUSER    Initialize response userid.
          SPACE 1
-         MVC   MSGNODE,=CL8' '     Blank out nodename.
+         MVC   SRCNODE,=CL8' '     Blank out nodename.
          L     R4,@SENDNOD         Get sending user's node.
          LTR   R4,R4               Any?
          BZ    NONODE              No  :
@@ -100,12 +101,16 @@ NOUSER   DS    0H
          TRT   0(8,R4),TRTAB       Find blank at end.
          LA    R3,8(R4)            Address of end
          SR    R3,R1                  - length = # OF LEADING BLANKS
-         LA    R3,MSGNODE(R3)      Left-align ADDRESS
+         LA    R3,SRCNODE(R3)      Left-align ADDRESS
          SR    R1,R4               Get nodename length.
          BZ    NONODE              None : don't try to move it.
          BCTR  R1,0
          EX    R1,MOVEIT           "MVC 0(0,R3),0(R4)"
 NONODE   DS    0H
+         MVC   MSGNODE,=CL8' '     Blank out response node.
+         CLC   @CODE,=A(CMDNET)    Is it from the network?
+         BNE   *+10                No  : Skip
+         MVC   MSGNODE,SRCNODE     Yes : Initialize response node.
          SPACE 1
          MVI   MSGNODE+8,C' '
          MVC   MSGDATA-3(3),=C' * ' BLANK DELIMITER
@@ -265,8 +270,8 @@ $CMS     DS    0H
          DMSFREE DWORDS=(0) GET THE STORAGE
          LR    R6,R1         GET INTO A BETTER REGISTER
          USING COMMAND,R6    BUILD A COMMAND BLOCK
-         MVC   CMDSNDR,MSGSENDR GET SENDER USERID
-         MVC   CMDNODE,MSGNODE     Pass the sending nodename too.
+         MVC   CMDSNDR,SRCUSER     Pass along response userid
+         MVC   CMDNODE,MSGNODE        and nodename.
          MVC   CMDCODE,=A(CMD202)
          ST    R5,CMDLEN     LENGTH OF THE BLOCK
          ST    R8,CMDDLEN    DATA LENGTH
@@ -1052,11 +1057,13 @@ ARGV     DS    20F           20 TOKENS IS PLENTY
 LARGV    EQU   *-ARGV        LENGTH OF ARGV
 $OUTTAB  DS    F
 MSGBUF   DS    CL18'MSGNOH '       Room for "SMSG rscsname MSG ".
-MSGNODE  DS    CL8                 Nodename of user.
+MSGNODE  DS    CL8                 Nodename of user for responses.
          DS    C' '
 MSGSENDR DS    CL8,CL3
 MSGLEN   EQU   *-MSGBUF
 MSGDATA  DS    CL100
+SRCUSER  DS    CL8                 Userid of user sending command.
+SRCNODE  DS    CL8                 Nodename of user sending command.
 FLAG     DS    X
 SMSFLG   EQU   X'80'         SMSG REPLY WANTED
 ACTFLG   EQU   X'40'         only active entries should be shown [1.24]

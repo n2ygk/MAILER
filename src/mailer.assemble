@@ -194,7 +194,8 @@ WAIT     EQU   *
          RDTERM TERMBUF
          LR    R5,R0         GET LENGTH READ
          LA    R15,MAILVMID
-         CALL  MAILCMD1,((R11),TERMBUF,(R5),(R15),0,CMDCONS)
+         LA    R14,CPUSTR          It's from our node.
+         CALL  MAILCMD1,((R11),TERMBUF,(R5),(R15),(R14),CMDCONS)
          B     MAINLOOP      GO PROCESS NEW RDR FILE(S)
          SPACE ,
 *--------------------------------------------------------------------

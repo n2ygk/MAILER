@@ -88,7 +88,7 @@ RCVLOOP  DS    0H
          SPACE 3
 SMSG     DS    0H
          MVC   USER,MESSAGE        Accept userid from IUCV.
-         MVC   NODENAME,=CL8' '    No node.
+         MVC   NODENAME,CPUSTR     It's from our node.
          LA    R5,MESSAGE+8        -> Command.
          LA    R8,L'MESSAGE        Get
          SH    R8,IPBFLN1             command
