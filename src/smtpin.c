@@ -963,20 +963,24 @@ struct mbox *a;
       return 0;
 
     /* (1) See if sender userid matches MAILUSER */
-    n = MBOXRTL(a)->noddown;
-    plist.node = &n;
-    plist.hs = &hs;
-    plist.hl = &hl;
-    for (i=0; i < sizeof(hoststring); hoststring[i] = ' ',i++);
-    hoststringptr = &hoststring[0];
-    plist.hoststringptr = &hoststringptr;
-    hostlen = sizeof(hoststring);
-    plist.hostlen = &hostlen;
-    acall(genlist, 0, &plist);
-    if (hl > 8)
-        hl = 8;
-    if (hl > mailblok.mailulen || xcmp(hs, mailblok.mailuser, hl) != 0)
-        return 0;
+
+    if (a->mbxrtl != 0) {
+        n = MBOXRTL(a)->noddown;
+        plist.node = &n;
+        plist.hs = &hs;
+        plist.hl = &hl;
+        for (i=0; i < sizeof(hoststring); hoststring[i] = ' ',i++);
+        hoststringptr = &hoststring[0];
+        plist.hoststringptr = &hoststringptr;
+        hostlen = sizeof(hoststring);
+        plist.hostlen = &hostlen;
+        acall(genlist, 0, &plist);
+        if (hl > 8)
+            hl = 8;
+        if (hl > mailblok.mailulen ||
+            xcmp(hs, mailblok.mailuser, hl) != 0)
+            return 0;
+    }
 
     /* (2) See if domain checks out */
     return check_domain(TOKPTR(MBOXDML(a)->noddown),
