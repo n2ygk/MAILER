@@ -35,6 +35,7 @@ R14 EQU 14 - SUBROUTINE LINKAGE
 R15 EQU 15 - SUBROUTINE LINKAGE
          BLOCKS ,
          MAILBLOK ,
+         TRACETBL ,
          EJECT
 SNDRMSG  CSECT ,
          USING SNDRMSG,R15   TEMP ADDRESSABILITY
@@ -59,21 +60,37 @@ EYESKIP  DS    0H
          ICM   R10,B'1111',FIPARS   GET MBOX POINTER              EAC
          BZ    RET                                                  EAC
          USING MBOX,R10    ADDRESS IT
-         ICM   R9,B'1111',MBXLCL Get user node pointer
-         BZ    RET               ---> Quit if none there
-         USING NODE,R9     ADDRESS IT
-         L     R9,NODDOWN    GET POINTER TO USER NAME TOKEN
-         USING TOKEND,R9     ADDRESS IT
-         SR    R1,R1         GET A ZERO
-         L     R1,TOKLEN     GET LENGTH OF USER NAME
-         MVC   SENDER,=CL8' ' BLANK OUT SENDER
-         C     R1,=F'8'      12 OR LESS
-         BL    SEND1         OK
-         LA    R1,8          TRUNC IT
+         ICM   R15,B'1111',MBXLCNT Count of tokens
+         BZ    RET                 ---> None
+         ICM   R9,B'1111',MBXLCL   Get user node pointer (the safe way)
+         BZ    RET                 ---> Quit if none there
+         C     R15,=F'1'           Only 1 token
+         BNE   MULTITOK            ---> No, multiple
+         USING NODE,R9
+         L     R9,NODDOWN          Get pointer to user name token
+         USING TOKEND,R9
+         L     R3,TOKPTR           Get address of token
+         L     R1,TOKLEN           Get length of token
+         B     CHKLONG             Back to common code
+         DROP  R9
+         SPACE
+MULTITOK EQU   *                   Multi-token username field
+         ST    R9,NODEA          Save for GENLIST call
+         LA    R14,STACKP        Stack pointer address ptr
+         LA    R15,STACKP+4      Stack size address ptr
+         MAILTRC CALL,GENLIST
+         CALL  GENLIST,(NODEA,LSTRA,LSTRL,(14),(15))
+         MAILTRC RETURN,GENLIST,(R15)
+         L     R3,LSTRA          address of user name token
+         L     R1,LSTRL          length of it
+CHKLONG  EQU   *
+         MVC   SENDER,=CL8' '    Blank out sender
+         C     R1,=F'8'          8 or less
+         BNH   SEND1             ---> OK
+         LA    R1,8              Use only first 8
 SEND1    EQU   *
          BCTR  R1,0          -1 FOR EXECUTE
          LA    R2,SENDER     DEST OF COPY
-         L     R3,TOKPTR          SOURCE
          EX    R1,COPY       COPY IT IN
          EX    R1,UPIT       UPPER CASE
          ICM   R9,B'1111',MBXDML Get host node pointer
@@ -129,6 +146,11 @@ COPY     MVC   0(0,R2),0(R3)
 UPIT     TR    0(0,R2),UPCASE
          LTORG ,
 SAVE     DS    18F
+         SPACE 1
+NODEA    DC    A(0)                Address of node for GENLIST
+LSTRA    DC    A(0)                Address of local part
+LSTRL    DC    A(0)                Length of local part
+         SPACE 1
 MSG      DC    C'SMSG '
 XRSCS    DS    CL8           RSCS NAME
          DC    C' MSG '
