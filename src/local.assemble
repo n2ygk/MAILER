@@ -9,7 +9,7 @@
 *[2] 12/23/82 - trim trailing blanks from msgnoh call.
 *   and add use of msgcmd & msgprefix in mailptab for name of cp cmd.
 *[1] 12/9/82 - added msgnoh to recipient announcing new mail.
-LOCAL  TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - LOCAL DISTRIBUTION'
+LOCAL  TITLE 'VM Network Mailer Version 2 - local distribution exit'
 *---------------------------------------------------------------------*
 *      MAILER -- Copyright (c) 1982,1985 Columbia University.         *
 *    Program Property of the Trustees of Columbia University in the   *
@@ -24,6 +24,13 @@ LOCAL    CSECT ,
 *  disconnected machines that shouldn't receive mail (i.e.
 *  BATCH, RSCS, CMSBATxx...) as well as providing a means for
 *  special usernames such as BBOARD, etc.
+*
+*  This routine is also responsible for supporting the '%' kludge
+*  for rerouting mail.
+*
+*  Example:  Given 'someuser%somewhere@localnode' the address will
+*            be changed to 'someuser@somewhere' and the mail
+*            resent.
 *
 *  LAST EDIT: 3/22/86 BY PETER DAY     [EMU2]
 *
@@ -47,6 +54,8 @@ R12 EQU 12 - PROGRAM BASE
 R13 EQU 13 - SAVE AREA
 R14 EQU 14 - SUBROUTINE LINKAGE
 R15 EQU 15 - SUBROUTINE LINKAGE
+         SPACE 3
+         FBLOCK ,
          BLOCKS ,
          MAILBLOK ,
          EJECT ,
@@ -74,6 +83,95 @@ LOCAL    CSECT ,
          L     R3,LSTRA          address of user name token
          L     R4,LSTRL          length of it
          DROP  R6
+         SPACE 1
+         LR    R15,R4            Copy length value
+         BCTR  R15,0             Decrement for EX
+         EX    R15,PCTTRT        Any '%'s?
+         BC    B'0100',DOPCT     ---> Found '%' in address
+         B     NOPCT             ---> No '%' in address or
+*                                    '%' is last character
+         SPACE 1
+PCTTRT   TRT   0(1,R3),PCTTRTTB    Executed
+         SPACE 1
+         EJECT ,
+*--------------------------------------------------------------------
+*    Process address containing a '%'
+*--------------------------------------------------------------------
+         SPACE 1
+DOPCT    DS    0H
+         LA    R3,0(R4,R3)       End character + 1
+PCTLOOP  EQU   *
+         BCTR  R3,0              Back up 1 char
+         CLI   0(R3),C'%'        This the '%'?
+         BE    PCTFOUND          ---> Yes
+         BCT   R4,PCTLOOP        ---> Keep trying
+         WRTERM '*** Logic error in LOCAL exit'
+         DC    H'0'              Not nice, but effective
+         SPACE 1
+PCTFOUND DS    0H
+         MVI   0(R3),C'@'        Change to '@'
+         L     R2,LSTRL          Length of string
+         LA    R2,FBLLENL+16(,R2)  + parameter list (8)
+*                                  + fileblock length (FBLLENL)
+*                                  + pointer list (8)
+         SALOC (R2),RET          Allocate stack space
+         LR    R2,R1             Remember storage address
+         SPACE 1
+*--------------------------------------------------------------------
+*  Building the following:
+*
+*        DC    A(MAILBLOK)              <--  R2
+*        DC    A(FBLOCK)
+*
+*FBLOCK  DC    CL18' '                  <--  R3
+*        DC    XL2'0'
+*FBLDLS  DC    A(PTRLIST)
+*FBLDLE  DC    A(PTREND-PTRLIST)
+*        DC    CL8' '
+*
+*PTRLIST DC    A(LINE1),A(LENGTH1)      <--  R4
+*PTREND  EQU   *
+*LINE1   DC    C'string'
+*--------------------------------------------------------------------
+         SPACE 1
+*  Set up base pointers
+         SPACE 1
+         LA    R3,8(,R2)         Address of FBLOCK
+         USING FBLOCK,R3
+         LA    R4,FBLLENL(,R3)   Ptrlist address
+         SPACE 1
+*  Build parameter list
+         SPACE 1
+         ST    R11,0(,R2)        MAILBLOK base
+         ST    R3,4(,R2)           into plist
+         SPACE 1
+*  Construct fileblock
+         SPACE 1
+         XC    FBLOCK(FBLLENL),FBLOCK Zero it
+         ST    R4,FBLDLS         Ptr list start address into FBLOCK
+         MVC   FBLDLE,=F'8'      Ptr list length into FBLOCK
+         SPACE 1
+*  Construct pointer/length pair
+         SPACE 1
+         LA    R2,8(R4)          Line1 string goes here
+         ST    R2,0(R4)          Address into ptr pair
+         MVC   4(4,R4),LSTRL     Length into ptr pair
+         SPACE 1
+*  Move in string
+         SPACE 1
+         L     R3,LSTRA          String comes from here
+         L     R15,LSTRL         Length of string
+         BCTR  R15,0             Decrement for EX
+         EX    R15,COPY          Move string to parm list
+         L     R15,=V(DISTSUB)   Subroutine address
+         CALL  (15)              Call it
+         B     RET
+         EJECT ,
+*--------------------------------------------------------------------
+*    Process address containing a '%'
+*--------------------------------------------------------------------
+         SPACE 1
+NOPCT    EQU   *
          MVC   RECVR,=CL8' ' [3]blank it
          LR    R1,R4         [3]copy
          C     R1,=F'8'      [3]trunc to 8 if necessary
@@ -414,4 +512,10 @@ PROFCLEN EQU   *-PROFSUBJ              [EMU1]    LENGTH TO CLEAR
 NODEA    DC    A(0)                Address of node for GENLIST
 LSTRA    DC    A(0)                Address of local part
 LSTRL    DC    A(0)                Length of local part
+         SPACE 1
+PCTTRTTB DC    256X'00'            Translate table for '%' search
+         ORG   PCTTRTTB+C'%'       Back to percent
+         DC    C'%'
+         ORG   ,
+         SPACE 3
          END   LOCAL

@@ -3,21 +3,37 @@
 .*  SALOC will allocate storage from the common stack pointed to by
 .*  the MAILBLOK fields STACKP and STACKS.
 .*
+.*  &SIZE may be either a static value or a register (other than
+.*  0, 1, 14 or 15)
+.*
 .*  The address of the allocated storage is returned in R1.
 .*
 .*  ** WARNING ** SALOC will destroy the contents of registers 0, 1,
 .*  14 and 15..
 .*
-         AIF   ('&SIZE' NE '').X010
+         AIF   ('&SIZE' NE '').X100
          MNOTE 8,'Request size not given'
          MEXIT
 .*
-.X010    ANOP
-         AIF   ('&NOSTOR' NE '').X020
+.X100    ANOP
+         AIF   ('&SIZE'(1,1) NE '(').X199
+         AIF   ('&SIZE' EQ '(0)').X190
+         AIF   ('&SIZE' EQ '(1)').X190
+         AIF   ('&SIZE' EQ '(14)').X190
+         AIF   ('&SIZE' EQ '(15)').X190
+         AIF   ('&SIZE' EQ '(R0)').X190
+         AIF   ('&SIZE' EQ '(R1)').X190
+         AIF   ('&SIZE' EQ '(R14)').X190
+         AIF   ('&SIZE' NE '(R15)').X199
+.X190    ANOP
+         MNOTE 8,'Size may not be in register &SIZE(1)'
+         MEXIT
+.X199    ANOP
+         AIF   ('&NOSTOR' NE '').X200
          MNOTE 8,'Not enough stack space error address not provided'
          MEXIT
 .*
-.X020    ANOP
+.X200    ANOP
          LM    R14,R15,STACKP      Pick up stack pointers
          LA    R14,0(,R14)         Clear off garbage bits
          LA    R1,7(,R14)          Round up to doubleword boundary
@@ -27,7 +43,12 @@
          BZ    $&SYSNDX.A          ---> No compensation needed
          SR    R15,R0              Fix up size of stack left
 $&SYSNDX.A EQU *
+         AIF   ('&SIZE'(1,1) EQ '(').X310
          L     R14,=A(&SIZE)       Want this much
+         AGO   .X320
+.X310    ANOP
+         LR    R14,&SIZE(1,1)      Want this much
+.X320    ANOP
          SR    R15,R14             Reduce amount left
          BNP   &NOSTOR             ---> Not enough space left
          AR    R14,R1              New stack pointer value
