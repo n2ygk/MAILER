@@ -1,30 +1,48 @@
-+--------------------------------------------------------------------+
-|  MAILER Priviledged Commands:                                      |
-|                                                                    |
-|  CP <cp-command>  - Issue a CP command.                            |
-|                                                                    |
-|  CMS <cms-command> - Issue any CMS SUBSET command.                 |
-|                                                                    |
-|                                                                    |
-|  FORWARD - Deliver mail to a userid other than the one specified   |
-|            in the headers.  It is legal to forward mail to more    |
-|            than 1 address.  If you want to continue to receive     |
-|            a copy of the mail at your userid, add a forward with   |
-|            an address of '<*>'.                                    |
-|                                                                    |
-|            The 'FOR' option allows an authorized user (anyone in   |
-|            the maintainers list) to issue the command 'for' some   |
-|            other userid.                                           |
-|                                                                    |
-|      FORWARD < FOR userid> ADD    destaddr                         |
-|                            DELETE destaddr | ALL                   |
-|                            LIST                                    |
-|                                                                    |
-|  QUIESCE - Disable reader file processing.                         |
-|                                                                    |
-|  ACTIVATE - Reactivate reader file processing.                     |
-|                                                                    |
-|  RELOAD - Reload routing table and user exits.                     |
-|                                                                    |
-|  STOP - Stop Mailer (exit program).                                |
-+--------------------------------------------------------------------+
+.fo off
+               (c) Copyright Princeton Univeristy, 1990.
+
+  Syntax specification of MAILER general user commands.  These commands
+  may be issued from either the MAILER console or as messages from the
+  network to the MAILER's userid.
+
+  Changes since the last version of this file are flagged with a '|'
+  (vertical bar) in column 1.
+
+  +--------------------------------------------------------------------+
+  |  MAILER Priviledged Commands:                                      |
+  |                                                                    |
+  |  CP <cp-command>  - Issue a CP command.                            |
+  |                                                                    |
+  |  CMS <cms-command> - Issue any CMS SUBSET command.                 |
+  |                                                                    |
+  |                                                                    |
+  |  FORWARD - Deliver mail to a userid other than the one specified   |
+  |            in the headers.  It is legal to forward mail to more    |
+  |            than 1 address.  If you want to continue to receive     |
+  |            a copy of the mail at your userid, add a forward with   |
+  |            an address of '<*>'.                                    |
+  |                                                                    |
+  |            The 'FOR' option allows an authorized user (anyone in   |
+  |            the maintainers list) to issue the command 'for' some   |
+  |            other userid.                                           |
+  |                                                                    |
+  |      FORWARD < FOR userid> ADD    destaddr                         |
+  |                            DELETE destaddr | ALL                   |
+  |                            LIST                                    |
+  |                                                                    |
+  |  QUIESCE - Disable reader file processing.                         |
+  |                                                                    |
+  |  ACTIVATE - Reactivate reader file processing.                     |
+  |                                                                    |
+  |  RELOAD - Reload routing table and user exits.                     |
+  |                                                                    |
+| |  SET <set-options> - Change Mailer internal values dynamically     |
+| |                                                                    |
+| |  set-options:                                                      |
+| |                                                                    |
+| |    BIT  bitname  True|False                                        |
+| |     Change the value of bit flags that are normally set from the   |
+| |     Mailer profile.                                                |
+  |                                                                    |
+  |  STOP - Stop Mailer (exit program).                                |
+  +--------------------------------------------------------------------+

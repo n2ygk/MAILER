@@ -1,44 +1,84 @@
-+--------------------------------------------------------------------+
-|  MAILER General Commands:                                          |
-|                                                                    |
-|  CHECK - Check if another user has mail (not yet implemented).     |
-|                                                                    |
-|  FORWARD - Deliver mail to a userid other than the one specified   |
-|            in the headers.  It is legal to forward mail to more    |
-|            than 1 address.  If you want to continue to receive     |
-|            a copy of the mail at your userid, add a forward with   |
-|            an address of '<*>'.                                    |
-|                                                                    |
-|      FORWARD ADD    destaddr                                       |
-|              DELETE destaddr | ALL                                 |
-|              LIST                                                  |
-|                                                                    |
-|  HELP | ? - Get list of commands.                                  |
-|                                                                    |
-|  SHOW <show-options>  - Display assorted counters, etc.            |
-|                                                                    |
-|  show-options:                                                     |
-|                                                                    |
-|    STATUS                                                          |
-|     Various Mailer status variables are returned.  These are:      |
-|     Since: <date time> - time of last Mailer restart.              |
-|     Msgs in/out: Number of messages (mail) received and sent.      |
-|     Max Multi:  Maximum number of recipients for a single message. |
-|     Stack Max:  Percentage Mailer internal storage utilization.    |
-|                                                                    |
-|    DOMAINS <domain-name>                                           |
-|     Statistics on outgoing files to other domain Mailers.          |
-|                                                                    |
-|    INCOMING <nodename> <userid>                                    |
-|     Statistics on files received from other network Mailers.       |
-|                                                                    |
-|    OUTGOING <hostname>                                             |
-|     Statistics on outgoing files to other network Mailers.         |
-|                                                                    |
-|    SPECIAL <userid>                                                |
-|     Statistics on mail to special userids (i.e. SYSTEM).           |
-|                                                                    |
-|  SMSG - Used as a prefix to other commands causes the reply to     |
-|  be sent as a machine-readable SMSG.                               |
-|                                                                    |
-+--------------------------------------------------------------------+
+.fo off
+                     MAILER General User Commands
+
+               (c) Copyright Princeton Univeristy, 1990.
+
+  The VM Network Mailer is a mail transport agent.  That is, it is a
+  program that decides how to route properly formatted mail messages
+  through the network.  Mailer spends most of its time reading files
+  that have been sent to it from local and remote users on the network
+  and deciding if there are local or remote recipients to whom the
+  file should be sent.
+
+  In addition to processing mail files it will respond to a small set
+  of commands.  These commands may be issued from the Mailer's console
+  or by sending them using the CP SMSG, the CP MSG or the CMS TELL
+  command.
+
+ The syntax specification of Mailer general user commands follows.
+ Changes since the last version of this file are flagged with a '|'
+ (vertical bar) in column 1.
+
+  +--------------------------------------------------------------------+
+  |                                                                    |
+  |  FORWARD - Deliver mail to a userid other than the one specified   |
+  |            in the headers.  It is legal to forward mail to more    |
+  |            than 1 address.  If you want to continue to receive     |
+  |            a copy of the mail at your userid, add a forward with   |
+  |            an address of '<*>'.                                    |
+  |                                                                    |
+  |      FORWARD ADD    destaddr                                       |
+  |              DELETE destaddr | ALL                                 |
+  |              LIST                                                  |
+  |                                                                    |
+  |  HELP | ? - Get list of commands.                                  |
+  |                                                                    |
+  |  SHOW <show-options>  - Display assorted counters, etc.            |
+  |                                                                    |
+  |  show-options:                                                     |
+  |                                                                    |
+| |    BIT  bitname|*                                                  |
+| |     Display the current setting of Mailer bit flags.  These values |
+| |     are normally set from the Mailer profile.                      |
+  |                                                                    |
+  |    STATUS                                                          |
+  |     Various Mailer status variables are returned.  These are:      |
+  |     Since: <date time> - time of last Mailer restart.              |
+  |     Msgs in/out: Number of messages (mail) received and sent.      |
+  |     Max Multi:  Maximum number of recipients for a single message. |
+  |     Stack Max:  Percentage Mailer internal storage utilization.    |
+  |                                                                    |
+  |    DOMAINS <domain-name>                                           |
+  |     Statistics on outgoing files to other domain Mailers.          |
+  |                                                                    |
+  |    INCOMING <nodename> <userid>                                    |
+  |     Statistics on files received from other network Mailers.       |
+  |                                                                    |
+  |    OUTGOING <hostname>                                             |
+  |     Statistics on outgoing files to other network Mailers.         |
+  |                                                                    |
+| |    PATH hostname | domain-name                                     |
+| |     Displays how Mailer would deliver mail having this hostname    |
+| |     or domain-name as its destination.                             |
+  |                                                                    |
+  |    SPECIAL <userid>                                                |
+  |     Statistics on mail to special userids (i.e. SYSTEM).           |
+  |                                                                    |
+| |    VERSION                                                         |
+| |     Returns information about the release level of the mailer.     |
+  |                                                                    |
+  |  SMSG - Used as a prefix to other commands causes the reply to     |
+| |         be sent as a machine-readable SMSG.  SMSG is not sensible  |
+| |         from the Mailer console.                                   |
+  |                                                                    |
+  +--------------------------------------------------------------------+
+
+| Sample commands:
+|
+| To find out the release level of a mailer at the local node
+|
+|    TELL mailerid SHOW VERSION
+|
+| To find out the release level of a mailer at a remote VM node
+|
+|    TELL mailerid AT node SHOW VERSION
