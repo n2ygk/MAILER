@@ -411,9 +411,9 @@ int bl;                         /* limit on result length */
 
     if (lclhost[0] == (char *)0) {  /* user didn't provide one */
         bcopy(cpustr,bp,lcldl = cpuslen);
-        if (rscsdom != (char *)0) {
-            bcopy(rscsdom+1,&bp[lcldl],*rscsdom);
-            lcldl += *rscsdom;
+        if (rscsdom[0] != 0) {
+            bcopy(&rscsdom[0][1],&bp[lcldl],(int)rscsdom[0][0]);
+            lcldl += rscsdom[0][0];
         }
     } else {
         lcldp = &lclhost[0][1];  /* pointer to lcl host name */
@@ -538,7 +538,7 @@ int l;
  * check that domain name matches the RSCS origin
  *  Do the following tests until one succeeds:
  *  1) Compare the domain to MAILNODE.
- *  2) Compare the domain to MAILNODE concatenated w/ RSCS-Domain.
+ *  2) Compare the domain to MAILNODE concatenated w/ RSCS-Domains.
  *  3) If file is local, see if domain matches a Local-Host (LCLHOST*).
  *  4) Look for the domain in MAILRTAB and compare the RTROUTE
  *     to MAILNODE.
@@ -556,15 +556,17 @@ int l;
     if (mailnlen == l && xcmp(mailnode,s,l) == 0)
         return 1;
 
-    /* (2) Compare domain concatenated w/RSCS-domain to mailnode */
-    if (rscsdom != 0) {
-        int rl = *rscsdom;
-        char *rp = &rscsdom[1];
-        int i;
+    /* (2) Compare domain concatenated w/RSCS-domains to mailnode */
+    if (rscsdom[0] != 0) {
+        for (ri= 0; rscsdom[ri] != 0 && ri < MAXRSCSDOM; ri++) {
+           int rl = rscsdom[ri][0];
+           char *rp = &rscsdom[ri][1];
+           int i;
 
-        if (rl < l && xcmp(rp, &s[i = l-rl], rl) == 0)
-            if (mailnlen == i && xcmp(s, mailnode, i) == 0)
-                return 1;
+           if (rl < l && xcmp(rp, &s[i = l-rl], rl) == 0)
+               if (mailnlen == i && xcmp(s, mailnode, i) == 0)
+                   return 1;
+        }
     }
 
     /* (3) If file is from local user,  see if Local-Domain matches */
@@ -1334,7 +1336,7 @@ int l;
 
 /*
  * find_routd:  Return pointer to ROUTD given hostname string
- *   (1) see if RSCS-domain is found and if so,  see if hostname
+ *   (1) see if RSCS-domains are found and if so,  see if hostname
  *       ends in it.  If so,  strip it off before (2).
  *   (2) look for the hostname in MAILRTAB
  *   (3) if not found,  look for it in MAILDTAB
@@ -1357,12 +1359,15 @@ int l;
     int ol = l;              /* original length */
 
     /* (1) see if it ends in .<RSCS-domain> */
-    if (rscsdom != 0) {
-        int rl = *rscsdom;
-        char *rp = &rscsdom[1];
+    if (rscsdom[0] != 0) {
+        int ri;
+        for (ri = 0; rscsdom[ri] != 0 && ri < MAXRSCSDOM; ri++) {
+           int rl = rscsdom[ri][0];
+           char *rp = &rscsdom[ri][1];
 
-        if (rl < l && xcmp(rp, &s[l-rl], rl) == 0)
-            l -= rl;           /* chop of the RSCS-domain */
+           if (rl < l && xcmp(rp, &s[l-rl], rl) == 0)
+               l -= rl;           /* chop of the RSCS-domain */
+        }
     }
 
     /* (2) see if it is in MAILRTAB */
@@ -1472,9 +1477,9 @@ add_received()
         len += lclhost[0][0];
     } else {
         bcopy(cpustr,&buf[len],cpuslen); len += cpuslen;
-        if (rscsdom != 0) {
-            bcopy(&rscsdom[1],&buf[len],(int)rscsdom[0]);
-            len += rscsdom[0];
+        if (rscsdom[0] != 0) {
+            bcopy(&rscsdom[0][1],&buf[len],(int)rscsdom[0][0]);
+            len += rscsdom[0][0];
         }
     }
     bcopy(" (Mailer ",&buf[len],9); len += 9;

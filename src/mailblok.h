@@ -23,7 +23,7 @@ extern struct sfblok mailsfb;   /* sfblok for current reader file */
 extern int stackp[2];           /* stack pointer, length */
 extern struct fscb *mailulfs;   /* error log fscb pointer */
 extern char *oldldom;           /* main local-domain string */
-extern char *rscsdom;           /* rscs-domain string */
+extern char *oldrdom;           /* main rscs-domain string */
 extern char cpustr[8];          /* rscs node name */
 extern int cpuslen;             /*  length */
 extern char rscsname[8];        /* rscs vmid */
@@ -90,3 +90,5 @@ extern char maintid9[8];        /* maintainer's userid */
 extern char maintno9[8];        /* maintainer's node name */
 #define MAXLCLHOST 9
 extern char *lclhost[MAXLCLHOST]; /* local-domain strings */
+#define MAXRSCSDOM 9
+extern char *rscsdom[MAXRSCSDOM]; /* rscs-domain strings */

@@ -558,7 +558,7 @@ MAILNLEN DC    F'0'          lenght of MAILNODE                  [1.24]
 MAILULFS DC    A(ULFSCB)     ptr to userlog file FSCB            [1.23]
 OLDLDOM  DC    A(0)                Spare (was -> Local-Domain)
 CPUSLEN  DC    F'0'          length of cpustr for convenience    [1.22]
-RSCSDOM  DC    A(0)          default domain for the RSCS network [1.22]
+OLDRDOM  DC    A(0)                Spare (was -> Rscs-Domain).
 MAILDTAB DC    A(0)          domains table pointer               [1.22]
 MAILOTAB DC    A(0)         [1.20]Origins table pointer
 MAILDFLD DC    A(0)          [1.16]File date fieldd
@@ -613,6 +613,16 @@ LCLHOST7 DC    A(0)                Local host name #7.
 LCLHOST8 DC    A(0)                Local host name #8.
 LCLHOST9 DC    A(0)                Local host name #9.
 LCLHOST  EQU   LCLHOST1,*-LCLHOST1 The whole array.
+RSCSDOM1 DC    A(0)                Domain #1 for the RSCS network.
+RSCSDOM2 DC    A(0)                Domain #2 for the RSCS network.
+RSCSDOM3 DC    A(0)                Domain #3 for the RSCS network.
+RSCSDOM4 DC    A(0)                Domain #4 for the RSCS network.
+RSCSDOM5 DC    A(0)                Domain #5 for the RSCS network.
+RSCSDOM6 DC    A(0)                Domain #6 for the RSCS network.
+RSCSDOM7 DC    A(0)                Domain #7 for the RSCS network.
+RSCSDOM8 DC    A(0)                Domain #8 for the RSCS network.
+RSCSDOM9 DC    A(0)                Domain #9 for the RSCS network.
+RSCSDOM  EQU   RSCSDOM1,*-RSCSDOM1 The whole array.
          DS    0D            Just for pretty
 MAILBLEN EQU   *-MAILXXXX    LENGTH IN BYTES
          POP   PRINT

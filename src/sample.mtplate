@@ -28,6 +28,22 @@ rscsalt=KNET                 ; name of alternate rscs userid
 ;**
 RSCS-Domain=.BITNET          ; the RSCS network is called .BITNET
 ;**
+;** The following lines allow you to specify alternate RSCS network
+;** domains.  This is useful for mailers imbedded inside a domain
+;** that might receive mail with a specification other than the real
+;** domain identifier.
+;**
+RSCS-Domain1=.EARN
+RSCS-Domain2=.NETNORTH
+RSCS-Domain3=.LOCAL.EDU
+RSCS-Domain4=.LCL.EDU
+RSCS-Domain5=.DUMMY
+RSCS-Domain6=.DUMMY
+RSCS-Domain7=.DUMMY
+RSCS-Domain8=.DUMMY
+RSCS-Domain9=.DUMMY
+;**
+;**
 ;** Then node name for the node on which MAILER is running
 ;**
 thisnode=MYNODE              ; local node name

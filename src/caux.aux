@@ -40,7 +40,7 @@ offset mailnlen 4            % length of mailnode
 offset mailulfs 4            % ptr to error log fscb
 offset oldldom 4             % spare (was ptr to local-domain string)
 offset cpuslen 4             % length of cpustr
-offset rscsdom 4             % ptr to rscs-domain string
+offset oldrdom 4             % spare (was ptr to rscs-domain string)
 offset maildtab 4            % domains table
 origin 1990
 offset mailflg2 1            % more flags
@@ -65,3 +65,4 @@ offset maintid9 8            % maintainer userid
 offset maintno9 8            % maintainer node
 origin 2232
 offset lclhost 36            % array of ptrs to local-host strings
+offset rscsdom 36            % array of ptrs to rscs-domain strings
