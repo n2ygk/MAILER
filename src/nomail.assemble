@@ -47,6 +47,10 @@ EYESKIP  DS    0H
          LR        R10,R1
          L         R11,0(R10)          GET MAILBLOK
          USING     MAILBLOK,R11
+         TM    DBGFLG6,DBGNOOUT    Sending mail?
+         BZ    SKIP001             ---> Yes
+         WRTERM 'NOMAIL:  Trace-send-no-mail set'
+SKIP001  EQU   *
          L         R9,4(R10)           GET ACTADR
          USING     ACTADR,R9
          L     R8,ACTRT      ADDRESS OF ROUTD CARD

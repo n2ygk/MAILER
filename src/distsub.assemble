@@ -119,9 +119,18 @@ EYESKIP  DS    0H
 * Set up the initial items: HELO, TICK, VERB, MAIL...
 *----------------------------------------------------------------------
          MVC   HELODOM(8),CPUSTR  copy in rscs node name
-         PUNCHC HELO,ERROR=PUNERR punch the HELO record
          MVC   TICKID,MAILFTXT    message id number
+         TM    DBGFLG6,DBGNOOUT   Sending mail?
+         BZ    SKIP0102           ---> Yes
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,HELO),                      X
+               DOT=NO,COMP=NO
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,TICK),                      X
+               DOT=NO,COMP=NO
+         B     SKIP0104
+SKIP0102 EQU   *
+         PUNCHC HELO,ERROR=PUNERR punch the HELO record
          PUNCHC TICK,ERROR=PUNERR punch the TICK
+SKIP0104 EQU   *
 *----------------------------------------------------------------------
 * MAIL FROM:<sender> is a little more work...
 *----------------------------------------------------------------------
@@ -145,16 +154,32 @@ NODEF    EQU   *
          S     R15,=A(MAIL)       Compute length
          C     R15,=F'80'         Longer than 80?
          BH    NODEF2             ---> Yes
+         TM    DBGFLG6,DBGNOOUT   Sending mail?
+         BZ    SKIP0112           ---> Yes
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,MAIL),                      X
+               DOT=NO,COMP=NO
+         B     SKIP0114
+SKIP0112 EQU   *
          PUNCHC MAIL,ERROR=PUNERR punch the MAIL FROM: line
+SKIP0114 EQU   *
          DROP  R6                 done with MBOX
          B     DORCPT             --> skip null "from" code
          SPACE 1
 NODEF2   EQU   *                  Here if length > 80
+         TM    DBGFLG6,DBGNOOUT   Sending mail?
+         BZ    SKIP0122           ---> Yes
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,(MAIL,79)),                 X
+               DOT=NO,COMP=NO
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,(MAIL+79,80)),              X
+               DOT=NO,COMP=NO
+         B     SKIP0124
+SKIP0122 EQU   *
          MVC   TWORK(1),MAIL+79      Save value
          MVI   MAIL+79,X'15'         Put in NL character
          PUNCHC MAIL,ERROR=PUNERR    Punch the MAIL FROM: line
          MVC   MAIL+79(1),TWORK      Restore char
          PUNCHC MAIL+79,ERROR=PUNERR Punch the continuation
+SKIP0124 EQU   *
          B     DORCPT
          SPACE 1
 *----------------------------------------------------------------------
@@ -205,15 +230,31 @@ RCPTLO40 EQU   *
          S     R15,=A(RCPT)       Compute length
          C     R15,=F'80'         Longer than 80?
          BH    RCPTLO50           ---> Yes
+         TM    DBGFLG6,DBGNOOUT   Sending mail?
+         BZ    SKIP0132           ---> Yes
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,RCPT),                      X
+               DOT=NO,COMP=NO
+         B     SKIP0134
+SKIP0132 EQU   *
          PUNCHC RCPT,ERROR=PUNERR punch the MAIL FROM: line
+SKIP0134 EQU   *
          B     RCPTLO60           --> Continue
          SPACE 1
 RCPTLO50 EQU   *
+         TM    DBGFLG6,DBGNOOUT   Sending mail?
+         BZ    SKIP0142           ---> Yes
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,(RCPT,79)),                 X
+               DOT=NO,COMP=NO
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,(RCPT+79,80)),              X
+               DOT=NO,COMP=NO
+         B     SKIP0144
+SKIP0142 EQU   *
          MVC   TWORK(1),RCPT+79   Save value of this char
          MVI   RCPT+79,X'15'      Put in NL character
          PUNCHC RCPT,ERROR=PUNERR punch the MAIL FROM: line
          MVC   RCPT+79(1),TWORK   Restore char
          PUNCHC RCPT+79,ERROR=PUNERR Punch the second line
+SKIP0144 EQU   *
          SPACE 1
 RCPTLO60 EQU   *
          LA    R9,8(,R9)          To next addr/length pari
@@ -230,6 +271,16 @@ RCPTDONE EQU   *
 *----------------------------------------------------------------------
 * done with RCPT's.  Now send the DATA
 *----------------------------------------------------------------------
+         TM    DBGFLG6,DBGNOOUT   Sending mail?
+         BZ    SKIP0152           ---> Yes
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,DATA),                      X
+               DOT=NO,COMP=NO
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,ENDDATA),                   X
+               DOT=NO,COMP=NO
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,QUIT),                      X
+               DOT=NO,COMP=NO
+         B     SKIP0154
+SKIP0152 EQU   *
          PUNCHC DATA,ERROR=PUNERR send the data
          OI    MAILFLG1,MFLG1DOT  do dot quoting
          L     R15,APUNHDR
@@ -244,6 +295,7 @@ RCPTDONE EQU   *
          PUNCHC QUIT,ERROR=PUNERR end the "session"
          L     R15,APUNCLS        close the punch
          CALL  (15),((R11))
+SKIP0154 EQU   *
 RET      EQU   *
          NI    MAILFLG1,255-MFLG1DOT turn off dot quoting
          C     R15,=F'0'          Return code = 0?
@@ -284,6 +336,10 @@ PUNERR   DS    0H                 punch error
          EJECT ,
          LTORG ,
 SAVE     DS    18F                save area
+         SPACE 1
+LINESKEL DC      AL1(90)
+         DC      CL10'DISTSUB:'
+         DC      80C'.'
          SPACE 1
 HAVLOCAL DC    X'0'               0 - '<@>' address not found
 *                                 1 - '<@>' address found

@@ -145,6 +145,12 @@ EYESKIP  DS    0H
          L     R10,@ACT           ACTADR base
          DROP  R1                 done with 'em
          USING MAILBLOK,R11       address the mailblok
+         SPACE 1
+         TM    DBGFLG6,DBGNOOUT   Sending mail?
+         BZ    SKIP001            ---> Yes
+         WRTERM 'BSMTP:  Trace-send-no-mail set'
+SKIP001  EQU   *
+         SPACE 1
 *----------------------------------------------------------------------
 * Point the punch in the right direction.  This exit is "smart" enough
 * to handle a local or remote server (i.e. sent directly or via RSCS)
@@ -224,10 +230,21 @@ NOPARM   EQU   *                  here if no parameter
          BCTR  R5,0               -1 for execute
          EX    R5,COPYDEF         MVC 0(0,R2),1(R4)
 HADPARM  EQU   *
-         PUNCHC HELO,ERROR=PUNERR punch the HELO record
          MVC   TICKID,MAILFTXT    message id number
+         TM    DBGFLG6,DBGNOOUT   Producing mail?
+         BZ    SKIP0102           ---> Yes
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,HELO),                      X
+               DOT=NO,COMP=NO
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,TICK),                      X
+               DOT=NO,COMP=NO
+*        LINEDIT TEXTA=LINESKEL,SUB=(CHARA,VERB),
+*              DOT=NO,COMP=NO
+         B     SKIP0104
+SKIP0102 EQU   *
+         PUNCHC HELO,ERROR=PUNERR punch the HELO record
          PUNCHC TICK,ERROR=PUNERR punch the TICK
 ******** PUNCHC VERB,ERROR=PUNERR punch the VERB                 [1.24]
+SKIP0104 EQU   *
 *----------------------------------------------------------------------
 * MAIL FROM:<sender> is a little more work...
 *----------------------------------------------------------------------
@@ -241,7 +258,7 @@ HADPARM  EQU   *
          MVC   MAILTYPE,=CL4'FILE' Indicate the correct type
 NOTFILE  EQU   *
          TM    MAILFLG2,MFLG2NLF  is it "FROM:<>"?
-         BO    NULLFROM           --> propagate that fact
+         BO    FROMNULL           --> propagate that fact
          L     R6,MAILSFLD        sender fieldd
          USING FIELDD,R6          address it
          L     R6,FIPARS          point to mbox
@@ -288,21 +305,42 @@ NODEF    EQU   *
          S     R15,=A(MAIL)       Compute length
          C     R15,=F'80'         Longer than 80?
          BH    NODEF2             ---> Yes
+         TM    DBGFLG6,DBGNOOUT   Producing mail?
+         BZ    SKIP0112           ---> Yes
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,MAIL),                      X
+               DOT=NO,COMP=NO
+         B     SKIP0114
+SKIP0112 EQU   *
          PUNCHC MAIL,ERROR=PUNERR punch the MAIL FROM: line
+SKIP0114 EQU   *
          DROP  R6                 done with MBOX
          B     OVERNULL           --> skip null "from" code
          SPACE 1
 NODEF2   EQU   *                  Here if length > 80
+         TM    DBGFLG6,DBGNOOUT   Producing mail?
+         BZ    SKIP0122           ---> Yes
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,(MAIL,79)),                 X
+               DOT=NO,COMP=NO
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,(MAIL+79,80)),              X
+               DOT=NO,COMP=NO
+         B     SKIP0124
+SKIP0122 EQU   *
          MVC   TWORK(1),MAIL+79      Save value
          MVI   MAIL+79,X'15'         Put in NL character
          PUNCHC MAIL,ERROR=PUNERR    Punch the MAIL FROM: line
          MVC   MAIL+79(1),TWORK      Restore char
          PUNCHC MAIL+79,ERROR=PUNERR Punch the continuation
+SKIP0124 EQU   *
          B     OVERNULL
          SPACE 1
-NULLFROM EQU   *                  <-- here for MAIL FROM:<>
-         MVC   MAILFROM(2),=CL2'<>'
-         PUNCHC MAIL,ERROR=PUNERR
+FROMNULL EQU   *                  <-- here for MAIL FROM:<>
+         TM    DBGFLG6,DBGNOOUT   Producing mail?
+         BZ    SKIP0132           ---> Yes
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,NULLFROM),                  X
+               DOT=NO,COMP=NO
+         B     OVERNULL
+SKIP0132 EQU   *
+         PUNCHC NULLFROM,ERROR=PUNERR
 OVERNULL EQU   *                  <-- here when skipping over
 *----------------------------------------------------------------------
 * Iterrate through the list of ACTADR's via ACTCHN.  For each one,
@@ -426,15 +464,31 @@ NOPARM2  EQU   *                  <- here if no kludge-route     [1.24]
          S     R15,=A(RCPT)       Compute length
          C     R15,=F'80'         Longer than 80?
          BH    NOPARM3            ---> Yes
+         TM    DBGFLG6,DBGNOOUT   Producing mail?
+         BZ    SKIP0142           ---> Yes
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,RCPT),                      X
+               DOT=NO,COMP=NO
+         B     SKIP0144
+SKIP0142 EQU   *
          PUNCHC RCPT,ERROR=PUNERR punch the MAIL FROM: line
+SKIP0144 EQU   *
          B     NOPARM99           --> Continue
          SPACE 1
 NOPARM3  EQU   *
+         TM    DBGFLG6,DBGNOOUT   Producing mail?
+         BZ    SKIP0152           ---> Yes
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,(RCPT,79)),                 X
+               DOT=NO,COMP=NO
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,(RCPT+79,80)),              X
+               DOT=NO,COMP=NO
+         B     SKIP0154
+SKIP0152 EQU   *
          MVC   TWORK(1),RCPT+79   Save value of this char
          MVI   RCPT+79,X'15'      Put in NL character
          PUNCHC RCPT,ERROR=PUNERR punch the MAIL FROM: line
          MVC   RCPT+79(1),TWORK   Restore char
          PUNCHC RCPT+79,ERROR=PUNERR Punch the second line
+SKIP0154 EQU   *
          SPACE 1
 NOPARM99 EQU   *
          ICM   R10,B'1111',ACTCHN get next ACTADR in the list
@@ -443,6 +497,16 @@ NOPARM99 EQU   *
 *----------------------------------------------------------------------
 * done with RCPT's.  Now send the DATA
 *----------------------------------------------------------------------
+         TM    DBGFLG6,DBGNOOUT   Producing mail?
+         BZ    SKIP0162           ---> Yes
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,DATA),                      X
+               DOT=NO,COMP=NO
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,ENDDATA),                   X
+               DOT=NO,COMP=NO
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,QUIT),                      X
+               DOT=NO,COMP=NO
+         B     SKIP0164
+SKIP0162 EQU   *
          PUNCHC DATA,ERROR=PUNERR send the data
          OI    MAILFLG1,MFLG1DOT  do dot quoting
          L     R15,APUNHDR
@@ -459,6 +523,7 @@ NOPARM99 EQU   *
          CALL  (15),((R11))
          LTR   R15,R15
          BNZ   RET
+SKIP0164 EQU   *
          LA    R4,CPUSTR          some sort of message??
          LOG   BSM034,(CA,TAGUSER,CA,TAGNODE)
 RET      EQU   *
@@ -508,6 +573,11 @@ PUNERR   DS    0H                 punch error
          B     OVERPUR            do the purge stuff
          LTORG ,
 SAVE     DS    18F                save area
+         SPACE 1
+LINESKEL DC    AL1(88)
+         DC    CL8'BSMTP:'
+         DC    80C'.'
+         SPACE 1
 HELO     DC    CL80' '            a helo message
          ORG   HELO               org back to it
          DC    CL5'HELO '         the constant part
@@ -525,6 +595,7 @@ MAILTYPE DC    CL4'MAIL'          MAIL or FILE
          DC    CL6' FROM:'
 MAILFROM DC    CL150' '           space for the userid
          ORG   ,
+NULLFROM DC    CL80'MAIL FROM:<>' A null mail from
 RCPT     DC    CL160' '           rcpt message
          ORG   RCPT
          DC    CL8'RCPT TO:'

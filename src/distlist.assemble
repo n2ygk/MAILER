@@ -72,6 +72,12 @@ EYESKIP  DS    0H
          DROP  R1                 done with 'em
          USING MAILBLOK,R11       address the mailblok
          USING ACTADR,R10         address the actadr
+         SPACE 1
+         TM    DBGFLG6,DBGNOOUT   Produce mail files?
+         BNO   SKIP001            ---> Yes
+         WRTERM 'DISTLIST:  Trace-send-no-mail set'
+SKIP001  EQU   *
+         SPACE 1
 *----------------------------------------------------------------------
 * See if the distribution list file exists before wasting any time
 *----------------------------------------------------------------------
@@ -95,9 +101,24 @@ EYESKIP  DS    0H
 * Set up the initial items: HELO, TICK, VERB, MAIL...
 *----------------------------------------------------------------------
          MVC   HELODOM(8),CPUSTR  copy in rscs node name
+         TM    DBGFLG6,DBGNOOUT   Producing mail?
+         BNO   SKIP0102           ---> Yes
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,HELO),                      X
+               DOT=NO,COMP=NO
+         B     SKIP0104
+SKIP0102 EQU   *
          PUNCHC HELO,ERROR=PUNERR punch the HELO record
+SKIP0104 EQU   *
+         SPACE 1
          MVC   TICKID,MAILFTXT    message id number
+         TM    DBGFLG6,DBGNOOUT   Producing mail?
+         BNO   SKIP0112           ---> Yes
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,TICK),                      X
+               DOT=NO,COMP=NO
+         B     SKIP0114
+SKIP0112 EQU   *
          PUNCHC TICK,ERROR=PUNERR punch the TICK
+SKIP0114 EQU   *
 *----------------------------------------------------------------------
 * MAIL FROM:<sender> is a little more work...
 *----------------------------------------------------------------------
@@ -122,7 +143,14 @@ EYESKIP  DS    0H
          CR    R2,R3              room for the ">"?
          BNL   OVERFLOW           didn't fit
          MVI   0(R2),C'>'         end of the mail from
+         TM    DBGFLG6,DBGNOOUT   Producing mail?
+         BNO   SKIP0122           ---> Yes
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,MAIL),                      X
+               DOT=NO,COMP=NO
+         B     SKIP0124
+SKIP0122 EQU   *
          PUNCHC MAIL,ERROR=PUNERR punch the MAIL FROM: line
+SKIP0124 EQU   *
          DROP  R6                 done with MBOX
 *----------------------------------------------------------------------
 * Get the recipients,  one per line,  from the distlist file.
@@ -138,7 +166,14 @@ RCPTLOOP EQU   *                  top of file reading loop
          LR    R1,R0              get length read
          LA    R1,RCPTTO(R1)      end of address
          MVI   0(R1),C'>'         close it off
+         TM    DBGFLG6,DBGNOOUT   Producing mail?
+         BNO   SKIP0132           ---> Yes
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,RCPT),                      X
+               DOT=NO,COMP=NO
+         B     SKIP0134
+SKIP0132 EQU   *
          PUNCHC RCPT,ERROR=PUNERR punch the RCPT TO: line
+SKIP0134 EQU   *
          LA    R8,1(R8)           bump counter
          B     RCPTLOOP           back to top
 RDERR    EQU   *                  error exit from fsread
@@ -148,6 +183,16 @@ RDERR    EQU   *                  error exit from fsread
 *----------------------------------------------------------------------
 * done with RCPT's.  Now send the DATA
 *----------------------------------------------------------------------
+         TM    DBGFLG6,DBGNOOUT   Producing mail?
+         BNO   SKIP0142           ---> Yes
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,RCPT),                      X
+               DOT=NO,COMP=NO
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,ENDDATA),                   X
+               DOT=NO,COMP=NO
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,QUIT),                      X
+               DOT=NO,COMP=NO
+         B     SKIP0144
+SKIP0142 EQU   *
          PUNCHC DATA,ERROR=PUNERR send the data
          OI    MAILFLG1,MFLG1DOT  do dot quoting
          L     R15,APUNHDR
@@ -164,6 +209,7 @@ RDERR    EQU   *                  error exit from fsread
          CALL  (15),((R11))
          LTR   R15,R15
          BNZ   RET
+SKIP0144 EQU   *
          LA    R5,LISTFSCB        get fscb
          USING FSCBD,R5           address it
          LA    R4,FSCBFN          get address of file name
@@ -240,6 +286,11 @@ FSERROR  EQU   *
          SPACE ,
          LTORG ,
 SAVE     DS    18F                save area
+         SPACE 1
+LINESKEL DC    AL1(91)
+         DC    CL11'DISTLIST:'
+         DC    80C'.'
+         SPACE 1
 LISTFSCB FSCB  'DISTLIST DISTLIST *',FORM=E
 HELO     DC    CL80' '            a helo message
          ORG   HELO               org back to it

@@ -689,7 +689,16 @@ DBGFLG2  DC    X'0'                Unused
 DBGFLG3  DC    X'0'                Unused
 DBGFLG4  DC    X'0'                Unused
 DBGFLG5  DC    X'0'                Unused
+         SPACE 1
 DBGFLG6  DC    X'0'                Unused
+DBGNOOUT EQU   X'80'               Do not produce output mail
+*        EQU   X'40'               Unused
+*        EQU   X'20'               Unused
+*        EQU   X'10'               Unused
+*        EQU   X'08'               Unused
+*        EQU   X'04'               Unused
+*        EQU   X'02'               Unused
+*        EQU   X'01'               Unused
          SPACE 1
 DBGFLG7  DC    X'0'                Various assembler routines
 DBGBLDLS EQU   X'80'               Trace BUILDLST processing

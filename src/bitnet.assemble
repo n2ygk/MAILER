@@ -47,6 +47,12 @@ EYESKIP  DS    0H
          LR        R10,R1
          L         R11,0(R10)          GET MAILBLOK
          USING     MAILBLOK,R11
+         SPACE 1
+         TM    DBGFLG6,DBGNOOUT    Sending mail?
+         BZ    SKIP001             ---> Yes
+         WRTERM 'BITNET:  Trace-send-no-mail set'
+SKIP001  EQU   *
+         SPACE 1
          L         R9,4(R10)           GET ACTADR
          USING     ACTADR,R9
          L     R8,ACTRT      ADDRESS OF ROUTD CARD
@@ -104,13 +110,24 @@ RMTNODE  EQU       *                   here if remote node       [1.24]
          BCTR  R4,0              LENGTH-1 FOR EXECUTE            [1.22]
          L     R3,TOKPTR         LOAD STRING ADDRESS             [1.22]
          EX    R4,COPY           AND COPY IN THE HOST NAME       [1.22]
+         TM    DBGFLG6,DBGNOOUT  Sending mail?
+         BO    SHOWDELT          ---> No
          PUNCHC MDELTO           PUNCH THE DELIVER-TO: LINE      [1.22]
          B     NODEL2            around the fail code            [1.22]
+         SPACE 1
+SHOWDELT EQU   *
+         LINEDIT TEXT='BITNET:  .......................................X
+               .........................................',             X
+               SUB=(CHARA,MDELTO),DOT=NO,COMP=NO
+         B     NODEL2
+         SPACE 1
 FAIL0    EQU   *                                                 [1.22]
          LOG   BIT036,(CA,EMSG)  NET ADDRESS TOO BIG!            [1.22]
          LA    R15,8             SET A BAD RETURN CODE           [1.22]
          B     RET               AND RETURN TO CALLER            [1.22]
 NODEL2   EQU   *             here for no deliver-to              [1.22]
+         TM    DBGFLG6,DBGNOOUT    Sending mail?
+         BO    NOMAIL              ---> No
          L     R15,APUNHDR   HEADER PUNCHING ROUTINE
          CALL  (15),((11))   PUNCH HEADER
          LTR   R15,R15       CHECK FOR ERRORS
@@ -123,6 +140,7 @@ NODEL2   EQU   *             here for no deliver-to              [1.22]
          CALL  (15),((11))
          LTR   R15,R15
          BNZ   RET
+NOMAIL   EQU   *
          LOG   BIT034,(CA,TAGUSER,CA,TAGNODE)                    [1.24]
 RET      EQU       *
          L         R13,4(R13)

@@ -61,6 +61,12 @@ EYESKIP  DS    0H
          L     R10,@ACT      GET ACTADR BASE
          USING MAILBLOK,R11
          USING ACTADR,R10
+         SPACE 1
+         TM    DBGFLG6,DBGNOOUT    Sending mail?
+         BZ    SKIP001             ---> Yes
+         WRTERM 'DEFRT:  Trace-send-no-mail set'
+SKIP001  EQU   *
+         SPACE 1
          L     R1,ACTRT      get routd pointer
          USING ROUTD,R1      address it
          MVC   TAGNODE,RTROUTE    put NODE NAME in TAG
@@ -104,6 +110,8 @@ OK1      EQU   *
          LA    R1,TAGCMD     GET THE TAG COMMAND NOW
          LA    R0,LTAGCMD
          DC    X'83100008'   AND EXECUTE
+         TM    DBGFLG6,DBGNOOUT    Sending mail?
+         BO    SENDNONE            ---> No
          TM    MAILOPTS,MOPTFIOK   FILE FROM: allowed?
          BNO   PUNHDR              ---> No
          TM    MAILFLG2,MFLG2N82   FILE FROM: found?
@@ -122,6 +130,7 @@ NOPUNHDR EQU   *
          CALL  (15),((R11))  CALL IT
          LTR   R15,R15       ERRORS?
          BNZ   RET
+SENDNONE EQU   *
          LOG   DRT034,(CA,TAGUSER,CA,TAGNODE)
 RET      EQU       *
          L         R13,4(R13)

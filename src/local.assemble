@@ -92,6 +92,12 @@ EYESKIP  DS    0H
          DROP  R1
          USING MAILBLOK,R11
          USING ACTADR,R10
+         SPACE 1
+         TM    DBGFLG6,DBGNOOUT    Sending mail?
+         BZ    SKIP001             ---> No
+         WRTERM 'LOCAL:  Trace-send-no-mail set'
+SKIP001  EQU   *
+         SPACE 1
          L     R6,ACTMBOX    GET MBOX BLOCK
          USING MBOX,R6
          L     R1,MBXLCL         pointer to list of user adnodes
@@ -463,6 +469,8 @@ NOTPROFS EQU   *
          TM    MAILFLG2,MFLG2N82   FILE FROM: found?
          BO    NOPUNHDR            ---> Yes
 PUNHDR   EQU   *
+         TM    DBGFLG6,DBGNOOUT    Sending mail?
+         BO    NOMAIL              ---> No
          L     R15,APUNHDR
          CALL  (15),((R11))  PUNCH THE HEADER
          LTR   R15,R15       ANY SCREW UPS?
@@ -535,6 +543,7 @@ NOTPROF2 EQU   *
          CALL  (15),((R11))  CALL IT
          LTR   R15,R15       ANY ERRORS?
          BNZ   RET           SORRY...
+NOMAIL   EQU   *
          LA    R4,CPUSTR
          LOG   LCL034,(CA,RECVR,CA,(R4))
 *----------[1] and [2]-------------------------------------------[2]
@@ -548,6 +557,8 @@ NOTPROF2 EQU   *
 *  Message format is:                                            [2]
 *  (prefix) New mail from <From-field-contents>                  [2]
 *----------------------------------------------------------------[2]-
+         TM    DBGFLG6,DBGNOOUT    Sending mail?
+         BO    NOMAIL2             ---> No, no msg either
          LA    R6,MSGBUF               [2] message buffer
          L     R3,MAILPTAB             [2] parameter table
          L     R15,ATBLUK              [2] tbluk routine
@@ -634,6 +645,7 @@ FROMLONG EQU   *                       [2]
          LR    R0,R6                   [2]
          S     R0,=A(MSGBUF)           [2] total length
          DC    X'83100008'             [1]send it off
+NOMAIL2  EQU   *
 RET0     EQU   *
          SR    R15,R15                 [4]clean RC
 RET      EQU   *

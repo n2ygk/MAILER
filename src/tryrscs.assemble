@@ -73,6 +73,10 @@ SKIPSAVE DS    0H
          USING ACTADR,R10
          MVI   FLAGS,0           CLEAR OPTIONS FLAG
          EJECT ,
+         TM    DBGFLG6,DBGNOOUT  No output?
+         BNO   SKIP001           ---> No, want mail out
+         WRTERM 'TRYRSCS:  Trace-send-no-mail set'
+SKIP001  EQU   *
          L     R7,ACTMBOX        GET MBOX BLOCK
          USING MBOX,R7           GET USER LIST
          SPACE 1
@@ -253,6 +257,8 @@ OK8      EQU   *
          MVC   XRSCS,TAGUSER     Set USERID for destination
          SPACE 1
 ISSUETAG EQU   *
+         TM    DBGFLG6,DBGNOOUT  Send mail file?
+         BO    SKIPMAIL          ---> No
          LA    R1,TAGCMD         GET THE TAG COMMAND NOW
          LA    R0,LTAGCMD
          DC    X'83100008'       AND EXECUTE
@@ -273,6 +279,13 @@ ISSUETAG EQU   *
 RET      EQU   *
          L     R13,4(,R13)       GET CALLER'S SAVE AREA PTR
          RETURN (14,12),RC=(15)  RELOAD CALLER'S REGISTERS,
+         SPACE 2
+* Don't send mail, but log what would have happened
+         SPACE
+SKIPMAIL EQU   *
+         LOG   TRY034,(CA,TAGUSER,CA,TAGHOST)
+         SR    R15,R15           Set return code
+         B     RET
          SPACE 2
 * Return mail with unknown node message
          SPACE 1

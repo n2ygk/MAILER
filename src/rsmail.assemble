@@ -51,6 +51,13 @@ RSMAIL   CSECT ,
          DROP  R1
          USING MAILBLOK,R11
          USING ACTADR,R10
+         SPACE 1
+         TM    DBGFLG6,DBGNOOUT    Producing output mail?
+         BNO   SKIP001             ---> Yes
+         WRTERM 'RSMAIL:  Trace-send-no-mail set'
+         SR    R15,R15             Set return code
+         B     RET
+SKIP001  EQU   *
          L     R1,ACTRT      get routd pointer
          USING ROUTD,R1
          MVC   LOCUSER,RTPARM Copy for later use
