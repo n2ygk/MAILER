@@ -231,6 +231,8 @@ CHKKW    EQU   *
          L     R1,ARGV+4     GET ADDRESS OF 1 CHAR TOKEN
          CLI   0(R1),C'='    IS IT ASSIGNMENT?
          BNE   BADTOK        SORRY...
+         CLC   ARGC,=F'2'    More than 'keyword='?
+         BNH   PASS1         ---> No, ignore it.
          BALR  R14,R7        CALL KW ROUTINE
          B     PASS1         GO GET NEXT LINE
          SPACE ,
