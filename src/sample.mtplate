@@ -39,7 +39,9 @@ RSCS-Domain3=.NETNORTH       ; Accept .Netnorth
 ;** RSCS-Domain9=            ; You may have up to 9 RSCS-Domains
 ;**
 ;**
-;** The node name for the node on which MAILER is running
+;** The node name for the node on which MAILER is running.  This value
+;** must be supplied or mailer will after initialization checking has
+;** been done.
 ;**
 thisnode=MYNODE              ; local node name
 ;**

@@ -267,11 +267,12 @@ SET3B    EQU   *
 *----------------------------------------------------------------[1.22]
 * save some time later by having the length of CPUSTR available. [1.22]
 *----------------------------------------------------------------[1.22]
+         XC    CPUSLEN,CPUSLEN     No known length yet
          L     R8,MAILPTAB   get the parameter table again       [1.22]
          LA    R15,STRTHIS+2 Point to string
          CALL  TBLUK,((R8),(15),8,TWORK)                         [1.22]
          LTR   R15,R15       find it                             [1.22]
-         BNZ   NOSETLEN      don't set it                        [1.22]
+         BNZ   NOSETLEN      don't set it (leave it 0)           [1.22]
          SR    R0,R0         get a zero                          [1.22]
          IC    R0,0(R1)      get the string length               [1.22]
          ST    R0,CPUSLEN    and save it for later               [1.22]
@@ -313,6 +314,10 @@ LCHNEXT  DS    0H
          LA    R3,4(,R3)           Update pointer
          BCT   R4,LCHLOOP             and loop.
 LCHDONE  EQU   *
+         CLC   CPUSLEN,=F'0'       THISNODE defined?
+         BNE   LOADEXIT            ---> Yes
+         WTR   STI083              Issue msg
+         MVC   EXITRC,=F'16'       Set return code
          SPACE 1
 *--------------------------------------------------------------------
 *        End of profile validation
@@ -322,7 +327,7 @@ LCHDONE  EQU   *
 *        LOAD USER ROUTING EXITS
 *--------------------------------------------------------------------
          SPACE 1
-         XC    LOADRC,LOADRC Zero highest RC from LOAD
+LOADEXIT EQU   *
          SPACE 1
          L     R1,MAILRTAB   ROUTING TABLE
          BAL   R14,LOADRTAB
@@ -370,9 +375,9 @@ VALLOOP  EQU   *
          BNZ   GOTIT2        YES, IT'S ALREADY LOADED
          LA    R3,VAPROG     ADDRESS OF NAME TO LOAD
          BAL   R14,LOADIT    LOAD IT IN (ADDRESS RETURNED IN R1)
-         C     R15,LOADRC    Highest so far?
+         C     R15,EXITRC    Highest so far?
          BNP   GOTIT2        ---> No
-         ST    R15,LOADRC    Remember it
+         ST    R15,EXITRC    Remember it
 GOTIT2   EQU   *
          ST    R1,VAADDR     SAVE ADDRESS OF USER EXIT ROUTINE
 **-- CLEAR THE STATISTICS COUNTERS
@@ -385,7 +390,7 @@ GOTIT2   EQU   *
          SPACE ,
 *-------- RESTORE STACK POINTERS AND RETURN -------------------------
          STM   R9,R10,STACK
-         L     R15,LOADRC     Pick up return code
+         L     R15,EXITRC     Pick up return code
 RET      EQU   *
          L     R13,4(R13)              GET CALLER'S SAVE PTR
          L     R14,12(R13)             GET R14
@@ -471,9 +476,9 @@ LOAD2    EQU   *
          BNZ   GOTIT         YES, IT'S ALREADY LOADED
          LA    R3,RTPROG     ADDRESS OF NAME TO LOAD
          BAL   R14,LOADIT    LOAD IT IN (ADDRESS RETURNED IN R1)
-         C     R15,LOADRC    Highest so far?
+         C     R15,EXITRC    Highest so far?
          BNP   GOTIT         ---> No
-         ST    R15,LOADRC    Remember it
+         ST    R15,EXITRC    Remember it
 GOTIT    EQU   *
          ST    R1,RTADDR     SAVE ADDRESS OF USER EXIT ROUTINE
          BXLE  R8,R6,LOADLOOP  LOOP BACK FOR NEXT ENTRY
@@ -614,7 +619,7 @@ FINDSAVE DS    2F
          SPACE 1
 SAVE14   DS    F
          SPACE 1
-LOADRC   DS    F                   Highest RC from LOAD
+EXITRC   DC    F'0'                Highest RC from LOAD
          SPACE 1
 LOADS14  DS    F
          SPACE 1
