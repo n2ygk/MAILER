@@ -58,7 +58,9 @@ EYESKIP  DS    0H
          DROP  R15
          STM   R14,R12,12(R13)
          LR    R12,R15                 GET BASE ADDRESS
-         USING MAILER,R12    ADDRESS THIS CSECT
+         LA    R10,2048(,R12)          Create second
+         LA    R10,2048(,R10)              base reg
+         USING MAILER,R12,R10          Tell the assembler
          LA    R14,SAVE
          ST    R13,4(R14)
          ST    R14,8(R13)
@@ -204,7 +206,9 @@ MAINLOOP EQU   *
          B     WAIT          AND GO BACK TO SLEEP
 MAIN2    EQU   *
          MVC   STACKP,STACK  RESET STACK POINTER
+         MAILTRC CALL,MAILMAIN
          CALL  MAILMAIN,((R11))
+         MAILTRC RETURN,GETSPOOL,(R15)
          LTR   R15,R15       ANY ERRORS?
          BNZ   ERRRET
          WTR   LER006        WAITING FOR WORK MESSAGE
@@ -238,9 +242,11 @@ CONSINT  DS    0H
 * INTERRUPT WAS FROM CONSOLE ATTN
          RDTERM TERMBUF
          LR    R5,R0         GET LENGTH READ
+         MAILTRC CALL,MAILCMD
          LA    R15,MAILVMID
          LA    R14,CPUSTR          It's from our node.
-         CALL  MAILCMD1,((R11),TERMBUF,(R5),(R15),(R14),CMDCONS)
+         CALL  MAILCMD,((R11),TERMBUF,(R5),(R15),(R14),CMDCONS)
+         MAILTRC RETURN,MAILCMD,(R15)
          B     WAIT                Go check for work.
          SPACE ,
 *--------------------------------------------------------------------
@@ -248,26 +254,32 @@ CONSINT  DS    0H
 *--------------------------------------------------------------------
 COMMANDS EQU   *
          NI    CMDECB,255-POSTED   Unpost the command ECB.
-         TM    MAILCMD,MCMDCMD2  MAILCMD2 HAS TO BE CALLED
-         BO    MCMD2
-         WRTERM '?EH'
+         TM    MAILCMD,MCMDCMD     Mail command processing to do?
+         BO    MCMD2               ---> Yes
+         WRTERM '?EH'              So why are we here?
          B     MAINLOOP
          SPACE ,
 SHUTDOWN EQU   *             HALT COMMAND
+         MAILTRC CALL,MAILSMSD
          CALL  MAILSMSD      DISABLE SMSGS
+         MAILTRC RETURN,MAILSMSD,(R15)
          WTR   LER038        ISSUE STOPPING MESSAGE
          L     R15,HALTRC          Get return code from STOP command.
          B     RET
          SPACE ,
 RELOAD   EQU   *
          NI    RELDECB,255-POSTED  Unpost the ECB.
+         MAILTRC CALL,MAILSMSD
          CALL  MAILSMSD           Disable SMSGs (turn 'em on later)
+         MAILTRC RETURN,MAILSMSD,(R15)
          HNDINT CLR,(RDR1)         Release reader (if we ever got it).
          WTR   LER039        ISSUE RELOADING MESSAGE
          B     RELENT        GOTO RELOAD ENTRY
          SPACE ,
 MCMD2    EQU   *
-         CALL  MAILCMD2,((R11))    2nd level command handler
+         MAILTRC CALL,MAILCMD1
+         CALL  MAILCMD1,((R11))    2nd level command handler
+         MAILTRC RETURN,MAILCMD1,(R15)
          B     MAINLOOP      AND GO BACK TO WORK
          SPACE ,
 *--------------------------------------------------------------------
@@ -287,6 +299,14 @@ ERRRET   EQU   *             ERROR RETURN
 RET      EQU   *
          LR    R5,R15              Save RC around HNDINT.
          HNDINT CLR,(RDR1)         Release reader (if we ever got it).
+         MAILTRC EXIT,(R5)
+         LTR   R5,R5               Return code positive?
+         BM    RETDUMP             ---> No, dump trace table
+         C     R5,=F'16'           Return code > 16?
+         BNH   RETURN              ---> No
+RETDUMP  EQU   *
+         MAILTRC DUMP,100          Dump 100 most recent entries
+RETURN   EQU   *
          LR    R15,R5              Restore RC.
          L     R13,4(R13)
          L     R14,12(R13)

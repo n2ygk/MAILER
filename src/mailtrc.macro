@@ -13,6 +13,7 @@
 .*                        following this trace entry
 .*             CREATE   - Creation of some control block or other
 .*                        entity
+.*             DUMP     - Dump (list) the trace table on the console
 .*             ENTER    - Record entry into a routine
 .*             EXIT     - Record exit from a routine
 .*             INIT     - Initialize trace table
@@ -26,12 +27,22 @@
 .*
 .**********************************************************************
 .*
+         LCLC  &TRCENT
+.*
 .*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 .*       Code common to all entry types
 .*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 .*
-$&SYSNDX.A EQU *                   Label for trace entry address
+         AIF   ('&NAME' EQ '').TRC00
+&NAME    EQU   *                   Label for trace entry address
+&TRCENT   SETC  '&NAME'
+         AGO   .TRC02
+.TRC00   ANOP
+$&SYSNDX EQU   *                   Label for trace entry address
+&TRCENT  SETC  '$&SYSNDX'
+.TRC02   ANOP
          AIF   ('&TYPE' EQ 'INIT').INIT
+         AIF   ('&TYPE' EQ 'DUMP').DUMP
 .*
 .*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 .*       Code common to remaining entry types
@@ -47,7 +58,7 @@ $&SYSNDX.B EQU *
          USING TRCENT,R14
          MVC   TRCTYPE,=CL8'&TYPE'      Move in type code
          MVC   TRCROUTN,=CL8'&SYSECT'   Move in CSECT name
-         MVC   TRCADDR,=A($&SYSNDX.A)   Move in trace macro address
+         MVC   TRCADDR,=A(&TRCENT)      Move in trace macro address
          XC    TRCDATA,TRCDATA          Clear rest of entry
 .*
 .*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -95,6 +106,112 @@ $&SYSNDX.B EQU *
          MEXIT
 .*
 .*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+.*       Generate code to dump (list) trace table on console
+.*       &ARG1 = Count of entries to list
+.*               The end of the listing process will occur when this
+.*               many entries have been formatted or when we wrap
+.*               around to the starting table address or when the
+.*               table initialization entry is found.
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+.*
+.DUMP    ANOP
+         STM   R14,R12,12(R13)     Save registers in our save area
+         AIF   ('&ARG1' EQ '').DUMP02
+         AIF   ('&ARG1'(1,1) EQ '(').DUMP04
+         L     R6,=A(&ARG1)        Load count
+         AGO   .DUMP09
+.DUMP02  ANOP
+         LA    R6,100              Dump 100 entries
+         AGO   .DUMP09
+.DUMP04  ANOP
+         LR    R6,&ARG1            Load count
+         AGO   .DUMP09
+.DUMP09  ANOP
+         LM    R2,R4,TRTBLST       Pick up table pointers
+         LR    R5,R3               Remember the starting point
+         LA    R5,TRCENTL(,R5)     Last entry to list if we wrap
+         WRTERM 'TRCTYPE$ TRCROUTN TRCADDR$ TRCDATA'
+         B     $&SYSNDX.B          ---> Format first entry
+         SPACE 1
+         USING TRCENT,R3           Tell assembler about base reg
+$&SYSNDX.A EQU *
+         S     R3,=A(TRCENTL)      Back up 1 entry
+         CR    R3,R2               Past start of table?
+         BNL   $&SYSNDX.B          ---> No, still cool
+         LR    R3,R4               Replace with table end address
+$&SYSNDX.B EQU *
+         CLC   TRCTYPE,=CL8'CALL'  Call entry?
+         BE    $&SYSNDX.C          ---> Yes
+         CLC   TRCTYPE,=CL8'CREATE'  Create entry?
+         BE    $&SYSNDX.D          ---> Yes
+         CLC   TRCTYPE,=CL8'ENTER' Enter entry?
+         BE    $&SYSNDX.E          ---> Yes
+         CLC   TRCTYPE,=CL8'EXIT'  Exit entry?
+         BE    $&SYSNDX.F          ---> Yes
+         CLC   TRCTYPE,=CL8'INIT'  Init entry?
+         BE    $&SYSNDX.E          ---> Yes
+         CLC   TRCTYPE,=CL8'RETURN'  Return entry?
+         BE    $&SYSNDX.D          ---> Yes
+         SPACE 1
+*  Unknown type, use default formatting
+         SPACE 1
+         LINEDIT TEXT='........ ........ ........ .....................X
+               .......................',                               X
+               SUB=(CHARA,TRCTYPE,CHARA,TRCROUTN,HEX4A,TRCADDR,CHARA,  X
+               TRCDATA),                                               X
+               DOT=NO,COMP=NO,RENT=NO
+         B     $&SYSNDX.W          ---> Join common code
+         SPACE 1
+*  Format entries with TRCDATA format: CL8'string'
+*  Entry types formatted:  CALL
+         SPACE 1
+$&SYSNDX.C EQU *
+         LINEDIT TEXT='........ ........ ........ ........',           X
+               SUB=(CHARA,TRCTYPE,CHARA,TRCROUTN,HEX4A,TRCADDR,CHARA,(TX
+               RCDATA,8)),                                             X
+               DOT=NO,COMP=NO,RENT=NO
+         B     $&SYSNDX.W          ---> Join common code
+         SPACE 1
+*  Format entries with TRCDATA format: CL8'string' XL4'addr'
+*  Entry types formatted:  CREATE, RETURN
+         SPACE 1
+$&SYSNDX.D EQU *
+         LINEDIT TEXT='........ ........ ........ ........ ........',  X
+               SUB=(CHARA,TRCTYPE,CHARA,TRCROUTN,HEX4A,TRCADDR,CHARA,(TX
+               RCDATA,8),HEX4A,(TRCDATA+8,4)),                         X
+               DOT=NO,COMP=NO,RENT=NO
+         B     $&SYSNDX.W          ---> Join common code
+         SPACE 1
+*  Format entries with TRCDATA format: none
+*  Entry types formatted:  ENTER, INIT
+         SPACE 1
+$&SYSNDX.E EQU *
+         LINEDIT TEXT='........ ........ ........',                    X
+               SUB=(CHARA,TRCTYPE,CHARA,TRCROUTN,HEX4A,TRCADDR),       X
+               DOT=NO,COMP=NO,RENT=NO
+         B     $&SYSNDX.W          ---> Join common code
+         SPACE 1
+*  Format entries with TRCDATA format: XL4'value'
+*  Entry types formatted:  EXIT
+         SPACE 1
+$&SYSNDX.F EQU *
+         LINEDIT TEXT='........ ........ ........ ........',           X
+               SUB=(CHARA,TRCTYPE,CHARA,TRCROUTN,HEX4A,TRCADDR,HEX4A,TRX
+               CDATA),                                                 X
+               DOT=NO,COMP=NO,RENT=NO
+         B     $&SYSNDX.W          ---> Join common code
+         SPACE 2
+$&SYSNDX.W EQU *
+         CLC   TRCTYPE,=CL8'INIT'  Is this initialization entry?
+         BE    $&SYSNDX.Z          ---> Yes, all done
+         CR    R3,R5               Did we wrap?
+         BE    $&SYSNDX.Z          ---> Yes, all done
+         BCT   R6,$&SYSNDX.A       ---> Around again
+$&SYSNDX.Z EQU *
+         LM    R14,R12,12(R13)     Restore saved registers
+         MEXIT
+.*
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 .*       Generate code to initialize trace table pointers
 .*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 .*
@@ -111,7 +228,7 @@ $&SYSNDX.B EQU *
          USING TRCENT,R14
          MVC   TRCTYPE,=CL8'INIT'       Move in type code
          MVC   TRCROUTN,=CL8'&SYSECT'   Move in CSECT name
-         MVC   TRCADDR,=A($&SYSNDX.A)   Move in trace macro address
+         MVC   TRCADDR,=A(&TRCENT)      Move in trace macro address
          XC    TRCDATA,TRCDATA          Clear rest of entry
          DROP  R14
          SR    R15,R0              Reduce stack size
@@ -149,7 +266,7 @@ $&SYSNDX.B EQU *
 .*
 .*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 .*       Generate code for RETURN trace
-.*       &ARG1 = Return code (Register)
+.*       &ARG1 = Routine name
 .*       &ARG2 = Return code (Register)
 .*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 .*
