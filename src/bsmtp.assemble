@@ -286,7 +286,6 @@ OVERNULL EQU   *                  <-- here when skipping over
 * First, see if they specified a route-list in RTPARM            [1.24]
 *----------------------------------------------------------------------
 ACTLOOP  EQU   *                  top of loop to go thru the chain
-         MVC   RCPTP,=A(RCPTTO)   init. pointers for loop below  [1.24]
          MVI   ATPCT,C'@'         set default                    [1.24]
          XC    ADDRNODE,ADDRNODE  set default
          L     R4,ACTRT           get the current routd          [1.24]
@@ -396,7 +395,21 @@ KLUDGE99 EQU   *
 *----------------------------------------------------------------------
          SPACE 1
 NOPARM2  EQU   *                  <- here if no kludge-route     [1.24]
+         LR    R15,R2             Copy buffer ptr
+         S     R15,=A(RCPT)       Compute length
+         C     R15,=F'80'         Longer than 80?
+         BH    NOPARM3            ---> Yes
          PUNCHC RCPT,ERROR=PUNERR punch the MAIL FROM: line
+         B     NOPARM99           --> Continue
+         SPACE 1
+NOPARM3  EQU   *
+         MVC   TWORK(1),RCPT+79   Save value of this char
+         MVI   RCPT+79,X'15'      Put in NL character
+         PUNCHC RCPT,ERROR=PUNERR punch the MAIL FROM: line
+         MVC   RCPT+79(1),TWORK   Restore char
+         PUNCHC RCPT+79,ERROR=PUNERR Punch the second line
+         SPACE 1
+NOPARM99 EQU   *
          ICM   R10,B'1111',ACTCHN get next ACTADR in the list
          BNZ   ACTLOOP            there is another; back to top
          DROP  R7                 done with MBOX
@@ -427,49 +440,6 @@ RET      EQU   *
          L     R14,12(R13)
          LM    R0,R12,20(R13)
          BR    R14
-         SPACE ,
-*----------------------------------------------------------------------
-* COPYTOK - copy tokens from NODE chain to buffer              [1.24]
-*
-* ENTRY -
-*  R1 - address of NODE
-*  R2 - address of output buffer
-*  R3 - address of end of output buffer
-* R14 - return address
-* EXIT -
-*  R2 - updated to reflect length of string copied
-*  if overflow,  never returns to caller.                        [1.24]
-*----------------------------------------------------------------------
-COPYTOK  DS    0H
-         STM   R0,R5,COPYSAVE     save reg's I clobber
-COPYTOK1 EQU   *                  <-- loop back here             [1.24]
-         USING NODE,R1          look at the node
-         L     R1,NODDOWN         get the down pointer
-         DROP  R1                 done with node
-         USING TOKEND,R1          address the token descriptor
-         SR    R4,R4              get a zero
-         L     R4,TOKLEN          length of it
-         L     R5,TOKPTR          point to the string
-         DROP  R1                 done with TOKEND
-         LA    R0,1(R2,R4)        check the length against buffer
-         CR    R0,R3              will it overflow the buffer?
-         BNL   OVERFLOW           yes.  go croak.
-         BCTR  R4,0               decrement for EXECUTE
-         EX    R4,COPY            MVC 0(0,R2),0(R5)
-         LA    R2,1(R4,R2)        update the buffer pointer
-         MVI   0(R2),C'.'         put in a '.'
-         LA    R2,1(,R2)          update the buffer pointer again
-         L     R1,COPYSAVE+4      get NODE pointer again       [1.24]
-         USING NODE,R1          address it                     [1.24]
-         ICM   R1,B'1111',NODNEXT is there another one chained?  [1.24]
-         DROP  R1                                                [1.24]
-         ST    R1,COPYSAVE+4      save it, and then check cc:    [1.24]
-         BNZ   COPYTOK1           loop back up                   [1.24]
-         BCTR  R2,0               back up buffer pointer
-         MVI   0(R2),C' '         remove trailing '.'
-         LM    R0,R1,COPYSAVE     restore clobbered regs
-         LM    R3,R5,COPYSAVE+12  "       "         "
-         BR    R14                return to caller
          EJECT ,
 * Executed instructions
          SPACE 1
@@ -481,8 +451,6 @@ MOVERTL  MVC   RCPTTO(0),1(R5)     "                             [1.24]
 MOVEBLK  MVC   1(0,R2),0(R2)       "                             [1.24]
 MOVER2   MVC   0(0,R2),1(R5)       "                             [1.24]
          SPACE 1
-COPYSAVE DS    6F                 save area for copytok
-RCPTP    DS    A                  ptr to where rcpts get moved   [1.24]
 PARMSTR  DS    A                  ptr to parameter string value  [1.24]
 PARMLEN  DS    F                  length of above                [1.24]
 ATPCT    DS    C                  '@' or '%'                     [1.24]
@@ -529,10 +497,10 @@ MAIL     DC    CL80' '            the mail message
          DC    CL10'MAIL FROM:'
 MAILFROM DC    CL70' '            space for the userid
          ORG   ,
-RCPT     DC    CL80' '            rcpt message
+RCPT     DC    CL160' '           rcpt message
          ORG   RCPT
          DC    CL8'RCPT TO:'
-RCPTTO   DC    CL72' '            space for the address
+RCPTTO   DC    CL152' '           space for the address
          ORG   ,
 DATA     DC    CL80'DATA'         data message
 ENDDATA  DC    CL80'.'            end of data message
