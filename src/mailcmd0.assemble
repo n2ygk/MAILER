@@ -218,6 +218,7 @@ CMDTAB   TBSTART ,
          T 'QUERY',$SHOW           Alias for show.
          T 'QUIESCE'               Stop processing reader files
          T 'RELOAD'                Reload the mailer
+         T 'SET'                   Set and unset values
          T 'SHOW'                  Show variables, status, etc.
          T 'SMSG'                  Return reply as smsg
          T 'STOP'                  Stop the mailer
@@ -406,6 +407,19 @@ $RELOAD  DS    0H
          L     R1,=A(RELMSG)       Point to message
          LA    R0,L'RELMSG              and get length
          BAL   R14,WRITEMSG        Write the message
+         B     TRYNEXT
+         EJECT ,
+*--------------------------------------------------------------------
+*                            S E T
+*
+*  An authorized user may issue SET commands.  The SET command is
+*  processed by MAILCMD3.
+*--------------------------------------------------------------------
+         SPACE 1
+$SET     DS    0H
+         BAL   R14,CHKAUTH         Check authority
+         B     BOGUS               ---> Not authorized
+         CALL  MAILCMD3,((R11),(R9))
          B     TRYNEXT
          EJECT ,
 *--------------------------------------------------------------------

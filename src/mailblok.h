@@ -216,6 +216,19 @@ static struct mailblok {
 #define DBGGETHD          0x10  /* Trace GETHDR processing           */
 #define DBGLOCAL          0x08  /* Trace LOCAL processing            */
 #define DBGSNDLS          0x04  /* Trace SENDLST processing          */
+
+/*  This is the end of the easily mappable portion of the MAILBLOK.  */
+/*  What follows in the assembler description is the variable and    */
+/*  bit tables that map names known to mailer (and in the case of    */
+/*  bits, their offset in the mailblok and bit position).  There is  */
+/*  no simple way to code this mapping that can be guaranteed to     */
+/*  work for more than 1 compiler, therefore:                        */
+
+/*  *** BE YE WARNED ***                                             */
+
+/*  This mapping is incomplete and cannot be relied on beyond the    */
+/*  flags.                                                           */
+
 } ;
 
 /* MAILBLOK is created by MAILBLOK ASSEMBLE file during MAILER gen   */

@@ -95,6 +95,7 @@ SHOTAB   TBSTART ,           SHOW COMMAND OPTIONS
          T '?',$SHELP
          T 'ACTIVE'
          T 'AUTHORIZATION'
+         T 'BIT'
          T 'DOMAINS'
          T 'INCOMING'
          T 'ORIGINS'
@@ -126,6 +127,151 @@ $SHELP   DS    0H
 $ACTIVE  DS    0H                  SHOW ACTIVE
          OI    FLAG,ACTFLG         set flag to indicate so
          B     $SHOW               and continue command processing
+         EJECT ,
+*--------------------------------------------------------------------
+*                          S H O W    B I T
+*
+*  List bit flag info
+*--------------------------------------------------------------------
+         SPACE 1
+$BIT     DS    0H
+         CLC   ARGC,=F'0'          Any args?
+         BE    $BITHELP            ---> No, tell them how
+         L     R1,ARGVP            Get the token address
+         L     R4,0(R1)
+         SRDL  R4,24               Token length
+         SRL   R5,8                    and address
+         CLI   0(R1),1             Length of 1
+         BNE   $BIT0               ---> No
+         CLI   0(R5),C'*'          Want all of them?
+         BE    $BIT1               ---> Yes
+         CLI   0(R5),C'?'          Want help?
+         BNE   $BIT0               ---> No
+$BITHELP EQU   *
+         L     R1,=A(BITHLP)       Message address
+         LA    R0,LBITHLP              and length
+         BAL   R14,WRITEMSG        Write msg
+         B     RET                 Return
+         SPACE 2
+$BIT0    EQU   *
+         LA    R1,BITMSG           Write header lines
+         LA    R0,LBITMSG
+         BAL   R14,WRITEMSG
+$BIT000  EQU   *
+         L     R1,ARGVP            Get the token address
+         L     R4,0(R1)
+         LA    R1,4(,R1)           Bump token ptr
+         ST    R1,ARGVP            Update
+         L     R1,ARGC             Get count
+         BCTR  R1,0                Decrement
+         ST    R1,ARGC             Update
+         SRDL  R4,24               Token length
+         SRL   R5,8                    and address
+         LR    R15,R4              Copy value
+         BCTR  R15,0               Decrement for EX
+         EX    R15,BITMVC02        MVC WORKBUF(0),0(R5)
+         EX    R15,BITTR01         TR  WORKBUF(0),UPCASE
+         LA    R6,PBITARR          Address of standard bit array
+         LA    R7,PBITLEN          Number of entries
+         BAL   R10,BITSRCH         Check for entry in table
+         B     BIT020              ---> Found
+         LA    R6,DBITARR          Address of standard bit array
+         LA    R7,DBITLEN          Number of entries
+         BAL   R10,BITSRCH         Check for entry in table
+         B     BIT020              ---> Found
+         LA    R1,WORKBUF+2(R4)    Where to put msg text
+         MVC   0(9,R1),=CL9'not found'
+         LA    R1,WORKBUF          Message address
+         LA    R0,11(,R4)              & length
+         BAL   R14,WRITEMSG
+         B     BIT099
+         SPACE 1
+BIT020   EQU   *                   Entry found
+         BAL   R10,BITFMT          Format field
+BIT099   EQU   *
+         CLC   ARGC,=F'0'          Any args left?
+         BNE   $BIT000             ---> Yes, around again
+         B     RET                 Return
+         SPACE 2
+$BIT1    EQU   *                   Request was SHOW BIT *
+         LA    R1,BITMSG           Write header lines
+         LA    R0,LBITMSG
+         BAL   R14,WRITEMSG
+         SPACE 1
+         LA    R6,PBITARR          Address of standard bit array
+         LA    R7,PBITLEN          Number of entries
+$BIT100  EQU   *
+         BAL   R10,BITFMT
+         LA    R6,12(,R6)          Bump entry pointer
+         BCT   R7,$BIT100          ---> Do another one
+         SPACE 1
+         LA    R6,DBITARR          Address of standard bit array
+         LA    R7,DBITLEN          Number of entries
+$BIT110  EQU   *
+         BAL   R10,BITFMT
+         LA    R6,12(,R6)          Bump entry pointer
+         BCT   R7,$BIT110          ---> Do another one
+         SPACE 1
+         B     ENDMSG
+         SPACE 2
+BITFMT   DS    0H                  Format 1 entry
+*                                  R6  - Address of entry
+         LM    R14,R0,0(R6)        Get entry values
+*                                  R14 - Offset to flag byte in MAILBLO
+*                                  R15 - Flag name (length/string) ptr
+*                                  R0  - Flag bit
+         MVI   WORKBUF,C' '        Clear to blanks
+         MVC   WORKBUF+1(LBITMSG),WORKBUF
+         LH    R1,0(R15)           Get length of string
+         BCTR  R1,0                Decrement for EX
+         EX    R1,BITMVC01         MVC  WORKBUF(0),2(R15)
+         LA    R14,MAILBLOK(R14)   Address of flag byte
+         LR    R1,R0               Copy to a different reg
+         EX    R1,BITTM01          Is bit on?
+         BO    BITFMT10            ---> Yes
+         MVC   WORKBUF+BITMSGVA(5),=C'False'
+         B     BITFMT20
+BITFMT10 EQU   *
+         MVC   WORKBUF+BITMSGVA(4),=C'True'
+BITFMT20 EQU   *
+         LA    R1,WORKBUF          Buffer address
+         LA    R0,LBITMSG              & length
+         BAL   R14,WRITEMSG        Write the output line
+         BR    R10                 Return
+         SPACE 2
+BITSRCH  DS    0H
+*  WORKBUF+0 - Name translated to uppercase
+*  R4 - Name length
+*  R6 - First entry address
+*  R7 - Count of entries
+         LR    R14,R4              Copy value
+         BCTR  R14,0               Decrement for EX
+BITSRCH0 EQU   *
+         L     R15,4(,R6)          Flag name ptr
+         CH    R4,0(R15)           Lengths match?
+         BNE   BITSRCH2            ---> No
+         EX    R14,BITCLC01        Names matchs?
+         BER   R10                 ---> Return
+BITSRCH2 EQU   *
+         LA    R6,12(,R6)          Bump ptr to next entry
+         BCT   R7,BITSRCH0         ---> Keep looking
+         B     4(,R10)             ---> Not found
+         SPACE 2
+BITCLC01 CLC   WORKBUF(0),2(R15)
+BITMVC01 MVC   WORKBUF(0),2(R15)
+BITMVC02 MVC   WORKBUF(0),0(R5)
+BITTM01  TM    0(R14),X'00'
+BITTR01  TR    WORKBUF(0),UPCASE
+         SPACE 2
+BITMSG   DC    C' Flag name                                    Value '
+         DC    X'15'
+         DC    C'===========================================  ======='
+LBITMSG  EQU   *-BITMSG
+BITMSGVA EQU   46                  Offset to value field
+         SPACE 1
+BITHLP   DC    C'SHOW BIT bitname',X'15'
+         DC    C'            *   '
+LBITHLP  EQU   *-BITHLP
          EJECT ,
 *--------------------------------------------------------------------
 *                       S H O W    S T A T U S
@@ -820,8 +966,10 @@ PATHLEN  EQU   72                  Total message length
          SPACE 1
 PATHHELP DC    C'Specify one or more host or alias names.'
          SPACE 1
-SHLPMSG  DC    C'SHOW options:  STatus | Version | [ACtive] '
-         DC    C'{Domains | ORigins | OUtgoing | SPecial} | Path'
+SHLPMSG  DC    C'SHOW options:  Bit | Path | STatus | Version'
+         DC    X'15'
+         DC    C'               [ACtive] {Domains | ORigins | OUtgoing X
+               | SPecial}'
 LSHLP    EQU   *-SHLPMSG
          SPACE 1
 STMSG    DC    C'Since: 00/00/00 00:00:00  Status: WAITING'
