@@ -1891,17 +1891,15 @@ int l;
            }
        } else {
        /* (5B) Have a '.' in original address string */
-#ifdef DEBUG_FIND_ROUTD
-           wrterm("==> find_routd: Checking MAILDTAB with *DEFAULT*");
-#endif
            if (l != ol) {
                /* (5B.1)  Stripped an RSCS-Domain */
                bcopy("*DEFAULT*ROUTE*", defrt, 15);
-               bcopy(s+l,defrt,ol-l);
+               bcopy(s+l,defrt+15,ol-l);
 #ifdef DEBUG_FIND_ROUTD
-               bcopy("==> find_routd: Using ", dbgmsg, 22);
-               bcopy(defrt, dbgmsg+22, ol-l+15);
-               bcopy(" in DOMAINS table", dbgmsg+22+(ol-l+15), 18);
+               bcopy("==> find_routd: ", dbgmsg, 16);
+               bcopy("Checking MAILDTAB with ", dbgmsg+16, 23);
+               bcopy(defrt, dbgmsg+39, ol-l+15);
+               bcopy(" in DOMAINS table", dbgmsg+39+(ol-l+15), 18);
                wrterm(dbgmsg);
 #endif
                if (ctbluk(&te, mailblok.maildtab, defrt, ol-l+15)
@@ -1916,6 +1914,9 @@ int l;
                }
            }
            /* (5B.2) Try for *DEFAULT* */
+#ifdef DEBUG_FIND_ROUTD
+           wrterm("==> find_routd: Checking MAILDTAB with *DEFAULT*");
+#endif
            if (ctbluk(&te, mailblok.maildtab, "*DEFAULT*", 9)
                                                        == TBMATCH) {
 #ifdef DEBUG_FIND_ROUTD
