@@ -78,6 +78,9 @@ EYESKIP  DS    0H
 *--------------------------------------------------------------------
          MVC   STACKP,STACK  INIT FOR STATS
 FILELOOP EQU   *
+         LA    R15,0               Set default rc
+         CLI   MAILCMD,0           Any commands received?
+         BNE   RET                 ---> Yes, do them first
          L     R1,STACKP     GET STACK POINTER
          C     R1,MAILSTMX   COMPARE TO MAX
          BNH   *+8           NOT THE NEW MAX
