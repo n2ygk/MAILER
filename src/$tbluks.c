@@ -49,6 +49,11 @@ struct {
     register struct tbentry *te;
     struct ossave **stack = (struct ossave **)&tp - 1;
 
+    if (sl < 0) {
+        wrterm("*** Error *** _tbluks called with negative length");
+        return TBNOT;
+    }
+
     upcvt(sp,wp->tst,sl);         /* copy test string and upcase it */
     for (i = 0,te = tp->tbt_adr; i < tp->tbt_len; i++,te++) {
         register int tl = te->tbe_str->tbs_siz;
