@@ -942,7 +942,7 @@ MSGMSG   EQU   *
          TM    FLAG,SMSFLG   WANT SMSG REPLY?
          BNO   MSG2          NOPE
          MVC   MSGBUF,=CL18'SMSG '
-         B     MSG3
+         B     MSGCOMM
 MSG2     EQU   *
          MVC   MSGBUF,=CL18'MSGNOH '
          B     MSGCOMM
