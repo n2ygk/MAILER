@@ -888,7 +888,7 @@ $VERSION DS    0H
          LA    R0,L'VERMSG+L'MAILVERS
          BAL  R14,MESSAGE
          B     RET
-VERMSG   DC    C'CUCCA VM Network Mailer - version '
+VERMSG   DC    C'VM Network Mailer '
          SPACE 3
 *-------------------------------------------------------------------
 *  AN INVALID COMMAND WAS SENT OR THE USER DOESN'T HAVE THE NEEDED
