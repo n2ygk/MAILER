@@ -76,6 +76,7 @@ SEND1    EQU   *
          BCTR  R1,0          -1 FOR EXECUTE
          LA    R2,SENDER     DEST OF COPY
          EX    R1,COPY       Copy it in:  MVC 0(0,R2),0(R3)
+         EX    R1,FILLIT     Change blanks to underscores
          ICM   R9,B'1111',MBXDML  GET HOST NODE POINTER
          BZ    SFLDNG
          USING NODE,R9     ADDRESS IT
@@ -109,6 +110,7 @@ SFLDNG   EQU   *
          B     CLOSE
          SPACE ,
 COPY     MVC   0(0,R2),0(R3)
+FILLIT   TR    0(0,R2),BLANKTBL
          LTORG ,
 SAVE     DS    18F
 CPCLOSE  DC    C'CLOSE PUN DIST '
@@ -122,4 +124,9 @@ CLOSELEN EQU   *-CPCLOSE
 NODEA    DC    A(0)                Address of node for GENLIST
 LSTRA    DC    A(0)                Address of local part
 LSTRL    DC    A(0)                Length of local part
+         SPACE 1
+BLANKTBL DC    256AL1(*-BLANKTBL)
+         ORG   BLANKTBL+C' '       Back to blank
+         DC    C'_'                Make blank an underscore
+         ORG   ,
          END   PUNCLS
