@@ -507,7 +507,9 @@ TSTART   CHRTAB ERRR                   init to all errors
 *        byte of "EXIT".                                            *
 *--------------------------------------------------------------------
 TATOM    CHRTAB EXIT                   init to all delimiters (exits)
+         CHR   X'45',SKIP              French accents
          CHR   C'+',SKIP,3             + - &; atom characters
+         CHR   X'51',SKIP              French accents
          CHR   C'!',SKIP,3             C'!' - C'*'; atom chars
          CHR   C'^',SKIP,3             not - /; atom chars
          CHR   C'%',SKIP,2             % - _; atom chars
