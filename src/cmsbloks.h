@@ -59,7 +59,14 @@ struct sfblok {
 #define SFBSEEN  0x02
 #define SFBXFER  0x01
     u_char sfbckpmp;
-    u_char sfbrsvd2;
+    u_char sfbflag4;
+#define SFBTUSE  0x40
+#define SFBNORET 0x20
+    char sfbuform[8];
+    char sfboform[8];
+    u_short sfbfcbnl;
+    u_short sfbfcbxl;
+    char sfbrsvd2[4];
 };
 
 struct fscb {

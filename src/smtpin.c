@@ -351,7 +351,7 @@ rep_smtp()
             break;
         }
     } while (rc == 0);
-    cpcmd("CLOSE 00D NAME BSMTP REPLY",26);
+    cpcmd("CLOSE 00D FORM QUMAILER NAME BSMTP REPLY",40);
     wtr("SMT",56,2,"ca",mailblok.mailnode,"ca",mailblok.mailuser);
 }
 
@@ -2624,7 +2624,7 @@ struct fscb *fp;    /* fscb for data or zero for none */
     }
     punch(".",1);
     punch("QUIT",4);
-    cpcmd("CLOSE 00D NAME ERROR MAIL",25);
+    cpcmd("CLOSE 00D FORM QUMAILER NAME ERROR MAIL",39);
     wtr("SMT",59,0);
 }
 

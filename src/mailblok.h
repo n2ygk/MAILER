@@ -76,6 +76,7 @@ static struct mailblok {
     int haltrc;              /* Return code from STOP command        */
     char mailnode[8];        /* Origin node name                     */
     char mailuser[8];        /* Origin userid                        */
+    char mailform[8];        /* Mail FORM value                      */
     char mailrtfn[18];       /* Profile fileid                       */
                              /*  0 -  7 'MAILER  '                   */
                              /*  8 - 15 'PROFILE '                   */
@@ -86,7 +87,9 @@ static struct mailblok {
                              /* 16 - 17 '* '                         */
     char align1[2];          /* For alignment with ASM               */
     struct sfblok mailsfb;   /* SFBLOK for current reader file       */
-    char align2[12];         /* For alignment with ASM               */
+    char data3800[40];       /* 3800 data                            */
+    char ccw1[8];            /* First CCW                            */
+    char tic1[4];            /* First TIC                            */
     char mailtag[130];       /* Tag text                             */
 
     double mailiucb[5];      /* IUCV external interrupt buffer       */

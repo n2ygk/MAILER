@@ -93,6 +93,7 @@ SEND2    EQU   *
          L     R3,TOKPTR          SOURCE
          EX    R1,COPY       Copy it in:  MVC 0(0,R2),0(R3)
 CLOSE    EQU   *
+         MVC   CLOSFORM,MAILFORM   Copy the FORM value
          LA    R1,CPCLOSE    ADDRESS OF CLOSE COMMAND
          LA    R0,CLOSELEN   LENGTH OF IT
          DC    X'83100008'   DO IT
@@ -112,11 +113,14 @@ COPY     MVC   0(0,R2),0(R3)
 FILLIT   TR    0(0,R2),BLANKTBL
          LTORG ,
 SAVE     DS    18F
+         SPACE 1
 CPCLOSE  DC    C'CLOSE PUN DIST '
 CLOSNODE DS    CL8
+         DC    C' FORM '
+CLOSFORM DC    CL8' '
          DC    C' NAME '
-SENDER   DS    CL8
-         DC    C' MAIL',X'15',C'SP PUN CLOSE',X'15',C'SP PUN OFF'
+SENDER   DC    CL8' ',C' MAIL '
+         DC    X'15',C'SP PUN CLOSE',X'15',C'SP PUN OFF'
          DC    X'15',C'TAG DEV PUN'
 CLOSELEN EQU   *-CPCLOSE
          SPACE 1

@@ -67,6 +67,8 @@ EYESKIP  DS    0H
          SR    R6,R6         START AT READER ANCHOR
 NEXTBLK  EQU   *             LOOP BACK IF FILE IS IN USE
          LA    R7,X'0FFF'    SUBCODE X'0FFF'
+         ICM   R7,B'1000',=AL1(X'80'+MSFBSIZE)    Length of SFBLOK to
+*                                                 return.
          DC    X'83560014'   DIAGNOSE 14 (SPOOL INPUT)
          BNZ   SFERR         SPOOL FILE ERROR
          SPACE ,
@@ -84,6 +86,7 @@ NEXTBLK  EQU   *             LOOP BACK IF FILE IS IN USE
          TM    SFBFLAG,SFBINUSE  IS THE FILE BEING USED?
          BO    NEXTBLK       GET THE NEXT BLOCK
          MVC   ORIGIN(8),SFBORIG   COPY ORIGIN ID INTO MESSAGE
+         MVC   MAILFORM,SFBUFORM   Copy FORM value
 *--------------------------------------------------------------------
 * CHECK IF FILE IS FROM RSCS. IF SO, GET USERID AND NODE FROM
 * RSCS TAG TEXT. ELSE, GET USERID FROM SFBLOK AND NODE FROM
@@ -110,6 +113,10 @@ LOCAL    EQU   *
          BNE   USERNB        NOPE
          MVC   MAILUSER,=CL8'MAILER'  SET IT TO MAILER
 USERNB   EQU   *
+         CLC   MAILFORM(2),=CL2'QU'     Quiet variation?
+         BE    KEEPFORM                 ---> Yes, leave it alone
+         MVC   MAILFORM,=CL8'QUIET'     Set form to QUIET
+KEEPFORM EQU   *
 *----------------------------------------------------------------[1.24]
 * calculate lengths of MAILNODE, MAILUSER (trim trailing blanks) [1.24]
 *----------------------------------------------------------------[1.24]

@@ -541,13 +541,20 @@ MAILVERS DC    0CL26' ',CL8'&VERSION',C' ',CL8'&SYSDATE',C' '
 HALTRC   DC    F'0'                Return Code from STOP command.
 MAILNODE DC    CL8' '        MAIL ORIGIN NODE NAME
 MAILUSER DC    CL8' '        MAIL ORIGIN USERID
+MAILFORM DC    CL8' '        Mail FORM value
 MAILRTFN DC    CL8'&ROUTEFN',CL8'&ROUTEFT',CL2'&ROUTEFM'
 MAILULFN DC    CL8'MAILER',CL8'USERLOG',CL2'A'
-MSFBSIZE EQU   X'0D'         [1]SIZE OF SFB RETURNED BY DIAG 14 SUB FFF
-MAILSFB  DC    (MSFBSIZE)D'0'  [1]SPOOL FILE BLOCK BUFFER FOR DIAG 14
-         ORG MAILSFB+MSFBSIZE*8+12     [1]ADDRESS OF TAG TEXT
-MAILTAG  DC    CL130' '      TAG TEXT
-         ORG   ,
+MSFBSIZE EQU   16                  Doubleword size of SFB returned by
+*                                  by DIAG 14 subfunction FFF.  This is
+*                                  larger than the default (13) because
+*                                  the SFBUFORM field is being used.
+*
+MAILSFB  DC    (MSFBSIZE)D'0'      Spool file block buffer for DIAG 14
+         DC    40X'0'              3800 data will go here
+         DC    XL8'0'              First CCW
+         DC    XL4'0'              First TIC
+MAILTAG  DC    CL130' '            Tag text will be here
+         SPACE 1
 MAILIUCB DC    5D'0'               IUCV external interrput buffer.
 MAILIUCP DC    F'0'                IUCV *MSG pathid.
 CMDECB   DC    F'0'                Incoming Command ECB.
