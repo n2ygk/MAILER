@@ -280,7 +280,7 @@ SNDROK   EQU   *             R1 = FIELDD BASE
          LR    R6,R1         GET FIELDD POINTER
          USING FIELDD,R6     ADDRESS IT
          CLC   FIEXTN,=A(0)  BETTER NOT BE ANY EXTENSIONS OF IT
-         BNE   NOSNDR        SENDER IS NOT SO NICE
+         BNE   XTRASNDR      Only 1 from: or sender: allowed
 *----------------------------------------------------------------[1.23]
 *        See if this is an RSCS reject (non-exist node)          [1.23]
 *----------------------------------------------------------------[1.23]
@@ -512,6 +512,11 @@ RET1     EQU   *                                                 [1.23]
 *--------------------------------------------------------------------
 NOSNDR   EQU   *             DIDN'T GIVE FROM OR SENDER
          WTR   VAL020
+         LA    R15,4
+         B     RET
+         SPACE ,
+XTRASNDR EQU   *             Gave more than 1 FROM or SENDER
+         WTR   VAL078
          LA    R15,4
          B     RET
          SPACE ,
