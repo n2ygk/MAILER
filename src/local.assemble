@@ -102,6 +102,10 @@ EYESKIP  DS    0H
          L     R3,LSTRA          address of user name token
          L     R4,LSTRL          length of it
          DROP  R6
+         EJECT ,
+*--------------------------------------------------------------------
+*    Check for '%' in address
+*--------------------------------------------------------------------
          SPACE 1
          LR    R15,R4            Copy length value
          BCTR  R15,0             Decrement for EX
@@ -112,7 +116,6 @@ EYESKIP  DS    0H
          SPACE 1
 PCTTRT   TRT   0(1,R3),PCTTRTTB    Executed
          SPACE 1
-         EJECT ,
 *--------------------------------------------------------------------
 *    Process address containing a '%'
 *--------------------------------------------------------------------
@@ -135,7 +138,63 @@ PCTFOUND DS    0H
 *                                  + pointer list (8)
          SALOC (R2),RET          Allocate stack space
          LR    R2,R1             Remember storage address
+         B     RESEND            ---> Join common resend code
+         EJECT ,
+*--------------------------------------------------------------------
+*    Check for '!' in address
+*--------------------------------------------------------------------
          SPACE 1
+NOPCT    EQU   *
+         MVI   TRAPTAB+C'%',0    Clear '%' trap
+         MVI   TRAPTAB+C'!',1    Set '!' trap
+         LR    R15,R4            Copy length value
+         BCTR  R15,0             Decrement for EX
+         EX    R15,TRAPIT        Any '%'s?
+         BC    B'0100',DOBANG    ---> Found '!' in address
+         B     NOBANG            ---> No '!' in address or
+*                                    '!' is last character
+         SPACE 1
+TRAPIT   TRT   0(1,R3),TRAPTAB   Executed
+         SPACE 1
+*--------------------------------------------------------------------
+*    Process address containing a '!'
+*--------------------------------------------------------------------
+         SPACE 1
+DOBANG   DS    0H
+         SR    R1,R3             Length of string to '!'
+         BZ    NOBANG            ---> Was first character
+         LA    R15,1(,R1)        Length including '!'
+         LR    R14,R3            Save since R3 will be destroyed
+         BCTR  R1,0              Decrement for EX
+         LA    R2,TEMPSAVE       Save string here
+         EX    R1,COPY           Copy string before '!'
+         SPACE 1
+         LR    R2,R3             Want to copy to here
+         LA    R3,0(R15,R3)      Copy from here
+         LR    R1,R4             Original length of string
+         SR    R1,R15            Length of rest of string
+         BCTR  R1,0              Decrement for EX
+         EX    R1,COPY           Copy string after '!'
+         SPACE 1
+         LA    R2,1(R1,R2)       Where the '@' goes
+         MVI   0(R2),C'@'        Change to '@'
+         SPACE 1
+         LA    R2,1(,R2)         Copy rest to here
+         LA    R3,TEMPSAVE       We saved it here
+         S     R15,=F'2'         Decrement for EX
+         EX    R15,COPY          Copy in node part
+         SPACE 1
+         LR    R3,R14            Restore R3
+         L     R2,LSTRL          Length of string
+         LA    R2,FBLLENL+16(,R2)  + parameter list (8)
+*                                  + fileblock length (FBLLENL)
+*                                  + pointer list (8)
+         SALOC (R2),RET          Allocate stack space
+         LR    R2,R1             Remember storage address
+         B     RESEND            ---> Join common resend code
+         EJECT ,
+*--------------------------------------------------------------------
+*  Resend an address containing '%' or '!'
 *--------------------------------------------------------------------
 *  Building the following:
 *
@@ -152,6 +211,8 @@ PCTFOUND DS    0H
 *PTREND  EQU   *
 *LINE1   DC    C'string'
 *--------------------------------------------------------------------
+         SPACE 1
+RESEND   EQU   *
          SPACE 1
 *  Set up base pointers
          SPACE 1
@@ -187,10 +248,10 @@ PCTFOUND DS    0H
          B     RET
          EJECT ,
 *--------------------------------------------------------------------
-*    Process address not containing a '%'
+*    Process address not containing a '%' or '!'
 *--------------------------------------------------------------------
          SPACE 1
-NOPCT    EQU   *
+NOBANG   EQU   *
          MVC   RECVR,=CL8' ' [3]blank it
          LR    R1,R4         [3]copy
          C     R1,=F'8'      [3]trunc to 8 if necessary
@@ -682,5 +743,6 @@ PCTTRTTB DC    256X'00'            Translate table for '%' search
          ORG   PCTTRTTB+C'%'       Back to percent
          DC    C'%'
          ORG   ,
+TEMPSAVE DC    CL256' '            Temporary work area
          SPACE 3
          END   LOCAL
