@@ -45,6 +45,7 @@ static struct mailblok {
 #define MOPTAUN 0x40         /* Allow unknown nodes to send me mail  */
 #define MOPTAC  0x20         /* Allow charlatans                     */
 #define MOPTVL  0x10         /* Verbose console logging              */
+#define MOPTTBD 0x08         /* Print debugging info in TBLUK        */
     char mailflg1;           /* Current mail file flags              */
 #define MFLGDEST 0x80        /* A '*DESTINATION:' card is present    */
 #define MFLG1LCL 0x40        /* Mail source is local user            */
