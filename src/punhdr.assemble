@@ -330,7 +330,7 @@ NONED1   EQU   *
          LR    R7,R1         HANG ON TO STRING START ADDRESS
          BAL   R14,FIND15    LOOK FOR END OF LINE
          LTR   R3,R0         LENGTH OF STRING
-         BZ    NOTOKEN       EMPTY...
+         BZ    NONED2        EMPTY...
          BCTR  R3,0          -1 FOR EXECUTE
          LA    R6,OUTBUF(R8)
          LR    R5,R1         REMEMBER THIS FOR A SEC
@@ -338,6 +338,7 @@ NONED1   EQU   *
          EX    R3,MOVEBUF    MOVE INTO BUFFER
          LR    R1,R5         GET BACK THE R1 WE LOST BEFORE
          LA    R8,1(R8,R3)
+NONED2   EQU   *
          LTR   R2,R2         ANY MORE LINES LEFT?
          BNH   NOTOKEN       NOPE....
          BAL   R14,NEWLINE   YUP, DO A NEWLINE
