@@ -150,8 +150,16 @@ SKIPXFER EQU   *             here when xfer doesn't get checked
 *--------------------------------------------------------------------
          TM    MAILFLG1,MFLG1LCL       IS IT LOCAL?
          BNO   NOTSPCL       NOT THE SPECIAL CASE
+         TM    DBGFLG7,DBGVALID    Debugging?
+         BNO   DBG00001            ---> No
+         WRTERM DBGMSG01,L'DBGMSG01
+DBG00001 EQU   *
          CLC   MAILUSER,MAILVMID  FILE ORIG AND SELF THE SAME?
          BNE   NOTSPCL       NOT THE SPECIAL CASE
+         TM    DBGFLG7,DBGVALID    Debugging?
+         BNO   DBG00002            ---> No
+         WRTERM DBGMSG02,L'DBGMSG02
+DBG00002 EQU   *
 * (1) Check for XFER.  Should always fail for pre-SP2 CMS which  [1.24]
 *     is OK.  We will just fall thru for pre-SP2 sites....       [1.24]
          LA    R1,MAILSFB    get the sfblok                      [1.24]
@@ -166,6 +174,10 @@ SPCL2    EQU   *             <- XFER'd or drop down thru above.  [1.24]
          CLC   =C'FILE (',MAILTAG  user xfer'd back?             [1.24]
          BE    BADUXFER      -> bad user xfer.  sigh.            [1.24]
 * (3) ASSUME THE FILE WAS REJECTED BY RSCS                       [1.24]
+         TM    DBGFLG7,DBGVALID    Debugging?
+         BNO   DBG00003            ---> No
+         WRTERM DBGMSG03,L'DBGMSG03
+DBG00003 EQU   *
          LA    R5,MAILTAG    ADDRESS OF NODENAME
          WTR   VAL036,(CA,(R5))   WRITE THE MESSAGE              [1.24]
          OI    MAILFLG1,MFLG1REJ SET REJECTION FLAG
@@ -297,10 +309,16 @@ SNDROK   EQU   *             R1 = FIELDD BASE
          LR    R8,R1                  VALD ptr into R8           [1.23]
          LTR   R15,R15                was it found?              [1.23]
          BNZ   NOTHERE                nope                       [1.23]
+         TM    DBGFLG7,DBGVALID       Debugging?
+         BNO   DBG00004               ---> No
+         WRTERM DBGMSG04,L'DBGMSG04
+DBG00004 EQU   *
          USING VALD,R8                look at the VALD           [1.23]
          ICM   R15,B'1111',VAADDR     user exit supplied?        [1.23]
-         DROP  R8                     done w/vald                [1.23]
          BZ    VALTRUST               no; trust the sender       [1.23]
+         L     R1,=A(DBGMSG30)        Point to start of msg
+         MVC   39(8,R1),VAPROG        Copy exit name into msg
+         DROP  R8                     done w/vald                [1.23]
          ST    R11,USERVPAR           set up exit plist          [1.23]
          ST    R8,USERVPAR+4          "                          [1.23]
          LA    R1,USERVPAR            point to PLIST             [1.23]
@@ -314,6 +332,10 @@ SNDROK   EQU   *             R1 = FIELDD BASE
 *        it's OK only if MOPTAUN allows Unknown senders.         [1.23]
 *----------------------------------------------------------------[1.23]
 NOTHERE  EQU   *                                                 [1.23]
+         TM    DBGFLG7,DBGVALID       Debugging?
+         BNO   DBG00005               ---> No
+         WRTERM DBGMSG05,L'DBGMSG05
+DBG00005 EQU   *
          TM    MAILFLG1,MFLG1LCL  LOCAL OR NETWORK SOURCE?
          BNO   NETWORK                from remote sender         [1.23]
          SPACE ,
@@ -326,9 +348,23 @@ LOCUSER  EQU   *
          L     R5,FIPARS     GET PARSE LIST
          USING MBOX,R5     ADDRESS THE ADDRESS DESCRIPTOR
          CLC   MBXNEXT,=A(0) BETTER NOT BE A LIST OF FROMS
-         BNE   BADLOC
-         CLC   MBXLCNT,=F'1' ONLY 1 TOKEN FOR USER NAME?
-         BNE   BADLOC        NO, NOT A VM USERID...
+         BE    LOCUSR00               ---> Just this one
+         TM    DBGFLG7,DBGVALID       Debugging?
+         BNO   DBG00006               ---> No
+         WRTERM DBGMSG06,L'DBGMSG06
+DBG00006 EQU   *
+         B     BADLOC
+         SPACE 1
+LOCUSR00 EQU   *
+         CLC   MBXLCNT,=F'1'          ONLY 1 TOKEN FOR USER NAME?
+         BE    LOCUSR02               ---> Yes
+         TM    DBGFLG7,DBGVALID       Debugging?
+         BNO   DBG00007               ---> No
+         WRTERM DBGMSG07,L'DBGMSG07
+DBG00007 EQU   *
+         B     BADLOC        NO, NOT A VM USERID...
+         SPACE 1
+LOCUSR02 EQU   *
          L     R7,MBXLCL         GET USER NAME NODE
          USING NODE,R7     ADDRESS IT
          L     R4,NODDOWN    GET POINTER TO TOKEND
@@ -339,19 +375,40 @@ LOCUSER  EQU   *
          L     R2,TOKPTR         GET ADDRESS OF STRING
          DROP  R4
          CH    R7,=H'8'      LONGER THAN 8 CHARS?
-         BH    BADLOC        THAT'S NO GOOD
+         BNH   LOCUSR04               ---> No
+         TM    DBGFLG7,DBGVALID       Debugging?
+         BNO   DBG00008               ---> No
+         WRTERM DBGMSG08,L'DBGMSG08
+DBG00008 EQU   *
+         B     BADLOC                 --> More than 8
+         SPACE 1
+LOCUSR04 EQU   *
          LA    R3,CLCBUF     ADDRESS TO COPY STRING TO
          MVC   CLCBUF,=CL8' ' CLEAR IT FIRST
          BCTR  R7,0          -1 FOR EXECUTE
          EX    R7,COPY       COPY THE STRING
          TR    CLCBUF,UPCASE UPPER CASE IT
          CLC   CLCBUF,MAILUSER  THESE BETTER MATCH!!
-         BNE   BADLOC        NAUGHTY USER!
+         BE    LOCUSR06               ---> Matches
+         TM    DBGFLG7,DBGVALID       Debugging?
+         BNO   DBG00009               ---> No
+         L     R1,=A(DBGMSG09)        Point to start of msg
+         MVC   12(8,R1),CLCBUF        Copy failing compare into msg
+         MVC   38(8,R1),MAILUSER
+         WRTERM DBGMSG09,L'DBGMSG09
+DBG00009 EQU   *
+         B     BADLOC                 ---> NAUGHTY USER!
+         SPACE 1
+LOCUSR06 EQU   *
          ICM   R7,B'1111',MBXDML GET HOST NAME NODE
          USING NODE,R7     ADDRESS IT                             EAC
          BNZ   HOSTOK        HOST LIST OK                           EAC
 *-------- HOST NAME OMMITTED.  FILL IN LOCAL NODE NAME AS HOST NAME.EAC
 *-------- BUILD A DUMMY NODE->TOKEND->CPUSTR                      EAC
+         TM    DBGFLG7,DBGVALID       Debugging?
+         BNO   DBG00010               ---> No
+         WRTERM DBGMSG10,L'DBGMSG10
+DBG00010 EQU   *
          LA    R1,FAKENODE   DUMMY NODE                           EAC
          ST    R1,MBXDML         STUFF INTO MBOX                 EAC
          MVC   MBXDCNT,=F'1' SET LENGTH 1                           EAC
@@ -393,7 +450,18 @@ HOSTOK   EQU   *                                                    EAC
          MVC   STKL,=A(L'LCLSTACK)    and length.
          CALL  GENLIST,(NODEP,DOMA,DOML,STKP,STKL) Build HOST string.
          LTR   R15,R15             Did it work?
-         BNZ   BADLOC              No  : Fail the message.
+         BZ    HOSTOK02            ---> Yes
+         TM    DBGFLG7,DBGVALID       Debugging?
+         BNO   DBG00011               ---> No
+         WRTERM DBGMSG11,L'DBGMSG11
+DBG00011 EQU   *
+         B     BADLOC              ---> Didn't work, fail the message.
+         SPACE 1
+HOSTOK02 EQU   *
+         TM    DBGFLG7,DBGVALID       Debugging?
+         BNO   DBG00012               ---> No
+         WRTERM DBGMSG12,L'DBGMSG12
+DBG00012 EQU   *
          L     R2,DOMA             Get string address
          L     R7,DOML                and length.
          DROP  R5,R7
@@ -433,24 +501,47 @@ DOMNEXT  DS    0H
          LA    R15,4(,R15)         Try the next RSCS-Domain
          BCT   R14,DOMLOOP0           if there is one.
 NORSCSD  EQU   *             no rscs domain given                [1.22]
+         TM    DBGFLG7,DBGVALID       Debugging?
+         BNO   DBG00013               ---> No
+         WRTERM DBGMSG13,L'DBGMSG13
+DBG00013 EQU   *
 DOMDONE  EQU   *             fall thru here to old lookup code   [1.22]
+         TM    DBGFLG7,DBGVALID       Debugging?
+         BNO   DBG00014               ---> No
+         WRTERM DBGMSG14,L'DBGMSG14
+DBG00014 EQU   *
          L     R3,MAILRTAB   LOOK IN ROUTING TABLE FOR AN ALIAS
          CALL  TBLUK,((R3),(R2),(R7),TWORK)
          LTR   R15,R15       FIND IT?
-         BNZ   TRYLDOM             No  : Try LocalDomain.
+         BZ    DOMDONE2               ---> Found an entry for this host
+         TM    DBGFLG7,DBGVALID       Debugging?
+         BNO   DBG00015               ---> No
+         WRTERM DBGMSG15,L'DBGMSG15
+DBG00015 EQU   *
+         B     TRYLDOM             No  : Try LocalDomain.
+         SPACE 1
+DOMDONE2 EQU   *
          USING ROUTD,R1      ADDRESS THE ENTRY
          CLC   RTROUTE,CPUSTR IS IT AN ALIAS FOR THIS NODE?
          DROP  R1
          BNE   TRYLDOM       Nope
+         TM    DBGFLG7,DBGVALID       Debugging?
+         BNO   DBG00016               ---> No
+         WRTERM DBGMSG16,L'DBGMSG16
+DBG00016 EQU   *
          SR    R15,R15       OK RETCODE
          B     RET
          SPACE ,
 TRYLDOM  DS    0H
+         TM    DBGFLG7,DBGVALID       Debugging?
+         BNO   DBG00017               ---> No
+         WRTERM DBGMSG17,L'DBGMSG17
+DBG00017 EQU   *
          LA    R15,LCLHOST         Address of LocalDomain array.
          LA    R14,L'LCLHOST/4     Number of entries in LCLHOST.
 TLDLOOP  DS    0H
          ICM   R3,B'1111',0(R15)   Is there a LocalDomain?
-         BZ    BADLOC              No  : Bad address.
+         BZ    TLDBAD                 ---> No  : Bad address.
          SR    R1,R1               Get Local-Domain
          IC    R1,0(,R3)              length.
          CR    R7,R1               Do the lengths match?
@@ -465,7 +556,13 @@ TLDLOOP  DS    0H
 TLDNEXT  DS    0H
          LA    R15,4(,R15)         Update pointer
          BCT   R14,TLDLOOP            and loop.
-         B     BADLOC              End of list : Bad address.
+TLDBAD   DS    0H
+         TM    DBGFLG7,DBGVALID       Debugging?
+         BNO   DBG00018               ---> No
+         WRTERM DBGMSG18,L'DBGMSG18
+DBG00018 EQU   *
+         B     BADLOC                 ---> Bad address.
+         SPACE 1
 TLDGOOD  DS    0H
          SR    R15,R15             Yes : Accept <user>@<lcldom>.
          B     RET
@@ -480,6 +577,10 @@ TLD$TR2  TR    TLDWORK2(*-*),UPCASE *** Executed ***
 *     but has no exit to call or because his exit says he's OK.  [1.23]
 *----------------------------------------------------------------[1.23]
 VALTRUST EQU   *                                                 [1.23]
+         TM    DBGFLG7,DBGVALID       Debugging?
+         BNO   DBG00020               ---> No
+         WRTERM DBGMSG20,L'DBGMSG20
+DBG00020 EQU   *
 **--- DO SOME STATISTICS
          USING VALD,R8       address the vald                    [1.23]
          L     R1,VAMSGCNT   GET MSG COUNTER
@@ -574,6 +675,10 @@ DEFAUN   EQU   *                      here if MOPTAUN works      [1.23]
 *    like him.                                                   [1.23]
 *----------------------------------------------------------------[1.23]
 VALFAIL  EQU   *             USER VALIDATION FAILED
+         TM    DBGFLG7,DBGVALID       Debugging?
+         BNO   DBG00030               ---> No
+         WRTERM DBGMSG30,L'DBGMSG30
+DBG00030 EQU   *
          USING VALD,R8
          L     R1,VAMSGFAI   GET FAILURE COUNT
          LA    R1,1(R1)      UP IT ONE
@@ -694,4 +799,26 @@ STKP     DS    A                   Stack Pointer.
 STKL     DS    F                   Stack Length.
 NODEP    DS    A                   Address of NODE for GENLIST.
 LCLSTACK DS    XL100               Local stack area.
+         SPACE 1
+DBGMSG01 DC    C'VALIDATE:  Mail from local user'
+DBGMSG02 DC    C'VALIDATE:  Local user was mailer'
+DBGMSG03 DC    C'VALIDATE:  Mail rejected by RSCS'
+DBGMSG04 DC    C'VALIDATE:  Found sender in INCOMING table'
+DBGMSG05 DC    C'VALIDATE:  Sender not in INCOMING table'
+DBGMSG06 DC    C'VALIDATE:  More than 1 sender (either FROM: or SENDER:X
+               )'
+DBGMSG07 DC    C'VALIDATE:  Multiple tokens in sender local part'
+DBGMSG08 DC    C'VALIDATE:  Userid longer than 8 characters'
+DBGMSG09 DC    C'VALIDATE:  "        " does not match "        "'
+DBGMSG10 DC    C'VALIDATE:  Supplying missing node'
+DBGMSG11 DC    C'VALIDATE:  GENLIST unable to build host string'
+DBGMSG12 DC    C'VALIDATE:  Checking RSCS-Domain list'
+DBGMSG13 DC    C'VALIDATE:  Not found in RSCS-Domain list'
+DBGMSG14 DC    C'VALIDATE:  Checking for alias in OUTGOING table'
+DBGMSG15 DC    C'VALIDATE:  Not found in OUTGOING table'
+DBGMSG16 DC    C'VALIDATE:  Found in OUTGOING table'
+DBGMSG17 DC    C'VALIDATE:  Checking Local-Host list'
+DBGMSG18 DC    C'VALIDATE:  Not found in Local-Host list'
+DBGMSG20 DC    C'VALIDATE:  Sender is trusted'
+DBGMSG30 DC    C'VALIDATE:  Sender is not trusted (from ........ exit)'
          END   VALIDATE

@@ -714,6 +714,7 @@ DBGHDRSC EQU   X'20'               Trace HDRSCAN processing
 DBGGETHD EQU   X'10'               Trace GETHDR processing
 DBGLOCAL EQU   X'08'               Trace LOCAL processing
 DBGSNDLS EQU   X'04'               Trace SENDLST processing
+DBGVALID EQU   X'02'               Trace VALIDATE processing
          SPACE 1
          DS    0F
 * Table of variables with significance to MAILER
@@ -801,6 +802,7 @@ DBITARR  DC    A(DBGFLG0-MAILBLOK,SMTPTR01,X'80')
          DC    A(DBGFLG7-MAILBLOK,MAILTR74,DBGGETHD)
          DC    A(DBGFLG7-MAILBLOK,MAILTR75,DBGLOCAL)
          DC    A(DBGFLG7-MAILBLOK,MAILTR76,DBGSNDLS)
+         DC    A(DBGFLG7-MAILBLOK,MAILTR77,DBGVALID)
 DBITLEN  EQU   (*-DBITARR)/12
          SPACE ,
 *--------------------------------------------------------------------
@@ -895,6 +897,7 @@ MAILTR73 DC    Y(13),C'HDRSCAN-TRACE'
 MAILTR74 DC    Y(12),C'GETHDR-TRACE'
 MAILTR75 DC    Y(11),C'LOCAL-TRACE'
 MAILTR76 DC    Y(13),C'SENDLST-TRACE'
+MAILTR77 DC    Y(14),C'VALIDATE-TRACE'
          SPACE 2
          DS    0D            Just for pretty
 MAILBLEN EQU   *-MAILXXXX    LENGTH IN BYTES

@@ -222,6 +222,7 @@ static struct mailblok {
 #define DBGGETHD          0x10  /* Trace GETHDR processing           */
 #define DBGLOCAL          0x08  /* Trace LOCAL processing            */
 #define DBGSNDLS          0x04  /* Trace SENDLST processing          */
+#define DBGVALID          0x02  /* Trace VALIDATE processing         */
 
 /*  This is the end of the easily mappable portion of the MAILBLOK.  */
 /*  What follows in the assembler description is the variable and    */
