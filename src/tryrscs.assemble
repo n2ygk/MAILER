@@ -108,10 +108,16 @@ DOMLOOP0 DS    0H
          ICM   R3,B'1111',0(R15) no RSCS domain string defined?
          BZ    FAIL              ---> No match found
          SR    R0,R0             get a zero
-         IC    R0,0(R1)          get length of domain string
-         S     R0,=F'1'          decrement
-* R0 - Length of RSCS domain string minus 1
+         IC    R0,0(R3)          get length of domain string
+         LA    R3,1(,R3)         Bump ptr to start of string
+         CLI   0(R3),C'.'        Start with a '.'?
+         BNE   NODOT             ---> No
+         LA    R3,1(,R3)         Bump ptr
+         S     R0,=F'1'          Decrement count
+NODOT    EQU   *
+* R0 - Length of RSCS domain string
 * R3 - Start of RSCS domain string
+         S     R0,=F'1'          Decrement for compare with R4
          CR    R0,R4             lengths match?
          BNE   DOMNEXT           ---> No
          LA    R2,WORK           Point to work area
