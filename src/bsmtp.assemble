@@ -365,14 +365,36 @@ NOPARM1A DS    0H
          A     R2,GENMBSTL        update buffer pointer
          CLI   ATPCT,C'%'         is it a kludge-route?          [1.24]
          BNE   NOPARM2            nope, all done.                [1.24]
-*        L     R5,PARMSTR         get ptr back from above        [1.24]
-*        L     R1,PARMLEN         and length of it               [1.24]
-*        LA    R0,1(R1,R2)        where end of string would be   [1.24]
-*        CR    R0,R3              compare to end of buffer       [1.24]
-*        BNL   OVERFLOW           not enough room                [1.24]
-*        BCTR  R1,0               -1 for executed move           [1.24]
-*        EX    R1,MOVER2          MVC 0(0,R2),0(R5)              [1.24]
-*        LA    R2,1(R1,R2)        update the pointer             [1.24]
+*----------------------------------------------------------------------
+*  The '%' kludge is handled as follows:
+*----------------------------------------------------------------------
+*
+*  The last '@' in the address will be replaced with a '%' and the
+*  new domain (supplied as the value of the parm) is placed behind
+*  the string created by GENMBOX.
+*
+         L     R5,PARMSTR         get ptr back from above        [1.24]
+         L     R1,PARMLEN         and length of it               [1.24]
+         LA    R0,1(R1,R2)        where end of string would be   [1.24]
+         C     R0,=A(RCPTTO+L'RCPTTO)  compare to end of buffer
+         BNL   OVERFLOW           not enough room                [1.24]
+         BCTR  R2,0               Back up over '>'
+         LR    R15,R2             Copy pointer
+KLUDGE01 EQU   *
+         BCTR  R15,0              Backup 1 character
+         C     R15,=A(RCPTTO)     At start of string
+         BE    KLUDGE99           ---> Yes, all done
+         CLI   0(R15),C'@'        This last '@'?
+         BNE   KLUDGE01           ---> No
+         MVI   0(R15),C'%'        Replace with '%'
+KLUDGE99 EQU   *
+         BCTR  R1,0               -1 for executed move           [1.24]
+         EX    R1,MOVER2          MVC 0(0,R2),0(R5)              [1.24]
+         LA    R2,1(R1,R2)        update the pointer             [1.24]
+         MVI   0(R2),C'>'         Put closing '>' back in
+         LA    R2,1(,R2)          Update the pointer
+*----------------------------------------------------------------------
+         SPACE 1
 NOPARM2  EQU   *                  <- here if no kludge-route     [1.24]
          PUNCHC RCPT,ERROR=PUNERR punch the MAIL FROM: line
          ICM   R10,B'1111',ACTCHN get next ACTADR in the list
