@@ -680,7 +680,7 @@ DBGFLG1  DC    X'0'                More SMTPIN tracing flags
 *        EQU   X'40'               Trace parse_data_header
 *        EQU   X'20'               Trace check_sender
 *        EQU   X'10'               Trace check_domain
-*        EQU   X'08'               Unused
+*        EQU   X'08'               Trace smtpin
 *        EQU   X'04'               Unused
 *        EQU   X'02'               Unused
 *        EQU   X'01'               Unused
@@ -785,6 +785,7 @@ DBITARR  DC    A(DBGFLG0-MAILBLOK,SMTPTR01,X'80')
          DC    A(DBGFLG1-MAILBLOK,SMTPTR12,X'40')
          DC    A(DBGFLG1-MAILBLOK,SMTPTR13,X'20')
          DC    A(DBGFLG1-MAILBLOK,SMTPTR14,X'10')
+         DC    A(DBGFLG1-MAILBLOK,SMTPTR15,X'08')
          DC    A(DBGFLG6-MAILBLOK,MAILTR61,DBGNOOUT)
          DC    A(DBGFLG6-MAILBLOK,MAILTR62,DBGPARSE)
          DC    A(DBGFLG7-MAILBLOK,MAILTR71,DBGBLDLS)
@@ -878,6 +879,7 @@ SMTPTR11 DC    Y(19),C'SMTPIN-TRACE-S-MAIL'
 SMTPTR12 DC    Y(30),C'SMTPIN-TRACE-PARSE-DATA-HEADER'
 SMTPTR13 DC    Y(25),C'SMTPIN-TRACE-CHECK-SENDER'
 SMTPTR14 DC    Y(25),C'SMTPIN-TRACE-CHECK-DOMAIN'
+SMTPTR15 DC    Y(19),C'SMTPIN-TRACE-SMTPIN'
 MAILTR61 DC    Y(18),C'TRACE-SEND-NO-MAIL'
 MAILTR62 DC    Y(13),C'TRACE-PARSING'
 MAILTR71 DC    Y(14),C'BUILDLST-TRACE'

@@ -40,10 +40,11 @@ typedef enum {                    /* states of the server */
     initial = 0,                  /* 0: connection established */
     seenhelo,                     /* 1: HELO command seen */
     seenmail,                     /* 2: MAIL command seen */
-    error,                        /* 3: error */
-    final                         /* 4: final */
+    seendata,                     /* 3: DATA command seen */
+    error,                        /* 4: error */
+    final                         /* 5: final */
 } s_state;
-#define NSTATE 4
+#define NSTATE 5
 
 /* global SMTP server information */
 static struct {
@@ -71,6 +72,7 @@ static struct {
     char trusted;                /* file is from a trusted mailer */
     char charlatan;              /* file is from a charlatan */
     char fakefrom;               /* MAIL FROM: isn't right */
+    char seenmail;               /* MAIL FROM: has been processed */
     char in_data;                /* in data reading mode */
     char error;                  /* true if an error occurred */
     char pasthdr;                /* are past the header in the DATA */
@@ -103,6 +105,43 @@ smtpin()
     s_init(rep_wrt);
     while ((rlen = rdcard(rbuf,(int)mailblok.mailsfb.sfbrecsz)) >= 0)
         if (s_input(rbuf, rlen) != 0) break;
+    if (mailblok.dbgflg[1] & TRACE_SMTPIN) {
+        wrterm("smtpin:  End of file or error");
+        switch (S.state) {
+        case 0:
+            wrterm("      :  Current state = Initial");
+            break;
+        case 1:
+            wrterm("      :  Current state = Seen HELO");
+            break;
+        case 2:
+            wrterm("      :  Current state = Seen MAIL");
+            break;
+        case 3:
+            wrterm("      :  Current state = Seen DATA");
+            break;
+        case 4:
+            wrterm("      :  Current state = Error");
+            break;
+        case 5:
+            wrterm("      :  Current state = Final");
+            break;
+        default:
+            wrterm("      :  Current state = Undefined");
+            break;
+        }
+    }
+    if (S.state == seendata) {
+        if (S.in_data) {                    /* End of file but no '.' */
+            if (mailblok.dbgflg[1] & TRACE_SMTPIN) {
+                wrterm("smtpin:  End of file but no end of data found");
+                wrterm("smtpin:  Processing dummy end of data line");
+            }
+            rlen = 1;                       /* Dummy up an ending     */
+            bcopy(".",rbuf,1);              /*   record               */
+            s_input(rbuf, rlen);            /* Process it             */
+        }
+    }
     cpcmd("CLOSE 00C",9);
     rep_send();                      /* send the reply file back */
     s_finish();                      /* finish the smtp session */
@@ -379,19 +418,19 @@ static struct {                 /* command table */
     char cmd[5];                /* command name */
     s_state (*func[NSTATE])();  /* ptr to function for each state */
 } cmdtable[] = {
-/* command   initial  seenhelo seenmail error   */
-    "HELO",  s_helo , s_oseq , s_oseq , s_errr ,
-    "MAIL",  s_oseq , s_mail , s_oseq , s_errr ,
-    "FILE",  s_oseq , s_mail , s_oseq , s_errr ,
-    "RCPT",  s_oseq , s_oseq , s_rcpt , s_errr ,
-    "DATA",  s_data , s_data , s_data , s_data ,
-    "RSET",  s_rset , s_rset , s_rset , s_rset ,
-    "NOOP",  s_noop , s_noop , s_noop , s_noop ,
-    "QUIT",  s_quit , s_oseq , s_oseq , s_quit ,
-    "VERB",  s_verb , s_verb , s_verb , s_verb ,
-    "TICK",  s_tick , s_tick , s_tick , s_tick ,
-    "RPLY",  s_rply , s_rply , s_rply , s_rply ,
-    ":REA",  s_read , s_read , s_read , s_read ,
+/* command   initial  seenhelo seenmail seendata error   */
+    "HELO",  s_helo , s_oseq , s_oseq , s_oseq , s_errr ,
+    "MAIL",  s_oseq , s_mail , s_oseq , s_mail , s_errr ,
+    "FILE",  s_oseq , s_mail , s_oseq , s_mail , s_errr ,
+    "RCPT",  s_oseq , s_oseq , s_rcpt , s_rcpt , s_errr ,
+    "DATA",  s_data , s_data , s_data , s_oseq , s_data ,
+    "RSET",  s_rset , s_rset , s_rset , s_rset , s_rset ,
+    "NOOP",  s_noop , s_noop , s_noop , s_noop , s_noop ,
+    "QUIT",  s_quit , s_oseq , s_oseq , s_quit , s_quit ,
+    "VERB",  s_verb , s_verb , s_verb , s_verb , s_verb ,
+    "TICK",  s_tick , s_tick , s_tick , s_tick , s_tick ,
+    "RPLY",  s_rply , s_rply , s_rply , s_rply , s_rply ,
+    ":REA",  s_read , s_read , s_read , s_read , s_read ,
 };
 #define CMDTSIZE (sizeof(cmdtable)/sizeof(*cmdtable))
 
@@ -439,6 +478,7 @@ int (*func)();
     S.repf = func;
     S.state = initial;
     S.verb = vrb;
+    S.seenmail = 0;
     mailblok.mailchn = 0;          /* zero the mailchn ptr */
     mailblok.mailrcnb = 0;         /* zero recipient blocks */
     mailblok.mailrcnt = 0;         /* zero count of recipients */
@@ -976,8 +1016,9 @@ int l;
                 bcopy("250 ", buf, 4);      /* rewrite reply code */
                 while (buf[len-1] == ' ') --len;
                 bcopy(". You are a charlatan.",&buf[len],22); len += 22;
-                S.fakefrom = 1;
                 (*S.repf)(buf, len);
+                S.seenmail = 1;
+                S.fakefrom = 1;
                 return seenmail;        /* xxx Add a delivery-notice? */
             } else {                        /* dissallow charlatans */
                 (*S.repf)(buf, len);
@@ -993,6 +1034,7 @@ int l;
             len = 4 + l-10;
             bcopy("... sender OK.", &buf[len], 14);
             (*S.repf)(buf, len+14);
+            S.seenmail = 1;
             return seenmail;
         }
     } else {                         /* a trusted mailer */
@@ -1003,6 +1045,7 @@ int l;
         len = 4 + l-10;
         bcopy("... sender OK.", &buf[len], 14);
         (*S.repf)(buf, len+14);
+        S.seenmail = 1;
         return seenmail;
     }
     /* NOTREACHED */
@@ -1480,7 +1523,7 @@ int l;
     add_received();                /* add received: stamp to data */
     (*S.repf)("354 Start mail input.  End with <crlf>.<crlf>", 45);
     S.in_data = 1;
-    return st;
+    return seendata;
 }
 
 /*
@@ -1510,6 +1553,8 @@ int l;
 
     if (l == 0) S.pasthdr = 1;     /* end of header portion of data */
     if (l == 1 && *s == '.') {     /* end of data */
+       if (mailblok.dbgflg[0] & TRACE_S_GETDATA)
+           wrterm("s_getdata:  End of data ('.') found");
         S.in_data = 0;
         fsclose(&S.data_file);
         switch (S.disk_error) {
@@ -1522,10 +1567,17 @@ int l;
             (*S.repf)("451 DATA aborted: CMS filesystem error.", 39);
             return error;
         }
-        if (st == seenmail) {
+        if (S.seenmail) {
             /* now send the stuff in MAILCHN off */
-            if (st = parse_data_hdr(st,s,l) == error)
+            if (mailblok.dbgflg[0] & TRACE_S_GETDATA)
+                wrterm("s_getdata:  Processing data headers");
+            if (st = parse_data_hdr(st,s,l) == error) {
+              if (mailblok.dbgflg[0] & TRACE_S_GETDATA)
+                  wrterm("s_getdata:  Errors found in data headers");
               return st;
+            }
+            if (mailblok.dbgflg[0] & TRACE_S_GETDATA)
+                wrterm("s_getdata:  No errors found in data headers");
             if (mailblok.maxrcvd && count_received() > mailblok.maxrcvd)
               return s_maxr(st, s, l);
             wtr("SMT",43,1,"d",mailblok.mailrcnb);
@@ -1534,13 +1586,13 @@ int l;
             plist.mb = &mailblok;
             mailblok.mailflg1 |= MFLG1HDS;  /* header scanned ok */
             if (mailblok.dbgflg[0] & TRACE_S_GETDATA)
-                wrterm("==> s_getdata: Calling sendlst");
+                wrterm("s_getdata:  Calling sendlst");
             switch (acall(sendlst,0,&plist)) {
             case 0:
                 if (mailblok.mailflg2 & MFLG2BLD) {
                    if (mailblok.dbgflg[0] & TRACE_S_GETDATA) {
-                       wrterm("==> s_getdata: No errors from sendlst");
-                       wrterm("==> s_getdata: Errors in RCPT list");
+                       wrterm("s_getdata:  No errors from sendlst");
+                       wrterm("s_getdata:  Errors in RCPT list");
                    }
                    return error;
                 }
@@ -1548,14 +1600,15 @@ int l;
                 break;
             case 12:
                 if (mailblok.dbgflg[0] & TRACE_S_GETDATA)
-                    wrterm("==> s_getdata: RC=12 from sendlst");
+                    wrterm("s_getdata:  RC=12 from sendlst");
                 return s_nosp(st, s, l);    /* croak */
             default:
                 if (mailblok.dbgflg[0] & TRACE_S_GETDATA)
-                    wrterm("==> s_getdata: Errors from sendlst");
+                    wrterm("s_getdata:  Errors from sendlst");
                 log_errors();               /* copy into bsmtp.reply */
                 return error;
             }
+            S.seenmail = 0;
         } else {
            (*S.repf)("451 Request aborted: command out of sequence",44);
            return error;
@@ -1569,9 +1622,9 @@ int l;
         int rc;
 
         if (mailblok.dbgflg[0] & TRACE_S_GETDATA) {
-            bcopy("==> s_getdata: >", dbgmsg, 16);
-            bcopy(s, &dbgmsg[16], l);
-            bcopy("<", &dbgmsg[16+l], 2);
+            bcopy("s_getdata:  >", dbgmsg, 13);
+            bcopy(s, &dbgmsg[13], l);
+            bcopy("<", &dbgmsg[13+l], 2);
             wrterm(dbgmsg);
         }
         if (S.disk_error != disknone) return st;
