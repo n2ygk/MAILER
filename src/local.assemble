@@ -68,6 +68,11 @@ R15 EQU 15 - SUBROUTINE LINKAGE
          MAILBLOK ,
          EJECT ,
 LOCAL    CSECT ,
+         USING *,R15               Temp addressability
+         B     EYESKIP             Skip over eye catcher
+MYNAME   DC    CL8'LOCAL   ',CL8'&SYSDATE'
+EYESKIP  DS    0H
+         DROP  R15                 Done with R15 for now
          STM   R14,R12,12(R13)
          BALR  R12,0
          USING *,R12
