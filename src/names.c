@@ -87,7 +87,7 @@ nextname(fp, nm)
 FILE *fp;
 struct names nm[];
 {
-    int c;
+    int c, c2;
     static char dbuf[MAXDATA];
     static char *db, *maxdb = &dbuf[MAXDATA-1];
     char *curtag, *curdata;
@@ -114,6 +114,9 @@ struct names nm[];
         }
         c = getc(fp);
         cardcol++;
+
+        /* Handle comment beginning with '*' in column 1 */
+
         if ((cardcol == 1) && (c == '*')) {
 #ifdef DEBUG
           cbuf[0] = '*';
@@ -131,6 +134,36 @@ struct names nm[];
 #endif DEBUG
           cardcol = 0;
           continue;
+        }
+
+        /* Handle comment beginning with '.*' in columns 1 & 2 */
+
+        if ((cardcol == 1) && (c == '.')) {
+#ifdef DEBUG
+          cbuf[0] = '.';
+          cb = &cbuf[1];
+#endif DEBUG
+          c2 = getc(fp);
+          if (c2 == '*') {
+#ifdef DEBUG
+            cbuf[1] = '*';
+            cb = &cbuf[2];
+#endif DEBUG
+            while ((c != '\n') && (c != EOF)) {
+              c = getc(fp);
+#ifdef DEBUG
+              *cb++ = c;
+#endif DEBUG
+            }
+#ifdef DEBUG
+            *cb++ = '\0';
+            printf("%s\n",cbuf);
+#endif DEBUG
+            cardcol = 0;
+            continue;
+          } else {
+            ungetc(c2,fp);
+          }
         }
         switch(state) {
           case initial:
