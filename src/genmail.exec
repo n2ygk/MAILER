@@ -31,19 +31,31 @@ trace "Commands"
 
 'GLOBAL TXTLIB MAILLCL MAILGEN CLIB'
 
+/*  Build MAILER and MG modules  */
+
 signal off error
 'LOAD MAILER MAILPAL MAILLEX MAILLRP MAILDBG( CLEAR'
 if rc > 4 then exit rc
 signal on error
-'GEN MAILER'
-'CP CLOSE PRT NAME MAILER' version
-'CP SP PRT CLOSE NOCONT'
+'GENMOD MAILER'
 
 signal off error
 address COMMAND 'ESTATEW MAILER MAP A'
 if rc = 0  then  address COMMAND 'ERASE MAILER MAP A'
 signal on error
 'RENAME LOAD MAP A MAILER MAP A'
+
+signal off error
+'LOAD @MG ( CLEAR'
+if rc > 4 then exit rc
+signal on error
+'GENMOD MG'
+
+signal off error
+address COMMAND 'ESTATEW MG MAP A'
+if rc = 0  then  address COMMAND 'ERASE MG MAP A'
+signal on error
+'RENAME LOAD MAP A MG MAP A'
 
 if userid <> ''  then  do
    'EXEC SENDFILE MAILER  MODULE TO' userid

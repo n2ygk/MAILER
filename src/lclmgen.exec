@@ -83,7 +83,7 @@ signal off error
 'LOAD MAILER MAILPAL MAILLEX MAILLRP (CLEAR'
 if rc > 4 then exit rc
 signal on error
-'GEN MAILER'
+'GENMOD MAILER'
 'RENAME LOAD MAP A MAILER MAP A'
 
 /* Attempt to create new MG MODULE */
@@ -92,7 +92,7 @@ signal off error
 'LOAD @MG (CLEAR'
 if rc > 4  then  exit rc
 signal on error
-'GEN MG'
+'GENMOD MG'
 'RENAME LOAD MAP A MG MAP A'
 
 error: exitrc = rc
