@@ -128,8 +128,8 @@ RSCSREJ  EQU   *             <-here if if RSCS reject.  Check    [1.24]
          CALL  GENLIST,(NODEP,DSTRA,DSTRL,STKP,STKL) Expand domain.
          LTR   R15,R15             Did it work?
          BNZ   BADSFLD             No  : Bad sender.
-         L     R6,LSTRL            Get domain length.
-         L     R7,LSTRA            Get domain address.
+         L     R6,DSTRL            Get domain length.
+         L     R7,DSTRA            Get domain address.
          B     CHEKLOOP      -> now go check case (3) for loop   [1.24]
          SPACE ,                                                 [1.24]
 BADSFLD  EQU   *             <- invalid SFLD comes here          [1.24]

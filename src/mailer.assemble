@@ -21,8 +21,8 @@ MAILER   CSECT ,
 * ALREADY IN THE READER PRIOR TO THE PROGRAM STARTING UP.
 *                            ALAN CROSSWELL 7/81
 * LAST EDIT: 10/26/82 BY ALAN CROSSWELL
-         COPY  VERSION                                           [1.22]
          BLOCKS ,
+         MAILBLOK ,
          TRACETBL ,
          REGEQU ,
          COPY  MAILEQU
@@ -65,6 +65,9 @@ EYESKIP  DS    0H
          ST    R14,8(R13)
          LR    R13,R14
          SPACE ,
+         L     R11,=V(MAILBLOK) Address of MAILBLOK
+         USING MAILBLOK,R11
+         SPACE ,
 *--------------------------------------------------------------------
 *        GET PROFILE NAME FROM COMMAND LINE IF SUPPLIED    [1]
 *--------------------------------------------------------------------
@@ -80,7 +83,8 @@ EYESKIP  DS    0H
 NOPROF   EQU   *                                           [1]
          STRINIT ,           INTIALIZE GETMAIN POINTERS
          SPACE ,
-         WTR   LER001,(CA,MAILVERS,CA,MYNAME+8,CA,ASMTIME)
+         LA    R15,MAILVERS        Point at version id
+         WTR   LER001,(CA,(R15),CA,MYNAME+8,CA,ASMTIME)
          MVI   MAILSTAT,0    STATUS FLAG INITIALLY ZERO
          MVI   MAILCMD,0     COMMAND FLAGS INITIALLY ZERO
          XC    MAILCMDL,MAILCMDL SAME FOR COMMAND LIST
@@ -88,7 +92,8 @@ NOPROF   EQU   *                                           [1]
 *        USE VARIABLE GETMAIN TO GET A STACK.  ALL FUTURE STORAGE
 *        NEEDS WILL BE TAKEN FROM THE STACK.
 *--------------------------------------------------------------------
-         GETMAIN VC,LA=LIMITS,A=STACKORG   ALLOCATE THE STACK
+         LA    R15,STACKORG       Point at getmain list
+         GETMAIN VC,LA=LIMITS,A=(15) Allocate the stack
          LTR   R15,R15       GETMAIN FAILED?
          BNZ   GETFAIL
          L     R3,=V(@C@STACK)    find the C-glue stack pointer  [1.22]
@@ -119,8 +124,7 @@ RELENT   EQU   *             RELOAD ENTRY
 *--------------------------------------------------------------------
          ICM   R15,B'1111',=V(LCLMOD)  SEE IF THIS SYMBOL IS RESOLVED
          BZ    NOLCLMOD      NO LOCAL MODS EXIT PROVIDED
-         LA    R1,=A(MAILBLOK) PASS ADDRESS OF MAILBLOK TO USER EXIT
-         BALR  R14,R15       CALL IT
+         CALL  (15),(11)     Call it
          LTR   R15,R15       DID IT FAIL?
          BNZ   ERRRET        LCLMOD EXIT FAILED
 NOLCLMOD EQU   *
@@ -137,21 +141,24 @@ NOLCLMOD EQU   *
 *--------------------------------------------------------------------
 *        LOAD THE ROUTING TABLE AND USER EXITS.
 *--------------------------------------------------------------------
-         CALL  READINIT,(MAILBLOK)     READ MAILER PROFILE
+         CALL  READINIT,((R11))    Read MAILER PROFILE
          LTR   R15,R15       ANY PROBLEMS
          BNZ   ERRRET
-         CALL  SETINIT,(MAILBLOK)      NOW SET VALUES READ
+         CALL  SETINIT,((R11))     Now set values read
          LTR   R15,R15       ANY PROBLEMS
          BNZ   ERRRET
          CALL  MAILSMSI      SET UP SMSG HANDLER
          LTR   R15,R15
          BNZ   ERRRET
          SPACE ,
-         WTR   LER004,(CA,CPUSTR)      WRITE STARTUP MESSAGE
-         WTR   LER011,(DA,STACK+4)  TELL HOW BIG REMAINING STACK IS
+         LA    R15,CPUSTR           Point to CPU identifier
+         WTR   LER004,(CA,(R15))    Write startup message
+         LA    R15,STACK+4          Stack size value here
+         WTR   LER011,(DA,(R15))    Tell how big remaining stack is
          WTR   LER069               'Initializing trace table'
          MAILTRC INIT               create trace table on stack
-         WTR   LER011,(DA,STACK+4)  Tell how big remaining stack is
+         LA    R15,STACK+4          Stack size value here
+         WTR   LER011,(DA,(R15))    Tell how big remaining stack is
          WTR   LER005        'INIT. COMPLETE'
          SPACE ,
 *--------------------------------------------------------------------
@@ -172,7 +179,7 @@ MAINLOOP EQU   *
          B     WAIT          AND GO BACK TO SLEEP
 MAIN2    EQU   *
          MVC   STACKP,STACK  RESET STACK POINTER
-         CALL  MAILMAIN,(MAILBLOK)
+         CALL  MAILMAIN,((R11))
          LTR   R15,R15       ANY ERRORS?
          BNZ   ERRRET
          WTR   LER006        WAITING FOR WORK MESSAGE
@@ -186,7 +193,8 @@ WAIT     EQU   *
 * INTERRUPT WAS FROM CONSOLE ATTN
          RDTERM TERMBUF
          LR    R5,R0         GET LENGTH READ
-         CALL  MAILCMD1,(MAILBLOK,TERMBUF,(R5),MAILVMID,0,CMDCONS)
+         LA    R15,MAILVMID
+         CALL  MAILCMD1,((R11),TERMBUF,(R5),(R15),0,CMDCONS)
          B     MAINLOOP      GO PROCESS NEW RDR FILE(S)
          SPACE ,
 *--------------------------------------------------------------------
@@ -214,7 +222,7 @@ RELOAD   EQU   *
          B     RELENT        GOTO RELOAD ENTRY
          SPACE ,
 MCMD2    EQU   *
-         CALL  MAILCMD2,(MAILBLOK)     2ND LEVEL COMMAND HANDLER
+         CALL  MAILCMD2,((R11))    2nd level command handler
          B     MAINLOOP      AND GO BACK TO WORK
          SPACE ,
 *--------------------------------------------------------------------
@@ -260,7 +268,4 @@ LEXTID   EQU   *-EXTID       LENGTH OF THE BUFFER
 EXTVMID  DS    CL8
          ORG   ,             ORG BACK
 TERMBUF  DS    CL130         TERMINAL INPUT BUFFER
-         PRINT GEN
-         ENTRY MAILBLOK
-MAILBLOK MAILBLOK  DSECT=NO                                      [1.22]
          END   MAILER
