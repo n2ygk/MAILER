@@ -47,6 +47,7 @@ static struct mailblok {
 #define MOPTVL   0x10        /* Verbose console logging              */
 #define MOPTTBD  0x08        /* Print debugging info in TBLUK        */
 #define MOPTALLM 0x04        /* Print all messages received          */
+#define MOPTNO82 0x02        /* Don't look for RFC822 inside BSMTP   */
     char mailflg1;           /* Current mail file flags              */
 #define MFLGDEST 0x80        /* A '*DESTINATION:' card is present    */
 #define MFLG1LCL 0x40        /* Mail source is local user            */

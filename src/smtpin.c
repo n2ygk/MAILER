@@ -1682,32 +1682,58 @@ int l;
     if (mailblok.dbgflg[0] & TRACE_CALLS)
        wrterm("==> Entered parse_data_hdr");
 
-    if ((mailblok.mailhbuf[0] =
-                 (int)salloc(mailblok.mailhbuf[1] = resid)) <= 0) {
+    if (mailblok.mailopts & MOPTNO82) {  /* Don't process 822 headers */
        if (mailblok.dbgflg[1] & TRACE_PARSE_DATA_HEADER)
-          wrterm("parse_data_header:  Storage allocation failure");
-      return s_nosp(st, s, l);
-    }
-    if (mailblok.dbgflg[1] & TRACE_PARSE_DATA_HEADER)
-       wrterm("parse_data_header:  Reading headers onto stack");
-    for (i = 0, bp = (char *)mailblok.mailhbuf[0];
-          i < mailblok.mailhrec; i++) {
-        int rc;
+          wrterm("parse_data_header:  BSMTP-No-RFC822 = TRUE");
 
-        blen = resid;
-        if ((rc = fsread(&S.data_file,bp,&blen)) != 0) {
-            if (mailblok.dbgflg[1] & TRACE_PARSE_DATA_HEADER)
-               wrterm("parse_data_header:  Read error");
-            wtr("SMT",50,2,"ca","fsread#2","d",rc);
-            fsclose(&S.data_file);
-            return st;                   /* ignore parse failures */
-        }
-        bp += blen;
-        *bp++ = 0x15;                    /* newline */
-        resid -= (blen + 1);
+       /* Since headers are not scanned, build dummy (null) headers for
+          scanning */
+
+       if (mailblok.dbgflg[1] & TRACE_PARSE_DATA_HEADER)
+          wrterm("parse_data_header:  Building dummy header string");
+       if ((mailblok.mailhbuf[0] =
+                    (int)salloc(mailblok.mailhbuf[1] = 21)) <= 0) {
+          if (mailblok.dbgflg[1] & TRACE_PARSE_DATA_HEADER)
+             wrterm("parse_data_header:  Storage allocation failure");
+         return s_nosp(st, s, l);
+       }
+
+       bp = (char *)mailblok.mailhbuf[0];
+       bcopy("Dummy: Dummy header", bp, 19);
+       bp += 19;
+       *bp++ = 0x15;                                     /* newline */
+       *bp = 0x15;                          /* final newline for EOH */
+
+    } else {
+
+       if ((mailblok.mailhbuf[0] =
+                    (int)salloc(mailblok.mailhbuf[1] = resid)) <= 0) {
+          if (mailblok.dbgflg[1] & TRACE_PARSE_DATA_HEADER)
+             wrterm("parse_data_header:  Storage allocation failure");
+         return s_nosp(st, s, l);
+       }
+       if (mailblok.dbgflg[1] & TRACE_PARSE_DATA_HEADER)
+          wrterm("parse_data_header:  Reading headers onto stack");
+       for (i = 0, bp = (char *)mailblok.mailhbuf[0];
+             i < mailblok.mailhrec; i++) {
+           int rc;
+
+           blen = resid;
+           if ((rc = fsread(&S.data_file,bp,&blen)) != 0) {
+               if (mailblok.dbgflg[1] & TRACE_PARSE_DATA_HEADER)
+                  wrterm("parse_data_header:  Read error");
+               wtr("SMT",50,2,"ca","fsread#2","d",rc);
+               fsclose(&S.data_file);
+               return st;                   /* ignore parse failures */
+           }
+           bp += blen;
+           *bp++ = 0x15;                    /* newline */
+           resid -= (blen + 1);
+       }
+       *bp = 0x15;                          /* final newline for EOH */
+       fsclose(&S.data_file);
     }
-    *bp = 0x15;                          /* final newline for EOH */
-    fsclose(&S.data_file);
+
     if (mailblok.dbgflg[1] & TRACE_PARSE_DATA_HEADER)
        wrterm("parse_data_header:  Scanning headers");
     pl.mb = &mailblok;
