@@ -206,6 +206,7 @@ static struct mailblok {
                              /*    Used for mail producing exits     */
 #define DBGNOOUT          0x80  /* List actions, but don't produce   */
                                 /*     a mail file as output         */
+#define DBGPARSE          0x40  /* Trace parsing activity            */
 
                              /* Flags defined in dbgflg[7]           */
                              /*   used for assembler routines        */

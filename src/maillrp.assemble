@@ -134,15 +134,14 @@ LRP      TITLE 'MAILLRP     Columbia Univ Network MAILER (Rel. 2)      *
 *-------------------------------------------------------------------*
          MACRO
 &LABEL   DEBUG &MSG
-         GBLA  &DODEBUG
-         AIF   (&DODEBUG).DOIT
-         MEXIT ,
-.DOIT    ANOP
+         TM    DBGFLG6,DBGPARSE    Debugging?
+         BNO   $&SYSNDX.A          ---> No
          BAL   R1,DBG&SYSNDX branch over plist
 DBS&SYSNDX DC  AL1(L'DBM&SYSNDX)
 DBM&SYSNDX DC  C&MSG
 DBG&SYSNDX DS  0H
          BAL   R14,DBGPRT    debug print routine
+$&SYSNDX.A EQU *
          MEND
          MACRO
 &LABEL   LDAR@ &RESULT,&ARRAY,&INDEX
@@ -164,8 +163,6 @@ DBG&SYSNDX DS  0H
          L     T2,A&ARRY     address of the array
          ST    &VALUE,0(T2,T1) store into array
          MEND
-         GBLA  &DODEBUG
-&DODEBUG SETA  0             set to 1 for debugging
          EJECT ,
 *-------------------------------------------------------------------*
 *        Parameter List definition                                  *
@@ -228,6 +225,10 @@ REDUCE   EQU   X'20'
 MATCH    EQU   X'10'
          DS    0D            keep the stack dword aligned
 LOCSIZE  EQU   *-LOCALS      length of local variables area
+         SPACE 3
+         PRINT NOGEN
+         MAILBLOK ,
+         PRINT GEN
          EJECT ,
 *-------------------------------------------------------------------*
 * Register definitions:                                             *
@@ -243,8 +244,8 @@ R6       EQU   6                |
 R7       EQU   7                |
 R8       EQU   8                |
 R9       EQU   9             <--+
-R10      EQU   10            work
-R11      EQU   11            PATTBL dsect base
+R10      EQU   10            PATTBL dsect base
+R11      EQU   11            MAILBLOK base
 R12      EQU   12            code base
 R13      EQU   13            local variables base
 R14      EQU   14            work
@@ -268,11 +269,12 @@ NEXT     EQU   R9            next token
 MAILLRP  CSECT ,
 LRPARSE  MENTRY STK=@STACK,SLEN=@LENGTH
          USING PARMS,R1      address parameter list
+         USING MAILBLOK,R11
          SRL   R2,2          divide remaining length by 4
          ST    R2,MAXSTACK   this is maximum stack depth
          ST    R15,APSTACK   address of parser stack
-         L     R11,@TABLE    address of parse tables
-         USING PATTBL,R11    get addressability
+         L     R10,@TABLE    address of parse tables
+         USING PATTBL,R10    get addressability
          L     R2,@COMM      communications area pointer
          ST    R2,COMM       save here for later use
          DROP  R1            done with parameters
@@ -445,8 +447,6 @@ STKOVER  EQU   *             <- stack overflow
          LA    R15,16        error code
          B     ENDPRS        -> return
          LTORG ,
-         AIF   (NOT &DODEBUG).NODB
-         MNOTE *,'Debugging produces non-reentrant code'
          EJECT ,
 *-------------------------------------------------------------------*
 * Debugger:                                                         *
@@ -458,9 +458,9 @@ DBGPRT   DS    0H
          STM   R14,R12,12(R13)         save caller's registers
          SR    R14,R14       clear r14
          IC    R14,0(R1)     get length of string
-         LA    R10,1(R1)     get address of string
+         LA    R0,1(R1)      get address of string
          WRTERM '------------------------'
-         WRTERM (R10),(R14)  write debugger statement
+         WRTERM (R0),(R14)   write debugger statement
          LINEDIT TEXT='Token: ........ SP: ........ Curstate: ........ *
                Tran: ........ act: ........ j: ........ Next: ........'*
                ,SUB=(DEC,(TOKEN),DEC,(SP),DEC,(CURSTATE),              *

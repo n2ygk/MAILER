@@ -690,9 +690,9 @@ DBGFLG3  DC    X'0'                Unused
 DBGFLG4  DC    X'0'                Unused
 DBGFLG5  DC    X'0'                Unused
          SPACE 1
-DBGFLG6  DC    X'0'                Unused
+DBGFLG6  DC    X'0'                Various assembler flags
 DBGNOOUT EQU   X'80'               Do not produce output mail
-*        EQU   X'40'               Unused
+DBGPARSE EQU   X'40'               Trace parsing
 *        EQU   X'20'               Unused
 *        EQU   X'10'               Unused
 *        EQU   X'08'               Unused

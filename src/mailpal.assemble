@@ -170,20 +170,19 @@ PAL      TITLE 'MAILPAL     Columbia Univ Network MAILER (Rel. 2)      *
 *-------------------------------------------------------------------*
          MACRO
 &LABEL   DEBUG &MSG
-         GBLA  &DODEBUG
-         AIF   (&DODEBUG).DB01
-         MEXIT
-.DB01    ANOP
-&LABEL   WRTERM &MSG
-         WAITT ,
+&LABEL   TM    DBGFLG6,DBGPARSE    Debugging?
+         BNO   $&SYSNDX.A          ---> No
+         WRTERM &MSG               Write debugging msg
+         WAITT ,                   Wait for it to display
+$&SYSNDX.A EQU *
          MEND
          MACRO ,
 &LABEL   SEMENTRY
 &LABEL   DS    0H            &LABEL semantic routine
          STM   R14,R12,12(R13) save caller's registers
          LR    SP,R0         get stack pointer
-         LR    R11,R1        address of LOCALS
-         USING LOCALS,R11    address LOCALS
+         LR    R10,R1        address of LOCALS
+         USING LOCALS,R10    address LOCALS
          LR    R12,R15       get base address
          USING &LABEL,R12    tell assembler
          ST    R13,COMMSAVE+4 save in the community save area
@@ -196,30 +195,26 @@ PAL      TITLE 'MAILPAL     Columbia Univ Network MAILER (Rel. 2)      *
          L     R14,12(R13)   restore 14
          LM    R0,R12,20(R13) and 0-12; 15 gets error code
          BR    R14           return to caller
-         DROP  R11           done with LOCALS
+         DROP  R10           done with LOCALS
          DROP  R12           done with code
          LTORG ,             literal pool
          MEND  ,
-         GBLA  &DODEBUG
-&DODEBUG SETA  0             1 for debugging
 *-------------------------------------------------------------------*
 *        define entries to semantics when debugging                 *
 *-------------------------------------------------------------------*
-         AIF   (NOT &DODEBUG).DB00
-         ENTRY SHIFTSEM
-         ENTRY SEMSP1
-         ENTRY SEMSP2
-         ENTRY SEMLST1
-         ENTRY SEMLST2
-         ENTRY SEMRTL1
-         ENTRY SEMRTL2
-         ENTRY SEMADS1
-         ENTRY SEMADS2
-         ENTRY SEMRADDR
-         ENTRY SEMMBOXL
-         ENTRY SEMADDRL
-         ENTRY SEMGOAL
-.DB00    ANOP
+*        ENTRY SHIFTSEM
+*        ENTRY SEMSP1
+*        ENTRY SEMSP2
+*        ENTRY SEMLST1
+*        ENTRY SEMLST2
+*        ENTRY SEMRTL1
+*        ENTRY SEMRTL2
+*        ENTRY SEMADS1
+*        ENTRY SEMADS2
+*        ENTRY SEMRADDR
+*        ENTRY SEMMBOXL
+*        ENTRY SEMADDRL
+*        ENTRY SEMGOAL
          EJECT ,
 *-------------------------------------------------------------------*
 *        Parameters                                                 *
@@ -246,7 +241,7 @@ PARMS    DSECT ,             parameters
 LOCALS   DSECT ,             local variables
          DS    18F           register save area
 COMMSAVE DS    18F           common save area used by semantics
-STACK    DS    A             address of stack
+PSTACK   DS    A             address of stack
 STKSIZ   DS    F             length
 PLIST    DS    A             main plist pointer
 TOKHEAD  DS    A             head of token list
@@ -282,6 +277,7 @@ LOCSIZE  EQU   *-LOCALS      length of this dsect
 *-------------------------------------------------------------------*
          SPACE ,
          BLOCKS ,
+         MAILBLOK ,
          EJECT ,
 *-------------------------------------------------------------------*
 * Register definitions:                                             *
@@ -300,7 +296,7 @@ R7       EQU   7
 R8       EQU   8
 R9       EQU   9             TOKEND block base
 R10      EQU   10
-R11      EQU   11
+R11      EQU   11            MAILBLOK base
 R12      EQU   12            program base
 R13      EQU   13            local variables base
 R14      EQU   14
@@ -312,21 +308,32 @@ R15      EQU   15
          SPACE ,
 MAILPAL  CSECT ,
 PRSAL    MENTRY ,
+         L     R11,=V(MAILBLOK)
+         USING MAILBLOK,R11
          ST    R2,STKSIZ     remainder of stack for structures
-         ST    R15,STACK     address of that stack
+         ST    R15,PSTACK    address of that stack
 *-------------------------------------------------------------------*
 *        set up parameter lists and other initialized locals        *
 *        for the LRPARSE and LEX822 routines.                       *
 *-------------------------------------------------------------------*
+         ST    R1,PLIST      keep this in a convenient place
          USING PARMS,R1      look at parameter list
          L     R2,@STR       address of string pointer
          ST    R2,LEX@STR    pass along to lexical routine
-         L     R2,@LEN       address of string length
-         ST    R2,LEX@LEN    also pass along
+         L     R3,@LEN       address of string length
+         ST    R3,LEX@LEN    also pass along
+         DROP  R1            done with plist for now
+         TM    DBGFLG6,DBGPARSE    Debugging?
+         BNO   DB0000              ---> No
+         L     R2,0(,R2)           Get the address
+         L     R3,0(,R3)           Get the length
+         WRTERM 'MAILPAL : Line to be parsed'
+         LINEDIT TEXT='................................................X
+               ....................................................',  X
+               SUB=(CHARA,((R2),(R3))),DOT=NO,COMP=NO,RENT=NO
+DB0000   EQU   *
          LA    R2,LEXTTYPE   temporary to receive token type
          ST    R2,LEX@TTYP   into plist
-         ST    R1,PLIST      keep this in a convenient place
-         DROP  R1            done with plist for now
          LA    R2,PATTBL     address of grammar table
          ST    R2,LR@TAB     into LRPARSE's plist
          LA    R2,LRSTK      stack for LRPARSE
@@ -359,7 +366,7 @@ PRSAL    MENTRY ,
          L     R3,MBXHEAD    canonical list head
          ST    R3,0(R2)      ...
          L     R2,@STK       ditto for updated stack pointer
-         L     R3,STACK      get stack pointer
+         L     R3,PSTACK     get stack pointer
          ST    R3,0(R2)      return updated stack to caller
          L     R2,@SLEN      stack length
          L     R3,STKSIZ     size
@@ -393,8 +400,8 @@ PATTBL   DS    0D
 *-------------------------------------------------------------------*
 LEX      DS    0H            Lexical analyzer
          STM   R14,R12,12(R13) save caller's registers
-         LR    R11,R1        copy handle on LOCALS
-         USING LOCALS,R11    get addressability on it
+         LR    R10,R1        copy handle on LOCALS
+         USING LOCALS,R10    get addressability on it
          LR    R12,R15       get my base address
          USING LEX,R12       establish addressability
          ST    R13,COMMSAVE+4 save it for later
@@ -405,13 +412,13 @@ LEX#0    EQU   *             here if token was white space
 *          1a) if the first token allocated,  also set TOKHEAD ptr. *
 *          1b) if 2nd-nth token,  don't set TOKHEAD, but set TOKNEXT*
 *-------------------------------------------------------------------*
-         L     R1,STACK      get stack pointer
+         L     R1,PSTACK     get stack pointer
          L     R2,STKSIZ     length of stack
          S     R2,=A(TOKSIZ) subtract length of token
          BL    LEX#NOS       no room on the stack for token
          LR    R8,R1         get handle on the token
          LA    R1,TOKSIZ(R1) bump the stack pointer
-         ST    R1,STACK      and put it back
+         ST    R1,PSTACK     and put it back
          ST    R2,STKSIZ     store back updated size
          XC    0(TOKSIZ,R8),0(R8)  Zero new TOKEND
          ICM   R9,B'1111',TOKLAST get address of last token in list
@@ -466,11 +473,12 @@ LEX#2    EQU   *             common to both 1st and following token
 *        3) Return,  token type in 1,  return code in 15 for errors *
 *-------------------------------------------------------------------*
 LEX#R    EQU   *             return
-         AIF (NOT &DODEBUG).DB02
+         TM    DBGFLG6,DBGPARSE    Debugging?
+         BNO   LEX#R02             ---> No
          LR    R5,R1         debug
          LINEDIT TEXT='LEX: .........',SUB=(DEC,(R5))
          LR    R1,R5
-.DB02    ANOP
+LEX#R02  EQU   *
          L     R13,4(R13)    and start the long trip home...
          L     R14,12(R13)   restore 14
          L     R0,20(R13)    restore 0
@@ -484,7 +492,7 @@ LEX#NOS  EQU   *             no room on the stack
          LA    R15,24        error retcode
          ST    R15,SEMERROR  set parse error
          B     LEX#R         and return
-         DROP  R11           done with LOCALS base
+         DROP  R10           done with LOCALS base
          DROP  R12           ditto for code base
          SPACE ,
          LTORG ,
@@ -510,10 +518,6 @@ SHIFTSEM SEMENTRY ,          shift semantic routine
 *        stack.  Null copies SP+0 (does nothing),  SP1 copies SP+1, *
 *        and SP2 copies SP+2.                                       *
 *-------------------------------------------------------------------*
-         AIF   (&DODEBUG).DB03
-SEMNULL  EQU   0             Normally does nothing
-         AGO   .DB04
-.DB03    ANOP
 SEMNULL  SEMENTRY ,          when debugging,  print our name
          SR    R15,R15       zero retcode
          SEMEXIT ,
@@ -554,13 +558,13 @@ SEMZERO  SEMENTRY ,          ZERO semantic
 *                                                                   *
 *-------------------------------------------------------------------*
 SEMLST1  SEMENTRY ,          LST1 semantic routine
-         L     R1,STACK      get stack pointer
+         L     R1,PSTACK     get stack pointer
          L     R2,STKSIZ     get remaining length of stack memory
          S     R2,=A(NODSIZ) minus size of a node
          BL    LST1#NOS      no stack space.
          LR    R8,R1         copy the pointer
          LA    R1,NODSIZ(R1) bump stack pointer
-         ST    R1,STACK      save it back
+         ST    R1,PSTACK     save it back
          ST    R2,STKSIZ     ditto for stack size
          USING NODE,R8       address the node
          LDARR R3,SSTACK,SP  sstack[sp] -> TOKEND block
@@ -577,13 +581,13 @@ LST1#NOS EQU   *             no stack space
 LST1#R   SEMEXIT ,           return
          SPACE 3
 SEMLST2  SEMENTRY ,          LST2 semantic routine
-         L     R1,STACK      get stack pointer
+         L     R1,PSTACK     get stack pointer
          L     R2,STKSIZ     get remaining length of stack memory
          S     R2,=A(NODSIZ) minus size of a node
          BL    LST2#NOS      no stack space.
          LR    R8,R1         copy the pointer
          LA    R1,NODSIZ(R1) bump stack pointer
-         ST    R1,STACK      save it back
+         ST    R1,PSTACK     save it back
          ST    R2,STKSIZ     ditto for stack size
          USING NODE,R8       address the node
          LDARR R6,SSTACK+8,SP  sstack[sp+2] -> TOKEND block
@@ -611,13 +615,13 @@ LST2#R   SEMEXIT ,
 *        in much the same way that LST1 and LST2 point to TOKens.   *
 *-------------------------------------------------------------------*
 SEMRTL1  SEMENTRY ,          RTL1 semantic routine
-         L     R1,STACK      get stack pointer
+         L     R1,PSTACK     get stack pointer
          L     R2,STKSIZ     get remaining length of stack memory
          S     R2,=A(NODSIZ) minus size of a node
          BL    RTL1#NOS      no stack space.
          LR    R8,R1         copy the pointer
          LA    R1,NODSIZ(R1) bump stack pointer
-         ST    R1,STACK      save it back
+         ST    R1,PSTACK     save it back
          ST    R2,STKSIZ     ditto for stack size
          LDARR R3,SSTACK+4,SP sstack[sp+1] -> last NODE block
          USING NODE,R3       address the domain node
@@ -642,13 +646,13 @@ RTL1#NOS EQU   *             out of stack space
 RTL1#R   SEMEXIT ,
          SPACE 3
 SEMRTL2  SEMENTRY ,          RTL2 semantic routine
-         L     R1,STACK      get stack pointer
+         L     R1,PSTACK     get stack pointer
          L     R2,STKSIZ     get remaining length of stack memory
          S     R2,=A(NODSIZ) minus size of a node
          BL    RTL2#NOS      no stack space.
          LR    R8,R1         copy the pointer
          LA    R1,NODSIZ(R1) bump stack pointer
-         ST    R1,STACK      save it back
+         ST    R1,PSTACK     save it back
          ST    R2,STKSIZ     ditto for stack size
          LDARR R6,SSTACK+12,SP sstack[sp+3] -> last domain NODE block
          USING NODE,R6       address the domain node
@@ -686,13 +690,13 @@ RTL2#R   SEMEXIT ,
 *        on entry: r0 = SP,  r1 -> LOCALS.                          *
 *-------------------------------------------------------------------*
 SEMADS1  SEMENTRY ,          ADS1 semantic routine
-         L     R1,STACK      get stack pointer
+         L     R1,PSTACK     get stack pointer
          L     R2,STKSIZ     remaining size of stack
          S     R2,=A(MBXSIZ) size of a MBOX bloc
          BL    ADS1#NOS      stack too small
          LR    R8,R1         copy pointer
          LA    R1,MBXSIZ(R1) increment stack pointer
-         ST    R1,STACK      put it back
+         ST    R1,PSTACK     put it back
          ST    R2,STKSIZ     ditto for updated size
          USING MBOX,R8       address the mbox
          XC    0(MBXSIZ,R8),0(R8) zero out the block
@@ -739,13 +743,13 @@ ADS1#NOS EQU   *             no stack space
          ST    R15,SEMERROR  set error flag
 ADS1#R   SEMEXIT ,
 SEMADS2  SEMENTRY ,          ADS2 semantic routine
-         L     R1,STACK      get stack pointer
+         L     R1,PSTACK     get stack pointer
          L     R2,STKSIZ     remaining size of stack
          S     R2,=A(MBXSIZ) size of a MBOX bloc
          BL    ADS2#NOS      stack too small
          LR    R8,R1         copy pointer
          LA    R1,MBXSIZ(R1) increment stack pointer
-         ST    R1,STACK      put it back
+         ST    R1,PSTACK     put it back
          ST    R2,STKSIZ     ditto for updated size
          USING MBOX,R8       address the mbox
          XC    0(MBXSIZ,R8),0(R8) zero out the block
