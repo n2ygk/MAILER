@@ -47,7 +47,7 @@ $&SYSNDX.A EQU *
          L     R14,=A(&SIZE)       Want this much
          AGO   .X320
 .X310    ANOP
-         LR    R14,&SIZE(1,1)      Want this much
+         LR    R14,&SIZE(1)        Want this much
 .X320    ANOP
          SR    R15,R14             Reduce amount left
          BNP   &NOSTOR             ---> Not enough space left
