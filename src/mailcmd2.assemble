@@ -177,15 +177,15 @@ $FWD0010 EQU   *
          L     R1,ARGVP            Get pointer to next token
          L     R1,0(R1)            Get address of next token
          LA    R1,0(,R1)           Clean up high end
-         L     R0,@MESSAGE         Original msg start
-         A     R0,@MSGLEN          + Total length
-         SR    R0,R1               - Token start = length left
-         C     R0,=A(L'$EXCREQ)    Enough space?
+         L     R15,@MESSAGE        Original msg start
+         A     R15,@MSGLEN         + Total length
+         SR    R15,R1              - Token start = length left
+         C     R15,=A(L'$EXCREQ)   Enough space?
          BNH   $FWD0020            ---> Yes
-         LA    R0,L'$EXCREQ        No, truncate
+         LA    R15,L'$EXCREQ       No, truncate
 $FWD0020 EQU   *
-         BCTR  R0,0                Decrement for execute
-         EX    R0,MOVEFWD          Move in command arguments
+         BCTR  R15,0               Decrement for execute
+         EX    R15,MOVEFWD         Move in command arguments
 $FWD0100 EQU   *
          LA    R1,$EXCPL           Point to tokenized plist
          ICM   R1,B'1000',=X'01'   Tell REXX using extended plist
@@ -193,11 +193,12 @@ $FWD0100 EQU   *
          SVC   202                 Run the FORWARD exec
          DC    AL4(1)              Continue with next instruction
          C     R15,=F'10001'       Is it exec not found?
-         BNE   RCMSG               ---> No
+         BNE   $FWD0120            ---> No
          LA    R1,$FWDNONE         Point to message
          LA    R0,L'$FWDNONE            and get length
          BAL   R14,WRITEMSG        Send message
          L     R15,=F'10001'       Restore return code
+$FWD0120 EQU   *
          BAL   R14,RCMSG           Format return code msg
          BAL   R14,WRITEMSG        Write rc message
          B     DONE                All done
@@ -228,15 +229,15 @@ $MLS0010 EQU   *
          L     R1,ARGVP            Get pointer to next token
          L     R1,0(R1)            Get address of next token
          LA    R1,0(,R1)           Clean up high end
-         L     R0,@MESSAGE         Original msg start
-         A     R0,@MSGLEN          + Total length
-         SR    R0,R1               - Token start = length left
-         C     R0,=A(L'$EXCREQ)    Enough space?
+         L     R15,@MESSAGE        Original msg start
+         A     R15,@MSGLEN         + Total length
+         SR    R15,R1              - Token start = length left
+         C     R15,=A(L'$EXCREQ)   Enough space?
          BNH   $MLS0020            ---> Yes
-         LA    R0,L'$EXCREQ        No, truncate
+         LA    R15,L'$EXCREQ       No, truncate
 $MLS0020 EQU   *
-         BCTR  R0,0                Decrement for execute
-         EX    R0,MOVEMLS          Move in command arguments
+         BCTR  R15,0               Decrement for execute
+         EX    R15,MOVEMLS         Move in command arguments
 $MLS0100 EQU   *
          LA    R1,$EXCPL           Point to tokenized plist
          ICM   R1,B'1000',=X'01'   Tell REXX using extended plist
@@ -244,11 +245,12 @@ $MLS0100 EQU   *
          SVC   202                 Run the FORWARD exec
          DC    AL4(1)              Continue with next instruction
          C     R15,=F'10001'       Is it exec not found?
-         BNE   RCMSG               ---> No
+         BNE   $MLS0120            ---> No
          LA    R1,$MLSNONE         Address of message
          LA    R0,L'$MLSNONE       Length of message
          BAL   R14,WRITEMSG        Send message
          L     R15,=F'10001'       Restore return code
+$MLS0120 EQU   *
          BAL   R14,RCMSG           Format return code msg
          BAL   R14,WRITEMSG        Write rc message
          B     DONE                All done
