@@ -535,6 +535,48 @@ int l;
 }
 
 /*
+ * check if a domain name matches the local domain
+ *  Do the following tests until one succeeds:
+ *  1) Compare the domain to MAILNODE.
+ *  2) Compare the domain to MAILNODE concatenated w/ RSCS-Domains.
+ *  3) See if domain matches a Local-Host (LCLHOST*).
+ */
+static
+check_local(s,l)
+char *s;
+int l;
+{
+    int ri;
+    struct tbentry *te;
+
+    /* (1) Compare domain to mailnode */
+    if (mailnlen == l && xcmp(mailnode,s,l) == 0)
+        return 1;
+
+    /* (2) Compare domain concatenated w/RSCS-domains to mailnode */
+    if (rscsdom[0] != 0) {
+        for (ri= 0; rscsdom[ri] != 0 && ri < MAXRSCSDOM; ri++) {
+           int rl = rscsdom[ri][0];
+           char *rp = &rscsdom[ri][1];
+           int i;
+
+           if (rl < l && xcmp(rp, &s[i = l-rl], rl) == 0)
+               if (mailnlen == i && xcmp(s, mailnode, i) == 0)
+                   return 1;
+        }
+    }
+
+    /* (3) See if Local-Domain matches */
+    if (lclhost[0] != 0)
+        for (ri = 0; lclhost[ri] != 0 && ri < MAXLCLHOST; ri++)
+        if (*lclhost[ri] == l && xcmp(&lclhost[ri][1], s, l) == 0)
+            return 1;
+
+    /* time to give up */
+    return 0;
+}
+
+/*
  * check that domain name matches the RSCS origin
  *  Do the following tests until one succeeds:
  *  1) Compare the domain to MAILNODE.
@@ -875,6 +917,27 @@ int l;
 
     a = (struct mbox *)f->fipars;
 
+    /* Check for routeaddr and if it is us, drop it before any other
+     * processing occurs.                                            */
+
+    if (a->mbxrtl != 0) {
+       n = MBOXRTL(a)->noddown;
+       plist.node = &n;
+       plist.hs = &hs;
+       plist.hl = &hl;
+       for (i=0; i < sizeof(hoststring); hoststring[i] = ' ',i++);
+       hoststringptr = &hoststring[0];
+       plist.hoststringptr = &hoststringptr;
+       hostlen = sizeof(hoststring);
+       plist.hostlen = &hostlen;
+       acall(genlist, 0, &plist);
+       if (check_local(hs,hl)) {
+          plist2.delmbox = &a;
+          acall(delroute, 0, &plist2);        /* Remove route addr */
+          f->fiflg1 |= FIEDIFLG;              /* Remember changed  */
+       }
+    }
+
     /* (2) Look up the host name in MAILRTAB, MAILDTAB */
 
     if (a->mbxrtl == 0)
@@ -905,11 +968,6 @@ int l;
         bcopy("... recipient OK.", &buf[buflen], 17);
         buflen += 17;
         (*S.repf)(buf, buflen);
-        if (a->mbxrtl != 0) {
-           plist2.delmbox = &a;
-           acall(delroute, 0, &plist2);        /* Remove route addr */
-           f->fiflg1 |= FIEDIFLG;              /* Remember changed  */
-        }
         return st;
     } else
         return s_nosp(st, s, l);

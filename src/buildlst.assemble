@@ -69,8 +69,8 @@ R5  EQU  5 -
 R6  EQU  6 -
 R7  EQU  7 -
 R8  EQU  8 -
-R9  EQU  9 - STACK POINTER
-R10 EQU 10 - STACK LENGTH
+R9  EQU  9 -
+R10 EQU 10 -
 R11 EQU 11 - MAILBLOK BASE
 R12 EQU 12 - PROGRAM BASE
 R13 EQU 13 - SAVE AREA
@@ -100,7 +100,6 @@ EYESKIP  DS    0H
          L     R11,@MBLOK    GET MAILBLOK BASE
          DROP  R1
          USING MAILBLOK,R11  ADDRESSABILITY
-         LM    R9,R10,STACKP GET STACK POINTER
          SPACE ,
 *--------------------------------------------------------------------
 *  CHECK FOR EXISTENCE OF "*DESTINATION" FIELD (MFLGDEST ON)
@@ -230,7 +229,6 @@ NODATE   EQU   *             [1.16] too many resent addresses
 *
 *  ENTRY -
 *   R1      - PARSE LIST ADDRESS
-*   R9,R10  - STACK POINTERS
 *   R11     - MAILBLOK BASE
 *   MAILCHN - ACTADR LIST ANCHOR
 *   R14     - RETURN ADDRESS
@@ -319,15 +317,6 @@ BLDCHN1  EQU   *
 BLDLCL   EQU   *
          LR    R2,R8         GET MBOX POINTER
          BAL   R14,ADDCHN    ADD ONTO CHAIN
-         ICM   R1,B'1111',MBXRTL   Did we use route addr?
-         BZ    BLDUPCNT            ---> No
-         ST    R8,DELRMBX          MBOX address into PLIST
-         CALL  DELROUTE,(DELRMBX)  Delete first route from list
-         LTR   R15,R15             Successful?
-         BNZ   BLDUPCNT            ---> No
-         OI    BLDFLAG,BLDFLMOD    Remember MBOX mod done
-         SPACE 1
-BLDUPCNT DS    0H
          L     R1,MAILRCNT   GET RECIPIENT COUNT
          LA    R1,1(R1)      ADD ONE
          ST    R1,MAILRCNT
@@ -367,7 +356,6 @@ DELRMBX  DC    A(0)                Addr of MBOX for DELROUTE call
 *  ENTRY -
 *   R1 - ROUTD ADDRESS
 *   R2 - MBOX ADDRESS
-*   R9,R10 - STACK POINTER
 *   R11 - MAILBLOK BASE
 *   R12 - PROGRAM BASE
 *   R14 - RETURN ADDRESS
@@ -400,10 +388,9 @@ ADD$3A   EQU   *             top of search for chn end loop      [1.22]
          LR    R7,R3         chain merrilly along...             [1.22]
          B     ADD$3A        back to top looking for end of chn  [1.22]
 ADD$3B   EQU   *             at end of chain.  R15->actadr       [1.22]
-         S     R10,=A(ACTLEN) make room for new ACTADR           [1.22]
-         BL    NOSPACE       life sucks and then you die         [1.22]
-         ST    R9,ACTCHN     set curr chain ptr to new space     [1.22]
-         LR    R7,R9         point to the new guy                [1.22]
+         SALOC ACTLEN,NOSPACE Allocate space for ACTADR
+         ST    R1,ACTCHN     set curr chain ptr to new space
+         LR    R7,R1         point to the new guy
          B     ADD$3C        and go to common add code below     [1.22]
          DROP  R7            don't need that using anymore       [1.22]
 * TYPE 2 ROUTING EXITS-
@@ -423,13 +410,10 @@ ADD2     EQU   *
          DROP  R8
          B     ADD2          CHAIN ALONG
 ADD3     EQU   *             ADD ON HERE
-         S     R10,=A(ACTLEN)  MAKE ROOM FOR A NEW ACTADR BLOCK
-         BL    NOSPACE       SHIT!
-         ST    R9,0(R7)      SET NEXT POINTER IN PREVIOUS ONE
-         LR    R7,R9         POINT TO CURRENT ONE
+         SALOC ACTLEN,NOSPACE Allocate space for ACTADR
+         ST    R1,0(R7)      SET NEXT POINTER IN PREVIOUS ONE
+         LR    R7,R1         POINT TO CURRENT ONE
 ADD$3C   EQU   *             common code entry for type 3 above  [1.22]
-         LA    R9,ACTLEN(R9) BUMP STACK'
-         STM   R9,R10,STACKP Update save stack pointer values
          USING ACTADR,R7     ADDRESS IT
          XC    ACTNEXT,ACTNEXT  CLE NEXT POINTER
          XC    ACTCHN,ACTCHN clear chain pointer                 [1.22]
