@@ -28,7 +28,6 @@
  *
  * Alan Crosswell 12/85
  */
-#undef __STDC__
 #include "types.h"
 #include "cfuncs.h"
 #include "cmsbloks.h"

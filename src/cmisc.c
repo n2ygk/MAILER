@@ -7,7 +7,6 @@
  * Miscellaneous C functions
  */
 
-#undef __STDC__
 #include "mailblok.h"
 #include "cfuncs.h"
 
