@@ -351,6 +351,17 @@ KWWARN   EQU   *
          C     R15,=F'8'     duplicate entry?                    [1.24]
          BNE   KWWARN1       no, some other error                [1.24]
          WTR   RDI064,(DA,FILELINE)                              [1.24]
+         MVC   TWORK(80),=CL80' '  Clear work area
+         USING FSCBD,R8
+         L     R15,FSCBBUFF        Original line address
+         L     R14,FSCBNORD        Original line length
+         DROP  R8
+         C     R14,=F'80'          Longer than 80?
+         BNH   *+8                 ---> No
+         LA    R14,80              Use first 80
+         BCTR  R14,0               Decrement for EX
+         EX    R14,MVCTWORK        Move into work area
+         WTR   RDI075,(CA,TWORK)
          B     KWWARN2                                           [1.24]
 KWWARN1  EQU   *             <- here when not a duplicate        [1.24]
          WTR   RDI015,(D,(R15),DA,FILELINE)
@@ -705,6 +716,17 @@ TLODADD  EQU   *
          C     R15,=F'8'     is it a duplicate?                  [1.24]
          BNE   TLODERR1      no,  some other error               [1.24]
          WTR   RDI064,(DA,FILELINE)                              [1.24]
+         MVC   TWORK(80),=CL80' '  Clear work area
+         USING FSCBD,R8
+         L     R15,FSCBBUFF        Original line address
+         L     R14,FSCBNORD        Original line length
+         DROP  R8
+         C     R14,=F'80'          Longer than 80?
+         BNH   *+8                 ---> No
+         LA    R14,80              Use first 80
+         BCTR  R14,0               Decrement for EX
+         EX    R14,MVCTWORK        Move into work area
+         WTR   RDI075,(CA,TWORK)
          B     TLODRET                                           [1.24]
 TLODERR1 EQU   *             <- here for other errors            [1.24]
          WTR   RDI015,(D,(R15),DA,FILELINE) WRITE WARNING MESSAGE
@@ -813,6 +835,7 @@ COPY     MVC   0(0,R3),0(R2)
 TRAPSEMI TRT   0(0,R3),0(R2)
 TRANSUP  TR    0(0,R3),UPCASE
 COMPARE  CLC   0(0,R3),0(R2)
+MVCTWORK MVC   TWORK(1),0(R15)
 TNAMES   TBSTART ,           TABLE NAMES ALLOWED
          T 'DOMAINS',16                                          [1.22]
          T 'INCOMING',0
