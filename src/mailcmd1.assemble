@@ -179,10 +179,11 @@ $BIT000  EQU   *
          LA    R7,DBITLEN          Number of entries
          BAL   R10,BITSRCH         Check for entry in table
          B     BIT020              ---> Found
-         LA    R1,WORKBUF+2(R4)    Where to put msg text
-         MVC   0(9,R1),=CL9'not found'
+         LA    R1,WORKBUF(R4)      Character after bit name
+         MVI   0(R1),C' '          Make it a blank
+         MVC   1(9,R1),=CL9'not found'
          LA    R1,WORKBUF          Message address
-         LA    R0,11(,R4)              & length
+         LA    R0,10(,R4)              & length
          BAL   R14,WRITEMSG
          B     BIT099
          SPACE 1
