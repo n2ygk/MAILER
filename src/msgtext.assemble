@@ -19,11 +19,14 @@ T0       DC    AL1(LT0),C'MAILER000E Unable to obtain file '''
          DC    CL18' ',C''', RC=    '
 LT0      EQU   *-T0-1
 M0       DC    A(T0),AL1(3,3,34,18,59,3,0)
-T1       DC    AL1(LT1),C'MAILER001I CUCCA VM Network MAILER          '
-         DC    C'                  ',X'15'
+T1       DC    AL1(LT1),C'MAILER001I VM Network MAILER          '
+         DC    C'                  '
+         DC    X'15'               Start a new line
          DC    C'Copyright (c) 1982,1987 Columbia University'    [1.24]
+         DC    X'15'               Start a new line
+         DC    C'Copyright (c) 1989 Princeton University'
 LT1      EQU   *-T1-1
-M1       DC    A(T1),AL1(3,3,35,8,44,8,53,8,0)
+M1       DC    A(T1),AL1(3,3,29,8,38,8,47,8,0)
 T2       DC    AL1(LT2),C'MAILER002E Routing file not lrecl 80 and'
          DC    C' recfm F.'
 LT2      EQU   *-T2-1
