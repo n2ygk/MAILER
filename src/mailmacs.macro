@@ -500,6 +500,7 @@ MAILSFLD DC    A(0)          FILE SENDER FIELDD
 MAILCMDL DC    A(0)          STACKED MAILCMD2 COMMANDS
 MAILFILE DC    F'0'          BINARY SPOOL FILE NUMBER
 MAILFTXT DC    CL4' '        CHARACTER VERSION OF SAME
+         SPACE 1
 MAILOPTS DC    X'00'         MAILER RUNTIME OPTIONS
 * BITS DEFINED IN MAILOPTS:
 MOPTDEF  EQU   X'80'         SUPPLY DEFAULTS FOR OMITTED FIELDS
@@ -509,6 +510,8 @@ MOPTVL   EQU   X'10'         Verbose console logging             [1.24]
 MOPTTBD  EQU   X'08'         Print debugging info in TBLUK.
 MOPTALLM EQU   X'04'         Print all messages received
 MOPTNO82 EQU   X'02'         Do not look for RFC822 headers in BSMTP
+MOPTFIOK EQU   X'01'         Accept FILE FROM:
+         SPACE 1
 MAILFLG1 DC    X'00'         CURRENT MAIL FILE FLAGS
 * BITS DEFINED IN MAILFLG1:
 MFLGDEST EQU   X'80'         A '*DESTINATION:' CARD IS PRESENT
@@ -599,6 +602,7 @@ SITEOPTS DC    X'00'         [1.12]Site-specific options.
 S#MAINE  EQU   X'80'         [1.12]U.MAINE "FORM MAIL"
 S#NXFER  EQU   X'40'         [1.18]Don't use SFBLOK SFBXFER flag
 RESCNT   DC    X'00'         [1.16]count of Resent- field groups
+         SPACE 1
 MAILFLG2 DC    X'00'         more flags                          [1.22]
 MFLG2SMT EQU   X'80'         current mail file is BSMTP-generated[1.22]
 MFLG2VLF EQU   X'40'         Validate failed                     [1.23]
@@ -607,6 +611,11 @@ MFLG2NLF EQU   X'10'         MAIL FROM:<>
 MFLG2NOH EQU   X'08'         MAIL FROM:<userid>  (i.e. no host)
 MFLG2BLD EQU   X'04'         BUILDLST incomplete (some mail to send,
 *                                but some destinations not found)
+MFLG2N82 EQU   X'02'         Don't look for 822 headers in BSMTP
+*                            When Allow-file-from=true (MOPTFIOK in
+*                            MAILOPTS = 1), and MFLG2N82=1, a
+*                            FILE FROM: was found in BSMTP file.
+         SPACE 1
          DC    X'00'         reserved                            [1.22]
 ULFSCB   FSCB  'MAILER USERLOG A',RECFM=F,BSIZE=80,FORM=E        [1.23]
 MAILTRAC DS    0D            Trace table pointers

@@ -104,10 +104,16 @@ OK1      EQU   *
          LA    R1,TAGCMD     GET THE TAG COMMAND NOW
          LA    R0,LTAGCMD
          DC    X'83100008'   AND EXECUTE
+         TM    MAILOPTS,MOPTFIOK   FILE FROM: allowed?
+         BNO   PUNHDR              ---> No
+         TM    MAILFLG2,MFLG2N82   FILE FROM: found?
+         BO    NOPUNHDR            ---> Yes
+PUNHDR   EQU   *
          L     R15,APUNHDR
          CALL  (15),((R11))  PUNCH THE HEADER
          LTR   R15,R15       ANY SCREW UPS?
          BNZ   RET
+NOPUNHDR EQU   *
          L     R15,APUNTXT
          CALL  (15),((R11))  PUNCH THE REST
          LTR    R15,R15      ANY ERRORS?

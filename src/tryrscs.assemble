@@ -164,6 +164,22 @@ GETNODE  DS    0H
          BCTR  R5,0              -1 FOR EX
          EX    R5,COPY           AND MOVE THE ENTIRE STRING TO WORK
          EX    R5,UPIT           AND UPPERCASE IT
+         SPACE ,
+****************************************************************
+*                                                              *
+*  Check for FILE FROM: processing.  If this is a FILE FROM:   *
+*  we refuse to deliver it (since the file that would be       *
+*  bounced back from RSCS if the destination doesn't exist     *
+*  would have no headers and thus would be invalid).           *
+*                                                              *
+****************************************************************
+         SPACE ,
+         TM    MAILOPTS,MOPTFIOK   FILE FROM: allowed?
+         BNO   NOFILES             ---> No, everything ok
+         TM    MAILFLG2,MFLG2N82   FILE FROM: found?
+         BO    UNKNOWN             ---> Yes, return it
+NOFILES  EQU   *
+         SPACE ,
 ****************************************************************
 *                                                              *
 *  Check for "RETURN" parm which means that mail to an unknown *

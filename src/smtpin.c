@@ -382,6 +382,7 @@ static struct {                 /* command table */
 /* command   initial  seenhelo seenmail error   */
     "HELO",  s_helo , s_oseq , s_oseq , s_errr ,
     "MAIL",  s_oseq , s_mail , s_oseq , s_errr ,
+    "FILE",  s_oseq , s_mail , s_oseq , s_errr ,
     "RCPT",  s_oseq , s_oseq , s_rcpt , s_errr ,
     "DATA",  s_data , s_data , s_data , s_data ,
     "RSET",  s_rset , s_rset , s_rset , s_rset ,
@@ -805,6 +806,17 @@ int l;
            wrterm("s_mail:  Not MAIL FROM:");
         return s_syntax(st, s, l);
     }
+
+    if (xcmp("FILE ", &s[0], 5) == 0) {
+        if (!(mailblok.mailopts & MOPTFIOK))
+            return s_syntax(st, s, l);
+        else {
+            if (mailblok.dbgflg[0] & TRACE_S_MAIL)
+               wrterm("s_mail:  Processing FILE FROM:");
+            mailblok.mailflg2 |= MFLG2N82;    /* Don't look at 822 */
+        }
+    } else
+        mailblok.mailflg2 &= ~MFLG2N82;       /* Look for 822      */
 
     /* allocate space from stack */
     f = (struct fieldd *)salloc(sizeof(*f));
@@ -1682,15 +1694,20 @@ int l;
     if (mailblok.dbgflg[0] & TRACE_CALLS)
        wrterm("==> Entered parse_data_hdr");
 
-    if (mailblok.mailopts & MOPTNO82) {  /* Don't process 822 headers */
-       if (mailblok.dbgflg[1] & TRACE_PARSE_DATA_HEADER)
-          wrterm("parse_data_header:  BSMTP-No-RFC822 = TRUE");
+    if ((mailblok.mailopts & MOPTNO82)  | /* BSMTP-No-RFC822 set      */
+        (mailblok.mailflg2 & MFLG2N82)) { /* FILE FROM: found         */
+                                         /* Don't process 822 headers */
+       if (mailblok.dbgflg[1] & TRACE_PARSE_DATA_HEADER) {
+          if (mailblok.mailopts & MOPTNO82)
+             wrterm("parse_data_header:  BSMTP-No-RFC822 = TRUE");
+          if (mailblok.mailflg2 & MFLG2N82)
+             wrterm("parse_data_header:  FILE FROM: found");
+          wrterm("parse_data_header:  Building dummy header string");
+       }
 
        /* Since headers are not scanned, build dummy (null) headers for
           scanning */
 
-       if (mailblok.dbgflg[1] & TRACE_PARSE_DATA_HEADER)
-          wrterm("parse_data_header:  Building dummy header string");
        if ((mailblok.mailhbuf[0] =
                     (int)salloc(mailblok.mailhbuf[1] = 21)) <= 0) {
           if (mailblok.dbgflg[1] & TRACE_PARSE_DATA_HEADER)

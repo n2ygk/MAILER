@@ -48,6 +48,7 @@ static struct mailblok {
 #define MOPTTBD  0x08        /* Print debugging info in TBLUK        */
 #define MOPTALLM 0x04        /* Print all messages received          */
 #define MOPTNO82 0x02        /* Don't look for RFC822 inside BSMTP   */
+#define MOPTFIOK 0x01        /* Accept FILE FROM:                    */
     char mailflg1;           /* Current mail file flags              */
 #define MFLGDEST 0x80        /* A '*DESTINATION:' card is present    */
 #define MFLG1LCL 0x40        /* Mail source is local user            */
@@ -140,6 +141,10 @@ static struct mailblok {
 #define MFLG2BLD 0x04        /* BUILDLST incomplete (some mail to    */
                              /*     send but some destiantions not   */
                              /*     found)                           */
+#define MFLG2N82 0x02        /* Don't look for 822 headers in BSMTP  */
+                             /* Set when Allow-file-from=true and    */
+                             /* FILE FROM: found in BSMTP file       */
+
     char reserved;           /* Reserved                             */
     struct fscb ulfscb;      /* MAILER USERLOG fscb                  */
     int align3b;             /* For alignment with ASM               */

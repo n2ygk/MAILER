@@ -458,10 +458,16 @@ NOHOST1  EQU   *             here when avoiding null hostname    [1.22]
          BNZ   RET           and return if there is one
 NOTPROFS EQU   *
 *[1.20] END
+         TM    MAILOPTS,MOPTFIOK   FILE FROM: allowed?
+         BNO   PUNHDR              ---> No
+         TM    MAILFLG2,MFLG2N82   FILE FROM: found?
+         BO    NOPUNHDR            ---> Yes
+PUNHDR   EQU   *
          L     R15,APUNHDR
          CALL  (15),((R11))  PUNCH THE HEADER
          LTR   R15,R15       ANY SCREW UPS?
          BNZ   RET
+NOPUNHDR EQU   *
          L     R15,APUNTXT
          CALL  (15),((R11))  PUNCH THE REST
          LTR   R15,R15      ANY ERRORS?

@@ -18,7 +18,7 @@ BSMTP    CSECT ,
 *  HELO domain
 *  TICK message-id
 ** VERB ON               (removed)                               [1.24]
-*  MAIL FROM: <sender>
+*  MAIL FROM: <sender>            or   FILE FROM: <sender>
 *  RCPT TO: <recipient1>
 *  RCPT TO: <recipient2>
 *   . . .
@@ -231,7 +231,16 @@ HADPARM  EQU   *
 *----------------------------------------------------------------------
 * MAIL FROM:<sender> is a little more work...
 *----------------------------------------------------------------------
-         TM    MAILFLG2,MFLG2NLF  is it "MAIL FROM:<>"?
+         MVI   MAILFROM,C' '      blank it out
+         MVC   MAILFROM+1(L'MAILFROM-1),MAILFROM propagate the blanks
+         MVC   MAILTYPE,=CL4'MAIL' Set default
+         TM    MAILOPTS,MOPTFIOK   FILE FROM: allowed?
+         BNO   NOTFILE             ---> No
+         TM    MAILFLG2,MFLG2N82   FILE FROM: found?
+         BNO   NOTFILE             ---> No
+         MVC   MAILTYPE,=CL4'FILE' Indicate the correct type
+NOTFILE  EQU   *
+         TM    MAILFLG2,MFLG2NLF  is it "FROM:<>"?
          BO    NULLFROM           --> propagate that fact
          L     R6,MAILSFLD        sender fieldd
          USING FIELDD,R6          address it
@@ -292,7 +301,8 @@ NODEF2   EQU   *                  Here if length > 80
          B     OVERNULL
          SPACE 1
 NULLFROM EQU   *                  <-- here for MAIL FROM:<>
-         PUNCHC 'MAIL FROM:<>',ERROR=PUNERR
+         MVC   MAILFROM(2),=CL2'<>'
+         PUNCHC MAIL,ERROR=PUNERR
 OVERNULL EQU   *                  <-- here when skipping over
 *----------------------------------------------------------------------
 * Iterrate through the list of ACTADR's via ACTCHN.  For each one,
@@ -511,7 +521,8 @@ TICKID   DC    CL4'0000'          the id number
          ORG   ,
 MAIL     DC    CL160' '           the mail message
          ORG   MAIL
-         DC    CL10'MAIL FROM:'
+MAILTYPE DC    CL4'MAIL'          MAIL or FILE
+         DC    CL6' FROM:'
 MAILFROM DC    CL150' '           space for the userid
          ORG   ,
 RCPT     DC    CL160' '           rcpt message
