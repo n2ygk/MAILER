@@ -243,20 +243,42 @@ HLOOPOUT EQU   *             [1.20]
          L     R1,TOLEN            Get address length.
          BCTR  R1,0
          L     R3,TOADDR           Get address address.
+         CLI   0(R3),C'@'          Start with routeaddr?
+         BNE   OKTOMOVE            ---> No
+         MVI   0(R2),C'<'          Move in open hairpin
+         LA    R2,1(,R2)           Bump move location
+OKTOMOVE DS    0H
          EX    R1,COPY             "MVC 0(*-*,R2),0(R3)"
+         CLI   CARD+4,C'<'         Opening hairpin present?
+         BNE   TOPUNCH             ---> No
+         LA    R15,0(R1,R2)        Point to last character
+         CLI   0(R15),C'>'         Closing hairpin present?
+         BE    TOPUNCH             ---> Yes
+         MVI   1(R15),C'>'         Close out address
          B     TOPUNCH
 TOSTR    DS    0H
-         LR    R1,R4         LENGTH OF COPY
-         BCTR  R1,0          -1 FOR EXECUTE
-         LR    R3,R5         SOURCE OF COPY
-         EX    R1,COPY       COPY USER NAME IN
-         AR    R2,R4         [1.20] POINT PAST USER NAME
-         MVI   0(R2),C'@'   [1.20]
-         LA    R2,1(R2)      [1.20] point past "@"
-         LR    R1,R6         LENGTH OF HOST NAME
-         BCTR  R1,0          -1 FOR EXECUTE
-         LR    R3,R7         ADDRESS OF NAME
-         EX    R1,COPY       COPY IN THE HOST NAME
+         LR    R1,R4               LENGTH OF COPY
+         BCTR  R1,0                -1 FOR EXECUTE
+         LR    R3,R5               SOURCE OF COPY
+         CLI   0(R3),C'@'          Start with routeaddr?
+         BNE   OKTOMOV2            ---> No
+         MVI   0(R2),C'<'          Move in open hairpin
+         LA    R2,1(,R2)           Bump move location
+OKTOMOV2 EQU   *
+         EX    R1,COPY             COPY USER NAME IN
+         AR    R2,R4               [1.20] POINT PAST USER NAME
+         MVI   0(R2),C'@'          [1.20]
+         LA    R2,1(R2)            [1.20] point past "@"
+         LR    R1,R6               LENGTH OF HOST NAME
+         BCTR  R1,0                -1 FOR EXECUTE
+         LR    R3,R7               ADDRESS OF NAME
+         EX    R1,COPY             COPY IN THE HOST NAME
+         CLI   CARD+4,C'<'         Opening hairpin present?
+         BNE   TOPUNCH             ---> No
+         LA    R15,0(R1,R2)        Point to last character
+         CLI   0(R15),C'>'         Closing hairpin present?
+         BE    TOPUNCH             ---> Yes
+         MVI   1(R15),C'>'         Close out address
 TOPUNCH  DS    0H
          PUNCHC CARD         PUNCH THE TO: CARD
          MVI   CARD,C' '
@@ -370,7 +392,7 @@ CPCLOSE  DC    C'SP PUN CLOSE',X'15',C'SP PUN OFF',X'15'
 CPCLLEN  EQU   *-CPCLOSE
          SPACE ,
 SAVE     DS    18F                     SAVE AREA
-CARD     DS    CL132
+CARD     DS    CL160
 TWORK    DS    64F   [1.20]
 LOOKVALD DS    CL16                                              [1.24]
          ORG   LOOKVALD                                          [1.24]
