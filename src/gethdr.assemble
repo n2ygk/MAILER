@@ -68,10 +68,17 @@ EYESKIP  DS    0H
          DC    X'83100008'   MAKE SURE IT'S READIED
          LTR   R15,R0        TEST IT
          BNZ   RDERR
+         TM    DBGFLG7,DBGGETHD    Tracing?
+         BNO   DBG0001             ---> No
+         WRTERM 'GETHDR  :  Reading header records'
+DBG0001  EQU   *
          LA    R10,1         START AT CARD 1
          RDCARD BUFFER,(R5),ERROR=EOF  READ FIRST CARD
          CLC   =C':READ',BUFFER  SENT VIA CMS PUNCH COMMAND?
          BNE   RDLOOP1       NOPE, IT'S USEFUL DATA
+         TM    DBGFLG7,DBGGETHD    Tracing?
+         BNO   RDLOOP              ---> No
+         WRTERM 'GETHDR  :  Skipping initial :READ'
 RDLOOP   EQU   *
          LA    R10,1(R10)    INCREMENT THE CARD COUNTER
          RDCARD BUFFER,(R5),ERROR=EOF  READ A CARD
@@ -94,6 +101,11 @@ RDLOOP1  EQU   *
          BL    HDRENDOV      YES, Pretend at end of headers
          BCTR  R2,0                MINUS 1 FOR EXECUTE
          EX    R2,COPY       COPY INTO BUFFER
+         TM    DBGFLG7,DBGGETHD    Tracing?
+         BNO   DBG0010             ---> No
+         LA    R15,1(,R2)          Original length
+         WRTERM (R7),(R15)         Show the header line
+DBG0010  EQU   *
          LA    R7,1(R7,R2)   END OF NEW STRING
          MVI   0(R7),X'15'   TACK ON A LINEND
          LA    R7,1(R7)      POISE PTR. FOR NEXT STRING
@@ -101,6 +113,10 @@ RDLOOP1  EQU   *
 HDRENDOV EQU   *
          AR    R8,R2         Add length not used back in
 HDREND   EQU   *
+         TM    DBGFLG7,DBGGETHD    Tracing?
+         BNO   DBG0020             ---> No
+         WRTERM 'GETHDR  :  End of header'
+DBG0020  EQU   *
          BCTR  R8,0          -1 FROM STACK FOR THE LINEND
          LTR   R8,R8         TEST IF THERE IS ROOM
          BL    NOSPACE       OUT OF SPACE
@@ -112,6 +128,11 @@ HDREND   EQU   *
          S     R7,MAILHBUF   GET LENGTH OF HEADER
          ST    R7,MAILHBUF+4 SET LENGTH OF HEADER BUFFER
          ST    R10,MAILHREC  SAVE RECORD COUNT
+         TM    DBGFLG7,DBGGETHD    Tracing?
+         BNO   DBG0025             ---> No
+         LINEDIT TEXT='GETHDR  :  Header records = ......',            X
+               SUB=(DEC,(R10)),DOT=NO,COMP=NO
+DBG0025  EQU   *
 *-------------------------------------------------------------------
 * NOW COUNT THE NUMBER OF NL'S IN THE HEADER (USER MAY HAVE IMBEDDED
 * MULTIPLE NL'S IN A SINGLE RECORD).
@@ -119,6 +140,11 @@ HDREND   EQU   *
          SR    R6,R6         NEWLINE COUNTER
          LM    R7,R8,MAILHBUF GET ADDRESS AND LENGTH
          AR    R8,R7         END ADDRESS
+         BNO   DBG0030             ---> No
+         LINEDIT TEXT='GETHDR  :  Scanning for NLs from ........ to ...X
+               .....',                                                 X
+               SUB=(HEX,(R7),HEX,(R8)),DOT=NO,COMP=NO,RENT=NO
+DBG0030  EQU   *
          LA    R3,TRAPTAB    TRAP TABLE
          MVI   X'15'(R3),1   TRAP ONLY X'15'
 COUNT15  EQU   *
@@ -138,6 +164,10 @@ COUNT15  EQU   *
 COUNTED  EQU   *
          BCTR  R6,0          -1 FOR THE LAST BLANK LINE
          ST    R6,MAILHLIN   SAVE "LINE" COUNT
+         BNO   DBG0035             ---> No
+         LINEDIT TEXT='GETHDR  :  Header lines = ......',              X
+               SUB=(DEC,(R6)),DOT=NO,COMP=NO
+DBG0035  EQU   *
          MVI   X'15'(R3),0   RESTORE TABLE FOR NEXT GUY
          SR    R15,R15       ALL DONE
 RET      EQU   *

@@ -211,6 +211,9 @@ static struct mailblok {
                              /*   used for assembler routines        */
 #define DBGBLDLS                 0x80  /* Trace BUILDLST processing  */
 #define DBGTBLUK          0x40  /* Trace TBLUK processing            */
+#define DBGHDRSC          0x20  /* Trace HDRSCAN processing          */
+#define DBGGETHD          0x10  /* Trace GETHDR processing           */
+#define DBGLOCAL          0x08  /* Trace LOCAL processing            */
 } ;
 
 /* MAILBLOK is created by MAILBLOK ASSEMBLE file during MAILER gen   */

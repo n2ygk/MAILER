@@ -113,14 +113,15 @@ SKIP001  EQU   *
 *    Check for '%' in address
 *--------------------------------------------------------------------
          SPACE 1
+         MVI   TRAPTAB+C'%',1    Set '!' trap
          LR    R15,R4            Copy length value
          BCTR  R15,0             Decrement for EX
-         EX    R15,PCTTRT        Any '%'s?
+         SR    R1,R1             Be sure high order byte is clear
+         EX    R15,TRAPIT        Any '%'s?
+         MVI   TRAPTAB+C'%',0    Clear '%' trap
          BC    B'0100',DOPCT     ---> Found '%' in address
          B     NOPCT             ---> No '%' in address or
 *                                    '%' is last character
-         SPACE 1
-PCTTRT   TRT   0(1,R3),PCTTRTTB    Executed
          SPACE 1
 *--------------------------------------------------------------------
 *    Process address containing a '%'
@@ -128,6 +129,9 @@ PCTTRT   TRT   0(1,R3),PCTTRTTB    Executed
          SPACE 1
 DOPCT    DS    0H
          LA    R3,0(R4,R3)       End character + 1
+         TM    DBGFLG7,DBGLOCAL    Tracing?
+         BNO   PCTLOOP             ---> No
+         WRTERM DBGMSG01,L'DBGMSG01
 PCTLOOP  EQU   *
          BCTR  R3,0              Back up 1 char
          CLI   0(R3),C'%'        This the '%'?
@@ -137,13 +141,11 @@ PCTLOOP  EQU   *
          DC    H'0'              Not nice, but effective
          SPACE 1
 PCTFOUND DS    0H
+         TM    DBGFLG7,DBGLOCAL    Tracing?
+         BNO   DBG0001             ---> No
+         WRTERM DBGMSG02,L'DBGMSG02
+DBG0001  EQU   *
          MVI   0(R3),C'@'        Change to '@'
-         L     R2,LSTRL          Length of string
-         LA    R2,FBLLENL+16(,R2)  + parameter list (8)
-*                                  + fileblock length (FBLLENL)
-*                                  + pointer list (8)
-         SALOC (R2),RET          Allocate stack space
-         LR    R2,R1             Remember storage address
          B     RESEND            ---> Join common resend code
          EJECT ,
 *--------------------------------------------------------------------
@@ -151,11 +153,16 @@ PCTFOUND DS    0H
 *--------------------------------------------------------------------
          SPACE 1
 NOPCT    EQU   *
-         MVI   TRAPTAB+C'%',0    Clear '%' trap
+         TM    DBGFLG7,DBGLOCAL    Tracing?
+         BNO   DBG0010             ---> No
+         WRTERM DBGMSG03,L'DBGMSG03
+DBG0010  EQU   *
          MVI   TRAPTAB+C'!',1    Set '!' trap
          LR    R15,R4            Copy length value
          BCTR  R15,0             Decrement for EX
+         SR    R1,R1             Be sure high order byte is clear
          EX    R15,TRAPIT        Any '%'s?
+         MVI   TRAPTAB+C'!',0    Clear '!' trap
          BC    B'0100',DOBANG    ---> Found '!' in address
          B     NOBANG            ---> No '!' in address or
 *                                    '!' is last character
@@ -167,6 +174,12 @@ TRAPIT   TRT   0(1,R3),TRAPTAB   Executed
 *--------------------------------------------------------------------
          SPACE 1
 DOBANG   DS    0H
+         TM    DBGFLG7,DBGLOCAL    Tracing?
+         BNO   DBG0020             ---> No
+         ST    R1,DBGR01           Save R1 over WRTERM
+         WRTERM DBGMSG04,L'DBGMSG04
+         L     R1,DBGR01           Restore R1
+DBG0020  EQU   *
          SR    R1,R3             Length of string to '!'
          BZ    NOBANG            ---> Was first character
          LA    R15,1(,R1)        Length including '!'
@@ -191,12 +204,6 @@ DOBANG   DS    0H
          EX    R15,COPY          Copy in node part
          SPACE 1
          LR    R3,R14            Restore R3
-         L     R2,LSTRL          Length of string
-         LA    R2,FBLLENL+16(,R2)  + parameter list (8)
-*                                  + fileblock length (FBLLENL)
-*                                  + pointer list (8)
-         SALOC (R2),RET          Allocate stack space
-         LR    R2,R1             Remember storage address
          B     RESEND            ---> Join common resend code
          EJECT ,
 *--------------------------------------------------------------------
@@ -219,6 +226,16 @@ DOBANG   DS    0H
 *--------------------------------------------------------------------
          SPACE 1
 RESEND   EQU   *
+         TM    DBGFLG7,DBGLOCAL    Tracing?
+         BNO   DBG0030             ---> No
+         WRTERM DBGMSG05,L'DBGMSG05
+DBG0030  EQU   *
+         L     R2,LSTRL          Length of string
+         LA    R2,FBLLENL+16(,R2)  + parameter list (8)
+*                                  + fileblock length (FBLLENL)
+*                                  + pointer list (8)
+         SALOC (R2),RET          Allocate stack space
+         LR    R2,R1             Remember storage address
          SPACE 1
 *  Set up base pointers
          SPACE 1
@@ -258,6 +275,10 @@ RESEND   EQU   *
 *--------------------------------------------------------------------
          SPACE 1
 NOBANG   EQU   *
+         TM    DBGFLG7,DBGLOCAL    Tracing?
+         BNO   DBG0040             ---> No
+         WRTERM DBGMSG06,L'DBGMSG06
+DBG0040  EQU   *
          MVC   RECVR,=CL8' ' [3]blank it
          LR    R1,R4         [3]copy
          C     R1,=F'8'      [3]trunc to 8 if necessary
@@ -278,6 +299,10 @@ OK0      EQU   *
          BNZ   CHKRET        NOT FOUND -- DO REGULAR STUFF
          LR    R8,R1         GET A HANDLE ON THE ROUTD
          USING ROUTD,R8
+         TM    DBGFLG7,DBGLOCAL    Tracing?
+         BNO   DBG0044             ---> No
+         WRTERM DBGMSG07,L'DBGMSG07
+DBG0044  EQU   *
          ICM   R15,B'1111',RTADDR  IS THERE A ROUTINE?
          DROP  R8            [1.20]
          BZ    NOFILES       THAT'S ILLEGAL
@@ -300,6 +325,10 @@ OK0      EQU   *
 *--------------------------------------------------------------------
          SPACE 1
 CHKRET   EQU   *
+         TM    DBGFLG7,DBGLOCAL    Tracing?
+         BNO   DBG0050             ---> No
+         WRTERM DBGMSG08,L'DBGMSG08
+DBG0050  EQU   *
          C     R4,=F'8'            8 or less?
          BH    ILLEGAL             ---> All locals/forwards must be
 *                                       8 characters or less
@@ -309,6 +338,10 @@ CHKRET   EQU   *
 *  Check for 'destid FORWARD' file
          SPACE 1
 CHKFWD   EQU   *
+         TM    DBGFLG7,DBGLOCAL    Tracing?
+         BNO   DBG0052             ---> No
+         WRTERM DBGMSG09,L'DBGMSG09
+DBG0052  EQU   *
          MVC   FWDFT,=CL8'FORWARD'      Fill in filetype
          MVC   EXECLDFT,=CL8'FORWARD'
          LA    R1,FWDSTAT          Point to EXECSTAT command
@@ -321,6 +354,10 @@ CHKFWD   EQU   *
          SPACE 1
 *  Check for 'destid MAILLIST' file
          SPACE 1
+         TM    DBGFLG7,DBGLOCAL    Tracing?
+         BNO   DBG0054             ---> No
+         WRTERM DBGMSG10,L'DBGMSG10
+DBG0054  EQU   *
          MVC   FWDFT,=CL8'MAILLIST'     Fill in filetype
          MVC   EXECLDFT,=CL8'MAILLIST'
          LA    R1,FWDSTAT          Point to EXECSTAT command
@@ -337,6 +374,10 @@ CHKFWD   EQU   *
 *  Load it into memory using EXECLOAD
          SPACE 1
 ONDISK   EQU   *
+         TM    DBGFLG7,DBGLOCAL    Tracing?
+         BNO   DBG0056             ---> No
+         WRTERM DBGMSG11,L'DBGMSG11
+DBG0056  EQU   *
          LA    R1,EXECLOAD         Point to EXECLOAD command
          SVC   202                 Go load forwarding file
          DC    AL4(1)              Always return at next instruction
@@ -347,6 +388,11 @@ ONDISK   EQU   *
          BAL   R2,DIE              ---> No, big trouble
          SPACE 1
 TRYDROP  EQU   *
+         TM    DBGFLG7,DBGLOCAL    Tracing?
+         BNO   DBG0057             ---> No
+         WRTERM DBGMSG12,L'DBGMSG12
+         WRTERM DBGMSG13,L'DBGMSG13
+DBG0057  EQU   *
          MVC   EXECDRFT,=CL8'FORWARD'   Drop FORWARD files
          LA    R1,EXECDROP         Point to EXECDROP command
          SVC   202                 Go load forwarding file
@@ -357,6 +403,10 @@ TRYDROP  EQU   *
          DC    H'0'                Should never get here
          SPACE
 TRYDROP2 EQU   *
+         TM    DBGFLG7,DBGLOCAL    Tracing?
+         BNO   DBG0058             ---> No
+         WRTERM DBGMSG14,L'DBGMSG14
+DBG0058  EQU   *
          MVC   EXECDRFT,=CL8'MAILLIST'  Drop MAILLIST files
          LA    R1,EXECDROP         Point to EXECDROP command
          SVC   202                 Go load forwarding file
@@ -371,6 +421,10 @@ TRYDROP2 EQU   *
 *--------------------------------------------------------------------
          SPACE 1
 HAVEFWD  EQU   *
+         TM    DBGFLG7,DBGLOCAL    Tracing?
+         BNO   DBG0060             ---> No
+         WRTERM DBGMSG05,L'DBGMSG05
+DBG0060  EQU   *
          LR    R3,R1               Save FBLOCK pointer
          SALOC 8,RET               Allocate stack space
          LR    R2,R1               Remember storage address
@@ -397,6 +451,10 @@ CHKLCLF  EQU   *
          BNE   RET                 ---> No, error
          EJECT ,
 NOFWD    EQU   *
+         TM    DBGFLG7,DBGLOCAL    Tracing?
+         BNO   DBG0070             ---> No
+         WRTERM DBGMSG15,L'DBGMSG15
+DBG0070  EQU   *
          ST    R4,RCVRLEN    [2]save receiver length for later
          CLC   RECVR,MAILVMID TRYING TO SEND MAIL TO MAILER?
          BE    NOFILES       HANDLE MAIL TO MAILER
@@ -696,6 +754,8 @@ MSGPREF  DC    C'Msgprefix'            [2]
 NEWMSG   DC    C'New mail from '       [2]
 SAVE     DS    18F
 TWORK    DS    64F
+DBGR01   EQU   TWORK+0,4           Temporary save area
+         SPACE 1
 MYPAB    DS    F
          DC    A(MYACT)      COPY OF ACTADR FOR SPECIAL EXIT
 MYACT    DS    (ACTLEN/4)F
@@ -757,10 +817,22 @@ EXECDRFT DC    CL8'FORWARD'        FORWARD or MAILLIST
          DC    CL8'USER'
          DC    8X'FF'
          SPACE 1
-PCTTRTTB DC    256X'00'            Translate table for '%' search
-         ORG   PCTTRTTB+C'%'       Back to percent
-         DC    C'%'
-         ORG   ,
 TEMPSAVE DC    CL256' '            Temporary work area
+         SPACE 2
+DBGMSG01 DC    C'LOCAL   :  Doing ''%'' processing'
+DBGMSG02 DC    C'LOCAL   :  Changing ''%'' to ''@'''
+DBGMSG03 DC    C'LOCAL   :  No ''%'' found'
+DBGMSG04 DC    C'LOCAL   :  Doing ''!'' processing'
+DBGMSG05 DC    C'LOCAL   :  Building BSMTP file to reprocess'
+DBGMSG06 DC    C'LOCAL   :  No ''!'' found'
+DBGMSG07 DC    C'LOCAL   :  Found in SPECIALS table'
+DBGMSG08 DC    C'LOCAL   :  Not found in SPECIALS table'
+DBGMSG09 DC    C'LOCAL   :  Checking for FORWARD file'
+DBGMSG10 DC    C'LOCAL   :  Checking for MAILLIST file'
+DBGMSG11 DC    C'LOCAL   :  Loading FORWARD/MAILLIST file'
+DBGMSG12 DC    C'LOCAL   :  Out of memory on EXECLOAD'
+DBGMSG13 DC    C'LOCAL   :  Dropping FORWARD files'
+DBGMSG14 DC    C'LOCAL   :  Dropping MAILLIST files'
+DBGMSG15 DC    C'LOCAL   :  Sending file to local user'
          SPACE 3
          END   LOCAL

@@ -703,6 +703,9 @@ DBGNOOUT EQU   X'80'               Do not produce output mail
 DBGFLG7  DC    X'0'                Various assembler routines
 DBGBLDLS EQU   X'80'               Trace BUILDLST processing
 DBGTBLUK EQU   X'40'               Trace TBLUK processing
+DBGHDRSC EQU   X'20'               Trace HDRSCAN processing
+DBGGETHD EQU   X'10'               Trace GETHDR processing
+DBGLOCAL EQU   X'08'               Trace LOCAL processing
          DS    0D            Just for pretty
 MAILBLEN EQU   *-MAILXXXX    LENGTH IN BYTES
          POP   PRINT

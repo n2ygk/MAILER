@@ -93,6 +93,16 @@ EYESKIP  DS    0H
 *        + STRING SPACE FOR TABLE KEYWORDS.
 *        + ABOUT 10 MORE TBENTRIES FOR POSSIBLE AFTER-THE-FACT ADD-ONS
 *--------------------------------------------------------------------
+         SPACE 1
+         XC    DBGINFO,DBGINFO     Clear field
+         TM    DBGFLG7,DBGHDRSC    Tracing?
+         BNO   DBG0001             ---> No
+         LINEDIT TEXT='HDRSCAN :  Allocating header table space',      X
+               DOT=NO,COMP=NO
+         LINEDIT TEXT='HDRSCAN :  ...... header lines found',          X
+               SUB=(DECA,MAILHLIN),DOT=NO,COMP=NO,RENT=NO
+DBG0001  EQU   *
+         SPACE 1
          L     R1,MAILHLIN   NUMBER OF HEADER LINES
          LA    R1,10(R1)     ADD 10 MORE FOR GOOD MEASURE
          ST    R1,HLINES     AND HANG ON TO IT
@@ -103,9 +113,13 @@ EYESKIP  DS    0H
          SR    R2,R1         AMOUNT TRIMMED FROM STACK
          L     R8,STACKP+4   GET STACK LIMIT COUNTER             [1.25]
          SR    R8,R2         WAS THERE ROOM?
-         BL    NOSPACE       SORRY
+         BNL   DBG0001A      ---> Yes
+         BAL   R14,NOSPACE   ---> No
+DBG0001A EQU   *
          S     R8,=A(TB$SIZE)          ROOM FOR TBTAB HEADER?
-         BL    NOSPACE       STACK OVERFLOW
+         BNL   DBG0001B      ---> Yes
+         BAL   R14,NOSPACE   ---> No
+DBG0001B EQU   *
          L     R1,MAILKTAB   KEYTAB ADDRESS
          XC    0(TB$SIZE,R1),0(R1) ZERO THE HEADER
          USING TBTAB,R1      ADDRESS THE HEADER
@@ -116,14 +130,18 @@ EYESKIP  DS    0H
          L     R1,HLINES     GET NUMBER OF TBENTRIES
          MH    R1,=Y(TBE$LEN) GET SPACE NEEDED FOR TBTAB
          SR    R8,R1         IS THERE STACK SPACE?
-         BL    NOSPACE       SORRY, NO SPACE
+         BNL   DBG0001C      ---> Yes
+         BAL   R14,NOSPACE   ---> No
+DBG0001C EQU   *
          LA    R3,0(R1,R2)   ADDRESS WHERE DISPATCH VALUES START
          ST    R3,MAILFLD    FIELDD LIST ANCHOR IN MAILBLOK
          ST    R3,DISP       SAVE FOR LATER
          L     R1,HLINES     GET #RECS AGAIN
          MH    R1,=Y(FIELDDL+TOKSIZ)  SPACE FOR FIELDD'S AND TOKEND'S
          SR    R8,R1         IS THERE STACK SPACE
-         BL    NOSPACE       SORRY, NO SPACE
+         BNL   DBG0001D      ---> Yes
+         BAL   R14,NOSPACE   ---> No
+DBG0001D EQU   *
          A     R1,DISP       ADDRESS FOR START OF STRING SPACE
          ST    R1,STACKP    SAVE FOR LATER
          SPACE ,
@@ -135,9 +153,18 @@ EYESKIP  DS    0H
          A     R6,MAILHBUF+4
          BCTR  R6,0          ADDRESS OF END OF STRING
          SR    R7,R7         INITALIZE END PTR TO ZERO
+         SPACE 1
+         TM    DBGFLG7,DBGHDRSC    Tracing?
+         BNO   DBG0010             ---> No
+         LINEDIT TEXT='HDRSCAN :  Scanning header strings, start = ....X
+               ...., end = ........',                                  X
+               SUB=(HEX,(R5),HEX,(R6)),DOT=NO,COMP=NO,RENT=NO
+DBG0010  EQU   *
+         SPACE 1
 *[1.11] - if any of nl, space, or tab encountered on first line of
 *[1.11]   header,  then it is invalid,  not a continuation or start
 *[1.11]   of text.
+         MVC   DBGINFO,=A(DBGMSG01)    Point to debugging info
          XC    MAILFLD,MAILFLD         [1.11]clean fld pointer
          CLI   0(R5),X'15'             [1.11]nl?
          BE    BADFIELD                [1.11]--> bogus syntax
@@ -152,11 +179,12 @@ HDRNEWLN EQU   *             GET HERE AFTER A NEWLINE
          CLI   0(R5),X'15'   IS IT ANOTHER NL?
          BE    HDRTEXT       YES, START OF TEXT
          CLI   0(R5),C' '    IS IT A BLANK?
-         BE    HDRCONT       YES, A PREV. LINE CONTINUED
+         BE    HDRCONT0      YES, A PREV. LINE CONTINUED
          CLI   0(R5),X'05'   IS IT A TAB?
-         BE    HDRCONT       YES, SAME AS FOR BLANK
+         BE    HDRCONT0      YES, SAME AS FOR BLANK
 * NON-BLANK FIRST CHARACTER MEANS IT'S THE START OF A FIELD NAME.
 * SEARCH FOR A COLON...
+         MVC   DBGINFO,=A(DBGMSG02)
          MVI   TRAPTAB+C':',X'01'  TRAP ON COLON
          MVI   TRAPTAB+X'15',X'02' AND NEWLINE
          LR    R3,R6         ADDRESS OF END OF STRING
@@ -165,6 +193,7 @@ HDRNEWLN EQU   *             GET HERE AFTER A NEWLINE
          BNH   HDR1          NO, JUST GO DO IT
          LA    R3,256        SET IT TO THE MAX
 HDR1     EQU   *
+         MVC   DBGINFO,=A(DBGMSG03)
          BCTR  R3,0          MINUS 1 FOR EXEUCUTE
          EX    R3,TRT        DO THE TRT
          BC    8,BADFIELD    NO : BEFORE END, ERROR
@@ -191,6 +220,7 @@ HDR1     EQU   *
          EX    R3,TRT2       LOOK FOR A NON-BLANK
          BC    8,KWEND       NO NON-BLANKS
 * ERROR FOUND: FIELD STARTING IN COLUMN 1 IS NOT A FIELD NAME.
+         MVC   DBGINFO,=A(DBGMSG02)
          B     BADFIELD      LOG THE ERROR MESSAGE
          SPACE ,
 *--------------------------------------------------------------------
@@ -218,7 +248,9 @@ KWEND    EQU   *
 * - COPY THE KEYWORD INTO STACK SPACE -
          L     R3,STACKP    DESTINATION OF COPY OPERATION
          S     R8,=A(TBS$LEN) STRING PREFIX LENGTH
-         BL    NOSPACE       STACK OVERFLOW
+         BNL   DBG0010A      ---> Yes
+         BAL   R14,NOSPACE   ---> No
+DBG0010A EQU   *
          XC    0(TBS$LEN,R3),0(R3)  CLEAR THE PREFIX
          USING TBS,R3        ADDRESS THE PREFIX
          LR    R2,R5         SOURCE OF COPY
@@ -228,7 +260,9 @@ KWEND    EQU   *
          DROP  R3            DONE WITH DSECT
          LA    R3,TBS$LEN(R3) POINT TO START OF STRING
          SR    R8,R1         IS THERE ROOM ON THE STACK?
-         BL    NOSPACE       NOPE
+         BNL   DBG0010B      ---> Yes
+         BAL   R14,NOSPACE   ---> No
+DBG0010B EQU   *
          BCTR  R1,0          -1 FOR EXECUTE
          EX    R1,COPY       COPY THE DATA TO THE STACK AREA
          LA    R3,1(R1,R3)   GET NEW STRING POINTER
@@ -247,13 +281,17 @@ KWEND    EQU   *
          ST    R5,TOKPTR          SET POINTER TO FIELD STRING
          MVI   TOKTYPE,TOKATM     TOKEN TYPE IS "ATOM"
          MVC   TOKLEN,FLDSIZE GET TOKEN LENGTH
-         AIF   (NOT &DBGTOK).NODBG00
-         L     R15,TOKLEN    Get length of string
+         SPACE 1
+         TM    DBGFLG7,DBGHDRSC    Tracing?
+         BNO   DBG0020             ---> No
+         L     R15,TOKLEN          Get length of string
+         ST    R1,DEBUGR1          Save R1 across LINEDIT
          LINEDIT TEXT='HDRSCAN : Created TOKEND@........ for ..........+
                ....................',                                  +
                SUB=(HEX,(R2),CHARA,((R5),(R15))),                      +
                DOT=NO,COMP=NO,RENT=NO
-.NODBG00 ANOP
+         L     R1,DEBUGR1          Restore R1
+DBG0020  EQU   *
          DROP  R2            DONE WITH TOKEND
 * - CHECK IF THERE IS AN END ADDRESS TO STORE FOR PREV. FIELD -
          BCTR  R5,0          ADDR OF END OF PREV. STRING
@@ -306,15 +344,40 @@ CHNEND   EQU   *
 HDRTEXT  EQU   *
 * GET HERE IF THERE WAS A PAIR OF NEWLINES. THIS IS THE BEGINNING
 * OF THE TEXT PORTION OF THE MESSAGE.
+         SPACE 1
+         TM    DBGFLG7,DBGHDRSC    Tracing?
+         BNO   DBG0030             ---> No
+         ST    R1,DEBUGR1          Save R1 across LINEDIT
+         LINEDIT TEXT='HDRSCAN : End of headers at ........',          +
+               SUB=(HEX,(R5)),                                         +
+               DOT=NO,COMP=NO,RENT=NO
+         L     R1,DEBUGR1          Restore R1
+DBG0030  EQU   *
+         SPACE 1
          LTR   R7,R7         ANY END OF PREV. FIELD TO SET?
          BZ    HDRRET        NOPE
          BCTR  R5,0          ADDRESS OF END OF PREV. FIELD.
          ST    R5,0(R7)      SAVE THIS ADDRESS
          B     HDRRET        RETURN NOW
          SPACE ,
+* Get here if the previous line is being continued.
+         SPACE 1
+HDRCONT0 EQU   *
+         SPACE 1
+         TM    DBGFLG7,DBGHDRSC    Tracing?
+         BNO   DBG0040             ---> No
+         ST    R1,DEBUGR1          Save R1 across LINEDIT
+         LINEDIT TEXT='HDRSCAN : Previous header line continued',      +
+               DOT=NO,COMP=NO,RENT=NO
+         L     R1,DEBUGR1          Restore R1
+DBG0040  EQU   *
+         SPACE 1
 HDRCONT  EQU   *
-* GET HERE IF THE PREVIOUS LINE IS BEING CONTINUED.  LOOK FOR THE
-* NEXT NEWLINE AND GO BACK TO DO IT ALL AGAIN.
+         SPACE 1
+* Get here when continuing line scan after after a label or if line
+* is being continued.  Look for the next NEWLINE and go back to do it
+* all over again.
+         SPACE 1
          LR    R3,R6         ADDRESS OF END OF STRING
          SR    R3,R5         LENGTH TO TRT
          C     R3,F256       MORE THAN 256 CHARS?
@@ -359,8 +422,17 @@ HDRRET   EQU   *
 *  R4 - BXLE INCREMENT
 *--------------------------------------------------------------------
          OI    MAILFLG1,MFLG1HDS       HEADER HAS BEEN SCANNED
+         SPACE 1
+         TM    DBGFLG7,DBGHDRSC    Tracing?
+         BNO   DBG0050             ---> No
+         LINEDIT TEXT='HDRSCAN : Header successfully scanned, parsing nX
+               ext',                                                   X
+               DOT=NO,COMP=NO,RENT=NO
+DBG0050  EQU   *
+         SPACE 1
          L     R6,MAILKTAB   GET TABLE ADDRESS
          USING TBTAB,R6      ADDRESS THE TABLE HEADER
+         MVC   DBGINFO,=A(DBGMSG04)
          ICM   R5,B'1111',TB$LEN  NUMBER OF ENTRIES IN TABLE
          BZ    NOFLDS        NO FIELDS???
          BCTR  R5,0          -1 TO GET START ADDRESS OF LAST ENTRY
@@ -378,6 +450,15 @@ PLOOP    EQU   *
          IC    R3,TBS$SIZ    GET LENGTH
          LA    R11,TBS$STR   POINT TO STRING
          DROP  R11
+         SPACE 1
+         TM    DBGFLG7,DBGHDRSC    Tracing?
+         BNO   DBG0060             ---> No
+         LINEDIT TEXT='HDRSCAN : Parsing ..............................X
+               ',                                                      X
+               SUB=(CHARA,((11),(3))),                                 X
+               DOT=NO,COMP=NO,RENT=NO
+DBG0060  EQU   *
+         SPACE 1
          CALL  TBLUK,(PARSERS,(R11),(R3),TWORK)
          LTR   R15,R15       IS THERE ONE FOR THIS FIELD?
          BZ    POK           YES, CALL IT
@@ -453,6 +534,18 @@ BADP1    EQU   *
 *--------------------------------------------------------------------
 BADFIELD EQU   *
          WTR   HSC025        UNRECOGNIZABLE SYNTAX
+         SPACE 1
+         TM    DBGFLG7,DBGHDRSC    Tracing?
+         BNO   DBG0900             ---> No
+         ICM   R14,B'1111',DBGINFO Get message address
+         BNZ   DBG0902             ---> Have a message
+         LA    R14,DBGMSG99        Use default
+DBG0902  EQU   *
+         LINEDIT TEXT='HDRSCAN :  Syntax failure - ....................X
+               ....................',                                  X
+               SUB=(CHARA,(14)),DOT=NO,COMP=NO,RENT=NO
+DBG0900  EQU   *
+         SPACE 1
          LA    R15,4
          B     RET
          SPACE ,
@@ -460,6 +553,14 @@ BADFIELD EQU   *
 * NOSPACE - INTERNAL ERROR (STACK OVERFLOW)  RETURN FBUG CODE.
 *--------------------------------------------------------------------
 NOSPACE  EQU   *
+         TM    DBGFLG7,DBGHDRSC    Tracing?
+         BNO   NOSPACE2            ---> No
+         N     R14,=X'00FFFFFF'    Extract 370 address
+         S     R14,=A(HDRSCAN)     Calculate offset to return
+         S     R14,=F'4'           Back up to BAL instruction
+         LINEDIT TEXT='HDRSCAN :  Stack overflow at offset ........',  X
+               SUB=(HEX,(14)),DOT=NO,COMP=NO
+NOSPACE2 EQU   *
          WTR   HSC003,(CA,MYNAME)                                [1.24]
          LA    R15,12
          B     RET
@@ -518,4 +619,16 @@ P@MBLOK  DS    F             MAILBLOK ADDRESS
 P@FIELDD DS    F             FIELDD ADDRESS
 P@STK    DS    2F            STACK POINTER ADDRESSES
 MSG030   DS    CL20
+         SPACE 1
+DEBUGR1  DC    A(0)                Savearea for R1 during LINEDITs
+DBGINFO  DS    A(0)                PTR to debugging msg
+         SPACE 1
+*  Debugging messages
+         SPACE 1
+DBGMSG01 DC    CL40'Found initial x''15'', x''05'' or blank'
+DBGMSG02 DC    CL40'Missing '':'' on end of field name'
+DBGMSG03 DC    CL40'No '':'' at end of field name'
+DBGMSG04 DC    CL40'No header fields found'
+DBGMSG99 DC    CL40'Unknown error cause'
+         SPACE 3
          END   HDRSCAN
