@@ -273,9 +273,21 @@ HADPARM  EQU   *
          BNL   OVERFLOW           didn't fit
          MVI   0(R2),C'>'         end of the mail from
 NODEF    EQU   *
+         LR    R15,R2             Copy buffer pointer
+         S     R15,=A(MAIL)       Compute length
+         C     R15,=F'80'         Longer than 80?
+         BH    NODEF2             ---> Yes
          PUNCHC MAIL,ERROR=PUNERR punch the MAIL FROM: line
          DROP  R6                 done with MBOX
          B     OVERNULL           --> skip null "from" code
+         SPACE 1
+NODEF2   EQU   *                  Here if length > 80
+         MVC   TWORK(1),MAIL+79      Save value
+         MVI   MAIL+79,X'15'         Put in NL character
+         PUNCHC MAIL,ERROR=PUNERR    Punch the MAIL FROM: line
+         MVC   MAIL+79(1),TWORK      Restore char
+         PUNCHC MAIL+79,ERROR=PUNERR Punch the continuation
+         B     OVERNULL
          SPACE 1
 NULLFROM EQU   *                  <-- here for MAIL FROM:<>
          PUNCHC 'MAIL FROM:<>',ERROR=PUNERR
@@ -492,10 +504,10 @@ TICK     DC    CL80' '            the tick message
          DC    CL5'TICK '
 TICKID   DC    CL4'0000'          the id number
          ORG   ,
-MAIL     DC    CL80' '            the mail message
+MAIL     DC    CL160' '           the mail message
          ORG   MAIL
          DC    CL10'MAIL FROM:'
-MAILFROM DC    CL70' '            space for the userid
+MAILFROM DC    CL150' '           space for the userid
          ORG   ,
 RCPT     DC    CL160' '           rcpt message
          ORG   RCPT

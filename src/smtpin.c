@@ -436,6 +436,7 @@ int l;
 {
     char buf[200];
     register int i;
+    int rlen;
 
     if (S.state == error)     /* remember errors across state */
       S.error = 1;            /* transitions. */
@@ -445,6 +446,15 @@ int l;
     if (S.in_data) {
         S.state = s_getdata(S.state, s,l);  /* get the data line */
         return 0;
+    }
+
+    /* Check if BSMTP line is continued on second record.
+     * If continuation exists, read in next record and update total
+     * length
+     */
+    if (s[79] == 0x15) {
+       if ((rlen = rdcard(&s[l],(int)mailsfb.sfbrecsz)) >= 0)
+          l = l+rlen;
     }
 
     /* always echo the command */
@@ -649,7 +659,6 @@ int l;
     struct tbentry *te;
     struct tbs *ts;
     struct mbox *a;
-    int rlen;
 
     mailsfld = 0;
     if (xcmp(" FROM:", &s[4], 6) != 0)     /* check syntax */
@@ -661,17 +670,6 @@ int l;
     ts = (struct tbs *)salloc(l-5+sizeof(*ts)-1);
     if (!f || !t || !ts)
         return s_nosp(st, s, l);
-
-    /* Check if "FROM:<.....>" is continued on second record.
-     * If continuation exists, read in next record and update total
-     * length
-     */
-    if (s[79] == 0x15) {
-       if ((rlen = rdcard(&s[79],(int)mailsfb.sfbrecsz)) >= 0)
-          l = l+rlen;
-       else
-          return s_syntax(st, s, l);
-    }
 
     /*
      * copy "FROM:<......>" onto stack preceded by tbs header.
@@ -883,16 +881,6 @@ int l;
     f = (struct fieldd *)salloc(sizeof(*f));
     if (!f)
         return s_nosp(st, s, l);
-
-    /* Check for continuation onto second record.  If continued
-     * read in next record and update total length
-     */
-    if (s[79] == 0x15) {
-       if ((rlen = rdcard(&s[79],(int)mailsfb.sfbrecsz)) >= 0)
-          l = l+rlen;
-       else
-          return s_syntax(st, s, l);
-    }
 
     /*
      * on the first pass,  do a little extra work:
