@@ -31,7 +31,9 @@ LOCAL    CSECT ,
 *  to forward the mail.  This forwarding process will build a
 *  BSMTP header using whatever addresses are found in the FORWARD
 *  file and then punch the resulting mail back to MAILER for further
-*  processing.
+*  processing.  The sender of the mail will receive a message (assuming
+*  they are on the NJE network) indicating that the mail is being
+*  forwarded.
 *
 *  If a "FORWARD" file is not found for this local destination, a
 *  check will be made for a "MAILLIST" (mailing list) file.
@@ -319,7 +321,11 @@ HAVEFWD  EQU   *
          L     R15,=V(DISTSUB)     Subroutine address
          CALL  (15)                Call it
          LTR   R15,R15             Successful?
-         BZ    RET                 ---> Yes
+         BNZ   CHKLCLF             ---> No, see if local forward
+         LOG   LCL077,(CA,RECVR)   Tell sender about forward
+         B     RET0
+         SPACE 1
+CHKLCLF  EQU   *
          C     R15,=F'4'           Need local delivery also?
          BNE   RET                 ---> No, error
          EJECT ,
@@ -561,6 +567,7 @@ FROMLONG EQU   *                       [2]
          LR    R0,R6                   [2]
          S     R0,=A(MSGBUF)           [2] total length
          DC    X'83100008'             [1]send it off
+RET0     EQU   *
          SR    R15,R15                 [4]clean RC
 RET      EQU   *
          L     R13,4(R13)
