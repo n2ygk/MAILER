@@ -58,6 +58,10 @@ PAB      DSECT ,
 *  addresses.  The address '<*>' has been reserved as a special value
 *  to signify that local delivery of this file should also occur.  This
 *  request is signified by a return code of 4 on exit.
+         SPACE 1
+*  Lines beginning with an asterisk ('*') are ignored as comments.  The
+*  asterisk does not have to be in the first column, but must be the
+*  first non-blank character on the line.
          SPACE 2
 * REGISTER USAGE -
          SPACE 1
@@ -175,6 +179,8 @@ RCPTLO10 EQU   *
          B     RCPTLO60           ---> All blanks
          SPACE 1
 RCPTLO19 EQU   *
+         CLI   0(R3),C'*'         Comment record?
+         BE    RCPTLO60           ---> Yes
          CLC   =C'<*>',0(R3)      Is it special address?
          BE    RCPTLO90           ---> Yes, remember local forward
          CLI   0(R3),C'<'         Have arrow?
