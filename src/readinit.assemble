@@ -81,11 +81,11 @@ EYESKIP  DS    0H
          FSSTATE (R8),ERROR=NOFILE  LOOK FOR IT
          USING FSTD,R1       ADDRESS THE FST
          MVC   LRECL,FSTLRECL COPY LRECL FOR LATER
-         S     R10,FSTLRECL  ALLOCATE BUFFER AT TOP OF STACK
+         S     R10,FSTLRECL  Compute stack space left
          DROP  R1            DONE WITH FST
          BL    NOSPACE       STACK TOO SMALL
-         LR    R7,R9         GET CURRENT STACK POINTER
-         AR    R7,R10        ADDRESS FOR INPUT BUFFER
+         LR    R7,R9         Allocate from bottom of stack
+         AR    R7,R10          so there will be no hole later
          FSOPEN (R8),BUFFER=(R7),ERROR=NOFILE  OPEN THE FILE
          LR    R8,R1         GET FSCB ADDRESS
          USING FSCBD,R8      ADDRESS IT
@@ -263,8 +263,8 @@ GETLEN   EQU   *
          MVI   C';'(R2),X'FF'  TRAP ON SEMICOLON
          L     R4,FSCBNORD   NUMBER OF BYTES READ
          L     R3,FSCBBUFF   ADDRESS OF DATA
-         BCTR  R4,0          -1 FOR EXECUTE
          LA    R1,0(R3,R4)   ADDRESS OF END OF LINE IF NO ";"
+         BCTR  R4,0          -1 FOR EXECUTE
          EX    R4,TRAPSEMI   TRAP SEMICOLON
          MVI   C';'(R2),0    RESET THE TRT TABLE FOR THE NEXT GUY
          SR    R1,R3         NEW LENGTH OF LINE
