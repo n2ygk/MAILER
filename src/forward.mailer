@@ -125,6 +125,12 @@ if foruser = ''  then  do                    /*                       */
    signal exit                               /*                       */
    end
 
+if foruser = '*' then  do                    /*                       */
+   call msg 'Userid of "*" is not valid.'
+   exitrc = 8                                /*                       */
+   signal exit                               /*                       */
+   end
+
 parse upper var cmdstring operation .
 if find(operations,operation) = 0  then  do  /*                       */
    call msg 'The "'operation'" request is not supported'
