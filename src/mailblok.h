@@ -189,6 +189,8 @@ static struct mailblok {
                              /* Flags defined in dbgflg[1]           */
 #define TRACE_S_MAIL             0x80  /* Trace s_mail routine       */
 #define TRACE_PARSE_DATA_HEADER  0x40  /* Trace parse_data_header    */
+#define TRACE_CHECK_SENDER       0x20  /* Trace check_sender         */
+#define TRACE_CHECK_DOMAIN       0x10  /* Trace check_domain         */
 
                              /* Flags defined in dbgflg[2]           */
                              /*    Not used (yet)                    */

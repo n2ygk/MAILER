@@ -735,47 +735,107 @@ int l;
 {
     int ri;
     struct tbentry *te;
+    int dbgi;
+    char dbgmsg[133];
 
     if (mailblok.dbgflg[0] & TRACE_CALLS)
        wrterm("==> Entered check_domain");
+    if (mailblok.dbgflg[1] & TRACE_CHECK_DOMAIN) {
+        bcopy("check_domain:  Processing '",dbgmsg,27);
+        bcopy(s,&dbgmsg[27],l);
+        bcopy("'",&dbgmsg[l+27],2);
+        wrterm(dbgmsg);
+    }
 
     /* (1) Compare domain to mailnode */
-    if (mailblok.mailnlen == l && xcmp(mailblok.mailnode,s,l) == 0)
+    if (mailblok.mailnlen == l && xcmp(mailblok.mailnode,s,l) == 0) {
+        if (mailblok.dbgflg[1] & TRACE_CHECK_DOMAIN)
+            wrterm("check_domain:  Domain and THISNODE match");
         return 1;
+    }
+    if (mailblok.dbgflg[1] & TRACE_CHECK_DOMAIN)
+         wrterm("check_domain:  Domain & THISNODE do not match");
 
     /* (2) Compare domain concatenated w/RSCS-domains to mailnode */
     if (mailblok.rscsdom[0] != 0) {
+        if (mailblok.dbgflg[1] & TRACE_CHECK_DOMAIN)
+            wrterm("check_domain:  Checking against RSCS-Domains");
         for (ri= 0; mailblok.rscsdom[ri] != 0 &&
               ri < MAXRSCSDOM; ri++) {
            int rl = mailblok.rscsdom[ri][0];
            char *rp = &mailblok.rscsdom[ri][1];
            int i;
+           if (mailblok.dbgflg[1] & TRACE_CHECK_DOMAIN) {
+               bcopy("check_domain:  Comparing to '", dbgmsg , 29);
+               bcopy(rp, &dbgmsg[29], rl);
+               bcopy("'", &dbgmsg[29+rl], 2);
+               wrterm(dbgmsg);
+           }
 
            if (rl < l && xcmp(rp, &s[i = l-rl], rl) == 0)
                if (mailblok.mailnlen == i &&
-                   xcmp(s, mailblok.mailnode, i) == 0)
+                   xcmp(s, mailblok.mailnode, i) == 0) {
+                   if (mailblok.dbgflg[1] & TRACE_CHECK_DOMAIN)
+                       wrterm("check_domain:  RSCS-Domain match found");
                    return 1;
+               }
         }
     }
 
     /* (3) If file is from local user,  see if Local-Domain matches */
-    if (mailblok.mailflg1&MFLG1LCL && mailblok.lclhost[0] != 0)
-        for (ri = 0; mailblok.lclhost[ri] != 0 && ri < MAXLCLHOST; ri++)
-        if (*mailblok.lclhost[ri] == l &&
-             xcmp(&mailblok.lclhost[ri][1], s, l) == 0)
-            return 1;
+    if (mailblok.mailflg1&MFLG1LCL && mailblok.lclhost[0] != 0) {
+        if (mailblok.dbgflg[1] & TRACE_CHECK_DOMAIN)
+            wrterm("check_domain:  Checking against Local-Hosts");
+        for (ri = 0; mailblok.lclhost[ri] != 0 &&
+             ri < MAXLCLHOST; ri++) {
+             if (mailblok.dbgflg[1] & TRACE_CHECK_DOMAIN) {
+                 bcopy("check_domain:  Comparing to '",dbgmsg,29);
+                 bcopy(&mailblok.lclhost[ri][1],&dbgmsg[29],
+                                               mailblok.lclhost[ri][0]);
+                 bcopy("'",&dbgmsg[mailblok.lclhost[ri][0]+29],2);
+                 wrterm(dbgmsg);
+             }
+             if (*mailblok.lclhost[ri] == l &&
+                  xcmp(&mailblok.lclhost[ri][1], s, l) == 0) {
+                 if (mailblok.dbgflg[1] & TRACE_CHECK_DOMAIN)
+                     wrterm("check_domain:  Local-host match found");
+                 return 1;
+             }
+        }
+    }
+    else {
+        if (mailblok.dbgflg[1] & TRACE_CHECK_DOMAIN) {
+            bcopy("check_domain:  Skipping Local-Domains check, ",
+                                                             dbgmsg,45);
+            if (mailblok.lclhost[0] = 0)
+               bcopy("no Local-Domains defined",&dbgmsg[45],25);
+            else
+               bcopy("not from local user",&dbgmsg[45],20);
+            wrterm(dbgmsg);
+        }
+    }
 
     /* (4) Look in MAILRTAB and compare RTROUTE to MAILNODE */
     if (ctbluk(&te, mailblok.mailrtab, s, l) == TBMATCH &&
         bcmp(mailblok.mailnode,
-             ((struct routd *)te->tbe_dsp)->rtroute, 8) == 0)
+             ((struct routd *)te->tbe_dsp)->rtroute, 8) == 0) {
+        if (mailblok.dbgflg[1] & TRACE_CHECK_DOMAIN)
+            wrterm("check_domain:   Found in OUTGOING table");
         return 1;
+    }
+    if (mailblok.dbgflg[1] & TRACE_CHECK_DOMAIN)
+        wrterm("check_domain:  Not found in OUTGOING table");
 
     /* (5) Look in MAILDTAB and compare RTROUTE to MAILNODE */
     if (ctbluk(&te, mailblok.maildtab, s, l) == TBMATCH &&
         bcmp(mailblok.mailnode,
-             ((struct routd *)te->tbe_dsp)->rtroute, 8) == 0)
+             ((struct routd *)te->tbe_dsp)->rtroute, 8) == 0) {
+        if (mailblok.dbgflg[1] & TRACE_CHECK_DOMAIN)
+            wrterm("check_domain:  Found in DOMAINS table");
         return 1;
+    }
+    if (mailblok.dbgflg[1] & TRACE_CHECK_DOMAIN)
+        wrterm("check_domain:  Not found in DOMAINS table");
 
     /* time to give up */
     return 0;
@@ -996,16 +1056,24 @@ struct mbox *a;
       int *hostlen;
     } plist;
     int i;
+    char dbgmsg[133];
 
     if (mailblok.dbgflg[0] & TRACE_CALLS)
        wrterm("==> Entered check_sender");
 
-    if (mailblok.mailflg2&MFLG2NLF) /* always fail */
-      return 0;
+    if (mailblok.mailflg2&MFLG2NLF) { /* always fail */
+        if (mailblok.dbgflg[1] & TRACE_CHECK_SENDER)
+            wrterm("check_sender:  Null from, sender bad");
+        return 0;
+    }
+    if (mailblok.dbgflg[1] & TRACE_CHECK_SENDER)
+        wrterm("check_sender:  Not processing a null From:");
 
     /* (1) See if sender userid matches MAILUSER */
 
     if (a->mbxrtl != 0) {
+        if (mailblok.dbgflg[1] & TRACE_CHECK_SENDER)
+            wrterm("check_sender:  Processing route list address");
         n = MBOXRTL(a)->noddown;
         plist.node = &n;
         plist.hs = &hs;
@@ -1016,16 +1084,40 @@ struct mbox *a;
         hostlen = sizeof(hoststring);
         plist.hostlen = &hostlen;
         acall(genlist, 0, &plist);
+        if (mailblok.dbgflg[1] & TRACE_CHECK_SENDER) {
+
+            bcopy("check_sender:  Compare '",dbgmsg,24);
+            bcopy(hs,&dbgmsg[24],hl);
+            bcopy("' and '",&dbgmsg[hl+24],7);
+            bcopy(mailblok.mailuser,&dbgmsg[hl+31],mailblok.mailulen);
+            bcopy("'",&dbgmsg[hl+mailblok.mailulen+31],2);
+            wrterm(dbgmsg);
+        }
         if (hl > 8)
             hl = 8;
         if (hl > mailblok.mailulen ||
-            xcmp(hs, mailblok.mailuser, hl) != 0)
+            xcmp(hs, mailblok.mailuser, hl) != 0) {
+            if (mailblok.dbgflg[1] & TRACE_CHECK_SENDER)
+                wrterm("check_sender:  Sender/routelist host mismatch");
             return 0;
+        } else {
+            if (mailblok.dbgflg[1] & TRACE_CHECK_SENDER)
+                bcopy("check_sender: ");
+        }
+    } else {
+        if (mailblok.dbgflg[1] & TRACE_CHECK_SENDER)
+            wrterm("check_sender:  No route list present");
     }
 
     /* (2) See if domain checks out */
 
-    if (a->mbxdml == 0)  return 0;
+    if (a->mbxdml == 0)  {
+        if (mailblok.dbgflg[1] & TRACE_CHECK_SENDER)
+             wrterm("check_sender: No host name present");
+        return 0;
+    }
+    if (mailblok.dbgflg[1] & TRACE_CHECK_SENDER)
+        wrterm("check_sender:  Host name present");
 
     n = MBOXDML(a);
     plist.node = &n;
@@ -1037,6 +1129,12 @@ struct mbox *a;
     hostlen = sizeof(hoststring);
     plist.hostlen = &hostlen;
     acall(genlist, 0, &plist);
+    if (mailblok.dbgflg[1] & TRACE_CHECK_SENDER) {
+        bcopy("check_sender:  Host name is '",dbgmsg,29);
+        bcopy(hs,&dbgmsg[29],hl);
+        bcopy("'",&dbgmsg[hl+29],2);
+        wrterm(dbgmsg);
+    }
 
     return check_domain(hs,hl);
 }
