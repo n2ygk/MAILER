@@ -40,7 +40,7 @@ int mb;                           /* mailblok ptr (not needed) */
     if ((rc = cpcmd("READY 00C",9)) != 0)
         return(rderr(rc));
     while (1) {
-        if ((len = rdcard(rbuf, (int)mailsfb.sfbrecsz)) < 0)
+        if ((len = rdcard(rbuf, (int)mailblok.mailsfb.sfbrecsz)) < 0)
             return rderr(rc);
         if (len >= 5 && (bcmp(rbuf,":READ",5) == 0))
             continue;             /* skip over the :READ header */

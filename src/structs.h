@@ -117,3 +117,11 @@ struct vald {
     int vamsglen;
     int vamsgmax;
 };
+
+struct trcent {
+    char trctype[8];         /* Entry type                           */
+    char trcroutn[8];        /* Name of routine making entry         */
+    int trcaddr;             /* Address at which entry made          */
+    char trcdata[44];        /* Use defined by entry type            */
+
+};

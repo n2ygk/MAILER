@@ -73,7 +73,7 @@ char *src, *dst;
 int len;
 {
     while (len--)
-        *dst++ = upcase[*src++];  /* translate to upper case */
+        *dst++ = mailblok.upcase[*src++];  /* translate to upper case */
 }
 
 /*

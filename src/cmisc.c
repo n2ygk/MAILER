@@ -21,7 +21,7 @@ register int l;
     register int d;
 
     for (; l > 0; l--, s1++, s2++)
-        if ((d = upcase[*s1] - upcase[*s2]))
+        if ((d = mailblok.upcase[*s1] - mailblok.upcase[*s2]))
             return d;
     return 0;
 }
@@ -163,11 +163,11 @@ int amount;
 
     amount += 7;                    /* round up to the next hightest */
     amount &= 0xFFFFFFF8;           /* douleword boundary */
-    if (stackp[1] < amount)
+    if (mailblok.stackp[1] < amount)
         return 0;                   /* stack overflow */
-    stackp[1] -= amount;
-    ptr = stackp[0];
-    stackp[0] += amount;
+    mailblok.stackp[1] -= amount;
+    ptr = mailblok.stackp[0];
+    mailblok.stackp[0] += amount;
     bzero(ptr, amount);
     return ptr;
 }
@@ -193,14 +193,14 @@ register char *n;
     bzero(f, sizeof(*f));
     bcopy(nameini, f->fscbfn, 18);     /* initialize fn ft fm */
     for (i = 0; i < 8 && *n != '.' && *n != '\0'; i++, n++)
-        f->fscbfn[i] = upcase[*n];
+        f->fscbfn[i] = mailblok.upcase[*n];
     if (*n++ != '.') return 24;
     for (i = 0; i < 8 && *n != '.' && *n != '\0'; i++, n++)
-        f->fscbft[i] = upcase[*n];
+        f->fscbft[i] = mailblok.upcase[*n];
     if (*n == '\0') return 0;
     if (*n++ != '.') return 24;
     for (i = 0; i < 2 && *n != '\0'; i++, n++)
-        f->fscbfm[i] = upcase[*n];
+        f->fscbfm[i] = mailblok.upcase[*n];
     if (*n != '\0') return 24;
     return 0;
 }
@@ -306,9 +306,9 @@ int *lenp;  /* input: max length of buf, output: actual length */
     static char beginning = 0;
 
     if (curfld == 0) {                 /* initial call */
-        if (!(mailflg1&MFLG1HDS))      /* no header was scanned */
+        if (!(mailblok.mailflg1&MFLG1HDS)) /* no header was scanned */
           return 12;                   /* so report EOH */
-        if ((curfld = mailfld) == 0)   /* head of fieldd list */
+        if ((curfld = mailblok.mailfld) == 0) /* head of fieldd list */
           return 12;
         beginning = 1;                 /* at beginning of field */
     }
@@ -426,17 +426,17 @@ int *lenp;   /* input: max length of buf, output: actual length */
 
     /* Do one-time source-specific(rdr/smtp) initialization */
     if (beginning) {
-        if (mailflg2&MFLG2SMT) {       /* BSMTP */
+        if (mailblok.mailflg2&MFLG2SMT) {       /* BSMTP */
             fsclose("smtp.data");
             fsinit(&fs,"smtp.data");
-            fspoint(&fs, 0, mailhrec+2); /* skip over header */
+            fspoint(&fs, 0, mailblok.mailhrec+2); /* skip over header */
         } else {                       /* reader */
             int i;
             cpcmd("CLOSE 00C",9);
             if (cpcmd("READY 00C",9)) return 12;
             /* skip header records */
-            for (i = 0; i < mailhrec; i++)
-              if (rdcard(inbuf,mailsfb.sfbrecsz) < 0)
+            for (i = 0; i < mailblok.mailhrec; i++)
+              if (rdcard(inbuf,mailblok.mailsfb.sfbrecsz) < 0)
                 return 12;
         }
         resid = 0;
@@ -447,13 +447,13 @@ int *lenp;   /* input: max length of buf, output: actual length */
     if (resid == 0) {
         resid = sizeof(inbuf);
         /* read a new record.  resid will contain length read */
-        if (mailflg2&MFLG2SMT) {       /* source is smtp data */
+        if (mailblok.mailflg2&MFLG2SMT) {  /* source is smtp data */
             if (fsread(&fs,inbuf,&resid)) {
                 beginning = 1;         /* EOF or other FSREAD error */
                 return 12;
             }
         } else {                       /* source is reader */
-            if ((resid = rdcard(inbuf,mailsfb.sfbrecsz)) < 0) {
+            if ((resid = rdcard(inbuf,mailblok.mailsfb.sfbrecsz)) < 0) {
                 beginning = 1;         /* EOF or other RDCARD error */
                 return 12;
             }

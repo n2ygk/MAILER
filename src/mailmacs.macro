@@ -447,7 +447,7 @@ CMD202   EQU   0             ISSUE AN SVC 202 WITH THE DATA.
 &VERSION SETC  ' '                                               [1.22]
 .OK      ANOP                                                    [1.22]
          PUSH  PRINT
-         AIF ('&SYSECT' EQ 'MAILER').PRINT
+         AIF ('&SYSECT' EQ 'MAILBLOK').PRINT
          PRINT OFF,NOGEN
 .PRINT   ANOP
          EJECT ,
