@@ -89,7 +89,7 @@ select
    when  requestornode <> ''  then           /*                       */
       requestor = space(requestorid'@'requestornode,0)
    otherwise  do                             /*                       */
-      say 'Distlist:  Invalid combination'    /*                      */
+      say 'Maillist:  Invalid combination'    /*                      */
       say '        :  Requestorid   = "'requestorid'"
       say '        :  Requestornode = "'requestornode'"
       say ' '
@@ -102,7 +102,7 @@ select
 parse arg original                           /*                       */
 if maintainer  then  mflag = '(maintainer)'  /*                       */
 else  mflag = ''                             /*                       */
-say 'Distlist:  Cmd       = "'strip(original)'"'
+say 'Maillist:  Cmd       = "'strip(original)'"'
 say '        :  Requestor = "'requestor'"' mflag
 say '        :  Cmdline   = "'cmdstring'"'
 
@@ -163,9 +163,11 @@ if result <> 0  then  do
    return exitrc
    end
 
-if ^owner(requestor) & ^maintainer  then
+if ^owner(requestor) & ^maintainer  then  do
    call msg 'You are not authorized to add users to the' listid ,
       'distribution list'
+   return 8
+   end
 
 dest = validdest(destination)
 if dest <> ''  then  do
@@ -188,7 +190,7 @@ else  do                                     /* No matches            */
    end
 
 if exitrc = 0  then                          /* Info message to send  */
-   call msg 'Distlist:  Added' destination
+   call msg 'Maillist:  Added' destination
 
 return exitrc
 
@@ -269,9 +271,11 @@ if result <> 0  then  do
    return exitrc
    end
 
-if ^owner(requestor) & ^maintainer  then
+if ^owner(requestor) & ^maintainer  then  do
    call msg 'You are not authorized to add owners to the' listid ,
       'distribution list'
+   return 8
+   end
 
 owners.0 = 0                                 /* Initialize            */
 call scanowners(owners)                      /* Build list            */
@@ -283,7 +287,7 @@ do i=1 for owners.0                          /*                       */
 
 exitrc = writedistlist()
 if exitrc = 0  then
-   call msg 'Distlist:  Added' owners.0 'new list owner(s)'
+   call msg 'Maillist:  Added' owners.0 'new list owner(s)'
 
 return exitrc
 
@@ -411,9 +415,11 @@ if result <> 0  then  do
    return exitrc
    end
 
-if ^owner(requestor) & ^maintainer  then
+if ^owner(requestor) & ^maintainer  then  do
    call msg 'Your are not authorized to delete users from the' listid ,
       'distribution list'
+   return 8
+   end
 
 if translate(destination) = 'ALL'  then      /*                       */
    return deleteall()                        /*                       */
@@ -431,7 +437,7 @@ else  do                                     /*                       */
 matches = addresscan(destination)
 if matches > 0  then  do
    call updatehdr                            /* Set update date       */
-   call msg 'Distlist: ' matches 'id(s) deleted'
+   call msg 'Maillist: ' matches 'id(s) deleted'
    j=0                                       /* Initialize counter    */
    do i=1 to maillist.0                      /* Loop though all lines */
       if matching.i  then                    /* This one being dropped*/
@@ -446,7 +452,7 @@ if matches > 0  then  do
    call writedistlist                        /* Rewrite file          */
    end
 else
-   call msg 'Distlist:  No destinations match address requested'
+   call msg 'Maillist:  No destinations match address requested'
 
 return exitrc
 
@@ -473,7 +479,7 @@ do i=1 to maillist.0                         /* Loop though all lines */
       end
    end
 
-call msg 'Distlist: ' maillist.0-j 'id(s) deleted'
+call msg 'Maillist: ' maillist.0-j 'id(s) deleted'
 maillist.0 = j                               /* Update line count     */
 
 call writedistlist                           /* Rewrite file          */
@@ -544,9 +550,11 @@ if result <> 0  then  do
    return exitrc
    end
 
-if ^owner(requestor) & ^maintainer  then
+if ^owner(requestor) & ^maintainer  then  do
    call msg 'You are not authorized to delete owners from the' listid ,
       'distribution list'
+   return 8
+   end
 
 owners.0 = 0                                 /* Initialize            */
 call scanowners(owners)                      /* Build list            */
@@ -560,7 +568,7 @@ do i=1 for owners.0                          /*                       */
 
 exitrc = writedistlist()
 if exitrc = 0  then
-   call msg 'Distlist:  Deleted' owners.0 'list owner(s)'
+   call msg 'Maillist:  Deleted' owners.0 'list owner(s)'
 
 return exitrc
 
@@ -598,7 +606,7 @@ if ^maintainer  then  do
 
 if listid = ''  then  do
    call msg 'Distribution list name not given'
-   exit 8
+   return 8
    end
 
 if ^exists(listid 'MAILLIST A')  then  do
@@ -638,9 +646,9 @@ if ^exists(listid 'MAILLIST A')  then  do
    end
 else  do
    if console  then  do
-      say 'Distlist: ' listid 'distribution list'
+      say 'Maillist: ' listid 'distribution list'
       'TYPE' listid 'MAILLIST A'
-      say 'Distlist:  End of forwarding distribution list'
+      say 'Maillist:  End of forwarding distribution list'
       end
    else  do                                  /*                       */
       call msg 'Sending a copy of distribution list to you'
@@ -670,9 +678,8 @@ Msg:  procedure , /* Send reply to requestor */
 
 parse arg msgstring
 
-if console  then
-   say msgstring
-else  do
+say msgstring                                /* Duplicate on console  */
+if ^console  then  do
    parse var requestor userid '@' node
    if node = ''  then  do
       'CP' msgcmd userid msgstring
@@ -698,6 +705,8 @@ owner = 0                                    /* Default to no         */
 
 parse upper arg userid
 userid = strip(userid)
+if left(userid,1) <> '<'  then
+   userid = '<'userid'>'
 
 do i=1 to maillist.0
    if left(word(maillist.i,1),1) = '*'  then  do
