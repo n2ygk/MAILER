@@ -85,11 +85,29 @@ maintnode=node2              ; node name of maintainer
 ;** maintnode9=node9             ;
 ;**
 ;**
-;** Change this value to TRUE if you are willing to assume that any
-;** mail reaching you from an RSCS server has come from a valid
-;** node.  Leaving the value set as FALSE requires that the source
-;** node exist in the incoming table or that it pass the validation
-;** test.
+;** Setting allow-unknown-nodes to TRUE will do 2 things:
+;**
+;**   1.  If the *DEFAULT* entry in the INCOMING table does not
+;**       exist, all mail received by MAILER will always be accepted.
+;**       If the *DEFAULT* entry exists, then validation will occur
+;**       just as it would for any other match in the incoming table.
+;**
+;**       Assuming that the RSCSVER exit is used:
+;**         A. For RFC822 mail, a mismatch between the NJE origin and
+;**            the From: header will cause the mail to be rejected
+;**         B. For BSMTP mail, a mismatch between the NJE origin and
+;**            the BSMTP MAIL FROM: will cause a warning to be added
+;**            to the mail file (if allow-charlatans=TRUE).
+;**
+;**   2.  Files being sent by MAILER but for which no entry is found
+;**       in the OUTGOING or DOMAINS table will use the *DEFAULT*
+;**       (and *DEFAULT*ROUTE*) entries (if they exist).
+;**
+;** Leaving the value FALSE will cause all incoming mail that does not
+;** match an entry in the INCOMING table to be rejected (even if the
+;** *DEFAULT* entry is coded).  Outgoing mail that does not match an
+;** entry in the OUTGOING or DOMAINS table will also be returned (even
+;** if *DEFAULT* entries are coded).
 ;**
 allow-unknown-nodes=FALSE    ; Do not allow nodes I do not know
                              ; about to exchange mail.
@@ -102,6 +120,18 @@ allow-unknown-nodes=FALSE    ; Do not allow nodes I do not know
 ;**
 allow-charlatans=TRUE        ; Let BSMTP origin disagree with RSCS
                              ; origin value
+;**
+;** When Allow-File-From is TRUE, MAILER will accept FILE FROM: commands
+;** in the BSMTP stream (a MAILER only extension to the BSMTP protocol
+;** used in BITNET).  Leave this value as TRUE if you are willing to
+;** allow files wrapped in BSMTP (RFC821) envelopes to be delivered via
+;** your mailer.
+;**
+;** If you set the value to FALSE, the BSMTP FILE FROM: command will
+;** not be recognized and the file will be returned to the sender (just
+;** as mail would have been).
+;**
+Allow-File-From=TRUE         ; Support FILE FROM: extension
 ;**
 ;** Specify the command to be used to send informational messages.
 ;** You can specify MSGNOH, but this may require special privilege
@@ -135,7 +165,7 @@ verbose-logging=FALSE        ; Don't print BSMTP
 ;** entries coded in the DOMAINS and SPECIAL tables below.
 ;** The value before the '=' is the parameter name you need to
 ;** code on the lines where these values are used.  See sample
-;** for DEC, OZ and SPAN in the DOMAINS list and POSTMAST in
+;** for DEC and SPAN in the DOMAINS list and POSTMAST in
 ;** the SPECIAL list.
 ;
 ; Forwarding info
@@ -150,10 +180,8 @@ postmast=userid@node         ; Person for mail system questions
 
 ; The following entries allow indirect routing for other networks
 
-viaCSN=@RELAY.CS.NET                        ; Through CSNET relay
 viaJPL=@VLSI.JPL.NASA.GOV                   ; SPAN domain
 viaDEC=@DECWRL.DEC.COM                      ; DEC domain
-viaOZ=@UUNET.UU.NET                         ; OZ domain
 
 ; The following table lists the possible sources of incoming
 ; files and the name of an exit to be invoked before any processing
@@ -193,8 +221,11 @@ DOMAINS:
 ; Domain name    Node     Userid   Exit     Type Parm
 ; ----------     -------- -------- -------- ---- --------
 %domains
+*DEFAULT*ROUTE*.BITNET *  *        TRYRSCS   1    ; See DOC for parm inf
+*DEFAULT*ROUTE*.EARN   *  *        TRYRSCS   1    ; See DOC for parm inf
+*DEFAULT*ROUTE*.NETNORTH * *       TRYRSCS   1    ; See DOC for parm inf
+*DEFAULT*        INTERBIT SMTP     BSMTP     3    ;
 .DEC             INTERBIT SMTP     BSMTP     3    %viaDEC
-.OZ              INTERBIT SMTP     BSMTP     3    %viaOZ
 .SPAN            INTERBIT SMTP     BSMTP     3    %viaJPL
 END DOMAINS
 
