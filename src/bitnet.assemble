@@ -155,6 +155,7 @@ CPCOM    DC        C'TAG DEV PUN '
 TAGNODE  DS        CL8
          DC        C' '
 TAGUSER  DS        CL8
+         DC        C' 50 ENQMSG=NO SENTMSG=NO FINALMSG=NO'
          DC        X'15',C'SP PUN CLASS M TO '                   [1.22]
 XFERUSER DS        CL8
 CPCOML   EQU       *-CPCOM

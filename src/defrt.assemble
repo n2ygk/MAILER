@@ -184,6 +184,7 @@ TAGNODE  DS    CL8
 TAGUSER  DS    CL8
          DC    C' 50 W='     [1.21]
 TAGWTR   DS    CL8           [1.21]
+         DC    C' ENQMSG=NO SENTMSG=NO FINALMSG=NO'
          DC    X'15',C'SP PUN CLASS M TO '
 RSCSID   DS    CL8
 LTAGCMD  EQU   *-TAGCMD

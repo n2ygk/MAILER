@@ -607,10 +607,13 @@ QUIT     DC    CL80'QUIT'         quit message
 POINTPUN DC    C'SP PUN CLASS M TO '
 PUNUSER  DC    CL8' '
 LPOINT   EQU   *-POINTPUN
+         SPACE 1
 TAGPUN   DC    C'TAG DEV PUN '
 TAGNODE  DC    CL8' ',C' '
 TAGUSER  DC    CL8' ',C' 50 W='
 TAGWTR   DC    CL8' '
+         DC    C' ENQMSG=NO SENTMSG=NO FINALMSG=NO'
 LTAGPUN  EQU   *-TAGPUN
+         SPACE 1
 TWORK    DS    512C
          END   BSMTP
