@@ -60,7 +60,45 @@ EYESKIP  DS    0H
          USING MAILBLOK,R11  ADDRESS IT
          DROP  R1
          LM    R9,R10,STACK  GET STACK POINTER
+         SPACE 2
+*--------------------------------------------------------------------
+*  Initialize fields in the MAILBLOK to aid in detection of double
+*  definition of variable values important to MAILER.
+*--------------------------------------------------------------------
          SPACE ,
+*        Clear PTAB fields in MAILBLOK
+         SPACE 1
+*        The PTAB is character string parms that are significant
+*        to MAILER.  They are all defined a CL8' ' in the MAILBLOK.
+         SPACE 1
+         LA    R5,PTABLEN          Length of PTAB array
+         LA    R6,PTABARR          Address of array
+PTABCLR  EQU   *
+         L     R3,0(R6)            Get offset into MAILBLOK
+         LA    R3,0(R11,R3)        Get actual MAILBLOK address
+         MVC   0(8,R3),=CL8' '     Clear to blanks
+         LA    R6,8(R6)            Point to next entry
+         BCT   R5,PTABCLR          ---> More to do
+         SPACE ,
+*        Clear PPTR fields in MAILBLOK
+         SPACE 1
+*        The PPTR is character string parms that are significant
+*        to MAILER.  They are all defined as A(0) pointers to the
+*        strings in MAILBLOK.
+         SPACE 1
+         LA    R5,PPTRLEN          Length of PPTR array
+         LA    R6,PPTRARR          Address of array
+PPTRCLR  EQU   *
+         L     R3,0(R6)            Get offset into MAILBLOK
+         LA    R3,0(R11,R3)        Get actual MAILBLOK address
+         XC    0(4,R3),0(R3)       Clear to hex zeros
+         LA    R6,8(R6)            Point to next entry
+         BCT   R5,PPTRCLR          ---> More to do
+         SPACE ,
+*--------------------------------------------------------------------
+*  End of MAILBLOK initializations
+*--------------------------------------------------------------------
+         SPACE 2
 *--------------------------------------------------------------------
 *        SET MAILBLOK VALUES FROM THE PARMS TABLE
 *--------------------------------------------------------------------
@@ -76,8 +114,16 @@ PTABLOOP EQU   *
          CALL  TBLUK,((R8),(R7),(R4),TWORK)
          LTR   R15,R15       FIND IT?
          BNZ   SET1          NOPE, TAKE THE DEFAULT
-         MVC   0(8,R3),=CL8' '   BLANK IT
          LR    R2,R1         COPY STRING ADDRESS
+         CLC   0(8,R3),=CL8' '   Previously defined?
+         BE    PTABSET0          ---> No
+         LR    R15,R4            Copy field name length
+         BCTR  R15,0             Decrement
+         MVC   FIELDNAM,=CL30' ' Clear to blanks
+         EX    R15,COPYNAME      Move into field for msg processing
+         WTR   STI071,(CA,FIELDNAM)
+PTABSET0 EQU   *
+         MVC   0(8,R3),=CL8' '   BLANK IT
          SR    R1,R1         GET A ZERO
          IC    R1,0(R2)      GET LENGTH OF STRING
          LA    R2,1(R2)      POINT TO DATA
@@ -105,7 +151,16 @@ PPTRLOOP EQU   *                                                 [1.22]
          CALL  TBLUK,((R8),(R7),(R4),TWORK)                      [1.22]
          LTR   R15,R15       FIND IT?                            [1.22]
          BNZ   SET$1         NOPE, TAKE THE DEFAULT              [1.22]
-         ST    R1,0(R3)      just stuff the string address       [1.22]
+         LR    R2,R1             Save the string address
+         CLC   0(4,R3),=A(0)     Previously defined?
+         BE    PPTRSET0          ---> No
+         LR    R15,R4            Copy field name length
+         BCTR  R15,0             Decrement
+         MVC   FIELDNAM,=CL30' ' Clear to blanks
+         EX    R15,COPYNAME      Move into field for msg processing
+         WTR   STI071,(CA,FIELDNAM)
+PPTRSET0 EQU   *
+         ST    R2,0(R3)      Stuff the string address
 SET$1    EQU   *                                                 [1.22]
          LA    R6,8(R6)      GET NEXT ENTRY                      [1.22]
          BCT   R5,PPTRLOOP   GET NEXT ONE                        [1.22]
@@ -398,11 +453,15 @@ BADLOAD  EQU   *
 *--------------------------------------------------------------------
 *        READ/ONLY DATA
 *--------------------------------------------------------------------
+         SPACE 1
 COPY     MVC   0(0,R3),0(R2)
+COPYNAME MVC   FIELDNAM(1),0(R7)             For dup. init. msg
+         SPACE 1
 PTABARR  DC    A(CPUSTR-MAILBLOK,STRTHIS)
          DC    A(RSCSNAME-MAILBLOK,STRRSCS)
          DC    A(RSCSALT-MAILBLOK,STRRALT)       [1.13]
          DC    A(MAINTID-MAILBLOK,STRMUSE)
+         DC    A(MAINTID-MAILBLOK,STRMUSE1)     MAINTUSER1 = MAINTUSER
          DC    A(MAINTID2-MAILBLOK,STRMUSE2)
          DC    A(MAINTNO2-MAILBLOK,STRMNOD2)
          DC    A(MAINTID3-MAILBLOK,STRMUSE3)
@@ -420,6 +479,7 @@ PTABARR  DC    A(CPUSTR-MAILBLOK,STRTHIS)
          DC    A(MAINTID9-MAILBLOK,STRMUSE9)
          DC    A(MAINTNO9-MAILBLOK,STRMNOD9)
          DC    A(MAINTNOD-MAILBLOK,STRMNOD)
+         DC    A(MAINTNOD-MAILBLOK,STRMNOD1)    MAINTNODE1 = MAINTNODE
 PTABLEN  EQU   (*-PTABARR)/8
 PBITARR  DC    A(MAILOPTS-MAILBLOK,STRALLOW,MOPTAUN)
          DC    A(MAILOPTS-MAILBLOK,STRSUPPL,MOPTDEF)
@@ -453,6 +513,8 @@ STRRSCS  DC    Y(8),C'RSCSNAME'
 STRRALT  DC    Y(7),C'RSCSALT'                   [1.13]
 STRMUSE  DC    Y(9),C'MAINTUSER'
 STRMNOD  DC    Y(9),C'MAINTNODE'
+STRMUSE1 DC    Y(10),C'MAINTUSER1'
+STRMNOD1 DC    Y(10),C'MAINTNODE1'
 STRMUSE2 DC    Y(10),C'MAINTUSER2'
 STRMNOD2 DC    Y(10),C'MAINTNODE2'
 STRMUSE3 DC    Y(10),C'MAINTUSER3'
@@ -525,4 +587,5 @@ SAVE14   DS    F
 LOADS14  DS    F
 TABLE    DS    F
 TWORK    DS    64F
+FIELDNAM DS    CL30                    For dup. init. msg
          END   SETINIT
