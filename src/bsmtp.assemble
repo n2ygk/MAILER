@@ -325,7 +325,7 @@ PARMAT   EQU   *                                                 [1.24]
          S     R9,=A(2*NODSIZ+TOKSIZ)   Will 2 NODEs + 1 TOKEND fit?
          BL    OVERFLOW                 ---> No
          ST    R8,ADDRNODE        Save for call to ADDROUTE
-         XC    0(2*TOKSIZ+TOKSIZ,R8),0(R8) Zero NODEs and TOKEND
+         XC    0(2*NODSIZ+TOKSIZ,R8),0(R8) Zero NODEs and TOKEND
          LA    R15,NODSIZ(,R8)          Point to second NODE
          ST    R15,NODDOWN-NODE(R8)     Connect level 1 and level 2
          LA    R8,NODSIZ(,R15)          Set base for TOKEND

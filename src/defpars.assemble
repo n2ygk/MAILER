@@ -94,6 +94,7 @@ LOOPOUT  EQU   *
          S     R10,=A(TOKSIZ) MAKE ROOM FOR THE TOKEN
          BL    NOSPACE       SORRY
          ST    R9,TOKNEXT          HANG NEW TOKEN OFF END OF LIST
+         XC    0(TOKSIZ,R9),0(R9)  Zero new TOKEND
          ST    R1,TOKPREV-TOKEND(R9) Chain backward
          DROP  R1
          MVI   TRAPTAB+X'15',X'FF'  USE TRAPTAB FOR NEWLINES
@@ -129,6 +130,7 @@ PLOOP    EQU   *
          BL    NOSPACE       WAAA!!!
          LA    R1,TOKSIZ(R9) NEXT POINTER
          ST    R1,TOKNEXT         SET NEXT POINTER
+         XC    0(TOKSIZ,R1),0(R1)  Zero new TOKEND
          ST    R9,TOKPREV-TOKEND(R1) Chain backward
          LR    R9,R1         CHAIN ALONG
          B     PLOOP

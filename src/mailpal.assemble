@@ -419,6 +419,7 @@ LEX#0    EQU   *             here if token was white space
          LA    R1,TOKSIZ(R1) bump the stack pointer
          ST    R1,STACK      and put it back
          ST    R2,STKSIZ     store back updated size
+         XC    0(TOKSIZ,R8),0(R8)  Zero new TOKEND
          ICM   R9,B'1111',TOKLAST get address of last token in list
          BNZ   LEX#1         already is a last token.
 *-------------------------------------------------------------------*
