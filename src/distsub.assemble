@@ -150,8 +150,7 @@ SKIP0104 EQU   *
          LTR   R15,R15            did it fit?
          BNZ   OVERFLOW           didn't fit
 NODEF    EQU   *
-         LR    R15,R2             Copy buffer pointer
-         S     R15,=A(MAIL)       Compute length
+         L     R15,GENMBSTL       Length of string generated
          C     R15,=F'80'         Longer than 80?
          BH    NODEF2             ---> Yes
          TM    DBGFLG6,DBGNOOUT   Sending mail?
