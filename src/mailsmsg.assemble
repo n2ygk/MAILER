@@ -142,29 +142,46 @@ MSG      DS    0H
          CLC   RSCSALT,MESSAGE     What about the other RSCS?
          BNE   SMSG                No  : Treat it like an SMSG.
 MSG1     DS    0H
-         TM    MAILOPTS,MOPTALLM   Display all received messages?
-         BO    SMSG                ---> Yes
          LA    R14,MESSAGE+8       Message address
          LA    R15,L'MESSAGE       Get
          SH    R15,IPBFLN1            command
          SH    R15,=H'8'                 length.
          CALL  UNIXSCAN,(PTRS,L'PTRS,(R14),(R15))
          CH    R1,=H'6'            At least "FROM node(user):"?
-         BL    RCVLOOP2            No  : Ignore it.
+         BNL   MSG1B               ---> Yes
+         TM    MAILOPTS,MOPTALLM   Display all received messages?
+         BNO   RCVLOOP2            ---> No, ignore it
+         B     SMSG                Pretend it was an SMSG
+         SPACE 1
+MSG1B    EQU   *
          LA    R1,PTRS             Assume no message number.
          CLI   0(R1),4             Can it be "FROM"?
          BE    MSG2                Yes : Skip.
          LA    R1,PTRS+4           Skip the DMTCMXnnnI.
          CLI   0(R1),4             Might this one be "FROM"?
-         BNE   RCVLOOP2            No  : Ignore it.
+         BE    MSG2                ---> Yes, keep trying
+         TM    MAILOPTS,MOPTALLM   Display all received messages?
+         BNO   RCVLOOP2            ---> No, ignore it
+         B     SMSG                Pretend it was an SMSG
+         SPACE 1
 MSG2     DS    0H
          L     R2,0(,R1)           Is it
          TR    0(4,R2),UPCASE      Upcase it before testing.
          CLC   =C'FROM',0(R2)         "FROM"?
-         BNE   RCVLOOP             No  : Exit.
+         BE    MSG2B               ---> Yes
+         TM    MAILOPTS,MOPTALLM   Display all received messages?
+         BNO   RCVLOOP2            ---> No, ignore it
+         B     SMSG                Pretend it was an SMSG
+         SPACE 1
+MSG2B    EQU   *
          L     R2,8(,R1)           Is it
          CLI   0(R2),C'('             from a user?
-         BNE   RCVLOOP2            No  : Message from RSCS itself.
+         BE    MSG2C               ---> Yes
+         TM    MAILOPTS,MOPTALLM   Display all received messages?
+         BNO   RCVLOOP2            ---> No, ignore it
+         B     SMSG                Pretend it was an SMSG
+         SPACE 1
+MSG2C    EQU   *
          MVC   SRCNODE,=CL8' '     Blank it out.
          IC    R2,4(,R1)           Length of nodename.
          L     R3,4(,R1)           Address of nodename.
