@@ -182,6 +182,8 @@ SPOOLIT  EQU   *
          BE    NOPARM             no parm,  the easy way out.
          CLI   RTPARM,C'@'        or '@' (for route-list)        [1.24]
          BE    NOPARM             so this parm is not domain     [1.24]
+         CLI   RTPARM,C'%'        or '%' (for percent hack)
+         BE    NOPARM             so this parm is not domain
          LA    R4,RTPARM          point to the parm
          DROP  R4                 done with ROUTD
          LA    R1,8(R4)           end of parm
@@ -321,6 +323,8 @@ PARMAT   EQU   *                                                 [1.24]
          SR    R1,R4              get length of string           [1.24]
          LR    R5,R1              get into a better register     [1.24]
          L     R6,MAILPTAB        address of parm table          [1.24]
+         XC    PARMSTR,PARMSTR    No pointer yet
+         XC    PARMLEN,PARMLEN    No length yet
          L     R15,ATBLUK         address of table lookup        [1.24]
          CALL  (15),((R6),(R4),(R5),TWORK) find the parm         [1.24]
          LTR   R15,R15            not found?                     [1.24]
@@ -384,7 +388,8 @@ NOPARM1A DS    0H
 *  new domain (supplied as the value of the parm) is placed behind
 *  the string created by GENMBOX.
 *
-         L     R5,PARMSTR         get ptr back from above        [1.24]
+         ICM   R5,B'1111',PARMSTR get ptr back from above
+         BZ    NOPARM2            no parm value coded
          L     R1,PARMLEN         and length of it               [1.24]
          LA    R0,1(R1,R2)        where end of string would be   [1.24]
          C     R0,=A(RCPTTO+L'RCPTTO)  compare to end of buffer
