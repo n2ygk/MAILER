@@ -41,11 +41,12 @@ static struct mailblok {
     int mailfile;            /* Binary spool file number             */
     char mailftxt[4];        /* Character spool file number          */
     char mailopts;           /* Mailer runtime options               */
-#define MOPTDEF 0x80         /* Supply defaults for omitted fields   */
-#define MOPTAUN 0x40         /* Allow unknown nodes to send me mail  */
-#define MOPTAC  0x20         /* Allow charlatans                     */
-#define MOPTVL  0x10         /* Verbose console logging              */
-#define MOPTTBD 0x08         /* Print debugging info in TBLUK        */
+#define MOPTDEF  0x80        /* Supply defaults for omitted fields   */
+#define MOPTAUN  0x40        /* Allow unknown nodes to send me mail  */
+#define MOPTAC   0x20        /* Allow charlatans                     */
+#define MOPTVL   0x10        /* Verbose console logging              */
+#define MOPTTBD  0x08        /* Print debugging info in TBLUK        */
+#define MOPTALLM 0x04        /* Print all messages received          */
     char mailflg1;           /* Current mail file flags              */
 #define MFLGDEST 0x80        /* A '*DESTINATION:' card is present    */
 #define MFLG1LCL 0x40        /* Mail source is local user            */

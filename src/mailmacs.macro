@@ -507,6 +507,7 @@ MOPTAUN  EQU   X'40'         ALLOW UNKNOWN NODES TO SEND ME MAIL
 MOPTAC   EQU   X'20'         Allow charlatans                    [1.24]
 MOPTVL   EQU   X'10'         Verbose console logging             [1.24]
 MOPTTBD  EQU   X'08'         Print debugging info in TBLUK.
+MOPTALLM EQU   X'04'         Print all messages received
 MAILFLG1 DC    X'00'         CURRENT MAIL FILE FLAGS
 * BITS DEFINED IN MAILFLG1:
 MFLGDEST EQU   X'80'         A '*DESTINATION:' CARD IS PRESENT

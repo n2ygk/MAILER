@@ -74,17 +74,39 @@ RCVLOOP  DS    0H
                PATHID=MAILIUCP
          BNZ   DONE                Error: Exit.
          L     R1,IPTRGCLS         Get message type
-         SLL   R1,2                   *4 for index.
+         C     R1,=F'8'            Class we don't support?
+         BH    UNKNOWN             ---> Yes, give error msg
+         SLL   R1,2                *4 for index.
          B     *+4(R1)             Process the message
          B     RCVLOOP             0: Undefined.
          B     MSG                 1: MESSAGE/MSGNOHs.
-         B     RCVLOOP             2: WARNINGs.
+         B     WNG                 2: WARNINGs.
          B     RCVLOOP             3: Asynchronous CP output.
          B     SMSG                4: SMSGs.
          B     RCVLOOP             5: VM output.
-         B     RCVLOOP             6: CP error messages.
-         B     RCVLOOP             7: CP information messages.
+         B     CPMSG               6: CP error messages.
+         B     CPMSG               7: CP information messages.
          B     RCVLOOP             8: SCIF
+         SPACE 3
+UNKNOWN  DS    0H
+         TM    MAILOPTS,MOPTALLM   Display all received messages?
+         BNO   RCVLOOP             ---> No, ignore this
+         MVC   USER,MESSAGE        Accept userid from IUCV.
+         MVC   NODENAME,CPUSTR     It's from our node.
+         LA    R5,=CL38'* Unknown (unsupported) IPTRGCLS value'
+         LA    R8,38               Message length
+         LA    R2,CMDSMSG          Type = SMSG.
+         B     EXECUTE
+         SPACE 3
+WNG      DS    0H
+         TM    MAILOPTS,MOPTALLM   Display all received messages?
+         BO    SMSG                ---> Yes
+         B     RCVLOOP             ---> No, ignore it
+         SPACE 3
+CPMSG    DS    0H
+         TM    MAILOPTS,MOPTALLM   Display all received messages?
+         BO    SMSG                ---> Yes
+         B     RCVLOOP             ---> No, ignore it
          SPACE 3
 SMSG     DS    0H
          MVC   USER,MESSAGE        Accept userid from IUCV.
@@ -101,6 +123,8 @@ MSG      DS    0H
          CLC   RSCSALT,MESSAGE     What about the other RSCS?
          BNE   SMSG                No  : Treat it like an SMSG.
 MSG1     DS    0H
+         TM    MAILOPTS,MOPTALLM   Display all received messages?
+         BO    SMSG                ---> Yes
          LA    R8,L'MESSAGE        Get
          SH    R8,IPBFLN1             command
          SH    R8,=H'8'                  length.
