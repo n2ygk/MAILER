@@ -22,7 +22,7 @@ extern char upcase[256];        /* the upper-case translate table */
 extern struct sfblok mailsfb;   /* sfblok for current reader file */
 extern int stackp[2];           /* stack pointer, length */
 extern struct fscb *mailulfs;   /* error log fscb pointer */
-extern char *lcldom;            /* local-domain string */
+extern char *oldldom;           /* main local-domain string */
 extern char *rscsdom;           /* rscs-domain string */
 extern char cpustr[8];          /* rscs node name */
 extern int cpuslen;             /*  length */
@@ -88,3 +88,5 @@ extern char maintid8[8];        /* maintainer's userid */
 extern char maintno8[8];        /* maintainer's node name */
 extern char maintid9[8];        /* maintainer's userid */
 extern char maintno9[8];        /* maintainer's node name */
+#define MAXLCLHOST 9
+extern char *lclhost[MAXLCLHOST]; /* local-domain strings */

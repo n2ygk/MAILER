@@ -406,17 +406,18 @@ mydomain(bp, bl)
 char *bp;                       /* where to write the result */
 int bl;                         /* limit on result length */
 {
-    u_char *lcldp, lcldl;
+    u_char *lcldp;
+    int  lcldl;
 
-    if (lcldom == (char *)0) {  /* user didn't provide one */
+    if (lclhost[0] == (char *)0) {  /* user didn't provide one */
         bcopy(cpustr,bp,lcldl = cpuslen);
         if (rscsdom != (char *)0) {
             bcopy(rscsdom+1,&bp[lcldl],*rscsdom);
             lcldl += *rscsdom;
         }
     } else {
-        lcldp = lcldom+1;       /* pointer to lcl domain name */
-        lcldl = *lcldom;        /* 1st byte is string length */
+        lcldp = &lclhost[0][1];  /* pointer to lcl host name */
+        lcldl = lclhost[0][0];   /* 1st byte is string length */
         bcopy(lcldp, bp, lcldl);
     }
     return lcldl;
@@ -538,7 +539,7 @@ int l;
  *  Do the following tests until one succeeds:
  *  1) Compare the domain to MAILNODE.
  *  2) Compare the domain to MAILNODE concatenated w/ RSCS-Domain.
- *  3) If file is local, see if domain matches This-Domain (LCLDOM).
+ *  3) If file is local, see if domain matches a Local-Host (LCLHOST*).
  *  4) Look for the domain in MAILRTAB and compare the RTROUTE
  *     to MAILNODE.
  *  5) Do the same for MAILDTAB.
@@ -548,6 +549,7 @@ check_domain(s,l)
 char *s;
 int l;
 {
+    int ri;
     struct tbentry *te;
 
     /* (1) Compare domain to mailnode */
@@ -556,7 +558,7 @@ int l;
 
     /* (2) Compare domain concatenated w/RSCS-domain to mailnode */
     if (rscsdom != 0) {
-        char rl = *rscsdom;
+        int rl = *rscsdom;
         char *rp = &rscsdom[1];
         int i;
 
@@ -566,8 +568,9 @@ int l;
     }
 
     /* (3) If file is from local user,  see if Local-Domain matches */
-    if (mailflg1&MFLG1LCL && lcldom != 0)
-        if (*lcldom == l && xcmp(&lcldom[1], s, l) == 0)
+    if (mailflg1&MFLG1LCL && lclhost[0] != 0)
+        for (ri = 0; lclhost[ri] != 0 && ri < MAXLCLHOST; ri++)
+        if (*lclhost[ri] == l && xcmp(&lclhost[ri][1], s, l) == 0)
             return 1;
 
     /* (4) Look in MAILRTAB and compare RTROUTE to MAILNODE */
@@ -1355,7 +1358,7 @@ int l;
 
     /* (1) see if it ends in .<RSCS-domain> */
     if (rscsdom != 0) {
-        char rl = *rscsdom;
+        int rl = *rscsdom;
         char *rp = &rscsdom[1];
 
         if (rl < l && xcmp(rp, &s[l-rl], rl) == 0)
@@ -1425,16 +1428,16 @@ log_errors()
  * add_received:  Add "Received:" stamp to DATA file.  Format is:
  *
  *  if from a trusted mailer:
- *    Received: from <domain> by <lcldom>(Mailer <mailvers>)
+ *    Received: from <domain> by <lclhost1>(Mailer <mailvers>)
  *     with BSMTP id <mailftxt>; <arpadate>
  *
  *  if not from a trusted mailer and not a charlatan:
- *    Received: from <domain>(<mailuser>) by <lcldom>(Mailer <mailvers>)
+ *  Received: from <domain>(<mailuser>) by <lclhost1>(Mailer <mailvers>)
  *     with BSMTP id <mailftxt>; <arpadate>
  *
  *  if from a charlatan:
  *    Received: from <domain>(<mailuser>@<mailnode>)
- *     by <lcldom>(Mailer <mailvers>) with BSMTP id <mailftxt>;
+ *     by <lclhost>(Mailer <mailvers>) with BSMTP id <mailftxt>;
  *     <arpadate>
  *
  *  Also adds an X-Delivery-Notice if S.fakefrom.
@@ -1464,8 +1467,9 @@ add_received()
         buf[len++] = ')';
     }
     bcopy(" by ",&buf[len],4); len += 4;
-    if (lcldom != 0) {
-        bcopy(&lcldom[1],&buf[len],(int)lcldom[0]); len += lcldom[0];
+    if (lclhost[0] != 0) {
+        bcopy(&lclhost[0][1],&buf[len],(int)lclhost[0][0]);
+        len += lclhost[0][0];
     } else {
         bcopy(cpustr,&buf[len],cpuslen); len += cpuslen;
         if (rscsdom != 0) {

@@ -38,7 +38,7 @@ offset maxrcvd 4             % max number of received header lines
 offset mailulen 4            % length of mailuser
 offset mailnlen 4            % length of mailnode
 offset mailulfs 4            % ptr to error log fscb
-offset lcldom 4              % ptr to local-domain string
+offset oldldom 4             % spare (was ptr to local-domain string)
 offset cpuslen 4             % length of cpustr
 offset rscsdom 4             % ptr to rscs-domain string
 offset maildtab 4            % domains table
@@ -63,3 +63,5 @@ offset maintid8 8            % maintainer userid
 offset maintno8 8            % maintainer node
 offset maintid9 8            % maintainer userid
 offset maintno9 8            % maintainer node
+origin 2232
+offset lclhost 36            % array of ptrs to local-host strings

@@ -197,7 +197,7 @@ SPOOLIT  EQU   *
          LTR   R15,R15            not found?
          BNZ   NOPARM             ignore it
          LR    R5,R1              get a better copy of it
-STUFFIT  EQU   *                  <- get here if lcldom was set. [1.24]
+STUFFIT  EQU   *                  <- get here if Local-Host1 was set.
          SR    R1,R1              zero it for IC
          IC    R1,0(R5)           length
          C     R1,=A(L'HELODOM)   room for it?
@@ -206,7 +206,7 @@ STUFFIT  EQU   *                  <- get here if lcldom was set. [1.24]
          EX    R1,MOVEDOM         MVC HELODOM(0),1(R5)
          B     HADPARM            skip over the noparm stuff
 NOPARM   EQU   *                  here if no parameter
-         ICM   R5,B'1111',LCLDOM  see if Local-Domain was set    [1.24]
+         ICM   R5,B'1111',LCLHOST1 See if Local-Host1 was set
          BNZ   STUFFIT            -> go back up and stuff it in  [1.24]
          MVC   HELODOM(8),CPUSTR  copy in rscs node name
          CLC   RSCSDOM,=A(0)      was a domain given?

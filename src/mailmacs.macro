@@ -556,7 +556,7 @@ MAXRCVD  DC    F'50'         max. number of Received: headers.   [1.24]
 MAILULEN DC    F'0'          length of MAILUSER                  [1.24]
 MAILNLEN DC    F'0'          lenght of MAILNODE                  [1.24]
 MAILULFS DC    A(ULFSCB)     ptr to userlog file FSCB            [1.23]
-LCLDOM   DC    A(0)          local domain name for this host     [1.22]
+OLDLDOM  DC    A(0)                Spare (was -> Local-Domain)
 CPUSLEN  DC    F'0'          length of cpustr for convenience    [1.22]
 RSCSDOM  DC    A(0)          default domain for the RSCS network [1.22]
 MAILDTAB DC    A(0)          domains table pointer               [1.22]
@@ -603,6 +603,16 @@ MAINTNO8 DC    8X'00'             & node
 MAINTID9 DC    8X'00'         Alternate priviliged userid
 MAINTNO9 DC    8X'00'             & node
          DC    16X'FF'        Absolute end of list
+LCLHOST1 DC    A(0)                Local host name #1.
+LCLHOST2 DC    A(0)                Local host name #2.
+LCLHOST3 DC    A(0)                Local host name #3.
+LCLHOST4 DC    A(0)                Local host name #4.
+LCLHOST5 DC    A(0)                Local host name #5.
+LCLHOST6 DC    A(0)                Local host name #6.
+LCLHOST7 DC    A(0)                Local host name #7.
+LCLHOST8 DC    A(0)                Local host name #8.
+LCLHOST9 DC    A(0)                Local host name #9.
+LCLHOST  EQU   LCLHOST1,*-LCLHOST1 The whole array.
          DS    0D            Just for pretty
 MAILBLEN EQU   *-MAILXXXX    LENGTH IN BYTES
          POP   PRINT

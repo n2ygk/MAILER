@@ -436,20 +436,28 @@ DOMNOMAT EQU   *             fall thru here to old lookup code   [1.22]
          USING ROUTD,R1      ADDRESS THE ENTRY
          CLC   RTROUTE,CPUSTR IS IT AN ALIAS FOR THIS NODE?
          DROP  R1
-         BNE   BADLOC        NOPE
+         BNE   TRYLDOM       Nope
          SR    R15,R15       OK RETCODE
          B     RET
          SPACE ,
 TRYLDOM  DS    0H
-         ICM   R3,B'1111',LCLDOM   Is there a LocalDomain?
+         LA    R15,LCLHOST         Address of LocalDomain array.
+         LA    R14,L'LCLHOST/4     Number of entries in LCLHOST.
+TLDLOOP  DS    0H
+         ICM   R3,B'1111',0(R15)   Is there a LocalDomain?
          BZ    BADLOC              No  : Bad address.
          SR    R1,R1               Get Local-Domain
          IC    R1,0(,R3)              length.
          CR    R7,R1               Do the lengths match?
-         BNE   BADLOC              No  : Bad address.
+         BNE   TLDNEXT             No  : Bad address.
          BCTR  R1,0
          EX    R1,TLD$CLC          "CLC 0(*-*,R2),1(R3)"
-         BNE   BADLOC              No  : Bad address.
+         BE    TLDGOOD             Yes : Accept it.
+TLDNEXT  DS    0H
+         LA    R15,4(,R15)         Update pointer
+         BCT   R14,TLDLOOP            and loop.
+         B     BADLOC              End of list : Bad address.
+TLDGOOD  DS    0H
          SR    R15,R15             Yes : Accept <user>@<lcldom>.
          B     RET
 TLD$CLC  CLC   0(*-*,R2),1(R3)     *** Executed ***
