@@ -554,7 +554,7 @@ int l;
         bcopy(s, &dbgmsg[11], l);
         bcopy("<", &dbgmsg[11+l], 2);
         wrterm(dbgmsg);
-        sprintf(dbgmsg, "==> BSMTP: Line length is %d" , l);
+        sprintf(dbgmsg, "s_input:  Line length is %d" , l);
         wrterm(dbgmsg);
     }
 
@@ -564,7 +564,7 @@ int l;
      */
     if ((l==79 && s[79] == 0x15) || (l==80 && s[79] == '<')) {
        if (mailblok.dbgflg[0] & TRACE_S_INPUT)
-           wrterm("==> BSMTP: Continue line being processed");
+           wrterm("s_input:  Continue line being processed");
        if ((rlen = rdcard(&s[79],(int)mailblok.mailsfb.sfbrecsz)) >= 0)
           l = 79+rlen;
        if (mailblok.dbgflg[0] & TRACE_S_INPUT) {
@@ -573,7 +573,7 @@ int l;
            bcopy("<", &dbgmsg[11+l], 2);
            wrterm(dbgmsg);
            sprintf(dbgmsg,
-               "==> BSMTP: Continued line - new length is %d" , l);
+               "s_input:  Continued line - new length is %d" , l);
            wrterm(dbgmsg);
        }
     }
@@ -694,6 +694,13 @@ int l;
 
     /* (1) Compare domain to mailnode */
 
+    if (mailblok.dbgflg[0] & TRACE_CHECK_LOCAL) {
+       bcopy("check_local:  Comparison string <", dbgmsg , 33);
+       bcopy(s, &dbgmsg[33], l);
+       bcopy(">", &dbgmsg[33+l], 2);
+       wrterm(dbgmsg);
+    }
+
     if (mailblok.mailnlen == l && xcmp(mailblok.mailnode,s,l) == 0)
         return 1;
     else {
@@ -758,6 +765,9 @@ int l;
                wrterm(dbgmsg);
            }
         }
+    } else {
+        if (mailblok.dbgflg[0] & TRACE_CHECK_LOCAL)
+           wrterm("No Local-Hostn values for comparison");
     }
 
     /* time to give up */
@@ -1333,9 +1343,11 @@ int l;
        acall(genlist, 0, &plist);
        if ((mailblok.dbgflg[0] & TRACE_S_RCPT) ||
            (mailblok.dbgflg[7] & DBGBLDLS)) {
-          bcopy("s_rcpt:  Route address <", dbgmsg, 25);
-          bcopy(hs,&dbgmsg[25],hl);
-          bcopy(">",&dbgmsg[hl+25],2);
+          bcopy("s_rcpt:  Route address <", dbgmsg, 24);
+          bcopy(hs,&dbgmsg[24],hl);
+          bcopy(">",&dbgmsg[hl+24],2);
+          wrterm(dbgmsg);
+          sprintf(dbgmsg, "s_rcpt:  Address length is %d" , hl);
           wrterm(dbgmsg);
        }
        if (check_local(hs,hl)) {
@@ -1352,7 +1364,7 @@ int l;
        else {
           if ((mailblok.dbgflg[0] & TRACE_S_RCPT) ||
               (mailblok.dbgflg[7] & DBGBLDLS))
-            wrterm("s_rcpt:  No route list found");
+             wrterm("s_rcpt:  Destination is not local host");
           break;
        }
     }
@@ -1397,21 +1409,24 @@ int l;
     acall(genlist, 0, &plist);
     if ((mailblok.dbgflg[0] & TRACE_S_RCPT) ||
         (mailblok.dbgflg[7] & DBGBLDLS)) {
-       bcopy("s_rcpt:  Destination address <", dbgmsg, 31);
-       bcopy(hs,&dbgmsg[31],hl);
-       bcopy(">",&dbgmsg[hl+31],2);
+       bcopy("s_rcpt:  Destination address <", dbgmsg, 30);
+       bcopy(hs,&dbgmsg[30],hl);
+       bcopy(">",&dbgmsg[hl+30],2);
        wrterm(dbgmsg);
     }
     if ((r = find_routd(hs, hl)) == 0) {
+        if ((mailblok.dbgflg[0] & TRACE_S_RCPT) ||
+            (mailblok.dbgflg[7] & DBGBLDLS))
+           wrterm("s_rcpt:  Destination address not found");
         (*S.repf)("550 Mailbox not found.", 22);
         mailblok.mailflg2 |= MFLG2BLD;
         return st;
     } else {
        if ((mailblok.dbgflg[0] & TRACE_S_RCPT) ||
            (mailblok.dbgflg[7] & DBGBLDLS)) {
-          bcopy("s_rcpt:  Destination address <", dbgmsg, 31);
-          bcopy(hs,&dbgmsg[31],hl);
-          bcopy(">",&dbgmsg[hl+31],2);
+          bcopy("s_rcpt:  Destination address <", dbgmsg, 30);
+          bcopy(hs,&dbgmsg[30],hl);
+          bcopy(">",&dbgmsg[hl+30],2);
           wrterm(dbgmsg);
        }
     }
@@ -1565,6 +1580,8 @@ int l;
         fsclose(&S.data_file);
         switch (S.disk_error) {
         case disknone:
+            if (mailblok.dbgflg[0] & TRACE_S_GETDATA)
+               wrterm("s_getdata:  Data file closed successfully");
             break;
         case diskfull:
             (*S.repf)("552 DATA aborted:  out of disk space.",37);
@@ -1584,8 +1601,11 @@ int l;
             }
             if (mailblok.dbgflg[0] & TRACE_S_GETDATA)
                 wrterm("s_getdata:  No errors found in data headers");
-            if (mailblok.maxrcvd && count_received() > mailblok.maxrcvd)
+            if (mailblok.maxrcvd && count_received()>mailblok.maxrcvd) {
+               if (mailblok.dbgflg[0] & TRACE_S_GETDATA)
+                   wrterm("s_getdata:  Too man Received: headers");
               return s_maxr(st, s, l);
+            }
             wtr("SMT",43,1,"d",mailblok.mailrcnb);
             if (mailblok.mailrcnb > 0)
               mailblok.mailrtot = mailblok.mailrtot+mailblok.mailrcnb;
@@ -1616,6 +1636,8 @@ int l;
             }
             S.seenmail = 0;
         } else {
+            if (mailblok.dbgflg[0] & TRACE_S_GETDATA)
+               wrterm("s_getdata:  No MAIL FROM: found");
            (*S.repf)("451 Request aborted: command out of sequence",44);
            return error;
         }
