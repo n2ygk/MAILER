@@ -176,6 +176,12 @@ FINDCMD  EQU   *
 *  After processing, all commands return to TRYNEXT
          SPACE 1
 TRYNEXT  EQU   *
+         TM    FLAG,SMSFLG         Requested response as SMSG?
+         BNO   TRYNEXT2            ---> No
+         L     R1,=A(ENDSMSG)      end marker
+         LA    R0,L'ENDSMSG        length of above
+         BAL   R14,WRITEMSG        send the message
+TRYNEXT2 EQU   *
          L     R0,MSGBLEN          MSGBLOK length
          LR    R1,R9                   and address
          L     R9,MSGNEXT          Pick up next block pointer
@@ -693,6 +699,8 @@ QUSMSG   DC    C'Quiesce command accepted.'
 RELMSG   DC    C'Reload command accepted.'
 STPMSG   DC    C'Stop command accepted.'
 BOGMSG   DC    C'Command not allowed or invalid.'
+         SPACE 1
+ENDSMSG  DC    C'- SMSG output complete.'
          SPACE 1
 TWORK    DS    64F                 TBLUK work area
 MSGCMD   DC    C'Msgcmd'           For TBLUK lookup
