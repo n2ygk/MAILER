@@ -32,7 +32,7 @@ signal on syntax
 signal on novalue
 
 parse arg '(' requestorid '@' requestornode ')'  maintainer ,
-          cmdstring , msgcmd .               /*                       */
+          cmdstring , msgcmd , diskmode .    /*                       */
 cmdstring = strip(cmdstring)                 /*                       */
 if translate(word(cmdstring,1)) = 'FORWARD'  then
    cmdstring = subword(cmdstring,2)          /*                       */
@@ -41,6 +41,8 @@ if translate(word(cmdstring,1)) = 'FORWARD'  then
 
 console = 0                                  /* Not from console      */
 exitrc  = 0                                  /*                       */
+if diskmode = ''  then  diskmode = 'A'       /* Disk mode on which    */
+                                             /*    to write files     */
 foruser = ''                                 /*                       */
 if msgcmd = ''  then                         /* Set msg cmd default   */
    msgcmd  = 'MSGNOH'                        /*    if none given      */
@@ -81,6 +83,7 @@ say 'Forward:  Cmd       = "'strip(original)'"'
 say '       :  Requestor = "'requestor'"' mflag
 say '       :  Cmdline   = "'cmdstring'"'
 say '       :  Msgcmd    = "'msgcmd'"'
+say '       :  Diskmode  = "'diskmode'"'
 
 
 /* Do some command checking */
@@ -164,7 +167,8 @@ exit:  exit exitrc                           /*                       */
 /* *****************************************************************  */
 
 Add:  procedure ,  /* Do processing for an ADD operation */
-      expose cmdstring console foruser localnode msgcmd requestor
+      expose cmdstring console diskmode foruser localnode msgcmd ,
+             requestor
 
 parse var cmdstring . destination            /*                       */
 
@@ -176,8 +180,8 @@ else  do                                     /*                       */
    exitrc = 8                                /*                       */
    end
 
-if exists(foruser 'FORWARD A')  then  do     /*                       */
-   'EXECIO * DISKR' foruser 'FORWARD A (FINIS STEM FORWARD.'
+if exists(foruser 'FORWARD' diskmode)  then  do
+   'EXECIO * DISKR' foruser 'FORWARD' diskmode '(FINIS STEM FORWARD.'
    matches = addresscan(destination)         /*                       */
    if matches = 0  then                      /*                       */
       exitrc = addone(destination)
@@ -196,10 +200,10 @@ return exitrc
 
 
 Addone:  procedure ,  /* Write a line to end of FORWARD file */
-         expose foruser
+         expose diskmode foruser
 
 parse arg destination                        /*                       */
-'EXECIO 1 DISKW' foruser 'FORWARD A (FINIS VAR DESTINATION'
+'EXECIO 1 DISKW' foruser 'FORWARD' diskmode '(FINIS VAR DESTINATION'
 exitrc = rc                                  /*                       */
 if rc = 0  then                              /*                       */
    'EXECDROP' foruser 'FORWARD'              /*                       */
@@ -263,7 +267,8 @@ return 0
 /* *****************************************************************  */
 
 Delete:  procedure ,  /* Do processing for a DELETE operation */
-         expose cmdstring console foruser localnode msgcmd requestor
+         expose cmdstring console diskmode foruser localnode msgcmd ,
+                requestor
 
 parse var cmdstring . destination            /*                       */
 
@@ -278,8 +283,8 @@ else  do                                     /*                       */
    exitrc = 8                                /*                       */
    end
 
-if exists(foruser 'FORWARD A')  then  do     /*                       */
-   'EXECIO * DISKR' foruser 'FORWARD A (FINIS STEM FORWARD.'
+if exists(foruser 'FORWARD' diskmode)  then  do
+   'EXECIO * DISKR' foruser 'FORWARD' diskmode '(FINIS STEM FORWARD.'
    if rc <> 0  then  do                      /*                       */
       exitrc = rc                            /*                       */
       call msg '"'destination'" not found in forwarding file'
@@ -287,13 +292,13 @@ if exists(foruser 'FORWARD A')  then  do     /*                       */
    else  do                                  /*                       */
       matches = addresscan(destination)      /*                       */
       if matches > 0  then  do               /*                       */
-         'ERASE' foruser 'FORWARD A'         /* Erase old file        */
+         'ERASE' foruser 'FORWARD' diskmode  /* Erase old file        */
          call msg 'Forward: ' matches 'forwarding id(s) deleted'
          do i=1 to forward.0                 /*                       */
             if matching.i  then              /*                       */
                call msg '    ' forward.i     /*                       */
             else                             /*                       */
-               'EXECIO 1 DISKW' foruser 'FORWARD A (FINIS' ,
+               'EXECIO 1 DISKW' foruser 'FORWARD' diskmode '(FINIS' ,
                   'VAR FORWARD.'i            /* Rewrite file line     */
             end
          'EXECDROP' foruser 'FORWARD'        /*                       */
@@ -311,11 +316,12 @@ return exitrc                                /*                       */
 
 
 DeleteAll:  procedure ,  /* Do processing for a DELETE * operation */
-            expose cmdstring console foruser localnode msgcmd requestor
+            expose cmdstring console diskmode foruser localnode msgcmd ,
+                   requestor
 
-if exists(foruser 'FORWARD A')  then  do     /*                       */
-   'EXECIO * DISKR' foruser 'FORWARD A (FINIS STEM FORWARD.'
-   'ERASE' foruser 'FORWARD A'               /* Erase old file        */
+if exists(foruser 'FORWARD' diskmode)  then  do
+   'EXECIO * DISKR' foruser 'FORWARD' diskmode '(FINIS STEM FORWARD.'
+   'ERASE' foruser 'FORWARD' diskmode        /* Erase old file        */
    call msg 'Forward: ' forward.0 'forwarding id(s) deleted'
    do i=1 to forward.0                       /*                       */
       call msg '    ' forward.i              /*                       */
@@ -356,7 +362,8 @@ return 0
 /* *****************************************************************  */
 
 List:  procedure ,  /* Do processing for a LIST operation */
-       expose cmdstring console foruser localnode msgcmd requestor
+       expose cmdstring console diskmode foruser localnode msgcmd ,
+              requestor
 
 parse var cmdstring . extra                  /*                       */
 
@@ -365,31 +372,33 @@ if extra <> ''  then  do                     /*                       */
    return 8
    end
 
-if ^exists(foruser 'FORWARD A')  then  do    /*                       */
+if ^exists(foruser 'FORWARD' diskmode)  then  do
    call msg 'No forwarding in effect for' foruser
    exitrc = 4                                /*                       */
    end                                       /*                       */
 else  do                                     /*                       */
    if console  then  do                      /*                       */
       say 'Forward:  Forwarding file for' foruser
-      'TYPE' foruser 'FORWARD A'             /*                       */
+      'TYPE' foruser 'FORWARD' diskmode      /*                       */
       say 'Forward:  End of forwarding file for' foruser
       end
    else  do                                  /*                       */
       'MAKEBUF'                              /*                       */
-      'LISTFILE' foruser 'FORWARD A (DATE STACK' /*                   */
+      'LISTFILE' foruser 'FORWARD' diskmode '(DATE STACK'
       parse upper pull . . . . . records .   /*                       */
       'DROPBUF'                              /*                       */
       if records > 2  then  do               /*                       */
          call msg 'Sending a copy of forwarding file to  you'
          parse var requestor userid '@' node /*                       */
          if node = ''  then                  /*                       */
-            'EXEC SENDFILE' foruser 'FORWARD A TO' requestor
+            'EXEC SENDFILE' foruser 'FORWARD' diskmode 'TO' requestor
          else                                /*                       */
-            'EXEC SENDFILE' foruser 'FORWARD A TO' userid 'AT' node
+            'EXEC SENDFILE' foruser 'FORWARD' diskmode 'TO' userid ,
+               'AT' node
          end
       else  do                               /*                       */
-         'EXECIO * DISKR' foruser 'FORWARD A (FINIS STEM FORWARDS.'
+         'EXECIO * DISKR' foruser 'FORWARD' diskmode '(FINIS STEM' ,
+            'FORWARDS.'
          call msg 'Forward:  Forwarding file for' foruser
          do i=1 to forwards.0                /*                       */
             call msg forwards.i              /*                       */

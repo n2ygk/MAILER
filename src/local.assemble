@@ -836,7 +836,7 @@ EXECLOAD DS    0D
          DC    CL8'EXECLOAD'
 EXECLDFN DC    CL8' '
 EXECLDFT DC    CL8'FORWARD'        FORWARD or MAILLIST
-         DC    CL8'A'
+         DC    CL8'*'
          DC    CL8'='
          DC    CL8'='
          DC    CL8'('

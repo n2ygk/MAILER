@@ -60,7 +60,7 @@ signal on syntax
 signal on novalue
 
 parse arg '(' requestorid '@' requestornode ')'  maintainer ,
-          cmdstring , msgcmd                 /*                       */
+          cmdstring , msgcmd , diskmode .    /*                       */
 cmdstring = strip(cmdstring)                 /*                       */
 if translate(word(cmdstring,1)) = 'MAILLIST'  then
    cmdstring = subword(cmdstring,2)          /*                       */
@@ -68,6 +68,8 @@ if translate(word(cmdstring,1)) = 'MAILLIST'  then
 /*  Set some defaults  */
 
 console = 0                                  /* Not from console      */
+if diskmode = ''  then  diskmode = 'A'       /* Disk mode on which    */
+                                             /*   to write files      */
 exitrc  = 0                                  /*                       */
 if msgcmd = ''  then                         /* Set msg cmd default   */
    msgcmd  = 'MSGNOH'                        /*    if none given      */
@@ -107,6 +109,7 @@ say 'Maillist:  Cmd       = "'strip(original)'"'
 say '        :  Requestor = "'requestor'"' mflag
 say '        :  Cmdline   = "'cmdstring'"'
 say '        :  Msgcmd    = "'msgcmd'"'
+say '        :  Diskmode  = "'diskmode'"'
 
 
 /* Do some command checking */
@@ -152,8 +155,8 @@ exit:  exit exitrc                           /*                       */
 /* ****************************************************************** */
 
 Add:  procedure ,  /* Do processing for an ADD operation */
-      expose cmdstring console localnode maillist. maintainer msgcmd ,
-      requestor
+      expose cmdstring console diskmode localnode maillist. ,
+             maintainer msgcmd requestor
 
 parse var cmdstring . listid destination     /*                       */
 upper listid                                 /*                       */
@@ -254,8 +257,8 @@ return exitrc
 /* ****************************************************************** */
 
 AddOwner:  procedure ,  /* Do processing for an ADDOWNER operation */
-           expose cmdstring console localnode maillist. maintainer ,
-                  msgcmd requestor
+           expose cmdstring console diskmode localnode maillist. ,
+                  maintainer msgcmd requestor
 
 parse var cmdstring . listid owners          /*                       */
 upper listid                                 /*                       */
@@ -337,7 +340,8 @@ return matches
 
 
 Create:  procedure ,  /* Create a distribution list  */
-         expose cmdstring console localnode maintainer msgcmd requestor
+         expose cmdstring console diskmode localnode maintainer msgcmd ,
+                requestor
 
 parse upper var cmdstring . listid owners
 upper listid                                 /*                       */
@@ -352,7 +356,7 @@ if listid = ''  then  do
    exit 8
    end
 
-if exists(listid 'MAILLIST A')  then  do
+if exists(listid 'MAILLIST' diskmode)  then  do
    call msg '"'listid 'distribution list already exists'
    return 8
    end
@@ -404,8 +408,8 @@ return result
 /* *****************************************************************  */
 
 Delete:  procedure ,  /* Do processing for a DELETE operation */
-         expose cmdstring console localnode maillist. maintainer ,
-                msgcmd requestor
+         expose cmdstring console diskmode localnode maillist. ,
+                maintainer msgcmd requestor
 
 parse var cmdstring . listid destination     /*                       */
 upper listid                                 /*                       */
@@ -467,8 +471,8 @@ return exitrc
 /* *****************************************************************  */
 
 DeleteAll:  procedure ,  /* Do processing for a DELETE * operation */
-            expose cmdstring console listid localnode maillist. msgcmd ,
-                   requestor
+            expose cmdstring console diskmode listid localnode ,
+                   maillist. msgcmd requestor
 
 call msg 'Deleting all ids on list'          /* Header msg            */
 j=0                                          /* Initialize counter    */
@@ -534,8 +538,8 @@ return deletedone
 /* ****************************************************************** */
 
 DelOwner:  procedure ,  /* Do processing for an DELOWNER operation */
-           expose cmdstring console localnode maillist. maintainer ,
-                  msgcmd requestor
+           expose cmdstring console diskmode localnode maillist. ,
+                  maintainer msgcmd requestor
 
 parse var cmdstring . listid owners          /*                       */
 upper listid                                 /*                       */
@@ -597,7 +601,8 @@ return 0
 
 
 Destroy:  procedure ,
-          expose cmdstring console localnode maintainer msgcmd requestor
+          expose cmdstring console diskmode localnode maintainer ,
+                  msgcmd requestor
 
 parse upper var cmdstring . listid .
 upper listid                                 /*                       */
@@ -612,12 +617,12 @@ if listid = ''  then  do
    return 8
    end
 
-if ^exists(listid 'MAILLIST A')  then  do
+if ^exists(listid 'MAILLIST' diskmode)  then  do
    call msg '"'listid 'distribution list does not exist'
    return 8
    end
 
-'ERASE' listid 'MAILLIST A'
+'ERASE' listid 'MAILLIST' diskmode
 call msg '"'listid 'MAILLIST" file erased'
 
 return 0
@@ -633,7 +638,7 @@ return 0
 /* *****************************************************************  */
 
 List:  procedure ,  /* Do processing for a LIST operation */
-       expose cmdstring console localnode msgcmd requestor
+       expose cmdstring console diskmode localnode msgcmd requestor
 
 parse var cmdstring . listid extra           /*                       */
 upper listid                                 /*                       */
@@ -643,23 +648,24 @@ if extra <> ''  then  do                     /*                       */
    return 8
    end
 
-if ^exists(listid 'MAILLIST A')  then  do
+if ^exists(listid 'MAILLIST' diskmode)  then  do
    call msg listid 'distribution list does not exist'
    exitrc = 4
    end
 else  do
    if console  then  do
       say 'Maillist: ' listid 'distribution list'
-      'TYPE' listid 'MAILLIST A'
+      'TYPE' listid 'MAILLIST' diskmode
       say 'Maillist:  End of forwarding distribution list'
       end
    else  do                                  /*                       */
       call msg 'Sending a copy of distribution list to you'
       parse var requestor userid '@' node /*                       */
       if node = ''  then                  /*                       */
-         'EXEC SENDFILE' listid 'MAILLIST A TO' userid
+         'EXEC SENDFILE' listid 'MAILLIST' diskmode 'TO' userid
       else                                /*                       */
-         'EXEC SENDFILE' listid 'MAILLIST A TO' userid 'AT' node
+         'EXEC SENDFILE' listid 'MAILLIST' diskmode 'TO' userid ,
+            'AT' node
       end
    exitrc = 0                                /*                       */
    end
@@ -730,10 +736,10 @@ return owner
 /*                                                                    */
 /* *****************************************************************  */
 
-ReadDistList:  procedure expose listid maillist.
+ReadDistList:  procedure expose diskmode listid maillist.
 
-If ^exists(listid 'MAILLIST A')  then  return 28
-'EXECIO * DISKR' listid 'MAILLIST A (FINIS STEM MAILLIST.'
+If ^exists(listid 'MAILLIST' diskmode)  then  return 28
+'EXECIO * DISKR' listid 'MAILLIST' diskmode '(FINIS STEM MAILLIST.'
 
 return rc
 
@@ -891,10 +897,12 @@ return destination
 /*                                                                    */
 /* *****************************************************************  */
 
-WriteDistList:  procedure expose listid maillist.
+WriteDistList:  procedure expose diskmode listid maillist.
 
-If exists(listid 'MAILLIST A')  then  'ERASE' listid 'MAILLIST A'
-'EXECIO' maillist.0 'DISKW' listid 'MAILLIST A (FINIS STEM MAILLIST.'
+If exists(listid 'MAILLIST' diskmode)  then
+   'ERASE' listid 'MAILLIST' diskmode
+'EXECIO' maillist.0 'DISKW' listid 'MAILLIST' diskmode '(FINIS STEM' ,
+   'MAILLIST.'
 exitrc = rc
 if rc = 0  then
    'EXECDROP' listid 'MAILLIST'

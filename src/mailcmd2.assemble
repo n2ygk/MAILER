@@ -189,17 +189,30 @@ $FWD0020 EQU   *
          EX    R15,MOVEFWD         Move in command arguments
 $FWD0040 EQU   *
          CLC   =F'0',$EXCARG2      MSGCMD argument set?
-         BNE   $FWD0100            ---> Yes
+         BNE   $FWD0060            ---> Yes
          L     R14,MAILPTAB        Parameter table
          MAILTRC CALL,TBLUK        Trace the call
          L     R15,ATBLUK          Pick up TBLUK routine address
          CALL  (15),((R14),MSGCMD,L'MSGCMD,TWORK)
          MAILTRC RETURN,TBLUK,(R15) Trace the return
          LTR   R15,R15             Found an entry?
-         BNZ   $FWD0100            ---> No MSGCMD value
+         BNZ   $FWD0060            ---> No MSGCMD value
          LA    R0,1(,R1)           Point to start of string
          ST    R0,$EXCARG2         Put address into argument
          MVC   $EXCARG2+7(1),0(R1) Put length into argument
+$FWD0060 EQU   *
+         CLC   =F'0',$EXCARG3      MSGCMD argument set?
+         BNE   $FWD0100            ---> Yes
+         L     R14,MAILPTAB        Parameter table
+         MAILTRC CALL,TBLUK        Trace the call
+         L     R15,ATBLUK          Pick up TBLUK routine address
+         CALL  (15),((R14),FORWDISK,L'FORWDISK,TWORK)
+         MAILTRC RETURN,TBLUK,(R15) Trace the return
+         LTR   R15,R15             Found an entry?
+         BNZ   $FWD0100            ---> No MSGCMD value
+         LA    R0,1(,R1)           Point to start of string
+         ST    R0,$EXCARG3         Put address into argument
+         MVC   $EXCARG3+7(1),0(R1) Put length into argument
 $FWD0100 EQU   *
          LA    R1,$EXCPL           Point to tokenized plist
          ICM   R1,B'1000',=X'05'   Doing REXX function call
@@ -255,17 +268,30 @@ $MLS0020 EQU   *
          EX    R15,MOVEMLS         Move in command arguments
 $MLS0040 EQU   *
          CLC   =F'0',$EXCARG2      MSGCMD argument set?
-         BNE   $MLS0100            ---> Yes
+         BNE   $MLS0060            ---> Yes
          L     R14,MAILPTAB        Parameter table
          MAILTRC CALL,TBLUK        Trace the call
          L     R15,ATBLUK          Pick up TBLUK routine address
          CALL  (15),((R14),MSGCMD,L'MSGCMD,TWORK)
          MAILTRC RETURN,TBLUK,(R15) Trace the return
          LTR   R15,R15             Found an entry?
-         BNZ   $MLS0100            ---> No MSGCMD value
+         BNZ   $MLS0060            ---> No MSGCMD value
          LA    R0,1(,R1)           Point to start of string
          ST    R0,$EXCARG2         Put address into argument
          MVC   $EXCARG2+7(1),0(R1) Put length into argument
+$MLS0060 EQU   *
+         CLC   =F'0',$EXCARG3      MSGCMD argument set?
+         BNE   $MLS0100            ---> Yes
+         L     R14,MAILPTAB        Parameter table
+         MAILTRC CALL,TBLUK        Trace the call
+         L     R15,ATBLUK          Pick up TBLUK routine address
+         CALL  (15),((R14),MLSTDISK,L'MLSTDISK,TWORK)
+         MAILTRC RETURN,TBLUK,(R15) Trace the return
+         LTR   R15,R15             Found an entry?
+         BNZ   $MLS0100            ---> No MSGCMD value
+         LA    R0,1(,R1)           Point to start of string
+         ST    R0,$EXCARG3         Put address into argument
+         MVC   $EXCARG3+7(1),0(R1) Put length into argument
 $MLS0100 EQU   *
          LA    R1,$EXCPL           Point to tokenized plist
          ICM   R1,B'1000',=X'05'   Doing REXX function call
@@ -549,6 +575,8 @@ DWORD    DS    D
 TWORK    DS    64F                 TBLUK work area
          SPACE 1
 MSGCMD   DC    C'Msgcmd'           For TBLUK lookup
+FORWDISK DC    C'Forward-mode'
+MLSTDISK DC    C'Maillist-mode'
          SPACE 1
 MSGRC    DS    C'R('               Return code message
 MSGRCRC  DS    CL5
@@ -577,6 +605,7 @@ $EXCFUNR DC    A(0)                Function return
 $EXCARGL DS    0F                  REXX argument list
          DC    A($EXCARGS),A($EXCARGE-$EXCARGS)
 $EXCARG2 DC    A(0),A(0)           Address/length of 'MSGCMD' value
+$EXCARG3 DC    A(0),A(0)           Address/length of 'diskmode' value
          DC    8X'FF'
          SPACE 1
 $EXCFBLK DS    0F
