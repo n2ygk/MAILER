@@ -131,6 +131,9 @@ MONWTR   CSECT
          L         R8,0(R9)            ADDRESS OF MESSAGE TEXT
          SR        R7,R7               GET A ZERO
          IC        R7,0(R8)            LENGTH OF MSG SKELETON
+         CH    R7,=Y(L'BUFFER)     Too long for buffer?
+         BNH   *+8                 No  : Skip.
+         LA    R7,L'BUFFER         Yes : Truncate it.
          BCTR      R7,0                -1 FOR EXECUTE
          LA        R8,1(R8)            POINT AT TEXT PART
          EX        R7,MOVEIT           COPY SKELETON INTO BUFFER
@@ -374,7 +377,7 @@ DATE     DS        CL8
 CLOCK    DS        CL8
          DC        C'  '
 LMSG     EQU       *-MSG-1
-BUFFER   DS        CL100               MAX OF ABOUT 100 CHARS
+BUFFER   DS        CL220           Room for more than you could want.
 FLAGS    DC    X'00'
 UFLG     EQU   X'80'
 XFLG     EQU   X'40'

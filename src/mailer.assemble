@@ -35,6 +35,9 @@ MAILER   CSECT ,
          USING MAILER,R15    TEMP ADDRESSABILITY
          B     EYESKIP       SKIP OVER ID
 MYNAME   DC    CL8'MAILER',CL8'&SYSDATE'
+         LCLC  &TIME
+&TIME    SETC  '&SYSTIME'(1,2).':'.'&SYSTIME'(4,2).':00'
+ASMTIME  DC    CL8'&TIME'
          DC    C'  '
          DC    C'Copyright (c) 1982, 1987, The Trus'
          DC    C'tees of Columbia University in the'
@@ -77,7 +80,7 @@ EYESKIP  DS    0H
 NOPROF   EQU   *                                           [1]
          STRINIT ,           INTIALIZE GETMAIN POINTERS
          SPACE ,
-         WTR   LER001,(CA,MAILVERS,CA,MYNAME+8)                  [1.22]
+         WTR   LER001,(CA,MAILVERS,CA,MYNAME+8,CA,ASMTIME)
          MVI   MAILSTAT,0    STATUS FLAG INITIALLY ZERO
          MVI   MAILCMD,0     COMMAND FLAGS INITIALLY ZERO
          XC    MAILCMDL,MAILCMDL SAME FOR COMMAND LIST
