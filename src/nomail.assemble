@@ -1,15 +1,22 @@
-NOMAIL   TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - NOMAIL EXIT'
+NOMAIL   TITLE 'VM Network Mailer Release 2 - NOMAIL exit'
 *---------------------------------------------------------------------*
 *      MAILER -- Copyright (c) 1982,1985 Columbia University.         *
 *    Program Property of the Trustees of Columbia University in the   *
 *    City of New York.                                                *
+*      MAILER -- Copyright (c) 1990 Princeton University              *
 *---------------------------------------------------------------------*
 NOMAIL   CSECT ,
 * NOMAIL     -
 *
-* ACCEPTS A PARM LIST ADDRESS IN R1 -
-*        0: ADDR OF MAILBLOK
-*        4: ADDR OF ACTADR BLOCK
+*  This type 2 exit logs a message for every destination for which
+*  service is explicitly not being provided.
+*
+* CALLED VIA -
+*   CALL NOMAIL,(MAILBLOK,ACTADR)
+*
+PAB      DSECT ,
+@MBLOK   DS    F             ADDRESS OF MAILBLOK
+@ACT     DS    F             ADDRESS OF ACTADR BLOCK
 *
 * REGISTER USAGE -
 R0  EQU  0 -
@@ -21,9 +28,9 @@ R5  EQU  5 -
 R6  EQU  6 -
 R7  EQU  7 -
 R8  EQU  8 -
-R9  EQU  9 -
-R10 EQU 10 -
-R11 EQU 11 -
+R9  EQU  9 - ROUTD base
+R10 EQU 10 - ACTADR base
+R11 EQU 11 - MAILBLOK base
 R12 EQU 12 - PROGRAM BASE
 R13 EQU 13 - SAVE AREA
 R14 EQU 14 - SUBROUTINE LINKAGE
@@ -36,27 +43,109 @@ NOMAIL   CSECT ,
          B     EYESKIP
 MYNAME   DC    CL8'NOMAIL',CL8'&SYSDATE'
 EYESKIP  DS    0H
-         DROP  R15
-         STM       R14,R12,12(R13)
+         STM   R14,R12,12(R13)
          LR    R12,R15
+         SPACE 1
+         DROP  R15
          USING NOMAIL,R12
-         LA        R14,SAVE
-         ST        R13,4(R14)
-         ST        R14,8(R13)
-         LR        R13,R14
-         LR        R10,R1
-         L         R11,0(R10)          GET MAILBLOK
-         USING     MAILBLOK,R11
+         SPACE 1
+         LA    R14,SAVE
+         ST    R13,4(R14)
+         ST    R14,8(R13)
+         LR    R13,R14
+         SPACE 1
+         USING PAB,R1              Parms base
+         SPACE 1
+         L     R11,@MBLOK          MAILBLOK base
+         L     R10,@ACT            ACTADR base
+         SPACE 1
+         USING MAILBLOK,R11
+         USING ACTADR,R10
+         DROP  R1
+         SPACE 1
+         L     R9,ACTRT            ROUTD addr
+         SPACE 1
+         USING ROUTD,R9
+         SPACE 1
          TM    DBGFLG6,DBGNOOUT    Sending mail?
          BZ    SKIP001             ---> Yes
          WRTERM 'NOMAIL:  Trace-send-no-mail set'
+         SPACE 1
 SKIP001  EQU   *
-         L         R9,4(R10)           GET ACTADR
-         USING     ACTADR,R9
-         L     R8,ACTRT      ADDRESS OF ROUTD CARD
-         USING     ROUTD,R8
-         LA    R5,RTPARM     USE THE PARM
-         LOG   NOM041,(CA,(R5))        ISSUE MESSAGE
+         MVI   SERVICE,C' '        Clear message buffer
+         MVC   SERVICE+1(L'SERVICE-1),SERVICE
+         CLC   RTPARM,=CL8' '      Is there a parm?
+         BE    NOPARM               ---> No
+         SPACE 1
+*  See if parm value supplied
+         SPACE 1
+         CLC   RTPARM,=CL(L'RTPARM)'@'  Use hostid?
+         BE    USEHOST                  ---> Yes
+         MVC   SERVICE(L'RTPARM),RTPARM Assume using parm
+         LA    R1,RTPARM+L'RTPARM-1     End of parm
+         MVI   TRAPTAB+C' ',X'FF'       Trap blanks
+         TRT   RTPARM(L'RTPARM-1),TRAPTAB
+         MVI   TRAPTAB+C' ',X'00'       Reset trap table
+         LA    R4,RTPARM           Start of parm field
+         SR    R1,R4               Length of parm
+         LR    R5,R1               Move to a better reg
+         L     R6,MAILPTAB         Address of parm table
+         L     R15,ATBLUK          Address of table lookup
+         CALL  (15),((R6),(R4),(R5),TWORK) find the parm
+         LTR   R15,R15             Found it?
+         BNZ   LOGMSG              ---> No, use parm for name
+         SPACE 1
+*  Move parm value into service field
+         SPACE 1
+         LR    R5,R1               Get a better copy of it
+         SR    R1,R1               Zero it for IC
+         IC    R1,0(R5)            Length
+         LA    R5,1(,R5)           Start of string
+         C     R1,=A(L'SERVICE)    Too long?
+         BNH   VALUEOK             ---> No
+         L     R1,=A(L'SERVICE)    Use as much as possible
+VALUEOK  EQU   *
+         BCTR  R1,0                Decrement for EX
+         EX    R1,MVCVALUE         Move it into service field
+         B     LOGMSG              Go log msg
+         SPACE 1
+MVCVALUE MVC   SERVICE(0),0(R5)    Executed
+         SPACE 1
+         DROP  R9
+         SPACE 1
+USEHOST  EQU   *
+         ICM   R7,B'1111',ACTMBOX  Mailbox ptr
+         BZ    UNKNOWN             ---> Put something in msg
+         USING MBOX,R7
+         ICM   R7,B'1111',MBXDML   Host name TOKEND addr
+         DROP  R7
+         BZ    UNKNOWN             ---> Put something in msg
+         ST    R7,GENMBMBX         Save TOKEND address
+         MVC   GENMBSTK,=A(SERVICE)     Address of build area
+         MVC   GENSTKSZ,=A(L'SERVICE)   Length of build area
+         LA    R4,L'SERVICE        Output string length
+         CALL GENLIST,(GENMBMBX,GENMBSTR,GENMBSTL,GENMBSTK,GENSTKSZ)
+         B     LOGMSG
+         SPACE 1
+NOPARM   EQU   *
+         ICM   R7,B'1111',ACTMBOX  Mailbox ptr
+         BZ    UNKNOWN             ---> Put something in msg
+         USING MBOX,R7
+         ST    R7,GENMBMBX         Save TOKEND address
+         MVC   GENMBSTK,=A(SERVICE)     Address of build area
+         MVC   GENSTKSZ,=A(L'SERVICE)   Length of build area
+         LA    R4,L'SERVICE        Output string length
+         CALL GENMBOX,(GENMBMBX,GENMBSTR,GENMBSTL,GENMBSTK,GENSTKSZ)
+         B     LOGMSG
+         SPACE 1
+         DROP  R7
+         SPACE 1
+UNKNOWN  EQU   *
+         MVC   SERVICE(15),=CL15'UNKNOWN SERVICE'
+         B     LOGMSG
+         SPACE 1
+LOGMSG   EQU   *
+         LOG   NOM041,(CA,SERVICE)     ISSUE MESSAGE
          LA    R15,4
 RET      EQU       *
          L         R13,4(R13)
@@ -66,4 +155,18 @@ RET      EQU       *
 *
          LTORG
 SAVE     DS        18F
+         SPACE 2
+*  The length of the SERVICE field must be coordinated with the length
+*  of the substitution area in msg 41 (see MSGTEXT).  If this length is
+*  changed, it must be changed in both places.
+         SPACE 1
+SERVICE  DC    CL40' '             Service name buffer
+         SPACE 2
+GENMBSTK DS    A(0)               Stack area for MBOX expansion
+GENSTKSZ DS    F'0'               Size of stack area
+GENMBMBX DS    A(0)               Address of MBOX dsect
+GENMBSTR DS    A(0)               Address of generated MBOX string
+GENMBSTL DS    F'0'               Length of generated string
+         SPACE 1
+TWORK    DS    512C               For TBLUK subroutine
          END   NOMAIL
