@@ -260,13 +260,13 @@ KWCNT    EQU   *
 GETLEN   EQU   *
          USING FSCBD,R8      ADDRESS THE FSCB
          LA    R2,TRAPTAB    ADDRESS OF TRT TABLE
-         MVI   C';'(R2),X'FF'  TRAP ON SEMICOLON
+         MVI   TRAPTAB+C';',X'FF'  Trap on semicolon
          L     R4,FSCBNORD   NUMBER OF BYTES READ
          L     R3,FSCBBUFF   ADDRESS OF DATA
          LA    R1,0(R3,R4)   ADDRESS OF END OF LINE IF NO ";"
          BCTR  R4,0          -1 FOR EXECUTE
          EX    R4,TRAPSEMI   TRAP SEMICOLON
-         MVI   C';'(R2),0    RESET THE TRT TABLE FOR THE NEXT GUY
+         MVI   TRAPTAB+C';',0      Reset the TRT table for the next guy
          SR    R1,R3         NEW LENGTH OF LINE
          BZR   R14           RETURN IF LENGTH 0
 GETL     EQU   *
