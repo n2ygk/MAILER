@@ -277,15 +277,30 @@ SET3B    EQU   *
          IC    R0,0(R1)      get the string length               [1.22]
          ST    R0,CPUSLEN    and save it for later               [1.22]
 NOSETLEN EQU   *                                                 [1.22]
+         EJECT ,
 *--------------------------------------------------------------------
 *        Do some cursory validation of profile
 *        This is anything but complete
+*--------------------------------------------------------------------
+         SPACE 2
+*--------------------------------------------------------------------
 *
-*        At the top of the loop (label LCHLOOP) register 15
-*        will point to the last lclhost entry used.  This is
+*        At the top of the local-host loop (label LCHLOOP) register
+*        15 will point to the last lclhost entry used.  This is
 *        done to allow for checking for holes in the Local-Hostn
 *        list.  If a hole is found the return code will be set
 *        to stop execution of Mailer.
+*
+*        This loop will also verify the existince of the local-host
+*        name in the OUTGOING table.  If not found a message will
+*        be issued and the name will be checked for in the DOMAINS
+*        table.  A message indicating the success or failure of this
+*        search will always be issued.  Mailer will continue to run
+*        even if one or more of the local-host names are not found.
+*        This isn't necessarily good, but I assume you know what you
+*        are doing (and there will be error messages in the console
+*        to help you figure out what you did).
+*
 *--------------------------------------------------------------------
          SPACE 1
          LA    R3,LCLHOST          Address of LocalHost array.
@@ -328,11 +343,110 @@ LCHNEXT  DS    0H
          LA    R3,4(,R3)           Update pointer
          BCT   R4,LCHLOOP             and loop.
 LCHDONE  EQU   *
-         CLC   CPUSLEN,=F'0'       THISNODE defined?
-         BNE   LOADEXIT            ---> Yes
-         WTR   STI083              Issue msg
-         MVC   EXITRC,=F'16'       Set return code
+         SPACE 2
+*--------------------------------------------------------------------
+*        Validate the existence of the THISNODE value in the
+*        OUTGOING table.  Since this is the NJE name for the local
+*        node this is the only reasonable place for it to appear.
+*
+*        If THISNODE is not defined or if the value in not found
+*        in OUTGOING the return code will be set to stop mailer
+*        before mail processing begins.
+*--------------------------------------------------------------------
          SPACE 1
+         CLC   CPUSLEN,=F'0'       THISNODE defined?
+         BNE   HAVETHIS            ---> Yes
+         WTR   STI083              Issue msg
+         B     BADTHIS             ---> Set return code
+         SPACE 1
+HAVETHIS EQU   *
+         L     R0,MAILRTAB         Pointer to OUTGOING table
+         LA    R14,CPUSTR          Pointer to string
+         L     R15,CPUSLEN         Length
+*        CALL  TBLUK,(MAILRTAB,CPUSTR,CPUSLEN,TWORK)
+         CALL  TBLUK,((R0),(R14),(R15),TWORK)
+         LTR   R15,R15             Found
+         BZ    MNTCHECK            ---> Yes
+         WTR   STI085              Issue msg
+         SPACE 1
+BADTHIS  EQU   *
+         MVC   EXITRC,=F'16'       Set return code
+         SPACE 2
+*--------------------------------------------------------------------
+*        Validate the MAINTNODEn values.  Since these values only
+*        appear during MSG/SMSG validation they must be NJE
+*        addresses.is the only reasonable place for it to appear.
+*--------------------------------------------------------------------
+         SPACE 1
+MNTCHECK EQU   *
+         LA    R3,MAINTID          Point to start of list
+         LR    R15,R3              Initial last entry ptr value
+MNTLOOP  EQU   *
+         CLI   0(R3),X'FF'         At end of list?
+         BE    LOADEXIT            ---> Yes
+         CLI   0(R3),X'00'         Have a userid?
+         BNE   MNTUID              ---> Yes
+         CLI   8(R3),X'00'         Have a node value?
+         BE    MNTNEXT             ---> No, that's ok
+         SPACE 1
+*        If we arrive here we have a node with no userid
+*        Validate that previous entry existed before issuing error msg
+         SPACE 1
+         CLI   0(R15),X'00'        Previous entry?
+         BNE   MNTNOU              ---> Yes
+         WTR   STI086              Issue error messgage
+MNTNOU   EQU   *
+         LR    R15,R3              Copy current pointer
+         LA    R14,MAINTID         Table start
+         SR    R15,R14             Offset to pointer
+         SRL   R15,4                / 16 (length of each entry)
+         LA    R2,1(,R15)           +1 = entry number
+         MVC   MSGBUFF,MSGBUFF-1   Clear to blanks
+         LINEDIT TEXT='..',SUB=(DEC,(R2)),                             X
+               DISP=NONE,BUFFA=MSGBUFF,DOT=NO,COMP=YES
+         WTR   STI087,(CA,MSGBUFF+1)    Issue error msg
+         B     MNTNEXT
+         SPACE 1
+*        If we arrive here we have a userid
+*        Validate that previous entry existed before checking node
+         SPACE 1
+MNTUID   EQU   *
+         CLI   0(R15),X'00'        Previous entry?
+         BNE   MNTUID2             ---> Yes
+         WTR   STI086              Issue error messgage
+MNTUID2  EQU   *
+         CLI   8(R3),X'00'         Have a node value?
+         BE    MNTNEXT             ---> No, that's ok
+         L     R0,MAILRTAB         Pointer to OUTGOING table
+         LA    R14,8(,R3)          Pointer to string
+         LA    R15,7(,R14)         Last character
+MNTUID4  EQU   *
+         CLI   0(R15),C' '         A blank?
+         BNE   MNTUID6             ---> No, done trimming
+         BCT   R15,MNTUID4         ---> Trim 1 and try again
+MNTUID6  EQU   *
+         SR    R15,R14             Compute offset
+         BM    MNTNEXT             ---> all blanks
+         LA    R15,1(,R15)         Compute length
+*        CALL  TBLUK,(MAILRTAB,STR,STRLEN,TWORK)
+         CALL  TBLUK,((R0),(R14),(R15),TWORK)
+         LTR   R15,R15             Found
+         BZ    MNTNEXT             ---> Yes
+         LR    R15,R3              Copy current pointer
+         LA    R14,MAINTID         Table start
+         SR    R15,R14             Offset to pointer
+         SRL   R15,4                / 16 (length of each entry)
+         LA    R2,1(,R15)           +1 = entry number
+         MVC   MSGBUFF,MSGBUFF-1   Clear to blanks
+         LINEDIT TEXT='..',SUB=(DEC,(R2)),                             X
+               DISP=NONE,BUFFA=MSGBUFF,DOT=NO,COMP=YES
+         WTR   STI088,(CA,MSGBUFF+1)    Issue error msg
+         SPACE 1
+MNTNEXT  EQU   *
+         LR    R15,R3              Remember last entry location
+         LA    R3,16(,R3)          To next entry
+         B     MNTLOOP             ---> Around again
+         SPACE 2
 *--------------------------------------------------------------------
 *        End of profile validation
 *--------------------------------------------------------------------
