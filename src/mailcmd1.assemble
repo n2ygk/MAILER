@@ -283,37 +283,13 @@ $CMS     DS    0H
          SR    R6,R9         DIFFERENCE FROM ORIGINAL LENGTH
          LR    R9,R4         NEW DATA ADDRESS
          SR    R8,R6         GET UPDATED LENGTH
-         LA    R5,CMDSIZE*8(R8) SIZE NEEDED FOR DSMFREE
-         LA    R5,7(R5)      ROUND TO A DWORD VALIUE
-         N     R5,=X'FFFFFFF8'
-         SRL   R5,3          MAKE INTO A DWORD QUANTITY
-         LR    R0,R5         SET UP FOR STUPID CMS MACROS
-         DMSFREE DWORDS=(0) GET THE STORAGE
-         LR    R6,R1         GET INTO A BETTER REGISTER
-         USING COMMAND,R6    BUILD A COMMAND BLOCK
-         MVC   CMDSNDR,SRCUSER     Pass along response userid
-         MVC   CMDNODE,MSGNODE        and nodename.
-         MVC   CMDCODE,=A(CMD202)
-         ST    R5,CMDLEN     LENGTH OF THE BLOCK
-         ST    R8,CMDDLEN    DATA LENGTH
-         XC    CMDNEXT,CMDNEXT KEEP OUR CHAIN CLEAN
-         CLC   @CODE,=A(CMDCONS)   FROM CONSOLE?
-         BNE   $CMS1         NOPE
-         MVC   CMDSNDR,=CL8'*'
-         B     $CMS4
-$CMS1    EQU   *
-         CLC   @CODE,=A(CMDSMSG)   FROM SMSG?
-         BNE   RET           UNKNOWN CODE
-         TM    FLAG,SMSFLG   WANT SMSG REPLY?
-         BNO   $CMS3
-         MVC   CMDMSG,=CL18'SMSG'
-         B     $CMS4
-$CMS3    EQU   *
-         MVC   CMDMSG,=CL18'MSGNOH'
-$CMS4    EQU   *
-         DROP  R6
-         BCTR  R8,0          -1 FOR EXECUTED
-         EX    R8,MOVECMD    MVC CMDDATA(0),0(R9)
+         LR    R0,R8               Copy data length
+         LA    R1,CMD202           Command type
+         BAL   R14,BLDCMDBL        Build a command block
+         B     RET                 ---> Error building block
+         LR    R6,R1               Copy address where expected
+         BCTR  R8,0                -1 for EX
+         EX    R8,MOVECMD          MVC CMDDATA(0),0(R9)
          SPACE ,
 *--- NOW ADD THE COMMAND ONTO THE MAILCMDL LIST ---
          CLC   @CODE,=A(CMDCONS)   FROM CONSOLE?
@@ -358,35 +334,11 @@ MOVECMD  MVC   CMDDATA(0),0(R9)
 *
 *--------------------------------------------------------------------
 $FORWARD DS    0H
-         LA    R5,CMDSIZE*8(R8)    Size needed for DMSFREE
-         LA    R5,7(R5)            Round to a dword value
-         N     R5,=X'FFFFFFF8'
-         SRL   R5,3                Make into a dword quantity
-         LR    R0,R5               Set up for CMS macro
-         DMSFREE DWORDS=(0)        Get the storage
+         LR    R0,R8               Size of data field
+         LA    R1,CMDFWD           Command type
+         BAL   R14,BLDCMDBL        Build a command block
+         B     RET                 ---> Error building block
          LR    R6,R1               Get into a better register
-         USING COMMAND,R6          Build a command block
-         MVC   CMDSNDR,SRCUSER     Pass along response userid
-         MVC   CMDNODE,MSGNODE        and nodename.
-         MVC   CMDCODE,=A(CMDFWD)  Remember forward request
-         ST    R5,CMDLEN           Length of the block
-         ST    R8,CMDDLEN          Data length
-         XC    CMDNEXT,CMDNEXT     Keep our chain clean
-         CLC   @CODE,=A(CMDCONS)   From console?
-         BNE   $FWD1               ---> No
-         MVC   CMDSNDR,=CL8'*'     Remember from console
-         B     $FWD4               ---> Continue on
-$FWD1    EQU   *
-         CLC   @CODE,=A(CMDSMSG)   From SMSG?
-         BNE   RET                 ---> No, unknown code
-         TM    FLAG,SMSFLG         Want SMSG reply?
-         BNO   $FWD3               ---> No
-         MVC   CMDMSG,=CL18'SMSG'  Remember to use SMSG
-         B     $FWD4               ---> Continue on
-$FWD3    EQU   *
-         MVC   CMDMSG,=CL18'MSGNOH'  Set reply type
-$FWD4    EQU   *
-         DROP  R6                  Done with command block (here)
          BCTR  R8,0                -1 for executed
          EX    R8,MOVECMD          MVC CMDDATA(0),0(R9)
          SPACE ,
@@ -1039,7 +991,7 @@ ENDMSG   DS    0H            <- here to end multi-line reply     [1.24]
          LA    R0,L'ENDMESG  length of above                     [1.24]
          BAL   R14,MESSAGE   and send the message                [1.24]
          B     RET           and return                          [1.24]
-*
+         EJECT ,
 RET      DS    0H                                                [1.24]
          LR    R1,R13        GRAB POINTER TO WORK AREA
          L     R13,4(R13)              GET CALLER'S SAVE PTR
@@ -1047,7 +999,75 @@ RET      DS    0H                                                [1.24]
          L     R14,12(R13)             GET R14
          LM    R0,R12,20(R13)          GET R0-R12
          BR    R14                     RETURN
-         SPACE ,
+         EJECT ,
+*  Build a command block for passing to MAILCMD2
+*
+*  Registers at entry:
+*
+*      R0  - Length of data for inclusion in command block
+*      R1  - Command code
+*      R14 - Return address
+*
+*  Registers at exit:
+*
+*      R1  - Address of command block
+*
+*      All other registers unchanged
+*
+         SPACE 2
+BLDCMDBL DS    0H
+         STM   R14,R12,12(R13)     Save the regs
+         LM    R2,R3,20(R13)       R2 - data length
+*                                  R3 - command type value
+         A     R0,=A(CMDSIZE*8+7)  Round size needed to
+         N     R0,=X'FFFFFFF8'          doubleword
+         SRL   R0,3                Make into a dword quantity
+         DMSFREE DWORDS=(0)        Get the storage
+         LR    R6,R1               Get into a better register
+         USING COMMAND,R6          Build a command block
+         ST    R0,CMDLEN           Length of the block
+         ST    R2,CMDDLEN          Data length
+         MVC   CMDSNDR,SRCUSER     Pass along response userid
+         MVC   CMDNODE,MSGNODE        and nodename.
+         ST    R3,CMDCODE          Set command type
+         XC    CMDNEXT,CMDNEXT     Keep our chain clean
+         CLC   @CODE,=A(CMDCONS)   From console?
+         BNE   BLDCMD01            ---> No
+BLDCMD00 EQU   *
+         MVC   CMDSNDR,=CL8'*'     Put in special flag
+         B     BLDCMD04
+         SPACE 1
+BLDCMD01 EQU   *
+         CLC   @CODE,=A(CMDNET)    From network?
+         BNE   BLDCMD02            ---> No
+         MVC   CMDMSG,=CL18'SMSG rscsname MSG '
+         MVC   CMDMSG+5(8),RSCSNAME
+         B     BLDCMD04
+         SPACE 1
+BLDCMD02 EQU   *
+         CLC   @CODE,=A(CMDSMSG)   From SMSG?
+         BNE   BLDCMD06            Unknown code
+         TM    FLAG,SMSFLG         Want smsg reply?
+         BNO   BLDCMD03            ---> No
+         MVC   CMDMSG,=CL18'SMSG'  Remember SMSG
+         B     BLDCMD04
+         SPACE 1
+BLDCMD03 EQU   *
+         MVC   CMDMSG,=CL18'MSGNOH' Use MSGNOH
+         SPACE 1
+BLDCMD04 EQU   *
+         LR    R1,R6               Copy address for return
+         DROP  R6
+         LM    R14,R0,12(R13)      Restore R14, R15 and R0
+         LM    R2,R12,28(R13)      Restore R2 - R12
+         B     4(,R14)             Take successful exit
+         SPACE 2
+*  Reply code not recognized
+         SPACE 1
+BLDCMD06 EQU   *
+         EJECT ,
+*  Check if user authorized
+         SPACE 1
 CHKAUTH  EQU   *             CHECK AUTHORIZATION
          CLC   @CODE,=A(CMDCONS)   COMMAND FROM CONSOLE?
          BE    CHKOK
@@ -1080,7 +1100,7 @@ CHKSMS40 DS    0H
          B     CHKSMS01
 CHKOK    EQU   *
          BR    R14
-         SPACE ,
+         EJECT ,
 *--------------------------------------------------------------------
 * FIND15 -
 *  FINDS NEXT NEWLINE IN A STRING
@@ -1104,7 +1124,7 @@ F15RET   EQU   *
          LA    R1,1(R1)      POINT PAST THE X'15'
          BCTR  R2,0          -1 FOR THE X'15' FROM LENGTH
          BR    R14
-         SPACE ,
+         EJECT ,
 TRAPBLK  TRT   0(0,R9),TRTAB
 SKIPBLK  TRT   0(0,R9),SKIPBLKS
 MOVEIT   MVC   0(0,R3),0(R4)
