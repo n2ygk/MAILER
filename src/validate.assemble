@@ -331,8 +331,6 @@ LOCUSER  EQU   *
          BNE   BADLOC
          CLC   MBXLCNT,=F'1' ONLY 1 TOKEN FOR USER NAME?
          BNE   BADLOC        NO, NOT A VM USERID...
-         CLC   MBXDCNT,=F'1' HOST TOKEN COUNT SHOULD BE 1
-         BH    BADLOC        SORRY...
          L     R7,MBXLCL         GET USER NAME NODE
          USING NODE,R7     ADDRESS IT
          L     R4,NODDOWN    GET POINTER TO TOKEND
@@ -392,14 +390,15 @@ FOUNDEND EQU   *                                                    EAC
          ST    R2,FAKETOK+TOKNEXT-TOKEND
          OI    FIFLG1,FIEDIFLG
 HOSTOK   EQU   *                                                    EAC
-         DROP  R5
-         L     R4,NODDOWN    GET POINTER TO TOKEND
-         USING TOKEND,R4     GET TOKEN DESCRIPTOR
-         DROP  R7
-         SR    R7,R7         GET A ZERO
-         L     R7,TOKLEN     GET LENGTH OF TOKEN
-         L     R2,TOKPTR         GET ADDRESS OF STRING
-         DROP  R4
+         ST    R7,NODEP            Set NODE pointer for GENLIST.
+         MVC   STKP,=A(LCLSTACK)   Init stack pointer
+         MVC   STKL,=A(L'LCLSTACK)    and length.
+         CALL  GENLIST,(NODEP,DOMA,DOML,STKP,STKL) Build HOST string.
+         LTR   R15,R15             Did it work?
+         BNZ   BADLOC              No  : Fail the message.
+         L     R2,DOMA             Get string address
+         L     R7,DOML                and length.
+         DROP  R5,R7
 *----------------------------------------------------------------[1.22]
 * If a RSCS-domain is defined and the hostname ends in it, then  [1.22]
 * strip it off since the various tables don't include it.        [1.22]
@@ -433,13 +432,27 @@ DOMNOMAT EQU   *             fall thru here to old lookup code   [1.22]
          L     R3,MAILRTAB   LOOK IN ROUTING TABLE FOR AN ALIAS
          CALL  TBLUK,((R3),(R2),(R7),TWORK)
          LTR   R15,R15       FIND IT?
-         BNZ   BADLOC        NOPE
+         BNZ   TRYLDOM             No  : Try LocalDomain.
          USING ROUTD,R1      ADDRESS THE ENTRY
          CLC   RTROUTE,CPUSTR IS IT AN ALIAS FOR THIS NODE?
          DROP  R1
          BNE   BADLOC        NOPE
          SR    R15,R15       OK RETCODE
          B     RET
+         SPACE ,
+TRYLDOM  DS    0H
+         ICM   R3,B'1111',LCLDOM   Is there a LocalDomain?
+         BZ    BADLOC              No  : Bad address.
+         SR    R1,R1               Get Local-Domain
+         IC    R1,0(,R3)              length.
+         CR    R7,R1               Do the lengths match?
+         BNE   BADLOC              No  : Bad address.
+         BCTR  R1,0
+         EX    R1,TLD$CLC          "CLC 0(*-*,R2),1(R3)"
+         BNE   BADLOC              No  : Bad address.
+         SR    R15,R15             Yes : Accept <user>@<lcldom>.
+         B     RET
+TLD$CLC  CLC   0(*-*,R2),1(R3)     *** Executed ***
          SPACE ,
 *----------------------------------------------------------------[1.23]
 *     Get here if we trust the sender because he is in table     [1.23]
@@ -633,4 +646,10 @@ FAKETOK0 DS    (TOKSIZ)X'0'
          ORG   ,
          SPACE 1
 ATSIGN   DC    CL1'@'                                      [1.16]
+DOMA     DS    A                   Address of host string.
+DOML     DS    F                   Length of host string.
+STKP     DS    A                   Stack Pointer.
+STKL     DS    F                   Stack Length.
+NODEP    DS    A                   Address of NODE for GENLIST.
+LCLSTACK DS    XL100               Local stack area.
          END   VALIDATE
