@@ -67,6 +67,22 @@ EYESKIP  DS    0H
          DROP  R1            done with ROUTD
          L     R7,ACTMBOX    GET MBOX BLOCK
          USING MBOX,R7
+         SPACE 1
+* ------------------------------------------------------------------- *
+*  Check if ROUTEADDR is present.                                     *
+*                                                                     *
+*  If DEFRT has been entered with a ROUTEADDR, there is nothing       *
+*  that can be done.  This is because DEFRT delivery requires both    *
+*  a destination node and a destination useris.  A routeaddr will     *
+*  have only a destination node.                                      *
+*                                                                     *
+*  Since we can't deliver, we will return to sender.                  *
+*                                                                     *
+*                                                                     *
+* ------------------------------------------------------------------- *
+         SPACE 1
+         CLC   MBXRTL,=F'0'      Route list present?
+         BNE   FAILRTL           ---> Yes, return to sender
          L     R1,MBXLCL         pointer to list of user adnodes
          ST    R1,NODEA          Save for GENLIST call
          LA    R14,STACKP        Stack pointer address ptr
@@ -110,6 +126,38 @@ FAIL     EQU       *
          LOG   DRT031,(CA,TAGUSER)
          LA        R15,8
          B         RET
+* Return mail due to presence of a routeaddress
+         SPACE 1
+FAILRTL  DS    0H
+         USING MBOX,R7
+         L     R1,MBXRTL           First NODE of routeaddress list
+         DROP  R7
+         USING NODE,R1
+         MVC   NODEA,NODDOWN       NODE for first routeaddress
+         DROP  R1
+         LA    R14,STACKP          Stack pointer address ptr
+         LA    R15,STACKP+4        Stack size address ptr
+         CALL  GENLIST,(NODEA,LSTRA,LSTRL,(14),(15))
+*                                  Expand local part
+         LTR   R15,R15             Successful?
+         BNZ   FAIL                ---> No, call it bad RSCS node name
+         L     R4,LSTRL            Length of string
+         L     R3,LSTRA            Address of string
+         LA    R2,WORK             Point to work area
+         MVI   0(R2),C' '          Set up for buffer clear
+         MVC   1(L'WORK-1,R2),0(R2)  Propogate the blank
+         C     R4,=A(L'WORK)       Longer than WORK?
+         BNH   FAILRTL2            ---> No
+         LA    R4,L'WORK           Use shorter length
+FAILRTL2 EQU   *
+         BCTR  R4,0                Decrement for EXs
+         EX    R4,COPY             Move the entire string to WORK
+         EX    R4,UPIT             Uppercase routeaddr
+         WTR   DRT081
+         WTR   DRT082,(CA,WORK)
+         LA    R15,8               Set return code
+         B     RET
+         SPACE 2
 *
 COPY     MVC   0(0,R2),0(R3)
 UPIT     TR    0(0,R2),UPCASE
@@ -124,6 +172,8 @@ TAGWTR   DS    CL8           [1.21]
          DC    X'15',C'SP PUN CLASS M TO '
 RSCSID   DS    CL8
 LTAGCMD  EQU   *-TAGCMD
+         SPACE 1
+WORK     DS    CL255
          SPACE 1
 NODEA    DC    A(0)                Address of node for GENLIST
 LSTRA    DC    A(0)                Address of local part

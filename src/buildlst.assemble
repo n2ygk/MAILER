@@ -261,7 +261,8 @@ BLDLOOP2 EQU   *
          BNZ   BLDSKP1             No, skip this address
          CALL  CHKLOCAL,((R11),LCLSTACK,FAKETOKL)
          LTR   R15,R15             Local routeaddr?
-         BZ    BLDHOK              ---> Yes
+         BNZ   BLDHOK              ---> No
+BLDRTLCL EQU   *                   Routeaddress for local system
          ST    R8,DELMBOX          Store MBOX address
          CALL  DELROUTE,(DELMBOX)  Delete routeaddr
          B     BLDLOOP2            ---> Try again
@@ -308,10 +309,26 @@ BLDND    EQU   *
          L     R2,TOKLEN     LENGTH OF STRING
          L     R3,TOKPTR
          CALL  FNROUTD,((R3),(R2)) find routd                    [1.22]
-         LTR   R1,R15        FIND IT?                            [1.22]
-         BZ    BLDNF1        NOT FOUND                           [1.22]
+         LTR   R4,R15              Found it?
+         BZ    BLDNF1              ---> Nope
+         USING ROUTD,R4            Address the ROUTD
+         CLC   MBXRTL,=F'0'        Working with route address?
+         BE    BLDCHN1             ---> No
+         CLC   RTPROG,=CL8'LOCAL'  Local exit
+         BNE   BLDCHN1             ---> No, everything is ok
+         SPACE 1
+* Arriving here implies that the destination is really a synonym
+* for the local machine.  Since it wasn't caught earlier, this
+* must mean that the profile is improperly coded.
+*
+* Issue an error message and continue as if CHKLOCAL has
+* returned TRUE above.
+         SPACE 1
+         WTR   BLS079
+         WTR   BLS080,(CA,(R3))
+         B     BLDRTLCL            ---> Go drop routeaddr
+         SPACE 1
 BLDCHN1  EQU   *
-         LR    R4,R1         GET A BETTER HANDLE ON THE ROUTD
 * -- MORE *DESTINATION JUNK
          TM    MAILFLG1,MFLGDEST
          BO    BLDLCL        BUILD AS IF FOR A LOCAL USER
@@ -320,12 +337,12 @@ BLDCHN1  EQU   *
          BO    BLDLCL        IT'S LOCALLY GENERATED, TAKE ALL ACTADRS
          TM    MAILFLG1,MFLG1GTW FILE FROM A GATEWAY?
          BO    BLDLCL        BUILD AS IF FROM A LOCAL USER
-         USING ROUTD,R4      ADDRESS THE ROUTD
          CLC   RTROUTE,CPUSTR AM I THE ROUTER FOR THIS ALIAS?
          BNE   BLDSKP1       NOPE, SKIP THIS ACTADR
          DROP  R4
          SPACE 1
 BLDLCL   EQU   *
+         LR    R1,R4         Get ROUTD pointer
          LR    R2,R8         GET MBOX POINTER
          BAL   R14,ADDCHN    ADD ONTO CHAIN
          L     R1,MAILRCNT   GET RECIPIENT COUNT
