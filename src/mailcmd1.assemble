@@ -557,6 +557,10 @@ BOGUS    DS    0H
          SPACE 1
 WRITEMSG DS    0H
          STM   R14,R12,12(R13)
+         LA    R15,WRITSAVE        Point to our save
+         ST    R15,8(,R13)         Chain forward
+         ST    R13,4(,R15)         Chain back
+         LR    R13,R15             Point to the new save area
          LR    R7,R1
          LR    R8,R0
 MESSAGE1 EQU   *
@@ -589,7 +593,21 @@ MSGMSG   EQU   *
          B     MSGCOMM
 MSG2     EQU   *
          MVC   MSGBUF,=CL18'MSGNOH '
+         L     R14,MAILPTAB        Parameter table
+         L     R15,ATBLUK          TBLUK routine
+         CALL  (15),((R14),MSGCMD,L'MSGCMD,TWORK)
+         LTR   R15,R15             Found MSGCMD?
+         BNZ   MSGCOMM             ---> No
+         MVC   MSGBUF,=CL18' '     Clear all blanks
+         IC    R15,0(R1)           Get length
+         C     R15,=F'8'           Longer than 8?
+         BH    MSGCOMM             ---> Yes, can't use it
+         BCTR  R15,0               Decrement for EX
+         EX    R15,MSGCMDMV        Move in the command
          B     MSGCOMM
+         SPACE 1
+MSGCMDMV MVC   MSGBUF(1),1(R1)     Executed
+         SPACE 1
 MSGCOMM  DS    0H
          C     R3,=A(L'MSGDATA) ROOM FOR THE DATA?
          BNH   *+8
@@ -604,8 +622,8 @@ MSGCOMM  DS    0H
          BZ    MESSAGE1      TRY FOR NEXT LINE
          C     R0,=F'1'      MSGNOH UNKNOWN FOR THIS USER?
          BNE   MSGRET        NO, OTHER ERROR (I.E. NOT LOGGED IN)
-         CLC   =C'MSGNOH ',MSGBUF  Was it MSGNOH?
-         BNE   MSGRET              No  : Can't fix it up then.
+         CLC   =CL4'MSG ',MSGBUF   Was it MSG?
+         BE    MSGRET              --> Yes, can't fix it up then.
          MVC   MSGBUF,=CL18'MSG '  USE MSG COMMAND INSTEAD
 MSG3     EQU   *
          LA    R1,MSGBUF
@@ -614,6 +632,7 @@ MSG3     EQU   *
          LTR   R0,R0         OK RETCODE?
          BZ    MESSAGE1      YES, DO NEXT LINE
 MSGRET   EQU   *
+         L     R13,4(,R13)         Back to previous save area
          LM    R14,R12,12(R13)
          BR    R14
          SPACE ,
@@ -674,7 +693,10 @@ OUTMSG2  DC    C'Host (or alias) not found.'
 ENDMESG  DC    C'- output complete.'
 BOGMSG   DC    C'Command not allowed or invalid.'
          SPACE 1
+MSGCMD   DC    C'Msgcmd'           For TBLUK lookup
+         SPACE 1
 SAVEAREA DS    18F           SAVE AREA
+WRITSAVE DS    18F                 WRITEMSG save area
 DWORD    DS    D
 TWORK    DS    64F           TBLUK WORK AREA
 $OUTTAB  DS    F

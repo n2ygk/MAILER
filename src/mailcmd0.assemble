@@ -562,6 +562,10 @@ F15RET   EQU   *
          SPACE 1
 WRITEMSG DS    0H
          STM   R14,R12,12(R13)     Save regs
+         LA    R15,WRITSAVE        Point to our save
+         ST    R15,8(,R13)         Chain forward
+         ST    R13,4(,R15)         Chain back
+         LR    R13,R15             Point to the new save area
          LR    R7,R1               Move parms to
          LR    R8,R0                    better regs
 MESSAGE1 EQU   *
@@ -593,8 +597,22 @@ MSGMSG   EQU   *
          MVC   MSGBUF,=CL18'SMSG '
          B     MSGCOMM
 MSG2     EQU   *
-         MVC   MSGBUF,=CL18'MSGNOH '
+         MVC   MSGBUF,=CL18'MSGNOH ' Set default value
+         L     R14,MAILPTAB        Parameter table
+         L     R15,ATBLUK          TBLUK routine
+         CALL  (15),((R14),MSGCMD,L'MSGCMD,TWORK)
+         LTR   R15,R15             Found MSGCMD?
+         BNZ   MSGCOMM             ---> No
+         MVC   MSGBUF,=CL18' '     Clear all blanks
+         IC    R15,0(R1)           Get length
+         C     R15,=F'8'           Longer than 8?
+         BH    MSGCOMM             ---> Yes, can't use it
+         BCTR  R15,0               Decrement for EX
+         EX    R15,MSGCMDMV        Move in the command
          B     MSGCOMM
+         SPACE 1
+MSGCMDMV MVC   MSGBUF(1),1(R1)     Executed
+         SPACE 1
 MSGCOMM  DS    0H
          C     R3,=A(L'MSGDATA)    Room for the data?
          BNH   *+8
@@ -607,10 +625,10 @@ MSGCOMM  DS    0H
          DC    X'83100008'         Message to sender
          LTR   R0,R0               Ok retcode?
          BZ    MESSAGE1            ---> Yes, try for next line
-         C     R0,=F'1'            MSGNOH unknown for this user?
+         C     R0,=F'1'            Command unknown for this user?
          BNE   MSGRET              No, other error (i.e. not logged in)
-         CLC   =C'MSGNOH ',MSGBUF  Was it MSGNOH?
-         BNE   MSGRET              No  : Can't fix it up then.
+         CLC   =CL4'MSG ',MSGBUF   Was it MSG?
+         BE    MSGRET              ---> Yes, can't fix it up then.
          MVC   MSGBUF,=CL18'MSG '  Use MSG command instead
 MSG3     EQU   *
          LA    R1,MSGBUF
@@ -619,6 +637,7 @@ MSG3     EQU   *
          LTR   R0,R0               Ok retcode?
          BZ    MESSAGE1            ---> Yes, do next line
 MSGRET   EQU   *
+         L     R13,4(,R13)         Back to previous save area
          LM    R14,R12,12(R13)
          BR    R14
          SPACE 1
@@ -636,6 +655,7 @@ TRTAB    DC    256X'00'      TRAP TABLE FOR DELIMITERS
          LTORG ,
          SPACE 2
 SAVE     DS    18F                 Save area
+WRITSAVE DS    18F                 WRITEMSG save area
          SPACE 1
 WORKBUF  DS    1000C               Lots of spare room
 LWORKBUF EQU   *-WORKBUF
@@ -652,4 +672,8 @@ QUSMSG   DC    C'Quiesce command accepted.'
 RELMSG   DC    C'Reload command accepted.'
 STPMSG   DC    C'Stop command accepted.'
 BOGMSG   DC    C'Command not allowed or invalid.'
+         SPACE 1
+TWORK    DS    64F                 TBLUK work area
+MSGCMD   DC    C'Msgcmd'           For TBLUK lookup
+         SPACE 1
          END   ,

@@ -80,8 +80,8 @@ parse upper pull . . localnode .             /*                       */
 /*  Determine source of request */
 
 select
-   when  requestorid = '*' & ,               /*                       */
-         requestornode = ''  then            /*                       */
+   when  requestorid = 'CONSOLE' & ,         /*                       */
+         requestornode = localnode  then     /*                       */
       console = 1                            /*                       */
    when  requestornode = ''  then  do        /*                       */
       requestornode = localnode              /*                       */
