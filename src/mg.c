@@ -4,7 +4,7 @@
  *  City of New York.                                                *
  *-------------------------------------------------------------------*/
 #define CCNET
-static char version[] = "MG version 2.08 Beta";
+static char version[] = "MG version 2.08";
 /*
  * MG: Generate mailer tables from NAMES/NODES files.
  *     Uses the :mailer, :nick, :alias, :netsoft tags.
