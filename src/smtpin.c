@@ -785,6 +785,7 @@ struct fieldd *f;
     return 1;
 }
 
+extern genlist();
 /*
  * Check_sender - check to see if sender address matches RSCS origin.
  *  (1) Compare sender userid to MAILUSER
@@ -796,14 +797,36 @@ struct mbox *a;
 {
     int len;
     char *ptr;
+    struct node *n;
+    char *hs; int hl;
+    char hoststring[256]; int hostlen;
+    char *hoststringptr;
+    struct {
+      int *node;
+      int *hs;
+      int *hl;
+      int *hoststringptr;
+      int *hostlen;
+    } plist;
+    int i;
 
     if (mailflg2&MFLG2NLF) /* always fail */
       return 0;
 
     /* (1) See if sender userid matches MAILUSER */
-    ptr = TOKPTR(MBOXLCL(a)->noddown);
-    len = MBOXLCL(a)->noddown->toklen;
-    if (len != mailulen || xcmp(ptr, mailuser, len) != 0)
+    n = MBOXRTL(a)->noddown;
+    plist.node = &n;
+    plist.hs = &hs;
+    plist.hl = &hl;
+    for (i=0; i < sizeof(hoststring); hoststring[i] = ' ',i++);
+    hoststringptr = &hoststring[0];
+    plist.hoststringptr = &hoststringptr;
+    hostlen = sizeof(hoststring);
+    plist.hostlen = &hostlen;
+    acall(genlist, 0, &plist);
+    if (hl > 8)
+        hl = 8;
+    if (hl > mailulen || xcmp(hs, mailuser, hl) != 0)
         return 0;
 
     /* (2) See if domain checks out */
@@ -819,7 +842,6 @@ struct mbox *a;
  *  the two.  This also allows immediate feedback on bad rcpt's that
  *  can be sent as the SMTP reply.
  */
-extern genlist();
 extern delroute();
 static s_state
 s_rcpt(st, s, l)
