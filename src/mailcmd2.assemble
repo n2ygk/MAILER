@@ -12,17 +12,17 @@ PAB      DSECT ,
 @MBLOK   DS    A             MAILBLOK
          SPACE
 * REGISTER USAGE -
-R0  EQU  0 -
-R1  EQU  1 -
+R0  EQU  0 - Work reg
+R1  EQU  1 - Work reg
 R2  EQU  2 -
 R3  EQU  3 -
-R4  EQU  4 -
-R5  EQU  5 -
+R4  EQU  4 - Console message processing
+R5  EQU  5 - Cmd length, return code
 R6  EQU  6 -
 R7  EQU  7 -
 R8  EQU  8 -
-R9  EQU  9 -
-R10 EQU 10 -
+R9  EQU  9 - COMMAND block base
+R10 EQU 10 - Internal subroutine linkage
 R11 EQU 11 - MAILBLOK BASE
 R12 EQU 12 - PROGRAM BASE
 R13 EQU 13 - SAVE AREA
@@ -68,9 +68,15 @@ LOOP     EQU   *
          LTR   R9,R9         END OF LIST?
          BZ    RET           TIME TO QUIT
          USING COMMAND,R9    ADDRESS THE DSECT
-         CLC   CMDCODE,=A(CMD202) ONLY ONE I KNOW ABOUT
-         BNE   DONE          JUST THROW IT AWAY
+         CLC   CMDCODE,=A(CMDFWD) Is it forward?
+         BE    $CMDFWD            ---> Yes
+         CLC   CMDCODE,=A(CMD202) Is it CMS (SVC202)?
+         BE    $CMD202            ---> Yes,
+         B     DONE               ---> No, just throw it away
+         EJECT ,
 * SVC 202 CODE:
+         SPACE 1
+$CMD202  DS    0H
          LA    R1,CMDDATA    GET DATA ADDRESS
          L     R0,CMDDLEN    GET DATA LENGTH
          ST    R1,ATTNDATA   STUFF INTO ATTN PLIST
@@ -81,42 +87,64 @@ LOOP     EQU   *
          LA    R1,SUBSET     CMS SUBSET PLIST
          SVC   202           ISSUE THE COMMAND
          DC    AL4(*+4)
-         LR    R5,R15        GET THE RETURN CODE
-         CVD   R5,DWORD      CONVERT IT TO SOMETHING READABLE
-         UNPK  MSGRETC,DWORD UNPACK IT
-         OI    MSGRETC+L'MSGRETC-1,X'F0' KILL THE ZONE
-         LTR   R5,R5         IS THE NUMBER NEGATIVE?
-         BNL   *+8
-         MVI   MSGRETC,C'-'
-         L     R5,CMDDLEN    GET DATA LENGTH
-         C     R5,=A(L'MSGDATA)  ROOM FOR IT?
-         BNH   *+8           SURE
-         LA    R5,L'MSGDATA  TRUNC IT
-         BCTR  R5,0          -1 FOR EXECUTE
-         EX    R5,MOVEMSG    COPY DATA INTO MESSAGE BUFFER
-         CLC   CMDSNDR,=CL8'*' REPLY TO CONSOLE?
-         BE    CONSOLE       SURE...
-*  REPLY VIA CP MSG/SMSG
-         MVC   MSGUSER,CMDSNDR ELSE USE CP (S)MSG COMMAND
-         MVC   MSGNODE,CMDNODE     Don't forget the nodename.
-         MVC   MSGTYPE,CMDMSG
-         LA    R1,MSG        ADDRESS OF THE MESSAGE
-         LA    R4,MSGLEN+1(R5)
-         DC    X'83140008'   ISSUE THE MESSAGE
-         C     R4,=F'1'      MSGNOH NOT RECOGNIZED?
-         BNE   DONE          DONE WITH THIS COMMAND
-         CLC   =C'MSGNOH ',MSGTYPE Was it a MSHNOG command?
-         BNE   DONE                No  : No retry then.
-         MVC   MSGTYPE,=CL8'MSG' USE GOOD OLD MSG INSTEAD
-         LA    R4,MSGLEN+1(R5)
-         DC    X'83140008'
+         B     RCMSG
+         EJECT ,
+* FORWARD command:
+         SPACE 1
+$CMDFWD  DS    0H
+         MVC   $FWDRID,CMDSNDR     Copy requestor's userid
+         MVC   $FWDRNOD,CMDNODE    Copy requestor's node
+         MVI   $FWDMNT,C'0'        Assume not maintainer
+         LR    R1,R9               Copy COMMAND block pointer
+         BAL   R14,CHKAUTH         Is user authorized?
+         B     $FWD0010            ---> No
+         MVI   $FWDMNT,C'1'        Yes, pass it along
+$FWD0010 EQU   *
+         MVC   $FWDREQ,$FWDREQ-1   Blank out field
+         ICM   R5,B'1111',CMDDLEN  Get data length
+         BZ    $FWD0100            ---> No data
+         C     R5,=A(L'$FWDREQ)    Enough space?
+         BNH   $FWD0020            ---> Yes
+         LA    R5,L'$FWDREQ        No, truncate
+$FWD0020 EQU   *
+         BCTR  R5,0                Decrement for execute
+         EX    R5,MOVEFWD          Move in command arguments
+$FWD0100 EQU   *
+         LA    R1,$FWDPL           Point to tokenized plist
+         ICM   R1,B'1000',=X'01'   Tell REXX using extended plist
+         LA    R0,$FWDEPL          Point to extended plist
+         SVC   202                 Run the FORWARD exec
+         DC    AL4(1)              Continue with next instruction
+         C     R15,=F'10001'       Is it exec not found?
+         BNE   RCMSG               ---> No
+         MVC   $NOFWD,$FWDNONE     Move in message
+         LA    R5,L'$NOFWD         Length of message
+         BAL   R10,SENDMSG         Send message
+         L     R15,=F'10001'       Restore return code
+         B     RCMSG
+         SPACE 1
+$FWDNONE DC    C'FORWARD command not implemented'
+         EJECT ,
+RCMSG    DS    0H                  Report on result of operation
+         MVC   MSGC(14),=C'R(     ) for: '   Initialize
+         LR    R5,R15              Get the return code
+         CVD   R5,DWORD            Convert it to something readable
+         UNPK  MSGRETC,DWORD       Unpack it
+         OI    MSGRETC+L'MSGRETC-1,X'F0' Kill the zone
+         MVC   MSGDATA,MSGDATA-1   Clear buffer
+         L     R5,CMDDLEN          Get data length
+         C     R5,=A(L'MSGDATA)    Enough space?
+         BNH   RCMSG010            ---> Yes
+         LA    R5,L'MSGDATA        No, truncate
+RCMSG010 EQU   *
+         BCTR  R5,0                Decrement for execute
+         EX    R5,MOVEMSG          Move in message
+         LA    R5,MSGDATA-MSGC+1(,R5)   Total length
+         BAL   R10,SENDMSG              Send the message
          B     DONE
-         SPACE ,
-CONSOLE  EQU   *             DO IT WITH A WRTERM
-         LA    R4,MSGCLEN+1(R5)
-         WRTERM MSGC,(R4)
-         SPACE ,
-*---- DONE WITH THIS COMMAND.  RETURN THE DMDFREE STORAGE ----
+         EJECT ,
+*---- Done with this command.  Return the DMSFREE storage ----
+         SPACE 2
 DONE     EQU   *
          L     R0,CMDLEN     DWORDS USED
          LR    R1,R9
@@ -128,26 +156,188 @@ RET      EQU   *
          L     R14,12(R13)             GET R14
          LM    R0,R12,20(R13)          GET R0-R12
          BR    R14                     RETURN
+         EJECT ,
+*        Internal subroutines
+         SPACE 2
+***********************************************************************
+*  SENDMSG - Send a message already formatted in the message buffer   *
+*            (MSGDATAX)                                               *
+*                                                                     *
+*  Entry    R5  - Length of data in MSGDATAX                          *
+*           R10 - Return address                                      *
+*                                                                     *
+*  This routine destroys registers 1, 4 and 5.                        *
+*                                                                     *
+***********************************************************************
+         SPACE 2
+SENDMSG  DS    0H
+         CLC   CMDSNDR,=CL8'*'     Reply to console?
+         BE    CONSOLE             ---> Yes
+         SPACE 1
+*        Reply via CP MSG/SMSG
+         SPACE 1
+         MVC   MSGUSER,CMDSNDR     Else use CP (S)MSG command
+         MVC   MSGNODE,CMDNODE     Don't forget the nodename.
+         MVC   MSGTYPE,CMDMSG
+         LA    R1,MSG              Address of the message
+         LA    R4,MSGLEN(R5)       Total message length
+         DC    X'83140008'         Issue the message
+         C     R4,=F'1'            MSGNOH not recognized?
+         BNER  R10                 Done with this command
+         CLC   =C'MSGNOH ',MSGTYPE Was it a MSGNOH command?
+         BNER  R10                 No  : no retry then.
+         MVC   MSGTYPE(8),=CL8'MSG' Use good old MSG instead
+         LA    R4,MSGLEN(R5)
+         DC    X'83140008'
+         BR    R10                 ---> Return to caller
+         SPACE 3
+CONSOLE  DS    0H                  Do it with a WRTERM
+         WRTERM MSGC,(R5)
+         BR    R10                 ---> Return to caller
          SPACE ,
 MOVEMSG  MVC   MSGDATA(0),CMDDATA
+MOVEFWD  MVC   $FWDREQ(0),CMDDATA
          DROP  R9
+         EJECT ,
+*        Data areas
+         SPACE 2
          LTORG ,
+         SPACE 2
 SAVE     DS    18F                     SAVE AREA
 DWORD    DS    D
-MSG      DS    0C
+         SPACE 1
+MSG      DS    0C                  Buffer for msg subroutine
 MSGTYPE  DS    CL(L'CMDMSG)        Room for "SMSG rscsname MSG "
 MSGNODE  DS    CL8                 Sending user's nodename.
          DC    C' '
-MSGUSER  DS    CL8           USERID
+MSGUSER  DS    CL8                 Sending user's userid
          DC    C' * '
-MSGC     DC    C'R('
-MSGRETC  DS    CL5
-         DC    C') for: '
 MSGLEN   EQU   *-MSG
-MSGCLEN  EQU   *-MSGC
+MSGDATAX DC    CL114' '            Your message goes here
+         SPACE 1
+         ORG   MSGDATAX            Format for return code message
+MSGC     DS    C'R('
+MSGRETC  DS    CL5
+         DS    C') for: '
 MSGDATA  DS    CL100
+         SPACE 1
+         ORG   MSGDATAX            Forward not implemented msg
+$NOFWD   DS    CL(L'$FWDNONE)
+         SPACE 1
+         ORG   ,
+         SPACE 3
 ATTNPARM DC    0D'0',CL8'ATTN',CL4'LIFO'
 ATTNDATA DS    F
          DC    8X'FF'
 SUBSET   DC    0D'0',CL8'SUBSET',CL8'(RETURN',8X'FF'
+         SPACE 2
+*  Data areas for FORWARD command processing
+         SPACE 2
+         DS    0D
+$FWDPL   DC    CL8'EXEC'           Tokenized plist
+         DC    CL8'FORWARD'
+         DC    8X'FF'              Fence for pretty
+         SPACE 1
+$FWDEPL  DC    A($FWDPL)           Point to 'EXEC'
+         DC    A($FWDARGS)         Start of arguments
+         DC    A($FWDARGE)         End of arguments
+         DC    A($FWDFBLK)         File block pointer
+         SPACE 1
+$FWDFBLK DS    0F
+         DC    CL8'FORWARD'        FN = FORWARD
+         DC    CL8'MAILER'         FT = MAILER
+         DC    CL2'*'              FM = *
+         DC    H'0'                No extension
+         SPACE 1
+$FWDARGS DS    0C                  Arguments start here
+         DC    C'REQUESTOR ('      Wrapping for id@host
+$FWDRID  DC    CL8' '              Requestor's id
+         DC    C'@'
+$FWDRNOD DC    CL8' '                   and node
+         DC    C')'                Wrapping for id@host
+         DC    C' '
+$FWDMNT  DC    C'0'                Is requestor a maintainer?
+         DC    C' '                Used to blank $FWDREQ
+$FWDREQ  DC    CL256' '            Original forward command arguments
+$FWDARGE EQU   *                   End of arguments
+         EJECT ,
+***********************************************************************
+*                                                                     *
+*  CHKAUTH - Check if user is authorized                              *
+*                                                                     *
+*  Regs on entry:                                                     *
+*                                                                     *
+*     R9   - COMMAND block base                                       *
+*     R14  - Return address                                           *
+*                                                                     *
+*  Regs on entry:                                                     *
+*                                                                     *
+*     Unchanged                                                       *
+*                                                                     *
+*  Exit made to:    R14+0  - Not authorized                           *
+*                   R14+4  - Authorized user                          *
+*                                                                     *
+*                                                                     *
+***********************************************************************
+         SPACE 1
+CHKAUTH  EQU   *                   Check authorization
+         SPACE 1
+         USING COMMAND,R9
+         SPACE 1
+         STM   R14,R12,12(R13)     Save regs
+         CLC   CMDSNDR,=CL8'*'     Command from console?
+         BE    CHKOK
+         MVC   AUTHUSER,=CL8' '    Blank out local field
+         LA    R14,AUTHUSER        Point to our local field
+         LA    R15,CMDSNDR         Point to source
+         LA    R1,8                Max to move
+CHKSMS02 DS    0H
+         CLI   0(R15),C' '         Is it a blank?
+         BNE   CHKSMS04            ---> No, first character
+         LA    R15,1(,R15)
+         BCT   R1,CHKSMS02         ---> Keep trying
+         B     CHKNOTOK            ---> All blanks
+         SPACE 1
+CHKSMS04 DS    0H
+         MVC   0(1,R14),0(R15)     Copy 1 character
+         LA    R14,1(,R14)         Bump output pointer
+         LA    R15,1(,R15)         Bump input pointer
+         BCT   R1,CHKSMS04         ---> More to move
+         SPACE 1
+         LA    R15,MAINTID         Point to first entry of table
+CHKSMS10 DS    0H
+         CLI   0(R15),X'FF'                    At end of list?
+         BE    CHKNOTOK                   ---> Yes, SMSG is illegal
+         CLC   MAINTNOD-MAINTID(,R15),=8X'00'  No cpu specified?
+         BE    CHKSMS30                   ---> Yes, accept any
+         CLC   CMDNODE,=CL8' '                 Command from network?
+         BNE   CHKSMS20                   ---> Yes, node id present
+         CLC   MAINTNOD-MAINTID(,R15),CPUSTR   Maintainer on this cpu?
+         BNE   CHKSMS40                   ---> No, go try next
+         B     CHKSMS30                   ---> Yes, go check id
+         SPACE 1
+CHKSMS20 DS    0H
+         CLC   MAINTNOD-MAINTID(,R15),CMDNODE  Maintainer node match?
+         BNE   CHKSMS40                   ---> No, go try next
+         SPACE 1
+CHKSMS30 DS    0H
+         CLC   MAINTID-MAINTID(,R15),AUTHUSER  Sender on the list?
+         BE    CHKOK                      ---> Yes
+         SPACE 1
+CHKSMS40 DS    0H
+         LA    R15,MAINTID2-MAINTID(R15)  To the next entry
+         B     CHKSMS10
+         SPACE 1
+CHKNOTOK EQU   *
+         LM    R14,R12,12(R13)     Restore regs
+         B     0(,R14)
+         SPACE 1
+CHKOK    EQU   *
+         LM    R14,R12,12(R13)     Restore regs
+         B     4(,R14)
+         SPACE 2
+         LTORG ,
+         SPACE 2
+AUTHUSER DC    CL8' '              Used to left justify user id
+         SPACE 3
          END   MAILCMD2

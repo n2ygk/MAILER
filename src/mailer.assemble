@@ -94,8 +94,21 @@ NOPROF   EQU   *                                           [1]
 *--------------------------------------------------------------------
          LA    R15,STACKORG       Point at getmain list
          GETMAIN VC,LA=LIMITS,A=(15) Allocate the stack
-         LTR   R15,R15       GETMAIN FAILED?
-         BNZ   GETFAIL
+         LTR   R15,R15              GETMAIN failed?
+         BNZ   GETFAIL              ---> Yes
+         LA    R15,STACKORG+4       Stack size value here
+         WTR   LER011,(DA,(R15))    Tell how big stack is
+         WTR   LER070               'Freeing half of stack for CMS'
+         LM    R14,R15,STACKORG     Pick up stack size & length
+         SRL   R15,4                Keep only
+         SLL   R15,3                   half
+         L     R0,STACKORG+4        Remember old length
+         STM   R14,R15,STACKORG     Update pointers
+         LA    R1,0(R15,R14)        Start freeing here
+         S     R0,STACKORG+4        For this length
+         FREEMAIN R,LV=(0),A=(1)    Free storage
+         LA    R15,STACKORG+4       Stack size value here
+         WTR   LER011,(DA,(R15))    Tell how big remaining stack is
          L     R3,=V(@C@STACK)    find the C-glue stack pointer  [1.22]
          LM    R1,R2,STACKORG     get stackorg addr,len          [1.22]
          ST    R1,0(,R3)          give part of it to C           [1.22]

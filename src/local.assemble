@@ -25,6 +25,14 @@ LOCAL    CSECT ,
 *  BATCH, RSCS, CMSBATxx...) as well as providing a means for
 *  special usernames such as BBOARD, etc.
 *
+*  As part of local delivery, this routine will look for a file
+*  with a filename of local userid and a filetype of "FORWARD"
+*  on MAILER's A disk.  If this file is found, it will be used
+*  to forward the mail.  This forwarding process will build a
+*  BSMTP header using whatever addresses are found in the FORWARD
+*  file and then punch the resulting mail back to MAILER for further
+*  processing.
+*
 *  This routine is also responsible for supporting the '%' kludge
 *  for rerouting mail.
 *
@@ -168,7 +176,7 @@ PCTFOUND DS    0H
          B     RET
          EJECT ,
 *--------------------------------------------------------------------
-*    Process address containing a '%'
+*    Process address not containing a '%'
 *--------------------------------------------------------------------
          SPACE 1
 NOPCT    EQU   *
@@ -202,10 +210,71 @@ OK0      EQU   *
          LA    R1,MYPAB      POINT TO PLIST
          BALR  R14,R15       AND CALL THE SPECIAL EXIT WITH IT
          B     RET
-         SPACE ,
+         EJECT ,
 CHKRET   EQU   *
-         C     R4,=F'8'      8 OR LESS?
-         BH    ILLEGAL
+         C     R4,=F'8'            8 or less?
+         BH    ILLEGAL             ---> All locals/forwards must be
+*                                       8 characters or less
+         MVC   FWDFN,RECVR         Copy in local id
+CHKFWD   EQU   *
+         LA    R1,FWDSTAT          Point to EXECSTAT command
+         SVC   202                 Issue command
+         DC    AL4(1)              Always return to next instruction
+         LTR   R15,R15             Forward file exist?
+         BZ    HAVEFWD             ---> No
+         C     R15,=F'4'           Found on disk?
+         BNE   NOFWD               ---> No, no forward file
+         SPACE 1
+*  Forward file found on disk
+*
+*  Load it into memory using EXECLOAD
+         SPACE 1
+ONDISK   EQU   *
+         MVC   EXECLDFN,RECVR      Move in filename
+         LA    R1,EXECLOAD         Point to EXECLOAD command
+         SVC   202                 Go load forwarding file
+         DC    AL4(1)              Always return at next instruction
+         LTR   R15,R15             Succesful?
+         BZ    CHKFWD              ---> Yes
+         C     R15,=F'104'         Was it out of storage?
+         BE    TRYDROP             ---> Yes, try a EXECDROP
+         BAL   R2,DIE              ---> No, big trouble
+         SPACE 1
+TRYDROP  EQU   *
+         LA    R1,EXECDROP         Point to EXECDROP command
+         SVC   202                 Go load forwarding file
+         DC    AL4(1)              Always return at next instruction
+         LTR   R15,R15             Succesful?
+         BZ    ONDISK              ---> Yes, try again
+         BAL   R2,DIE              ---> No, big trouble
+         SPACE 1
+*--------------------------------------------------------------------
+*  Process FORWARDing file
+*--------------------------------------------------------------------
+         SPACE 1
+HAVEFWD  EQU   *
+         LR    R3,R1               Save FBLOCK pointer
+         SALOC 8,RET               Allocate stack space
+         LR    R2,R1               Remember storage address
+         SPACE 1
+*--------------------------------------------------------------------
+*  Building the following:
+*
+*        DC    A(MAILBLOK)
+*        DC    A(FBLOCK)
+*
+*--------------------------------------------------------------------
+         SPACE 1
+         ST    R11,0(,R2)          MAILBLOK base
+         ST    R3,4(,R2)           Address of FBLOCK
+         L     R15,=V(DISTSUB)     Subroutine address
+         CALL  (15)                Call it
+         LTR   R15,R15             Successful?
+         BZ    RET                 ---> Yes
+         C     R15,=F'4'           Need local delivery also?
+         BNE   RET                 ---> Yes
+         EJECT ,
+NOFWD    EQU   *
          ST    R4,RCVRLEN    [2]save receiver length for later
          CLC   RECVR,MAILVMID TRYING TO SEND MAIL TO MAILER?
          BE    NOFILES       HANDLE MAIL TO MAILER
@@ -467,7 +536,18 @@ NOSUCH   EQU   *
          LOG   LCL032,(CA,RECVR)
          LA    R15,4
          B     RET
-*
+         SPACE ,
+*  DIE routine is called via BAL R2 whenever a point in execution is
+*  reached from which recovery is not possible (i.e. out of memory
+*  for EXECLOAD of forwarding file).
+         SPACE ,
+DIE      EQU   *
+         LINEDIT TEXT='MAILCL099 Impossible recovery situation entered'X
+               ,DOT=NO
+         LINEDIT TEXT='MAILCL099 Failure at ........',                 X
+               SUB=(HEX,(R2)),DOT=NO
+         DC    H'0'                Fall over big
+         EJECT ,
 COPY     MVC   0(0,R2),0(R3)
 UPIT     TR    0(0,R2),UPCASE
          SPACE ,
@@ -485,8 +565,11 @@ MYPAB    DS    F
          DC    A(MYACT)      COPY OF ACTADR FOR SPECIAL EXIT
 MYACT    DS    (ACTLEN/4)F
 RCVRLEN  DS    F                       [2]
+         SPACE 1
 RECVR    DS    CL8
+         SPACE 1
 MSGBUF   DS    CL130                    [2]
+         SPACE 1
 PROFCARD DC    CL80' '       [1.20]
          ORG   PROFCARD      [1.20]
          DC    C':READ '     [1.20]
@@ -499,6 +582,7 @@ TNUM     DC    CL4'0000',C') ORIGIN '  [1.20]
 THOST    DC    CL8' ',C' '             [1.20]
 TUSER    DC    CL8' '                  [1.20]
 TLEN     EQU    *-TCMD                 [1.20]
+         SPACE 1
 PROFCRD2 DC    CL80' '                 [EMU1]
          SPACE ,                       [EMU1]
          ORG   PROFCRD2                [EMU1]
@@ -512,6 +596,31 @@ PROFCLEN EQU   *-PROFSUBJ              [EMU1]    LENGTH TO CLEAR
 NODEA    DC    A(0)                Address of node for GENLIST
 LSTRA    DC    A(0)                Address of local part
 LSTRL    DC    A(0)                Length of local part
+         SPACE 1
+FWDSTAT  DS    0D
+         DC    CL8'EXECSTAT'
+FWDFN    DC    CL8' '
+         DC    CL8'FORWARD'
+         DC    8X'FF'
+         SPACE 1
+EXECLOAD DS    0D
+         DC    CL8'EXECLOAD'
+EXECLDFN DC    CL8' '
+         DC    CL8'FORWARD'
+         DC    CL8'A'
+         DC    CL8'='
+         DC    CL8'='
+         DC    CL8'('
+         DC    CL8'USER'
+         DC    8X'FF'
+         SPACE 1
+EXECDROP DS    0D
+         DC    CL8'EXECDROP'
+         DC    CL8'*'
+         DC    CL8'FORWARD'
+         DC    CL8'('
+         DC    CL8'USER'
+         DC    8X'FF'
          SPACE 1
 PCTTRTTB DC    256X'00'            Translate table for '%' search
          ORG   PCTTRTTB+C'%'       Back to percent

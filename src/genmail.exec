@@ -49,5 +49,6 @@ if userid <> ''  then  do
    'EXEC SENDFILE MAILER  MODULE TO' userid
    'EXEC SENDFILE MAILER  TXTLIB TO' userid
    'EXEC SENDFILE MABNXIT EXEC   TO' userid
+   'EXEC SENDFILE FORWARD MAILER TO' userid
    end
 error: exit rc

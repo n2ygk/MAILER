@@ -348,12 +348,71 @@ MOVECMD  MVC   CMDDATA(0),0(R9)
 *--------------------------------------------------------------------
 *                            F O R W A R D
 *
-*  AUTOMATIC MAIL FORWARDING IS DONE BY ISSUING THE FORWARD COMMAND
-*  TO TELL THE MAILER WHERE TO FORWARD A USER'S MAIL.  FORWARDING
-*  IS ONLY ALLOWED FOR THE ISSUER OF THE COMMAND.
+*  Automatic mail forwarding is done by issuing the FORWARD command
+*  to tell the mailer where to forward a user's mail.  Unauthorized
+*  users may only set their own forwarding value.  Users listed as
+*  a maintainer may set values for other users.
+*
+*  Since MAILER may be running disabled, FORWARD commands are added
+*  to the MAILCMDL chain for later processing by MAILCMD2.
+*
 *--------------------------------------------------------------------
 $FORWARD DS    0H
-         L     R1,=A(FWDMSG)
+         LA    R5,CMDSIZE*8(R8)    Size needed for DMSFREE
+         LA    R5,7(R5)            Round to a dword value
+         N     R5,=X'FFFFFFF8'
+         SRL   R5,3                Make into a dword quantity
+         LR    R0,R5               Set up for CMS macro
+         DMSFREE DWORDS=(0)        Get the storage
+         LR    R6,R1               Get into a better register
+         USING COMMAND,R6          Build a command block
+         MVC   CMDSNDR,SRCUSER     Pass along response userid
+         MVC   CMDNODE,MSGNODE        and nodename.
+         MVC   CMDCODE,=A(CMDFWD)  Remember forward request
+         ST    R5,CMDLEN           Length of the block
+         ST    R8,CMDDLEN          Data length
+         XC    CMDNEXT,CMDNEXT     Keep our chain clean
+         CLC   @CODE,=A(CMDCONS)   From console?
+         BNE   $FWD1               ---> No
+         MVC   CMDSNDR,=CL8'*'     Remember from console
+         B     $FWD4               ---> Continue on
+$FWD1    EQU   *
+         CLC   @CODE,=A(CMDSMSG)   From SMSG?
+         BNE   RET                 ---> No, unknown code
+         TM    FLAG,SMSFLG         Want SMSG reply?
+         BNO   $FWD3               ---> No
+         MVC   CMDMSG,=CL18'SMSG'  Remember to use SMSG
+         B     $FWD4               ---> Continue on
+$FWD3    EQU   *
+         MVC   CMDMSG,=CL18'MSGNOH'  Set reply type
+$FWD4    EQU   *
+         DROP  R6                  Done with command block (here)
+         BCTR  R8,0                -1 for executed
+         EX    R8,MOVECMD          MVC CMDDATA(0),0(R9)
+         SPACE ,
+*--- Now add the command onto the MAILCMDL list ---
+         SPACE ,
+         CLC   @CODE,=A(CMDCONS)   From console?
+         BNE   $FWD5               No, SMSG
+         SSM   =X'FE'              Turn off external interrupts
+$FWD5    EQU   *
+         LA    R2,MAILCMDL         Address of list
+$FWDLOOP EQU   *
+         ICM   R1,B'1111',0(R2)    Get next command pointer
+         BZ    $FWDOUT             Found end of chain
+         USING COMMAND,R1
+         LA    R2,CMDNEXT          Chain along
+         DROP  R1
+         B     $CMSLOOP
+$FWDOUT  EQU   *
+         ST    R6,0(R2)            Add onto chain
+         OI    MAILCMD,MCMDCMD2    Indicate there is work for MAILCMD2
+         OI    CMDECB,POSTED        and post the command ECB.
+         CLC   @CODE,=A(CMDCONS)   Console?
+         BNE   $FWD6               No, smsg
+         SSM   =X'FF'              Enable smsg again
+$FWD6    EQU   *
+         L     R1,=A(FWDMSG)       Get msg
          LA    R0,L'FWDMSG
          BAL  R14,MESSAGE
          B     RET
@@ -876,6 +935,8 @@ PRINTRT  DS    0H            ROUTINE TO PRINT ROUTD
          LM    R14,R12,12(R13)
          BR    R14
          SPACE ,
+         DROP  R1
+         SPACE ,
 MOVEAL   MVC   0(0,R2),0(R3)
          SPACE 3
 *-------------------------------------------------------------------
@@ -1058,7 +1119,7 @@ TRTAB    DC    256X'00'      TRAP TABLE FOR DELIMITERS
 ACTMSG   DC    C'Activate command accepted.'
 CHKMSG   DC    C'Checking not yet implemented.'
 CMSMSG   DC    C'CMS command accepted.'
-FWDMSG   DC    C'Forwarding not yet implemented.'
+FWDMSG   DC    C'FORWARD command accepted.'
 HLPMSG   DC    C'General commands:  CHECK, FORWARD, HELP, SHOW'  [1.24]
          DC    C'|QUERY, SMSG'                                   [1.24]
 *        DC    X'15',C'Type "HELP MAILER" for details.'          [1.24]
