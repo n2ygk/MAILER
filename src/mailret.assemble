@@ -99,6 +99,7 @@ EYESKIP  DS    0H
 * a counterfeit.  VALIDATE will also notice a RCSC rejection,    [1.24]
 * so first check for that before general case of VALIDATE fail.  [1.24]
 *----------------------------------------------------------------[1.23]
+         XC    MBOXP,MBOXP         Clear MBOX pointer.
          TM    MAILFLG1,MFLG1REJ RSCS reject the file?           [1.24]
          BO    RSCSREJ       ->yes, MAILSFLD should be valid then[1.24]
          TM    MAILFLG2,MFLG2VLF Validate fail for other reason  [1.23]
@@ -111,29 +112,31 @@ RSCSREJ  EQU   *             <-here if if RSCS reject.  Check    [1.24]
          ICM   R7,B'1111',FIPARS  GET MBOX BLOCK POINTER
          BZ    BADSFLD       NEVER PARSED AN ADDRESS             [1.24]
          USING MBOX,R7     ADDRESS THE ADDRESS BLOCK
+         ST    R7,MBOXP            Save for later use.
+         MVC   STKP,=A(LCLSTACK)   Init stack pointer
+         MVC   STKL,=A(L'LCLSTACK)    and length.
          L     R5,MBXLCL         GET USER LIST
          L     R7,MBXDML         GET HOST LIST
          DROP  R7
-         USING NODE,R5     ADDRESS USERID NODE
-         L     R5,NODDOWN    POINT DOWN TO TOKEND
-         USING TOKEND,R5     GET USERNAME TOKEN
-         SR    R4,R4         ZIP
-         L     R4,TOKLEN     GET TOKEN LENGTH
-         L     R5,TOKPTR         STRING POINTER
-         DROP  R5
-         USING NODE,R7     ADDRESS HOSTNAME NODE
-         L     R7,NODDOWN    POINT DOWN TO HOST TOKEND
-         USING TOKEND,R7     GET HOSTNAME TOKEN
-         SR    R6,R6         ZERO
-         L     R6,TOKLEN     HOST TOKEN LENGTH
-         L     R7,TOKPTR         HOST NAME STRING ADDRESS
-         DROP  R7
+         ST    R5,NODEP            Set NODE pointer.
+         CALL  GENLIST,(NODEP,LSTRA,LSTRL,STKP,STKL) Expand localpart.
+         LTR   R15,R15             Did it work?
+         BNZ   BADSFLD             No  : Bad sender.
+         L     R4,LSTRL            Get localpart length.
+         L     R5,LSTRA            Get localpart address.
+         ST    R7,NODEP            Set NODE pointer.
+         CALL  GENLIST,(NODEP,DSTRA,DSTRL,STKP,STKL) Expand domain.
+         LTR   R15,R15             Did it work?
+         BNZ   BADSFLD             No  : Bad sender.
+         L     R6,LSTRL            Get domain length.
+         L     R7,LSTRA            Get domain address.
          B     CHEKLOOP      -> now go check case (3) for loop   [1.24]
          SPACE ,                                                 [1.24]
 BADSFLD  EQU   *             <- invalid SFLD comes here          [1.24]
 *----------------------------------------------------------------[1.24]
 * (2) MAILSFLD invalid, set up ptrs to MAILUSER and MAILNODE.    [1.24]
 *----------------------------------------------------------------[1.24]
+         XC    MBOXP,MBOXP         Clear pointer to bad MBOX.
          LA    R5,MAILUSER   point to userid string              [1.24]
          L     R4,MAILULEN   length of this string               [1.24]
          LA    R7,MAILNODE   point to hostname string            [1.24]
@@ -235,6 +238,17 @@ HLOOPOUT EQU   *             [1.20]
          MVC   CARD+1(79),CARD
          MVC   CARD(4),=C'To: '
          LA    R2,CARD+4     DESTINATION OF COPY
+         CLC   MBOXP,=A(0)         Is the MBOX pointer valid?
+         BE    TOSTR               No  : Use the strings.
+         MVC   STKP,=A(LCLSTACK)   Init stack pointer
+         MVC   STKL,=A(L'LCLSTACK)    and length.
+         CALL  GENMBOX,(MBOXP,TOADDR,TOLEN,STKP,STKL) Expand address.
+         L     R1,TOLEN            Get address length.
+         BCTR  R1,0
+         L     R3,TOADDR           Get address address.
+         EX    R1,COPY             "MVC 0(*-*,R2),0(R3)"
+         B     TOPUNCH
+TOSTR    DS    0H
          LR    R1,R4         LENGTH OF COPY
          BCTR  R1,0          -1 FOR EXECUTE
          LR    R3,R5         SOURCE OF COPY
@@ -246,6 +260,7 @@ HLOOPOUT EQU   *             [1.20]
          BCTR  R1,0          -1 FOR EXECUTE
          LR    R3,R7         ADDRESS OF NAME
          EX    R1,COPY       COPY IN THE HOST NAME
+TOPUNCH  DS    0H
          PUNCHC CARD         PUNCH THE TO: CARD
          MVI   CARD,C' '
          MVC   CARD+1(79),CARD
@@ -365,4 +380,15 @@ LOOKVALD DS    CL16                                              [1.24]
 LOOKNODE DS    CL8                                               [1.24]
 LOOKUSER DS    CL8                                               [1.24]
          ORG   ,                                                 [1.24]
+TOADDR   DS    A                   Address of to-address.
+TOLEN    DS    A                   Length of to-address.
+LSTRA    DS    A                   Address of localpart.
+LSTRL    DS    F                   Length of localpart.
+DSTRA    DS    A                   Address of domainpart.
+DSTRL    DS    F                   Length of domainpart.
+STKP     DS    A                   Stack Pointer.
+STKL     DS    F                   Stack Length.
+MBOXP    DS    A                   Address of MBOX for addressee.
+NODEP    DS    A                   Address of NODE for GENLIST.
+LCLSTACK DS    XL100               Local stack area.
          END   MAILRET
