@@ -26,6 +26,8 @@ MAILER   CSECT ,
          TRACETBL ,
          REGEQU ,
          COPY  MAILEQU
+         NUCON ,
+         DEVTAB ,
          SPACE 2                                                  UW002
          WXTRN LCLMOD                                             UW002
          SPACE 2
@@ -67,6 +69,7 @@ EYESKIP  DS    0H
          SPACE ,
          L     R11,=V(MAILBLOK) Address of MAILBLOK
          USING MAILBLOK,R11
+         USING NUCON,R0
          SPACE ,
 *--------------------------------------------------------------------
 *        GET PROFILE NAME FROM COMMAND LINE IF SUPPLIED    [1]
@@ -151,6 +154,15 @@ NOLCLMOD EQU   *
          LTR   R15,R15
          BNZ   ERRRET
          SPACE ,
+         HNDINT SET,(RDR1,RDRINT,00C,ASAP) Init reader handler.
+         LTR   R15,R15              All is well?
+         BNZ   ERRRET               No  : Abort MAILER.
+         L     R1,ADEVTAB
+         USING DEVTAB,R1
+         LA    R1,CON1ECB           Get console ECB address
+         ST    R1,ECBLIST              into ECB list.
+         DROP  R1
+         SPACE ,
          LA    R15,CPUSTR           Point to CPU identifier
          WTR   LER004,(CA,(R15))    Write startup message
          LA    R15,STACK+4          Stack size value here
@@ -163,7 +175,8 @@ NOLCLMOD EQU   *
          SPACE ,
 *--------------------------------------------------------------------
 *        MAIN PROGRAM LOOP -
-*        (1) PROCESS READER FILE(S)
+*        (1)   Process command(s)
+*        (1.5) Process reader file(s)
 *        (2) WAIT FOR READER INTERRUPT
 *        (3) LOOP BACK TO (1)
 *--------------------------------------------------------------------
@@ -173,6 +186,7 @@ MAINLOOP EQU   *
          DC    AL4(NONWRITE)                                     [1.24]
          CLI   MAILCMD,0     ANY COMMANDS RECEIVED?
          BNE   COMMANDS      GO DO THE COMMANDS
+         NI    RDRECB,255-POSTED   Unpost the reader ECB.
          TM    MAILSTAT,MSTQSC   MAILER IN QUIESCENT STATE?
          BNO   MAIN2         NOPE, DO SOME WORK
          WTR   LER042        REMIND THEM...
@@ -186,22 +200,41 @@ MAIN2    EQU   *
 WAIT     EQU   *
          WAITT ,             LET TERMINAL QUIESCE
          OI    MAILSTAT,MSTINWT  IN WAIT STATE
-         WAITD RDR1,CON1     WAIT FOR FURTHER RDR INTS.
+         WAITECB 1,ECBLIST=ECBLIST Wait for work.
          NI    MAILSTAT,X'FF'-MSTINWT
-         C     R1,=CL4'CON1' WAS IT CONSOLE?
-         BNE   MAINLOOP      NOPE, GO PROCESS NEW READER FILE(S)
+         TM    STOPECB,POSTED      Was it stop command?
+         BO    SHUTDOWN            Yes : Go stop
+         L     R1,ADEVTAB
+         USING DEVTAB,R1
+         TM    CON1ECB,POSTED      Was it the console?
+         BO    CONSINT             Yes : Go process input.
+         DROP  R1
+         TM    RDRECB,POSTED       What about the reader?
+         BO    MAINLOOP            Yes : Go process new file(s).
+         TM    CMDECB,POSTED       What about incoming commands?
+         BO    MAINLOOP            Yes : Go process them.
+         WRTERM 'Unknown interrupt, MAILER terminating'
+         B     SHUTDOWN
+CONSINT  DS    0H
+         DMSKEY NUCLEUS            Go to key zero
+         L     R1,ADEVTAB
+         USING DEVTAB,R1
+         NI    CON1ECB,255-POSTED  Unpost the console ECB.
+         DMSKEY RESET              Back to previous key
+         DROP  R1
 * INTERRUPT WAS FROM CONSOLE ATTN
          RDTERM TERMBUF
          LR    R5,R0         GET LENGTH READ
          LA    R15,MAILVMID
          LA    R14,CPUSTR          It's from our node.
          CALL  MAILCMD1,((R11),TERMBUF,(R5),(R15),(R14),CMDCONS)
-         B     MAINLOOP      GO PROCESS NEW RDR FILE(S)
+         B     WAIT                Go check for work.
          SPACE ,
 *--------------------------------------------------------------------
 *  A COMMAND WAS ISSUED...
 *--------------------------------------------------------------------
 COMMANDS EQU   *
+         NI    CMDECB,255-POSTED   Unpost the command ECB.
          TM    MAILCMD,MCMDHALT   HALT COMMAND?
          BO    SHUTDOWN      GO SHUT DOWN
          TM    MAILCMD,MCMDRELD  RELOAD COMMAND?
@@ -214,7 +247,7 @@ COMMANDS EQU   *
 SHUTDOWN EQU   *             HALT COMMAND
          CALL  MAILSMSD      DISABLE SMSGS
          WTR   LER038        ISSUE STOPPING MESSAGE
-         SR    R15,R15
+         L     R15,HALTRC          Get return code from STOP command.
          B     RET
          SPACE ,
 RELOAD   EQU   *
@@ -242,11 +275,26 @@ ERRRET   EQU   *             ERROR RETURN
          WTR   LER007,(D,(R5))     WRITE THE MESSAGE
          LR    R15,R5        AND EXIT WITH SAME RETCODE
 RET      EQU   *
+         LR    R5,R15              Save RC around HNDINT.
+         HNDINT CLR,(RDR1)         Release reader (if we ever got it).
+         LR    R15,R5              Restore RC.
          L     R13,4(R13)
          L     R14,12(R13)
          LM    R0,R12,20(R13)
          BR    R14
-         SPACE ,
+         EJECT ,
+*--------------------------------------------------------------------
+*        READER INTERRUPT HANDLER
+*--------------------------------------------------------------------
+         PUSH  USING
+         DROP  ,
+RDRINT   DS    0H
+         USING RDRINT,R15
+         OI    RDRECB,POSTED      Awaken MAILER.
+         SR    R15,R15            RC = 0.
+         BR    R14                Return to IO FLIH.
+         POP   USING
+         EJECT ,
 *--------------------------------------------------------------------
 *        LITERAL POOL AND OTHER READ-ONLY DATA
 *--------------------------------------------------------------------
@@ -270,4 +318,9 @@ LEXTID   EQU   *-EXTID       LENGTH OF THE BUFFER
 EXTVMID  DS    CL8
          ORG   ,             ORG BACK
 TERMBUF  DS    CL130         TERMINAL INPUT BUFFER
+ECBLIST  DC    A(0)                List of ECBs.
+         DC    V(CMDECB)           ...
+         DC    V(STOPECB)          ...
+         DC    X'80',AL3(RDRECB)   ...
+RDRECB   DC    F'0'                Reader ECB.
          END   MAILER

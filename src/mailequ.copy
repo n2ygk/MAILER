@@ -11,3 +11,8 @@ RXVNUM   EQU  2                    Parameter is a fullword.
 CMDCONS  EQU  0                    Command is from the console.
 CMDSMSG  EQU  1                    Command is from SMSG.
 CMDNET   EQU  2                    Command is from the network.
+*
+*        EQUates for use with Event Control Blocks.
+*
+WAITING  EQU  X'80'                ECB is being WAITed on.
+POSTED   EQU  X'40'                ECB has been POSTed.

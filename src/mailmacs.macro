@@ -520,7 +520,8 @@ MAILVERS DC    0CL25' ',CL8'&VERSION',CL8'&SYSDATE',C' '
          LCLC  &TIME
 &TIME    SETC  '&SYSTIME'(1,2).':'.'&SYSTIME'(4,2).':00'
          DC    CL8'&TIME'
-         DC    CL7' '              Unused
+         DC    CL3' '              Unused
+HALTRC   DC    F'0'                Return Code from STOP command.
 MAILNODE DC    CL8' '        MAIL ORIGIN NODE NAME
 MAILUSER DC    CL8' '        MAIL ORIGIN USERID
 MAILRTFN DC    CL8'&ROUTEFN',CL8'&ROUTEFT',CL2'&ROUTEFM'
@@ -532,7 +533,15 @@ MAILTAG  DC    CL130' '      TAG TEXT
          ORG   ,
 MAILIUCB DC    5D'0'               IUCV external interrput buffer.
 MAILIUCP DC    F'0'                IUCV *MSG pathid.
-         DC    212X'00'            Spare (used to be MAILVMCM)
+CMDECB   DC    F'0'                Incoming Command ECB.
+         AIF   ('&DSECT' NE 'NO').CMD1
+         ENTRY CMDECB
+.CMD1    ANOP  ,
+STOPECB  DC    F'0'                Stop command ECB
+         AIF   ('&DSECT' NE 'NO').STOP1
+         ENTRY STOPECB
+.STOP1   ANOP  ,
+         DC    204X'00'            Spare.
          SPACE ,
 * COMMONLY USED CONSTANTS -
 REVTAB   REVTAB LEN=256

@@ -115,6 +115,23 @@ NONODE   DS    0H
          MVI   MSGNODE+8,C' '
          MVC   MSGDATA-3(3),=C' * ' BLANK DELIMITER
          SPACE ,
+         CLC   @CODE,=A(CMDCONS)   Is it from the console?
+         BE    SKIPCON             Yes : Don't bother, he's seen it.
+         MVC   WORKBUF(24),=C'From         @        : '
+         MVC   WORKBUF+05(8),MSGSENDR
+         MVC   WORKBUF+14(8),MSGNODE
+         CLC   @CODE,=A(CMDNET)    Is it from the network?
+         BE    *+10                Yes : Nodename is right.
+         MVC   WORKBUF+14(8),CPUSTR No : It's from here.
+         LR    R1,R8               Get command length
+         BCTR  R1,0                   for EX.
+         EX    R1,CON$MVC          "MVC WORKBUF+24(*-*),0(R9)"
+         LA    R3,WORKBUF
+         LA    R4,24(,R8)
+         WRTERM (R3),(R4)          Echo the command on the console.
+         WAITT ,                   Be nice.
+SKIPCON  DS    0H
+         SPACE ,
 *--- TOKENIZE THE COMMAND LINE ---
 * CALL UNIXSCAN,(ARGV,ARGVMAX,STRING,LENGTH)
          LA    R1,ARGV       GET ARGV ADDRESS
@@ -157,6 +174,8 @@ FINDKEY  EQU   *
          BNHR  R1            GO TO COMMAND ROUTINE
          SPACE ,
          B     BOGUS
+         SPACE ,
+CON$MVC  MVC   WORKBUF+24(*-*),0(R9) *** Executed ***
          SPACE ,
 *--------------------------------------------------------------------
 *        COMMAND TABLE AND ROUTINES
@@ -225,6 +244,9 @@ $CP1     EQU   *
          SR    R6,R9         DIFFERENCE FROM ORIGINAL LENGTH
          SR    R8,R6         GET UPDATED LENGTH
          LR    R6,R8         COPY LENGTH
+         LR    R1,R6               Get length
+         BCTR  R1,0                   for EX
+         EX    R1,$CPTR            Upcase the CP command
          LA    R5,WORKBUF    ADDRESS FOR REPLY
          LA    R7,LWORKBUF   LENGTH FOR REPLY
          O     R6,=X'40000000' FLAG TO INDICATE REPLY IN BUFFER
@@ -234,6 +256,7 @@ $CP1     EQU   *
          LA    R1,WORKBUF
          BAL  R14,MESSAGE       SEND THE REPLY BACK
          B     RET
+$CPTR    TR    0(*-*,R4),UPCASE    *** Executed ***
 $CPSHORT EQU   *
          LA    R0,LWORKBUF   TRUNCATED REPLY
          LA    R1,WORKBUF
@@ -310,6 +333,7 @@ $CMSLOOP EQU   *
 $CMSOUT  EQU   *
          ST    R6,0(R2)      ADD ONTO CHAIN
          OI    MAILCMD,MCMDCMD2  INDICATE THERE IS WORK FOR MAILCMD2
+         OI    CMDECB,POSTED        And post the command ECB.
          CLC   @CODE,=A(CMDCONS)   CONSOLE?
          BNE   $CMS6         NO, SMSG
          SSM   =X'FF'        ENABLE SMSG AGAIN
@@ -394,7 +418,24 @@ $SMSG    DS    0H            REPLY WANTED AS SMSG
 *--------------------------------------------------------------------
 $STOP    DS    0H
          BAL   R14,CHKAUTH   CHECK AUTHORIZATION
-         OI    MAILCMD,MCMDHALT SET STOP FLAG
+         OI    STOPECB,POSTED      Post the stop ECB
+         XC    HALTRC,HALTRC       Clear Return Code.
+         CLC   ARGC,=F'0'          Might there be a Return Code?
+         BNH   STOPMSG             No  : All done.
+         L     R1,UNIXPARM         Yes : Get the address
+         SR    R2,R2                        and length
+         IC    R2,0(,R1)                       of the next
+         L     R1,0(,R1)                          token.
+         SR    R3,R3               Clear accumulator.
+STOPLOOP DS    0H
+         MH    R3,=H'10'           Total = Total * 10
+         IC    R0,0(,R1)                      +
+         N     R0,=X'0000000F'                   new
+         AR    R3,R0                                digit.
+         LA    R1,1(,R1)
+         BCT   R2,STOPLOOP         Next!
+         ST    R3,HALTRC           Set requested Return Code.
+STOPMSG  DS    0H
          L     R1,=A(STPMSG)
          LA    R0,L'STPMSG
          BAL  R14,MESSAGE
