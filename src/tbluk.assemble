@@ -72,17 +72,19 @@ RETNOT   EQU       12                  NOT MATCHED
 *   3) TRANSLATE THE ENTRY TO UPPERCASE
 *   4) FIND MINIMUM OF TEST AND BASE STRING LENGTHS.
 *   5) COMPARE THE STRINGS USING THE MINIMUM LENGTH FOUND.
-*      A) IF TEST=BASE
+*      A) If lengths are different and TBT#EXAC set then no match
+*         Get next entry (goto 2)
+*      B) IF TEST=BASE
 *         1) IF TEST LENGTH <= BASE LENGTH THEN A MATCH IS
 *            FOUND. RETURN SUCCESFULLY (GOTO 6).
 *         2) IF TEST LENGTH > BASE LENGTH THEN A MATCH IS
 *            NOT FOUND. GO ON TO TRY AGAIN TO SEE IF THE
 *            NEXT ENTRY WILL WORK. (GOTO 2)
 *
-*      B) IF TEST<BASE
+*      C) IF TEST<BASE
 *         TRY AGAIN. GET NEXT ENTRY (GOTO 2)
 *
-*      C) IF TEST>BASE
+*      D) IF TEST>BASE
 *         RETURN NOT FOUND.
 *
 *   6) A MATCH HAS BEEN FOUND.  CHECK THE ENTRY OPTION BITS
@@ -96,7 +98,7 @@ RETNOT   EQU       12                  NOT MATCHED
 * REGISTER USAGE -
 R0  EQU  0 -
 R1  EQU  1 -
-R2  EQU  2 - WORK: USED AS A FLAG
+R2  EQU  2 - Exact match flag
 R3  EQU  3 - Lower bound of current table range.
 R4  EQU  4 - Upper bound of current table range.
 R5  EQU  5 - WORK AND MINIMUM OF TEST AND BASE LENGTHS - 1
@@ -127,6 +129,11 @@ TBLUK    CSECT ,
          TM    TB$FLG,TBT#SEQ sequential?                        [1.22]
          BO    CALLSEQ       call the sequential version         [1.22]
          DBGMSG 'TBLUK: Searching binary table'
+         LA    R2,AMBLP0           Set default (ambigous allowed)
+         TM    TB$FLG,TBT#EXAC     Exact match required?
+         BNO   NOTEXACT            ---> No
+         LA    R2,TRYLOW           Only allow exact match
+NOTEXACT EQU   *
          L     R3,TB$ADR           Set lower-bound to first entry.
          C     TL,=F'256'    MORE THAN 256 LONG?
          BH    EMPTY         IT'S TOO LONG
@@ -183,14 +190,16 @@ SEARCH   EQU   *             TOP OF SEARCH LOOP
          BNL   TRYHIGH             TEST >= BASE : Try the higher range.
          DC    H'0'                Can't happen.
          SPACE 1
-BLONGER  DS    0H
+BLONGER  DS    0H                  Here if TL <= BL
          EX    TL,COMPARE          Compare the strings.
          BL    TRYLOW              TEST < BASE : Try the lower range.
          BH    TRYHIGH             TEST > BASE : Try the higher range.
 *                                  TEST = BASE : Possible match.
          CR    BL,TL         LENGTHS MATCH EXACTLY?
          BE    EXACT               Yes : We have a match.
+         BR    R2                  Exact match switch
          SPACE 1
+AMBLP0   DS    0H                  Here if ambigous match allowed
          DBGMSG 'TBLUK: Key and Target match, possibly ambiguously.'
          LR    R0,R8               Save match address for later.
 AMBLP1   DS    0H

@@ -5,10 +5,15 @@
 *    City of New York.                                                *
 *---------------------------------------------------------------------*
 * TBBITS - TBLUK EQUATES
+         SPACE 1
 * bits defined in leftmost byte of TB$FLG (global table options) [1.22]
+         SPACE 1
 TBT#SEQ  EQU       X'80' sequential unsorted table               [1.22]
 TBT#RGT  EQU       X'40' right-adjusted search instead of left   [1.22]
-* TBLUK TABLE ENTRY FLAGS USED IN TBS$FLG IN THE TBS STRING
+TBT#EXAC EQU       X'20' Return only exact matches
+         SPACE 1
+* TBLUK table entry flags used in TBS$FLG in the TBS string
+         SPACE 1
 TB#NOM   EQU       X'80'               RETURN A NO MATCH EVEN IF THIS
 *                                      ENTRY MATCHES
 TB#AMB   EQU       X'40'               RETURN AN AMBIGUOUS MATCH
