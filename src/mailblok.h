@@ -55,8 +55,6 @@ static struct mailblok {
 #define MFLG1DOT 0x02        /* Quote lone dots when punching        */
 #define MFLG1RES 0x01        /* File has been resent                 */
     char mailcmd;            /* Command flags                        */
-#define MCMDRELD 0x80        /* RELOAD command was issued            */
-#define MCMDHALT 0x40        /* HALT command was issued              */
 #define MCMDCMD2 0x20        /* MAILCMD2 has been called             */
     char mailstat;           /* MAILER status flag byte              */
 #define MSTINWT  0x80        /* In WAIT state                        */
@@ -92,8 +90,9 @@ static struct mailblok {
 
     int cmdecb;              /* Incoming command ECB                 */
     int stopecb;             /* Stop command ECB                     */
+    int reldecb;             /* RELOAD command ECB                   */
 
-    char spare1[204];        /* Spare                                */
+    char spare1[200];        /* Spare                                */
 
     /* Commonly used constants */
 

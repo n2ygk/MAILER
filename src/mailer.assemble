@@ -204,6 +204,8 @@ WAIT     EQU   *
          NI    MAILSTAT,X'FF'-MSTINWT
          TM    STOPECB,POSTED      Was it stop command?
          BO    SHUTDOWN            Yes : Go stop
+         TM    RELDECB,POSTED      Was it a RELOAD command?
+         BO    RELOAD              Yes : Go stop
          L     R1,ADEVTAB
          USING DEVTAB,R1
          TM    CON1ECB,POSTED      Was it the console?
@@ -235,10 +237,6 @@ CONSINT  DS    0H
 *--------------------------------------------------------------------
 COMMANDS EQU   *
          NI    CMDECB,255-POSTED   Unpost the command ECB.
-         TM    MAILCMD,MCMDHALT   HALT COMMAND?
-         BO    SHUTDOWN      GO SHUT DOWN
-         TM    MAILCMD,MCMDRELD  RELOAD COMMAND?
-         BO    RELOAD
          TM    MAILCMD,MCMDCMD2  MAILCMD2 HAS TO BE CALLED
          BO    MCMD2
          WRTERM '?EH'
@@ -251,9 +249,10 @@ SHUTDOWN EQU   *             HALT COMMAND
          B     RET
          SPACE ,
 RELOAD   EQU   *
+         NI    RELDECB,255-POSTED  Unpost the ECB.
          CALL  MAILSMSD           Disable SMSGs (turn 'em on later)
+         HNDINT CLR,(RDR1)         Release reader (if we ever got it).
          WTR   LER039        ISSUE RELOADING MESSAGE
-         NI    MAILCMD,255-MCMDRELD  TURN OFF RELOAD FLAG
          B     RELENT        GOTO RELOAD ENTRY
          SPACE ,
 MCMD2    EQU   *
@@ -321,6 +320,7 @@ TERMBUF  DS    CL130         TERMINAL INPUT BUFFER
 ECBLIST  DC    A(0)                List of ECBs.
          DC    V(CMDECB)           ...
          DC    V(STOPECB)          ...
+         DC    V(RELDECB)          ...
          DC    X'80',AL3(RDRECB)   ...
 RDRECB   DC    F'0'                Reader ECB.
          END   MAILER

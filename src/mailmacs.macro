@@ -506,8 +506,8 @@ MFLG1HDS EQU   X'04'         HEADER HAS BEEN SCANNED OK
 MFLG1DOT EQU   X'02'         quote lone dots when punching       [1.22]
 MFLG1RES EQU   X'01'         [1.16]file has been RESENT.
 MAILCMD  DC    X'00'         COMMAND FLAGS
-MCMDRELD EQU   X'80'         RELOAD COMMAND WAS ISSUED
-MCMDHALT EQU   X'40'         HALT COMMAND WAS ISSUED
+*        EQU   X'80'               Spare.
+*        EQU   X'40'               Spare.
 MCMDCMD2 EQU   X'20'         MAILCMD2 HAS TO BE CALLED
 MAILSTAT DC    X'00'         MAILER STATUS FLAG BYTE
 MSTINWT  EQU   X'80'         MAILER IS IN WAIT STATE
@@ -538,10 +538,12 @@ CMDECB   DC    F'0'                Incoming Command ECB.
          ENTRY CMDECB
 .CMD1    ANOP  ,
 STOPECB  DC    F'0'                Stop command ECB
+RELDECB  DC    F'0'                RELOAD command ECB.
          AIF   ('&DSECT' NE 'NO').STOP1
          ENTRY STOPECB
+         ENTRY RELDECB
 .STOP1   ANOP  ,
-         DC    204X'00'            Spare.
+         DC    200X'00'            Spare.
          SPACE ,
 * COMMONLY USED CONSTANTS -
 REVTAB   REVTAB LEN=256

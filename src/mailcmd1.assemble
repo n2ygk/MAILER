@@ -394,7 +394,7 @@ $QUIESCE DS    0H
 *--------------------------------------------------------------------
 $RELOAD  DS    0H
          BAL   R14,CHKAUTH   CHECK AUTHORIZATION
-         OI    MAILCMD,MCMDRELD        SET RELOAD FLAG
+         OI    RELDECB,POSTED      Tell MAILER to reload.
          L     R1,=A(RELMSG)
          LA    R0,L'RELMSG
          BAL  R14,MESSAGE
