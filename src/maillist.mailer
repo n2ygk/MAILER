@@ -60,7 +60,7 @@ signal on syntax
 signal on novalue
 
 parse arg '(' requestorid '@' requestornode ')'  maintainer ,
-          cmdstring , msgcmd , diskmode .    /*                       */
+          cmdstring , msgcmd , localnode . , diskmode .
 cmdstring = strip(cmdstring)                 /*                       */
 if translate(word(cmdstring,1)) = 'MAILLIST'  then
    cmdstring = subword(cmdstring,2)          /*                       */
@@ -75,9 +75,6 @@ if msgcmd = ''  then                         /* Set msg cmd default   */
    msgcmd  = 'MSGNOH'                        /*    if none given      */
 operations = 'ADD ADDOWNER CREATE DELETE DELOWNER DESTROY LIST'
 requestor = '*CONSOLE*'                      /*                       */
-
-'IDENTIFY (LIFO'                             /*                       */
-parse upper pull . . localnode .             /*                       */
 
 /*  Determine source of request */
 
@@ -109,6 +106,7 @@ say 'Maillist:  Cmd       = "'strip(original)'"'
 say '        :  Requestor = "'requestor'"' mflag
 say '        :  Cmdline   = "'cmdstring'"'
 say '        :  Msgcmd    = "'msgcmd'"'
+say '        :  Thisnode  = "'localnode'"'
 say '        :  Diskmode  = "'diskmode'"'
 
 
