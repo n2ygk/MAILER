@@ -155,6 +155,10 @@ NTRIMOUT EQU   *                       <-here w/len-1 in R4      [1.24]
          LA    R0,LCHFORM              [1.12]
          DC    X'83100008'             [1.12]
 NOMAINE  EQU   *
+         MVC   CHFNUM3,MAILFTXT        [ORDER000] Fill in file #
+         LA    R1,CPORDER              [ORDER000] Point to ORDER cmd
+         LA    R0,LCPORDER             [ORDER000] Set length
+         DC    X'83100008'             [ORDER000] Do it
          SR    R15,R15       ZERO RETURN CODE
 RET      EQU   *
          L     R13,4(R13)
@@ -188,4 +192,7 @@ CHFORM   DC    C'CH RDR '              [1.12]U.Maine special case
 CHFNUM2  DS    CL4                     [1.12]of "FORM MAIL" handled
          DC    C' FORM STANDARD'       [1.12]here.
 LCHFORM  EQU   *-CHFORM                [1.12]
+CPORDER  DC    C'ORDER RDR '           [ORDER000] Order the reader...
+CHFNUM3  DS    CL4                     [ORDER000]
+LCPORDER EQU   *-CPORDER               [ORDER000]
          END   GETSPOOL
