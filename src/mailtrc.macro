@@ -50,7 +50,8 @@ $&SYSNDX EQU   *                   Label for trace entry address
 .*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 .*
          STM   R14,R15,12(R13)     Save R14 and R15
-         L     R14,TRTBLCUR        Get current entry pointer
+         ICM   R14,B'1111',TRTBLCUR Get current entry pointer
+         BZ    $&SYSNDX.$          No table
          A     R14,=A(TRCENTL)     Bump to next entry
          C     R14,TRTBLEND        Past end?
          BNH   $&SYSNDX.B          ---> No
@@ -75,8 +76,7 @@ $&SYSNDX.B EQU *
          MNOTE 4,'TYPE value of &TYPE not recognized'
          MNOTE ,'Default entry type generated'
          DROP  R14
-         LM    R14,R15,12(R13)     Restore R14 and R15
-         MEXIT
+         AGO   .ALLDONE
 .*
 .*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 .*       Generate code for CALL trace
@@ -97,8 +97,7 @@ $&SYSNDX.B EQU *
          MVC   TRCDATA(8),=CL8'&ARG1'   Move in entity type
 .CALL020 ANOP
          DROP  R14
-         LM    R14,R15,12(R13)     Restore R14 and R15
-         MEXIT
+         AGO   .ALLDONE
 .*
 .*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 .*       Generate code for CREATE trace table entry
@@ -127,8 +126,7 @@ $&SYSNDX.B EQU *
          MVC   TRCDATA+8(4),=A(&ARG2)   Save entity address
 .CREA030 ANOP
          DROP  R14
-         LM    R14,R15,12(R13)     Restore R14 and R15
-         MEXIT
+         AGO   .ALLDONE
 .*
 .*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 .*       Generate code to dump (list) trace table on console
@@ -233,8 +231,7 @@ $&SYSNDX.W EQU *
          BE    $&SYSNDX.Z          ---> Yes, all done
          BCT   R6,$&SYSNDX.A       ---> Around again
 $&SYSNDX.Z EQU *
-         LM    R14,R12,12(R13)     Restore saved registers
-         MEXIT
+         AGO   .ALLDONE
 .*
 .*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 .*       Generate code to initialize trace table pointers
@@ -271,8 +268,7 @@ $&SYSNDX.B EQU *
 .ENTER   ANOP
 .*
          DROP  R14
-         LM    R14,R15,12(R13)     Restore R14 and R15
-         MEXIT
+         AGO   .ALLDONE
 .*
 .*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 .*       Generate code for EXIT trace
@@ -289,8 +285,7 @@ $&SYSNDX.B EQU *
          MVC   TRCDATA(4),=A(&ARG1)     Save return code
 .EXIT020 ANOP
          DROP  R14
-         LM    R14,R15,12(R13)     Restore R14 and R15
-         MEXIT
+         AGO   .ALLDONE
 .*
 .*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 .*       Generate code for RETURN trace
@@ -318,6 +313,15 @@ $&SYSNDX.B EQU *
          MNOTE 8,'Return code value must be in register'
 .RETU999 ANOP
          DROP  R14
-         LM    R14,R15,12(R13)     Restore R14 and R15
+         AGO   .ALLDONE
 .*
+.*
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+.*       Common code to restore registers after performing function
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+.*
+.ALLDONE ANOP
+$&SYSNDX.$ EQU *
+         LM    R14,R15,12(R13)     Restore R14 and R15
+         MEXIT
          MEND
