@@ -259,9 +259,10 @@ HADPARM  EQU   *
 *----------------------------------------------------------------------
          CLC   MBXDCNT,=F'1'      More than 1 token?
          BH    NODEF              ---> Yes, no tack on
+         ICM   R4,B'1111',RSCSDOM Get the string pointer
+         BZ    NODEF              ---> No RSCS-domain, leave alone
          BCTR  R2,0               backup over the ending '>'
          SR    R1,R1              get a zero
-         L     R4,RSCSDOM         get the string pointer
          IC    R1,0(R4)           get the string length
          LA    R0,0(R1,R2)        address of end after copy
          CR    R0,R3              see if it will fit
