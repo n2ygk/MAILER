@@ -17,54 +17,47 @@
 ;**
 ;** ********** The real profile stuff begins here **********
 ;**
-;** The following 3 lines identify the userids of the RSCS server(s)
+;** The following 2 lines identify the userids of the RSCS server(s)
 ;** on the system on which MAILER will be running.
 ;**
-rscsname=RSCS13              ; name of rscs/networking vm userid
-rscsalt=KNET                 ; name of alternate rscs userid
+rscsname=RSCS                ; name of rscs/networking vm userid
+;** rscsalt=KNET             ; name of alternate rscs userid
 ;**
-;** The following line gives the default domain suffix used by the
-;** RSCS network.  For the majority of sites this will be '.BITNET'.
-;**
-RSCS-Domain=.BITNET          ; the RSCS network is called .BITNET
-;**
-;** The following lines allow you to specify alternate RSCS network
+;** The following lines allow you to specify RSCS network
 ;** domains.  This is useful for mailers imbedded inside a domain
 ;** that might receive mail with a specification other than the real
-;** domain identifier.
+;** domain identifier (such as .BITNET, which is a kludge)
 ;**
-RSCS-Domain1=.EARN
-RSCS-Domain2=.NETNORTH
-RSCS-Domain3=.LOCAL.EDU
-RSCS-Domain4=.LCL.EDU
-RSCS-Domain5=.DUMMY
-RSCS-Domain6=.DUMMY
-RSCS-Domain7=.DUMMY
-RSCS-Domain8=.DUMMY
-RSCS-Domain9=.DUMMY
+RSCS-Domain1=.BITNET         ; Accept .BITNET
+RSCS-Domain2=.EARN           ; Accept .EARN
+RSCS-Domain3=.NETNORTH       ; Accept .Netnorth
+;** RSCS-Domain4=.LOCAL.EDU
+;** RSCS-Domain5=.LCL.EDU
+;** RSCS-Domain6=
+;** RSCS-Domain7=
+;** RSCS-Domain8=
+;** RSCS-Domain9=            ; You may have up to 9 RSCS-Domains
 ;**
 ;**
-;** Then node name for the node on which MAILER is running
+;** The node name for the node on which MAILER is running
 ;**
 thisnode=MYNODE              ; local node name
 ;**
-;** Fill in the full domain name of your node if it is not node.BITNET
+;** The following lines allow you to specify host names for your host.
+;** This is useful if your host is known by more than 1 name.
 ;**
-Local-Domain=LOCAL.DOMAIN.EDU    ; in addition to .BITNET
+;** If your system is known only by its NJE node name, delete these
+;** lines.
 ;**
-;** The following lines allow you to specify alternate local hostids.
-;** This is useful if your host is connected to more than 1 network
-;** and has different hostids on the connected network.
-;**
-Local-Host1=LCL.DOMAIN.EDU       ; Alternate host identifier
-Local-Host2=LCL.DOMAIN.EDU       ; Alternate host identifier
-Local-Host3=LCL.DOMAIN.EDU       ; Alternate host identifier
-Local-Host4=LCL.DOMAIN.EDU       ; Alternate host identifier
-Local-Host5=LCL.DOMAIN.EDU       ; Alternate host identifier
-Local-Host6=LCL.DOMAIN.EDU       ; Alternate host identifier
-Local-Host7=LCL.DOMAIN.EDU       ; Alternate host identifier
-Local-Host8=LCL.DOMAIN.EDU       ; Alternate host identifier
-Local-Host9=LCL.DOMAIN.EDU       ; Alternate host identifier
+Local-Host1=Host.DOMAIN.EDU       ; The real host name
+;** Local-Host2=                     ; Alternate host identifier
+;** Local-Host3=                     ; Alternate host identifier
+;** Local-Host4=                     ; Alternate host identifier
+;** Local-Host5=                     ; Alternate host identifier
+;** Local-Host6=                     ; Alternate host identifier
+;** Local-Host7=                     ; Alternate host identifier
+;** Local-Host8=                     ; Alternate host identifier
+;** Local-Host9=                     ; Alternate host identifier
 ;**
 ;** The following users may issue privileged commands to MAILER (via
 ;** SMSG, MSG or TELL).  The maintuser@maintnode will be informed of
@@ -74,35 +67,32 @@ Local-Host9=LCL.DOMAIN.EDU       ; Alternate host identifier
 ;**
 maintuser=user1              ; userid of maintainer
 maintnode=node2              ; node name of maintainer
-maintuser2=user2             ; Alternate privileged userid
-maintnode2=node2             ;
-maintuser3=user3             ; Alternate privileged userid
-maintnode3=node3             ;
-maintuser4=user4             ; Alternate privileged userid
-maintnode4=node4             ;
-maintuser5=user5             ; Alternate privileged userid
-maintnode5=node5             ;
-maintuser6=user6             ; Alternate privileged userid
-maintnode6=node6             ;
-maintuser7=user7             ; Alternate privileged userid
-maintnode7=node7             ;
-maintuser8=user8             ; Alternate privileged userid
-maintnode8=node8             ;
-maintuser9=user9             ; Alternate privileged userid
-maintnode9=node9             ;
+;** maintuser2=user2             ; Alternate privileged userid
+;** maintnode2=node2             ;
+;** maintuser3=user3             ; Alternate privileged userid
+;** maintnode3=node3             ;
+;** maintuser4=user4             ; Alternate privileged userid
+;** maintnode4=node4             ;
+;** maintuser5=user5             ; Alternate privileged userid
+;** maintnode5=node5             ;
+;** maintuser6=user6             ; Alternate privileged userid
+;** maintnode6=node6             ;
+;** maintuser7=user7             ; Alternate privileged userid
+;** maintnode7=node7             ;
+;** maintuser8=user8             ; Alternate privileged userid
+;** maintnode8=node8             ;
+;** maintuser9=user9             ; Alternate privileged userid
+;** maintnode9=node9             ;
 ;**
-;** Leave this value as is.  This option was never implemented.
 ;**
-supply-default-fields=FALSE  ; leave FALSE (not yet implemented)
-;**
-;** Change this value to true if you are willing to assume that any
+;** Change this value to TRUE if you are willing to assume that any
 ;** mail reaching you from an RSCS server has come from a valid
-;** node.  Leaving the value set as false requires that the source
+;** node.  Leaving the value set as FALSE requires that the source
 ;** node exist in the incoming table or that it pass the validation
 ;** test.
 ;**
-allow-unknown-nodes=FALSE    ; allows nodes not in my table but
-                             ; known to RSCS to exchange mail.
+allow-unknown-nodes=FALSE    ; Do not allow nodes I do not know
+                             ; about to exchange mail.
 ;**
 ;** Leave this value as TRUE if you are willing to allow the BSMTP
 ;** from address to disagree with the RSCS origin value.  If this
@@ -124,7 +114,11 @@ msgcmd=MSG                   ; Send messages using MSG
 ;** or PROFS exits.  These messages announce the arrival of new mail
 ;** for the user.  If you do not specify a prefix, a prefix of '*'
 ;** will be used.  You will need to remove the ';' at the start of
-;** line to use the msgprefix value
+;** line to use the msgprefix value.
+;**
+;** *Note* It is recommended that the msgprefix value begin with an
+;** asterisk ('*') so that msgs to servers (such as listserv) will
+;** not be handled as commands.
 ;**
 ; msgprefix=                 ; Prefix for local delivery messages
 ;**
@@ -162,6 +156,16 @@ viaDEC=@DECWRL.DEC.COM                      ; DEC domain
 viaOZ=@UUNET.UU.NET                         ; OZ domain
 
 ; The following table lists the possible sources of incoming
+; files and the name of an exit to be invoked before any processing
+; has been done on the mail file.  This allows you to do arbitrary
+; processing based on the origin userid.
+
+ORIGINS:
+;USERID  EXIT        COMMENTS
+;------- ---------  -------------------------------
+END ORIGINS
+
+; The following table lists the possible sources of incoming
 ; files and the name of an optional exit to validity check
 ; the file. It is your responsibility to validity check mail from
 ; an insecure gateway.
@@ -170,15 +174,17 @@ INCOMING:
 ; NODE   USERID   EXIT        COMMENTS
 ;------- -------- ---------  -------------------------------
 %incoming
+; *DEFAULT* MAILER              ; Allow userid MAILER from anywhere
 *DEFAULT* *DEFAULT* RSCSVER   ; Standard RSCS tag checking
 END INCOMING
 
 ; Table of mail nodes that I can send to.
 
 OUTGOING:
-; Alias name     Node     Userid   Exit     Type Parm
-; ----------     -------- -------- -------- ---- --------
+; Host name      Node     Userid   Exit     Type Parm
+; -------------- -------- -------- -------- ---- --------
 %outgoing
+*DEFAULT*        *        *        TRYRSCS  1    ; See DOC for parm info
 END OUTGOING
 
 ; Table of mail domains that I can send to.
@@ -198,8 +204,11 @@ SPECIAL:
 ;           Exit     Exit
 ; Userid    Name     Type Parm         Comments
 ; ------    -------- ---- ----------   --------------------------------
-SYSTEM                                  ; To prevent punched decks
 MAILER      RSMAIL    2   POSTMAST      ; Trap mail to mailer
-POSTMAST    RSMAIL    2   POSTMAST      ; The postmaster
 POSTMASTER  RSMAIL    2   POSTMAST      ; The postmaster
+; POSTMAST  RSMAIL    2   POSTMAST      ; Leave this entry commented out
+                                        ;   if you have a real id of
+                                        ;   POSTMAST on your system
+SYSTEM                                  ; To prevent punched decks
+*                                       ; Prevent mail to *@node
 END SPECIAL
