@@ -1,0 +1,38 @@
+./ I 00207640          $ 207650 10                    03/07/91 16:55:57
+         CLI   0(R3),C'@'          Start with routeaddr?                00207650
+         BNE   OKTOMOVE            ---> No                              00207660
+         MVI   0(R2),C'<'          Move in open hairpin                 00207670
+         LA    R2,1(,R2)           Bump move location                   00207680
+OKTOMOVE DS    0H                                                       00207690
+./ I 00207720          $ 207730 10                    03/07/91 16:55:57
+         CLI   CARD+4,C'<'         Opening hairpin present?             00207730
+         BNE   TOPUNCH             ---> No                              00207740
+         LA    R15,0(R1,R2)        Point to last character              00207750
+         CLI   0(R15),C'>'         Closing hairpin present?             00207760
+         BE    TOPUNCH             ---> Yes                             00207770
+         MVI   1(R15),C'>'         Close out address                    00207780
+./ R 00208000 00218000 $ 208390 390                   03/07/91 16:55:57
+         LR    R1,R4               LENGTH OF COPY                       00208390
+         BCTR  R1,0                -1 FOR EXECUTE                       00208780
+         LR    R3,R5               SOURCE OF COPY                       00209170
+         CLI   0(R3),C'@'          Start with routeaddr?                00209560
+         BNE   OKTOMOV2            ---> No                              00209950
+         MVI   0(R2),C'<'          Move in open hairpin                 00210340
+         LA    R2,1(,R2)           Bump move location                   00210730
+OKTOMOV2 EQU   *                                                        00211120
+         EX    R1,COPY             COPY USER NAME IN                    00211510
+         AR    R2,R4               [1.20] POINT PAST USER NAME          00211900
+         MVI   0(R2),C'@'          [1.20]                               00212290
+         LA    R2,1(R2)            [1.20] point past "@"                00212680
+         LR    R1,R6               LENGTH OF HOST NAME                  00213070
+         BCTR  R1,0                -1 FOR EXECUTE                       00213460
+         LR    R3,R7               ADDRESS OF NAME                      00213850
+         EX    R1,COPY             COPY IN THE HOST NAME                00214240
+         CLI   CARD+4,C'<'         Opening hairpin present?             00214630
+         BNE   TOPUNCH             ---> No                              00215020
+         LA    R15,0(R1,R2)        Point to last character              00215410
+         CLI   0(R15),C'>'         Closing hairpin present?             00215800
+         BE    TOPUNCH             ---> Yes                             00216190
+         MVI   1(R15),C'>'         Close out address                    00216580
+./ R 00309000          $ 309490 490                   03/07/91 16:55:57
+CARD     DS    CL160                                                    00309490

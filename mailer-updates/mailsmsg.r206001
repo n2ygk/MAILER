@@ -1,0 +1,158 @@
+./ R 00012000 00016000 $ 12990 990                    04/24/90 10:25:53
+*  runs disabled,  it does not issue any I/O.  It either severs         00012990
+*  the IUCV connection or receives the data being transmitted.  If      00013980
+*  data is received, a copy of the data buffer and IUCV parms buffer    00014970
+*  is stacked for processing by the MAILCMDx routines.                  00015960
+./ D 00018000 00019000                                04/24/90 10:25:53
+./ R 00027000          $ 27490 490                    04/24/90 10:25:53
+R5  EQU  5 -                                                            00027490
+./ R 00029000 00030000 $ 29590 590                    04/24/90 10:25:53
+R7  EQU  7 - IUCV receive block base                                    00029590
+R8  EQU  8 -                                                            00030180
+./ I 00043990          $ 44390 400                    04/24/90 10:25:53
+         MSGBLOK ,                                                      00044390
+./ I 00063000          $ 63700 700                    04/24/90 10:25:53
+         LA    R7,0                Signal no MSGBLOK gotten yet         00063700
+./ I 00066270          $ 66310 40                     04/24/90 10:25:53
+         DROP  R9                                                       00066310
+./ R 00066630 00066900 $ 66640 10                     04/24/90 10:25:53
+         DMSFREE DWORDS=MSGBLOKL/8,ERR=DONE                             00066640
+*                                  Ignore interrupt if no storage       00066650
+         LR    R7,R1               Base into better reg                 00066660
+         USING MSGBLOK,R7          Map it for assembler                 00066670
+         LR    R14,R7              Start of area to clear               00066680
+         L     R15,=A(MSGBLOKL)    Length to clear                      00066690
+         LA    R1,0                Set from length of 0 and pad of x'0' 00066700
+         MVCL  R14,R0              Clear MSGBLOK to zeros               00066710
+         ST    R0,MSGBLEN          Remember length                      00066720
+         MVC   SRCNODE,=CL8' '     Init to blanks                       00066730
+         MVC   SRCUSER,=CL8' '     Init to blanks                       00066740
+RCVLOOP2 EQU   *                   Come here if block already gotten    00066750
+         XC    MAILIPRM(IPSIZE*8),MAILIPRM Clear it out.                00066760
+         LA    R15,L'MESSAGE                                            00066770
+         LA    R9,MAILIPRM         Base for IPARML                      00066780
+         USING IPARML,R9           Tell assembler                       00066790
+         IUCV  RECEIVE,BUFFER=MESSAGE,BUFLEN=(R15),PRMLIST=(R9),       X00066800
+./ R 00067170          $ 67210 40                     04/24/90 10:25:53
+         L     R1,IPTRGCLS         Get message type                     00067210
+./ R 00068262 00068286 $ 68264 2                      04/24/90 10:25:53
+         BNO   RCVLOOP2            ---> No, ignore this                 00068264
+         MVC   SRCUSER,MESSAGE     Accept userid from IUCV.             00068266
+         MVC   SRCNODE,CPUSTR      It's from our node.                  00068268
+         MVC   MESSAGE(38),=CL38'* Unknown (unsupported) IPTRGCLS valueX00068270
+               '                                                        00068272
+         LA    R15,MESSAGE         Start of message                     00068274
+         ST    R15,@MESSAGE        Into MSGBLOK                         00068276
+         MVC   @MSGLEN,=F'38'      Message length                       00068278
+         MVC   SRCCODE,=A(CMDSMSG) Type = SMSG.                         00068280
+         B     QUEUEIT                                                  00068282
+./ R 00068306          $ 68308 2                      04/24/90 10:25:53
+         B     RCVLOOP2            ---> No, ignore it                   00068308
+./ R 00068326          $ 68328 2                      04/24/90 10:25:53
+         B     RCVLOOP2            ---> No, ignore it                   00068328
+./ R 00068430 00069060 $ 68480 50                     04/24/90 10:25:53
+         MVC   SRCUSER,MESSAGE     Accept userid from IUCV.             00068480
+         MVC   SRCNODE,CPUSTR      It's from our node.                  00068530
+         LA    R15,MESSAGE+8       -> Command.                          00068580
+         ST    R15,@MESSAGE        Into MSGBLOK                         00068630
+         LA    R15,L'MESSAGE       Get                                  00068680
+         SH    R15,IPBFLN1            command                           00068730
+         SH    R15,=H'8'                 length.                        00068780
+         ST    R15,@MSGLEN         Into MSGBLOK                         00068830
+         MVC   SRCCODE,=A(CMDSMSG) Type = SMSG.                         00068880
+         B     QUEUEIT                                                  00068930
+         SPACE 1                                                        00068980
+./ R 00069690 00069960 $ 69740 50                     04/24/90 10:25:53
+         LA    R14,MESSAGE+8       Message address                      00069740
+         LA    R15,L'MESSAGE       Get                                  00069790
+         SH    R15,IPBFLN1            command                           00069840
+         SH    R15,=H'8'                 length.                        00069890
+         CALL  UNIXSCAN,(PTRS,L'PTRS,(R14),(R15))                       00069940
+./ R 00070140          $ 70170 30                     04/24/90 10:25:53
+         BL    RCVLOOP2            No  : Ignore it.                     00070170
+./ R 00070680          $ 70710 30                     04/24/90 10:25:53
+         BNE   RCVLOOP2            No  : Ignore it.                     00070710
+./ R 00071100 00071130 $ 71130 30                     04/24/90 10:25:53
+         BNE   RCVLOOP2            No  : Message from RSCS itself.      00071130
+         MVC   SRCNODE,=CL8' '     Blank it out.                        00071160
+./ R 00071400          $ 71430 30                     04/24/90 10:25:53
+         LA    R4,SRCNODE                                               00071430
+./ R 00071670          $ 71700 30                     04/24/90 10:25:53
+         MVC   SRCUSER,=CL8' '     Blank it out.                        00071700
+./ R 00071940          $ 71970 30                     04/24/90 10:25:53
+         LA    R4,SRCUSER                                               00071970
+./ R 00072210 00072750 $ 72250 40                     04/24/90 10:25:53
+         L     R14,24(,R1)         Address of command.                  00072250
+         LA    R14,0(,R14)         Purify address.                      00072290
+         ST    R14,@MESSAGE        Into MSGBLOK                         00072330
+         LA    R15,MESSAGE+L'MESSAGE Get                                00072370
+         SH    R15,IPBFLN1             command                          00072410
+         SR    R15,R14                    length.                       00072450
+         ST    R15,@MSGLEN         Into MSGBLOK                         00072490
+         MVC   SRCCODE,=A(CMDNET)  Type = Network.                      00072530
+         B     QUEUEIT                                                  00072570
+         SPACE 1                                                        00072610
+./ R 00072930 00073020 $ 72950 20                     04/24/90 10:25:53
+         SPACE 1                                                        00072950
+         DROP  R9                                                       00072970
+         SPACE 1                                                        00072990
+QUEUEIT  DS    0H                                                       00073010
+         BAL   R14,CHAINIT                                              00073030
+./ I 00073290          $ 73330 40                     04/24/90 10:25:53
+         USING IPARML,R9                                                00073330
+./ I 00073380          $ 73420 40                     04/24/90 10:25:53
+         DROP  R9                                                       00073420
+./ I 00073560          $ 74060 500                    04/24/90 10:25:53
+         LTR   R7,R7               Have a block to free?                00074060
+         BZ    DONE2               ---> No                              00074560
+         LR    R1,R7               Move it (dumb CMS macro)             00075060
+         DMSFRET LOC=(1),DWORDS=MSGBLOKL/8,ERR=*                        00075560
+         SPACE 1                                                        00076060
+         DROP  R7                                                       00076560
+DONE2    EQU   *                                                        00077060
+./ R 00080200          $ 80240 40                     04/24/90 10:25:53
+         LA    R1,FILESMSG         Output area.                         00080240
+./ R 00080600          $ 80640 40                     04/24/90 10:25:53
+         CLC   FILESRDR,=C' NO'    Any files waiting?                   00080640
+./ R 00081000 00082000 $ 81590 590                    04/24/90 10:25:53
+         LA    R1,=CL9'READY 00C'                                       00081490
+         LA    R0,9                                                     00082000
+./ I 00083000          $ 83500 500                    04/24/90 10:25:53
+         SPACE 1                                                        00083500
+./ I 00088000          $ 88030 30                     04/24/90 10:25:53
+         EJECT ,                                                        00088030
+*--------------------------------------------------------------------   00088060
+*                                                                       00088090
+*  Add command block to MAILCMDL chain                                  00088120
+*                                                                       00088150
+*  Regs at entry:                                                       00088180
+*                                                                       00088210
+*    R7  - MSGBLOK base                                                 00088240
+*    R14 - Return address                                               00088270
+*                                                                       00088300
+*--------------------------------------------------------------------   00088330
+         SPACE 1                                                        00088360
+CHAINIT  DS    0H                                                       00088390
+         LA    R15,MAILCMDL        Address of list                      00088420
+CHAIN10  EQU   *                                                        00088450
+         ICM   R1,B'1111',0(R15)   Get next command pointer             00088480
+         BZ    CHAIN20             Found end of chain                   00088510
+         USING MSGBLOK,R1                                               00088540
+         LA    R15,MSGNEXT         Chain along                          00088570
+         DROP  R1                                                       00088600
+         B     CHAIN10                                                  00088630
+CHAIN20  EQU   *                                                        00088660
+         ST    R7,0(R15)           Add onto chain                       00088690
+         OI    MAILCMD,MCMDCMD     Indicate there is work to do         00088720
+         OI    CMDECB,POSTED       And post the command ECB.            00088750
+         BR    R14                 Return to caller                     00088780
+         EJECT ,                                                        00088810
+./ R 00090100 00090500 $ 90190 90                     04/24/90 10:25:53
+PTRS     DS    CL(10*4)            Used by UNIXSCAN                     00090190
+FILESMSG DS    C'FILES: '          Response from Q FILES goes here      00090280
+FILESRDR DS    C'nnn'                                                   00090370
+         DS    C' RDR, '                                                00090460
+FILESPRT DS    C'nnn'                                                   00090550
+         DS    C' PRT, '                                                00090640
+FILESPUN DS    C'nnn'                                                   00090730
+         DS    C' PUN. '                                                00090820

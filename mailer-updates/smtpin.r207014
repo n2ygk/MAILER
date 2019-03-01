@@ -1,0 +1,16 @@
+./ R 00534360 00534560 $ 534390 30                    11/20/90 10:13:30
+                                                                        00534390
+    if (a->mbxdml == 0)  return 0;                                      00534420
+                                                                        00534450
+    n = MBOXDML(a);                                                     00534480
+    plist.node = &n;                                                    00534510
+    plist.hs = &hs;                                                     00534540
+    plist.hl = &hl;                                                     00534570
+    for (i=0; i < sizeof(hoststring); hoststring[i] = ' ',i++);         00534600
+    hoststringptr = &hoststring[0];                                     00534630
+    plist.hoststringptr = &hoststringptr;                               00534660
+    hostlen = sizeof(hoststring);                                       00534690
+    plist.hostlen = &hostlen;                                           00534720
+    acall(genlist, 0, &plist);                                          00534750
+                                                                        00534780
+    return check_domain(hs,hl);                                         00534810

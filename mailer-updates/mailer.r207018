@@ -1,0 +1,85 @@
+./ R 00001000 00044000 $ 1990 990                     12/05/90 16:55:44
+.fo off                                                                 00001990
+                     MAILER General User Commands                       00012880
+
+               (c) Copyright Princeton Univeristy, 1990.                00002980
+                                                                        00003970
+  The VM Network Mailer is a mail transport agent.  That is, it is a
+  program that decides how to route properly formatted mail messages
+  through the network.  Mailer spends most of its time reading files
+  that have been sent to it from local and remote users on the network
+  and deciding if there are local or remote recipients to whom the
+  file should be sent.
+
+  In addition to processing mail files it will respond to a small set
+  of commands.  These commands may be issued from the Mailer's console
+  or by sending them using the CP SMSG, the CP MSG or the CMS TELL
+  command.
+                                                                        00007930
+ The syntax specification of Mailer general user commands follows.
+ Changes since the last version of this file are flagged with a '|'
+ (vertical bar) in column 1.
+                                                                        00010900
+  +--------------------------------------------------------------------+00011890
+  |                                                                    |00015850
+  |  FORWARD - Deliver mail to a userid other than the one specified   |00016840
+  |            in the headers.  It is legal to forward mail to more    |00017830
+  |            than 1 address.  If you want to continue to receive     |00018820
+  |            a copy of the mail at your userid, add a forward with   |00019810
+  |            an address of '<*>'.                                    |00020800
+  |                                                                    |00021790
+  |      FORWARD ADD    destaddr                                       |00022780
+  |              DELETE destaddr | ALL                                 |00023770
+  |              LIST                                                  |00024760
+  |                                                                    |00025750
+  |  HELP | ? - Get list of commands.                                  |00026740
+  |                                                                    |00027730
+  |  SHOW <show-options>  - Display assorted counters, etc.            |00028720
+  |                                                                    |00029710
+  |  show-options:                                                     |00030700
+  |                                                                    |00031690
+| |    BIT  bitname|*                                                  |00032680
+| |     Display the current setting of Mailer bit flags.  These values |00033670
+| |     are normally set from the Mailer profile.                      |00034660
+  |                                                                    |00035650
+  |    STATUS                                                          |00036640
+  |     Various Mailer status variables are returned.  These are:      |00037630
+  |     Since: <date time> - time of last Mailer restart.              |00038620
+  |     Msgs in/out: Number of messages (mail) received and sent.      |00039610
+  |     Max Multi:  Maximum number of recipients for a single message. |00040600
+  |     Stack Max:  Percentage Mailer internal storage utilization.    |00041590
+  |                                                                    |00042580
+  |    DOMAINS <domain-name>                                           |00043570
+  |     Statistics on outgoing files to other domain Mailers.          |00044560
+  |                                                                    |00045550
+  |    INCOMING <nodename> <userid>                                    |00046540
+  |     Statistics on files received from other network Mailers.       |00047530
+  |                                                                    |00048520
+  |    OUTGOING <hostname>                                             |00049510
+  |     Statistics on outgoing files to other network Mailers.         |00050500
+  |                                                                    |00051490
+| |    PATH hostname | domain-name                                     |00052480
+| |     Displays how Mailer would deliver mail having this hostname    |00053470
+| |     or domain-name as its destination.                             |00054460
+  |                                                                    |00055450
+  |    SPECIAL <userid>                                                |00056440
+  |     Statistics on mail to special userids (i.e. SYSTEM).           |00057430
+  |                                                                    |00058420
+| |    VERSION                                                         |00058420
+| |     Returns information about the release level of the mailer.     |00058420
+  |                                                                    |00058420
+  |  SMSG - Used as a prefix to other commands causes the reply to     |00059410
+| |         be sent as a machine-readable SMSG.  SMSG is not sensible  |00060400
+| |         from the Mailer console.                                   |00060400
+  |                                                                    |00061390
+  +--------------------------------------------------------------------+00062380
+
+| Sample commands:
+|
+| To find out the release level of a mailer at the local node
+|
+|    TELL mailerid SHOW VERSION
+|
+| To find out the release level of a mailer at a remote VM node
+|
+|    TELL mailerid AT node SHOW VERSION

@@ -1,0 +1,7 @@
+./ R 00029000          $ 29010 10                     10/05/88 18:20:54
+MYNAME   DC    CL8'MAILER',CL8'&SYSDATE'
+         LCLC  &TIME
+&TIME    SETC  '&SYSTIME'(1,2).':'.'&SYSTIME'(4,2).':00'
+ASMTIME  DC    CL8'&TIME'
+./ R 00055490          $ 55680 190                    10/05/88 18:20:54
+         WTR   LER001,(CA,MAILVERS,CA,MYNAME+8,CA,ASMTIME)

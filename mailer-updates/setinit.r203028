@@ -1,0 +1,76 @@
+./ R 00063000          $ 63010 10                     08/09/89 14:55:43
+         SPACE 2                                                        00063010
+*--------------------------------------------------------------------   00063020
+*  Initialize fields in the MAILBLOK to aid in detection of double      00063030
+*  definition of variable values important to MAILER.                   00063040
+*--------------------------------------------------------------------   00063050
+         SPACE ,                                                        00063060
+*        Clear PTAB fields in MAILBLOK                                  00063070
+         SPACE 1                                                        00063080
+*        The PTAB is character string parms that are significant        00063090
+*        to MAILER.  They are all defined a CL8' ' in the MAILBLOK.     00063100
+         SPACE 1                                                        00063110
+         LA    R5,PTABLEN          Length of PTAB array                 00063120
+         LA    R6,PTABARR          Address of array                     00063130
+PTABCLR  EQU   *                                                        00063140
+         L     R3,0(R6)            Get offset into MAILBLOK             00063150
+         LA    R3,0(R11,R3)        Get actual MAILBLOK address          00063160
+         MVC   0(8,R3),=CL8' '     Clear to blanks                      00063170
+         LA    R6,8(R6)            Point to next entry                  00063180
+         BCT   R5,PTABCLR          ---> More to do                      00063190
+         SPACE ,                                                        00063200
+*        Clear PPTR fields in MAILBLOK                                  00063210
+         SPACE 1                                                        00063220
+*        The PPTR is character string parms that are significant        00063230
+*        to MAILER.  They are all defined as A(0) pointers to the       00063240
+*        strings in MAILBLOK.                                           00063250
+         SPACE 1                                                        00063260
+         LA    R5,PPTRLEN          Length of PPTR array                 00063270
+         LA    R6,PPTRARR          Address of array                     00063280
+PPTRCLR  EQU   *                                                        00063290
+         L     R3,0(R6)            Get offset into MAILBLOK             00063300
+         LA    R3,0(R11,R3)        Get actual MAILBLOK address          00063310
+         XC    0(4,R3),0(R3)       Clear to hex zeros                   00063320
+         LA    R6,8(R6)            Point to next entry                  00063330
+         BCT   R5,PPTRCLR          ---> More to do                      00063340
+         SPACE ,                                                        00063350
+*--------------------------------------------------------------------   00063360
+*  End of MAILBLOK initializations                                      00063370
+*--------------------------------------------------------------------   00063380
+         SPACE 2                                                        00063390
+./ I 00078000          $ 78100 100                    08/09/89 14:55:43
+         LR    R2,R1         COPY STRING ADDRESS                        00078100
+         CLC   0(8,R3),=CL8' '   Previously defined?                    00078200
+         BE    PTABSET0          ---> No                                00078300
+         LR    R15,R4            Copy field name length                 00078400
+         BCTR  R15,0             Decrement                              00078500
+         MVC   FIELDNAM,=CL30' ' Clear to blanks                        00078600
+         EX    R15,COPYNAME      Move into field for msg processing     00078700
+         WTR   STI071,(CA,FIELDNAM)                                     00078800
+PTABSET0 EQU   *                                                        00078900
+./ D 00080000                                         08/09/89 14:55:43
+./ R 00092800          $ 92804 4                      08/09/89 14:55:43
+         LR    R2,R1             Save the string address                00092804
+         CLC   0(4,R3),=A(0)     Previously defined?                    00092808
+         BE    PPTRSET0          ---> No                                00092812
+         LR    R15,R4            Copy field name length                 00092816
+         BCTR  R15,0             Decrement                              00092820
+         MVC   FIELDNAM,=CL30' ' Clear to blanks                        00092824
+         EX    R15,COPYNAME      Move into field for msg processing     00092828
+         WTR   STI071,(CA,FIELDNAM)                                     00092832
+PPTRSET0 EQU   *                                                        00092836
+         ST    R2,0(R3)      Stuff the string address                   00092840
+./ I 00356000          $ 356500 500                   08/09/89 14:55:43
+         SPACE 1                                                        00356500
+./ I 00357000          $ 357300 300                   08/09/89 14:55:43
+COPYNAME MVC   FIELDNAM(1),0(R7)             For dup. init. msg         00357300
+         SPACE 1                                                        00357600
+./ I 00361000          $ 361020 20                    08/09/89 14:55:43
+         DC    A(MAINTID-MAILBLOK,STRMUSE1)     MAINTUSER1 = MAINTUSER  00361020
+./ I 00362000          $ 362500 500                   08/09/89 14:55:43
+         DC    A(MAINTNOD-MAILBLOK,STRMNOD1)    MAINTNODE1 = MAINTNODE  00362500
+./ I 00372000          $ 372010 10                    08/09/89 14:55:43
+STRMUSE1 DC    Y(10),C'MAINTUSER1'                                      00372010
+STRMNOD1 DC    Y(10),C'MAINTNODE1'                                      00372020
+./ I 00387000          $ 387500 500                   08/09/89 14:55:43
+FIELDNAM DS    CL30                    For dup. init. msg               00387500

@@ -1,0 +1,296 @@
+/* ****************************************************************** */
+/*  MAILGEN - Do a complete rebuild of the MG and MAILER modules      */
+/* ****************************************************************** */
+
+address COMMAND
+
+/* get mailer version number (quietly) */
+
+'SET CMSTYPE HT'
+
+'UPDATE VERSION COPY * MAILER CNTRL * (CTL OUTMODE A'
+select
+   when rc = 0  then  do
+      'EXECIO * DISKR $VERSION COPY A (FINIS FIND /&VERSION SETC/'
+      'ERASE $VERSION COPY A'
+      end
+   when rc = 40  then
+      'EXECIO * DISKR VERSION COPY * (FINIS FIND /&VERSION SETC/'
+   otherwise  nop
+   end
+
+if rc ^=0 then version = "UNKNOWN"
+else do
+    pull   /* junk */
+    parse pull . . "'" version "'" .    /* &VERSION SETC 'Vnum' ... */
+end
+
+'SET CMSTYPE RT'
+
+say "Building MAILER version" version"..."
+
+/*  Rebuild MAILER's MACLIBs  */
+/*  MACGEN rebuilds the MACLIB load lists */
+
+'EXEC MACGEN'
+if rc <> 0  then  signal exit
+
+/*  Reassemble mailer and exit code  */
+/*  MAILMODS rebuilds the MAILMOD1 and MAILMOD2 lists */
+
+'EXEC MAILMODS EXEC VMFASM MAILER'
+if rc > 4  then  signal exit
+
+/*  Build header files and recompile C code  */
+
+say ' '
+say 'Rebuilding MAILHS EXEC'
+call execupdt 'MAILHS EXEC ( OUTMODE A CTL MAILEXEC'
+
+say ' '
+say 'Rebuilding C header files'
+'EXEC MAILHS EXEC GET H (CLOBBER CONT PRINT'
+if rc > 4  then  signal exit
+
+'ERASE MAILHS   EXEC'
+
+say ' '
+say 'Rebuilding MAILCS EXEC'
+call execupdt 'MAILCS EXEC ( OUTMODE A CTL MAILEXEC'
+if result <> 0  then  signal exit
+
+say ' '
+say 'Compiling C code'
+'EXEC MAILCS EXEC CCOMP C (PRINT'
+if rc > 4  then  signal exit
+
+/* 'EXEC MAILYS EXEC CCOMP Y (PRINT'  */
+
+/*  Build MAILGEN and MAILER txtlibs  */
+
+say ' '
+say 'Rebuilding MAILGEN and MAILER TXTLIBs'
+'EXEC MAILTXTS'
+if rc <> 0   then  signal exit
+
+/*  Rebuild EXEC files  */
+
+say ' '
+say 'Rebuilding EXEC files list'
+call execupdt 'MAILEXEC EXEC ( OUTMODE A CTL MAILEXEC'
+if result <> 0  then  signal exit
+
+say ' '
+say 'Rebuilding EXEC merged base files'
+'EXEC MAILBASE MAILEXEC MAILEXEC'
+if rc <> 0   then  signal exit
+
+say ' '
+say 'Rebuilding EXEC files'
+'EXEC MAILEXEC EXEC EXECUPDT ( OUTMODE A NOUPDATE'
+if rc <> 0   then  signal exit
+'ERASE SAMPPROF EXEC'                        /* Must be user modified */
+'ERASE FORWARDX EXEC'                        /* Must be user modified */
+
+'ERASE MAILEXEC EXEC A'
+
+
+/*  Rebuild SAMPLE MTPLATE  */
+
+say ' '
+say 'Rebuilding sample MTPLATE merged base'
+call update 'SAMPLE MTPLATE MAILER ( OUTMODE A'
+if result <> 0   then  signal exit
+
+
+/*  Rebuild SAMPLE MAILLCL  */
+
+'ESTATE SAMPLE MAILLCL A'
+if rc = 0  then  'ERASE SAMPLE MAILLCL A'
+'EXECIO 1 DISKW SAMPLE MAILLCL A (FINIS STRING' ,
+   'localnode   *       *       LOCAL    1 ; change nodename to match'
+
+
+/*  Copy CNTRL files required for object code distribution use  */
+
+say ' '
+say 'Copying CNTRL files'
+
+'MAKEBUF'
+buffer = rc
+'LISTFILE MAILEXEC CNTRL * (FIFO'
+parse upper pull . . fm .
+'DROPBUF' buffer
+'COPYFILE MAILEXEC CNTRL' fm '= = A (OLDDATE TYPE'
+
+'MAKEBUF'
+buffer = rc
+'LISTFILE MAILER   CNTRL * (FIFO'
+parse upper pull . . fm .
+'DROPBUF' buffer
+'COPYFILE MAILER   CNTRL' fm '= = A (OLDDATE TYPE'
+
+'MAKEBUF'
+buffer = rc
+'LISTFILE MAILHELP CNTRL * (FIFO'
+parse upper pull . . fm .
+'DROPBUF' buffer
+'COPYFILE MAILHELP CNTRL' fm '= = A (OLDDATE TYPE'
+
+
+/*  Do some cleanup  */
+
+'ERASE * C'
+'ERASE * ERRS'
+'ERASE * MAP'
+'ERASE * TEXT'
+'ERASE * UPDATES'
+'ERASE * UPDLOG'
+'ERASE MAILCS   EXEC'
+'ERASE MAILMOD1 EXEC'
+'ERASE MAILMOD2 EXEC'
+
+
+/*  Link to the CLIB disk  */
+
+'EXEC CDISK'
+
+
+/*  Set up text library list  */
+
+'GLOBAL TXTLIB MAILGEN CLIB'
+
+
+/*  Build MAILER and MG modules  */
+
+say ' '
+say 'Creating MAILER MODULE'
+'LOAD MAILER MAILPAL MAILLEX MAILLRP (CLEAR'
+if rc > 4 then signal exit
+'GENMOD MAILER'                                           /* fullname */
+if rc > 0 then signal exit
+'RENAME LOAD MAP A MAILER MAP A'
+
+say ' '
+say 'Creating MG MODULE'
+'LOAD @MG (CLEAR'
+if rc > 4  then  signal exit
+'GENMOD MG'                                               /* fullname */
+if rc > 0 then signal exit
+'RENAME LOAD MAP A MG MAP A'
+
+
+/*  Rebuild HELP files  */
+
+say ' '
+say 'Rebuilding HELP files list'
+call execupdt 'MAILHELP EXEC ( OUTMODE A CTL MAILEXEC'
+if result <> 0  then  signal exit
+
+say ' '
+say 'Rebuilding HELP merged base files'
+'EXEC MAILBASE MAILHELP MAILHELP'
+if rc <> 0  then  signal exit
+
+say ' '
+say 'Rebuilding HELP files'
+'EXEC MAILHELP EXEC EXECUPDT ( OUTMODE A NOUPDATE'
+if rc <> 0  then  signal exit
+
+'ERASE MAILHELP EXEC A'
+
+
+/*  Create initial configuration AUX files  */
+
+line.0 = 2
+line.1 = copies('* ',16) 'AUXLCL' copies('* ',16)
+line.2 = 'CONFIG0  - Initial configuration changes'
+say ' '
+say 'Creating AUX files'
+
+/*  For the $EXEC files  */
+'EXECIO' line.0 'DISKW FORWARDX AUXEXCLC A 1 F 80 (STEM LINE.'
+'EXECIO' line.0 'DISKW FWD      AUXEXCLC A 1 F 80 (STEM LINE.'
+'EXECIO' line.0 'DISKW MABNXIT  AUXEXCLC A 1 F 80 (STEM LINE.'
+'EXECIO' line.0 'DISKW SAMPPROF AUXEXCLC A 1 F 80 (STEM LINE.'
+
+/*  For the $HELPCMS files  */
+'EXECIO' line.0 'DISKW FWD      AUXHLPLC A 1 F 80 (STEM LINE.'
+'EXECIO' line.0 'DISKW MAILER   AUXHLPLC A 1 F 80 (STEM LINE.'
+'EXECIO' line.0 'DISKW MAILERP  AUXHLPLC A 1 F 80 (STEM LINE.'
+
+/*  For the $MAILER files  */
+'EXECIO' line.0 'DISKW FORWARD  AUXEXCLC A 1 F 80 (STEM LINE.'
+'EXECIO' line.0 'DISKW MAILLIST AUXEXCLC A 1 F 80 (STEM LINE.'
+
+/*  SAMPLE $MTPLATE */
+'EXECIO' line.0 'DISKW SAMPLE   AUXLCL   A 1 F 80 (STEM LINE.'
+
+
+/*  Rebuild printable copies of installation manual  */
+
+'ESTATE INSTALL $SCRIPT *'
+if rc = 0  then  do
+
+   say ' '
+   say 'Rebuilding installation guide source'
+   call execupdt 'INSTALL SCRIPT ( OUTMODE A CTL MAILER'
+   if result <> 0  then  signal exit
+
+   say ' '
+   say 'Creating printable copies of installation guide'
+   address CMS
+   'SCRIPT INSTALL (PASS 2 DISK'
+   'SCRIPT INSTALL (PASS 2 MKPOST'
+   address COMMAND
+
+   end
+
+/*  Place a copy of the current CHANGE MEMO file on the object disk */
+
+'COPYFILE CHANGE MEMO C = = A (OLDD REP'
+
+exit: exit rc
+
+/* ********************** */
+/*  Internal Subroutines  */
+/* ********************** */
+
+ExecUpdt:  procedure  /* Drive the EXECUPDT command */
+parse upper arg fn ft '(' options ')' .
+
+'EXEC EXECUPDT' fn ft '(' options
+updtrc = rc
+
+'ESTATE' fn 'UPDATES A'
+if rc = 0  then  'ERASE' fn 'UPDATES A'
+'ESTATE' fn 'UPDLOG A'
+if rc = 0  then  'ERASE' fn 'UPDLOG A'
+
+return updtrc
+
+
+Update:  procedure  /* Drive the UPDATE command */
+parse upper arg fn ft cntrl '(' options ')'
+
+'ESTATEW' fn '$'ft 'A'
+if rc = 0  then  'ERASE' fn '$'ft 'A'
+
+exitrc = 0
+'UPDATE' fn '$'ft '*' cntrl 'CNTRL * (CTL NOREP OUTMODE A'
+select
+   when  rc = 0  then  do
+      'RENAME $'fn '$'ft 'A' fn '= ='
+      say '"'fn '$'ft 'A" created'
+      'ERASE' fn 'UPDATES A'
+      'ERASE' fn 'UPDLOG  A'
+      end
+   when  rc = 40  then  do
+      'COPYFILE' fn '$'ft '* = = A'
+      say '"'fn '$'ft 'A" created'
+      end
+   otherwise
+      if rc > exitrc  then  exitrc = rc
+   end
+
+return exitrc

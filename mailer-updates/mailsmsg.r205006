@@ -1,0 +1,33 @@
+./ R 00067260          $ 67270 10                     02/28/90 11:47:26
+         C     R1,=F'8'            Class we don't support?
+         BH    UNKNOWN             ---> Yes, give error msg
+         SLL   R1,2                *4 for index.                        00067260
+./ R 00067620          $ 67650 30                     02/28/90 11:47:26
+         B     WNG                 2: WARNINGs.                         00067620
+./ R 00067980 00068070 $ 68030 50                     02/28/90 11:47:26
+         B     CPMSG               6: CP error messages.                00067980
+         B     CPMSG               7: CP information messages.          00068070
+./ I 00068250          $ 68254 4                      02/28/90 11:47:26
+UNKNOWN  DS    0H
+         TM    MAILOPTS,MOPTALLM   Display all received messages?       00069630
+         BNO   RCVLOOP             ---> No, ignore this                 00069660
+         MVC   USER,MESSAGE        Accept userid from IUCV.             00068430
+         MVC   NODENAME,CPUSTR     It's from our node.                  00068520
+         LA    R5,=CL38'* Unknown (unsupported) IPTRGCLS value'         00068610
+         LA    R8,38               Message length                       00068700
+         LA    R2,CMDSMSG          Type = SMSG.                         00068970
+         B     EXECUTE                                                  00069060
+         SPACE 3                                                        00068250
+WNG      DS    0H
+         TM    MAILOPTS,MOPTALLM   Display all received messages?       00069630
+         BO    SMSG                ---> Yes                             00069660
+         B     RCVLOOP             ---> No, ignore it
+         SPACE 3
+CPMSG    DS    0H
+         TM    MAILOPTS,MOPTALLM   Display all received messages?       00069630
+         BO    SMSG                ---> Yes                             00069660
+         B     RCVLOOP             ---> No, ignore it
+         SPACE 3                                                        00068250
+./ I 00069600          $ 69630 30                     02/28/90 11:47:26
+         TM    MAILOPTS,MOPTALLM   Display all received messages?       00069630
+         BO    SMSG                ---> Yes                             00069660

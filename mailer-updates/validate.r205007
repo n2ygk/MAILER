@@ -1,0 +1,8 @@
+./ R 00245000          $ 245490 490                   12/11/89 14:28:45
+         BNE   XTRASNDR      Only 1 from: or sender: allowed            00245000
+./ I 00391000          $ 391100 100                   12/11/89 14:28:45
+XTRASNDR EQU   *             Gave more than 1 FROM or SENDER            00387000
+         WTR   VAL078                                                   00388000
+         LA    R15,4                                                    00389000
+         B     RET                                                      00390000
+         SPACE ,                                                        00391000

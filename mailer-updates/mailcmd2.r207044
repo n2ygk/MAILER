@@ -1,0 +1,56 @@
+./ R 00102226 00102244 $ 102227 1                     04/08/91 11:53:38
+         CLC   =F'0',$EXCARG3      ThisNode argument set?               00102226
+         BNE   $FWD0080            ---> Yes                             00102229
+         L     R14,MAILPTAB        Parameter table                      00102232
+         MAILTRC CALL,TBLUK        Trace the call                       00102235
+         L     R15,ATBLUK          Pick up TBLUK routine address        00102238
+         CALL  (15),((R14),THISNODE,L'THISNODE,TWORK)                   00102241
+         MAILTRC RETURN,TBLUK,(R15) Trace the return                    00102244
+         LA    R0,1(,R1)           Point to start of string             00102253
+         ST    R0,$EXCARG3         Put address into argument            00102256
+         MVC   $EXCARG3+7(1),0(R1) Put length into argument             00102259
+$FWD0080 EQU   *                                                        00102270
+         CLC   =F'0',$EXCARG4      MSGCMD argument set?                 00102226
+         BNE   $FWD0100            ---> Yes                             00102229
+         L     R14,MAILPTAB        Parameter table                      00102232
+         MAILTRC CALL,TBLUK        Trace the call                       00102235
+         L     R15,ATBLUK          Pick up TBLUK routine address        00102238
+         CALL  (15),((R14),FORWDISK,L'FORWDISK,TWORK)                   00102241
+         MAILTRC RETURN,TBLUK,(R15) Trace the return                    00102244
+./ R 00102256 00102259 $ 102260 4                     04/08/91 11:53:38
+         ST    R0,$EXCARG4         Put address into argument            00102256
+         MVC   $EXCARG4+7(1),0(R1) Put length into argument             00102259
+./ R 00118246 00118270 $ 118247 1                     04/08/91 11:53:38
+         CLC   =F'0',$EXCARG3      ThisNode argument set?               00118246
+         BNE   $MLS0080            ---> Yes                             00118247
+         L     R14,MAILPTAB        Parameter table                      00118248
+         MAILTRC CALL,TBLUK        Trace the call                       00118249
+         L     R15,ATBLUK          Pick up TBLUK routine address        00118250
+         CALL  (15),((R14),THISNODE,L'THISNODE,TWORK)                   00118251
+         MAILTRC RETURN,TBLUK,(R15) Trace the return                    00118252
+         LA    R0,1(,R1)           Point to start of string             00118255
+         ST    R0,$EXCARG3         Put address into argument            00118256
+         MVC   $EXCARG3+7(1),0(R1) Put length into argument             00118257
+$MLS0080 EQU   *                                                        00118258
+         CLC   =F'0',$EXCARG4      MSGCMD argument set?                 00118246
+         BNE   $MLS0100            ---> Yes                             00118247
+         L     R14,MAILPTAB        Parameter table                      00118248
+         MAILTRC CALL,TBLUK        Trace the call                       00118249
+         L     R15,ATBLUK          Pick up TBLUK routine address        00118250
+         CALL  (15),((R14),MLSTDISK,L'MLSTDISK,TWORK)                   00118251
+         MAILTRC RETURN,TBLUK,(R15) Trace the return                    00118252
+         LTR   R15,R15             Found an entry?                      00118253
+         BNZ   $MLS0100            ---> No MSGCMD value                 00118254
+         LA    R0,1(,R1)           Point to start of string             00118255
+         ST    R0,$EXCARG4         Put address into argument            00118256
+         MVC   $EXCARG4+7(1),0(R1) Put length into argument             00118257
+$MLS0100 EQU   *                                                        00118258
+         LA    R1,$EXCPL           Point to tokenized plist             00118259
+         ICM   R1,B'1000',=X'05'   Doing REXX function call             00118260
+         LA    R0,$EXCEPL          Point to extended plist              00118261
+         SVC   202                 Run the FORWARD exec                 00118270
+./ I 00143860          $ 143910 50                    04/08/91 11:53:38
+THISNODE DC    C'ThisNode'                                              00143960
+./ R 00154120          $ 154121 1                     04/08/91 11:53:38
+$EXCARG3 DC    A(0),A(0)           Address/length of 'ThisNode' value   00154120
+$EXCARG4 DC    A(0),A(0)           Address/length of 'diskmode' value   00154120

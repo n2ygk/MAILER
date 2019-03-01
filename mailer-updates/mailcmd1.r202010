@@ -1,0 +1,48 @@
+./ I 00088760          $ 88770 10                     02/13/89 17:17:30
+         SPACE ,                                                        00088770
+         CLC   @CODE,=A(CMDCONS)   Is it from the console?              00088780
+         BE    SKIPCON             Yes : Don't bother, he's seen it.    00088790
+         MVC   WORKBUF(24),=C'From         @        : '                 00088800
+         MVC   WORKBUF+05(8),MSGSENDR                                   00088810
+         MVC   WORKBUF+14(8),MSGNODE                                    00088820
+         CLC   @CODE,=A(CMDNET)    Is it from the network?              00088830
+         BE    *+10                Yes : Nodename is right.             00088840
+         MVC   WORKBUF+14(8),CPUSTR No : It's from here.                00088850
+         LR    R1,R8               Get command length                   00088860
+         BCTR  R1,0                   for EX.                           00088870
+         EX    R1,CON$MVC          "MVC WORKBUF+24(*-*),0(R9)"          00088880
+         LA    R3,WORKBUF                                               00088890
+         LA    R4,24(,R8)                                               00088900
+         WRTERM (R3),(R4)          Echo the command on the console.     00088910
+         WAITT ,                   Be nice.                             00088920
+SKIPCON  DS    0H                                                       00088930
+./ I 00129000          $ 129300 300                   02/13/89 17:17:30
+         SPACE ,                                                        00129100
+CON$MVC  MVC   WORKBUF+24(*-*),0(R9) *** Executed ***                   00129200
+./ I 00196000          $ 196200 200                   02/13/89 17:17:30
+         LR    R1,R6               Get length                           00196100
+         BCTR  R1,0                   for EX                            00196200
+         EX    R1,$CPTR            Upcase the CP command                00196300
+./ I 00205000          $ 205500 500                   02/13/89 17:17:30
+$CPTR    TR    0(*-*,R4),UPCASE    *** Executed ***                     00205100
+./ I 00280000          $ 280700 700                   02/13/89 17:17:30
+         OI    CMDECB,POSTED        And post the command ECB.           00280100
+./ R 00373000          $ 373060 60                    02/13/89 17:17:30
+         OI    STOPECB,POSTED      Post the stop ECB
+         XC    HALTRC,HALTRC       Clear Return Code.                   00373050
+         CLC   ARGC,=F'0'          Might there be a Return Code?        00373100
+         BNH   STOPMSG             No  : All done.                      00373150
+         L     R1,UNIXPARM         Yes : Get the address                00373200
+         SR    R2,R2                        and length                  00373250
+         IC    R2,0(,R1)                       of the next              00373300
+         L     R1,0(,R1)                          token.                00373350
+         SR    R3,R3               Clear accumulator.                   00373400
+STOPLOOP DS    0H                                                       00373450
+         MH    R3,=H'10'           Total = Total * 10                   00373500
+         IC    R0,0(,R1)                      +                         00373550
+         N     R0,=X'0000000F'                   new                    00373600
+         AR    R3,R0                                digit.              00373650
+         LA    R1,1(,R1)                                                00373700
+         BCT   R2,STOPLOOP         Next!                                00373750
+         ST    R3,HALTRC           Set requested Return Code.           00373800
+STOPMSG  DS    0H                                                       00373850

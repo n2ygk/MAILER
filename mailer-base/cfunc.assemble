@@ -1,0 +1,119 @@
+CFUNC    TITLE 'CUCCA VM MAILER VERSION 1 - C-callable functions'       00001000
+*---------------------------------------------------------------------* 00002000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00003000
+*    Program Property of the Trustees of Columbia University in the   * 00004000
+*    City of New York.                                                * 00005000
+*---------------------------------------------------------------------* 00006000
+CFUNC    CSECT ,                                                        00007000
+* Miscellaneous assembly language support functions to be called from   00008000
+* Waterloo C.  The macros used to define these functions come from the  00009000
+* Waterloo C macro library.                                             00010000
+*                                                                       00011000
+* This is new code with version 1.22.                                   00012000
+*                                                                       00013000
+* Alan Crosswell, 12/85                                                 00014000
+*                                                                       00015000
+* registers -                                                           00016000
+R0  EQU  0 -                                                            00017000
+R1  EQU  1 -                                                            00018000
+R2  EQU  2 -                                                            00019000
+R3  EQU  3 -                                                            00020000
+R4  EQU  4 -                                                            00021000
+R5  EQU  5 -                                                            00022000
+R6  EQU  6 -                                                            00023000
+R7  EQU  7 -                                                            00024000
+R8  EQU  8 -                                                            00025000
+R9  EQU  9 -                                                            00026000
+R10 EQU 10 -                                                            00027000
+R11 EQU 11 -                                                            00028000
+LN  EQU 11 - C linkage                                                  00029000
+R12 EQU 12 -                                                            00030000
+SP  EQU 12 - C stack                                                    00031000
+R13 EQU 13 -                                                            00032000
+RA  EQU 13 - C return address                                           00033000
+R14 EQU 14 -                                                            00034000
+BR  EQU 14 - C base register                                            00035000
+R15 EQU 15 -                                                            00036000
+AR  EQU 15 - C parms and autos                                          00037000
+        SPACE ,                                                         00038000
+        PRINT NOGEN                                                     00039000
+        EJECT ,                                                         00040000
+CFUNC   CSECT ,                                                         00041000
+        ENTRY SVC202,CPCMD,ACALL,CTBLUK                                 00042000
+SVC202  DS    0H                  svc202(r1)                            00043000
+        USING SVC202,LN           get addressability                    00044000
+        STM   R12,R10,4(SP)       save registers on stack               00045000
+        L     R1,0(SP)            get one and only parm                 00046000
+        SVC   202                 do the svc                            00047000
+        DC    AL4(*+4)            just fall thru on error               00048000
+        LR    LN,R15              get return code                       00049000
+        DROP  LN                                                        00050000
+        LM    R12,R10,4(SP)       restore registers                     00051000
+        BR    RA                  return                                00052000
+        SPACE ,                                                         00053000
+CPCMD   DS    0H                  cpcmd(string, length)                 00054000
+        USING CPCMD,LN            get addressability                    00055000
+        STM   R12,R10,8(SP)       save registers on stack               00056000
+        LM    R0,R1,0(SP)         get string and length                 00057000
+        DC    X'83010008'         issue diagnose 8                      00058000
+        LR    LN,R1               get return code                       00059000
+        DROP  LN                                                        00060000
+        LM    R12,R10,8(SP)       restore registers                     00061000
+        BR    RA                  return                                00062000
+        SPACE ,                                                         00063000
+* This version of ACALL is almost the same as Waterloo's except that    00064000
+* it adjusts the CGLUE stack pointer so that an assembler function      00065000
+* called from C can in turn call another C function without messing     00066000
+* up the C stack.                                                       00067000
+ACALL   DS    0H                  acall(routine, r0, r1)                00068000
+        USING ACALL,LN            get addressability                    00069000
+        STM   R12,R10,12(SP)      save registers on stack               00070000
+        LM    R0,R1,4(SP)         get r0 and r1 contents                00071000
+        L     R2,=V(@C@STACK)     C glue stack pointer                  00072000
+        L     R3,0(,R2)           get the current value                 00073000
+        LA    R13,60+12(SP)       free stack space for os save area     00074000
+        LA    R4,18*4(R13)        point to current free stack space     00075000
+        ST    R4,0(,R2)           set it up for possible C calls        00076000
+        L     R15,0(SP)           address of subroutine                 00077000
+        BALR  R14,R15             call it                               00078000
+        ST    R3,0(,R2)           put back old C glue stack value       00079000
+        LR    LN,R15              get return code                       00080000
+        DROP  LN                                                        00081000
+        LM    R12,R10,12(SP)      restore registers                     00082000
+        BR    RA                  return                                00083000
+        SPACE ,                                                         00084000
+* C version of tbluk -- slightly changed linkage....                    00085000
+* ctbluk(ptr_tbe_ptr, table_ptr, string, length)                        00086000
+* ptr_tbe_ptr is &tbe_ptr that gets filled in as result.                00087000
+* Uses stack this way when calling TBLUK.                               00088000
+*         0(SP):  ptr_tbe_ptr (address where to put result)             00089000
+*   R1 -> 4(SP):  table_ptr                                             00090000
+*         8(SP):  string ptr                                            00091000
+*        12(SP):  length                                                00092000
+*        16(SP):  work area ptr ---------------+                        00093000
+*        20(SP):  work area (512 bytes)     <--+                        00094000
+*       522(SP):  my register save area (15*4 bytes)                    00095000
+*       582(SP):  register save area for OS callee (18*4 bytes)         00096000
+*       654(SP):  free stack space (@C@STACK set here)                  00097000
+* TBLUK result in R0 gets stored at *(0(SP))                            00098000
+CTBLUK  DS    0H                                                        00099000
+        USING CTBLUK,LN           get addressability                    00100000
+        STM   R12,R10,522(SP)     save registers on stack               00101000
+        L     R2,=V(@C@STACK)     C glue stack pointer                  00102000
+        L     R3,0(,R2)           get the current value                 00103000
+        LA    R13,582(SP)         free stack space for os save area     00104000
+        LA    R4,654(SP)          point to current free stack space     00105000
+        ST    R4,0(,R2)           set up @C@STACK for possible C calls  00106000
+        LA    R1,20(,SP)          tbluk work area address               00107000
+        ST    R1,16(,SP)          into plist                            00108000
+        LA    R1,4(SP)            plist for tbluk                       00109000
+        L     R15,=V(TBLUK)       address of subroutine                 00110000
+        BALR  R14,R15             call it                               00111000
+        ST    R3,0(,R2)           put back old C glue stack value       00112000
+        L     R1,0(,SP)           ptr to where return result goes       00113000
+        ST    R0,0(,R1)           return address of found tbentry       00114000
+        LR    LN,R15              get return code                       00115000
+        DROP  LN                                                        00116000
+        LM    R12,R10,522(SP)     restore registers                     00117000
+        BR    RA                  return                                00118000
+        END   ,                                                         00119000

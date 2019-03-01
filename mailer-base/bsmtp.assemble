@@ -1,0 +1,527 @@
+BSMTP  TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - BSMTP DISTRIBUTION'   00001000
+*---------------------------------------------------------------------* 00002000
+*      MAILER -- Copyright (c) 1982,1987 Columbia University.         * 00003490
+*    Program Property of the Trustees of Columbia University in the   * 00004000
+*    City of New York.                                                * 00005000
+*---------------------------------------------------------------------* 00006000
+BSMTP    CSECT ,                                                        00007000
+* BSMTP  -                                                              00008000
+*                                                                       00009000
+* This type 3 exit sends a single Batch Simple Mail Transfer Protocol   00010000
+* (BSMTP) file to the named server with one RCPT TO: statement for      00011000
+* each addressee provided in the chain of ACTADR blocks linked by the   00012000
+* ACTCHN pointer.                                                       00013000
+*                                                                       00014000
+* This is new code as of version 1.22 (12/2/85).  Alan Crosswell.       00015000
+*                                                                       00016000
+* The generated file will look like:                                    00017000
+*  HELO domain                                                          00018000
+*  TICK message-id                                                      00019000
+** VERB ON               (removed)                               [1.24] 00020490
+*  MAIL FROM: <sender>                                                  00021000
+*  RCPT TO: <recipient1>                                                00022000
+*  RCPT TO: <recipient2>                                                00023000
+*   . . .                                                               00024000
+*  RCPT TO: <recipientN>                                                00025000
+*  DATA                                                                 00026000
+*   [the mail file itself]                                              00027000
+*  .                                                                    00028000
+*  QUIT                                                                 00029000
+*                                                                       00030000
+* MEANING OF THE PARAMETER (RTPARM):                             [1.24] 00031290
+*                                                                [1.24] 00031580
+*  The parameter (if supplied) is the name of a variable which   [1.24] 00031870
+*  has one of three meanings depending on what the first char of [1.24] 00032160
+*  the parameter is:                                             [1.24] 00032450
+*                                                                [1.24] 00032740
+*  '@': The remaining 7 or less chars are the name of a variable [1.24] 00033030
+*       that contains a RFC821 route-list which will be included [1.24] 00033320
+*       in each RCPT TO.                                         [1.24] 00033610
+*                                                                [1.24] 00033900
+*  '%': The remaining chars are the name of a variable that con- [1.24] 00034190
+*       tains a string to append to the end of the RCPT TO       [1.24] 00034480
+*       address.  The usual at-sign in the address gets replaced [1.24] 00034770
+*       by '%'.  This is sometimes called the routing kludge.    [1.24] 00035060
+*       If the original address being modified included a route-list    00035130
+*       (i.e. was of the form <@domain:user@host>) then the route-list  00035200
+*       will be converted to use the '%' klidge also.                   00035270
+*                                                                [1.24] 00035350
+*  else the parameter is the name of a variable that contains    [1.24] 00035640
+*       the domain to put on the HELO command.  Normally,  the   [1.24] 00035930
+*       HELO domain is one of:                                   [1.24] 00036220
+*        o Local-domain variable if defined.                     [1.24] 00036510
+*        o concatenation of Thisnode and RSCS-Domain variables.  [1.24] 00036800
+*                                                                [1.24] 00037090
+* EXAMPLES:                                                      [1.24] 00037380
+*                                                                [1.24] 00037670
+*  1. Passing the domain parameter:                              [1.24] 00037960
+*     Domain=FOO.BAR.BAZ.EDU                                            00038250
+*     . . .                                                             00038540
+*     XXX.ORG  *    *    BSMTP 3 Domain                                 00038830
+*     This will cause a generated HELO line of:                         00039120
+*       HELO FOO.BAR.BAZ.EDU                                            00039410
+*                                                                       00040000
+*  2. Passing the route-list parameter:                          [1.24] 00041060
+*     via20B=@CU20B.COLUMBIA.EDU                                 [1.24] 00041120
+*     ...                                                        [1.24] 00041180
+*     CUTC20.COLUMBIA.EDU  *  SMTPUSER BSMTP 3 =via20B           [1.24] 00041240
+*     For "To: joe@CUTC20.COLUMBIA.EDU" it will generate:        [1.24] 00041300
+*       RCPT TO:<@CU20B.COLUMBIA.EDU:joe@CUTC20.COLUMBIA.EDU>    [1.24] 00041360
+*     For "To: <@xyz:joe@CUTC20.COLUMBIA.EDU>" it will generate:        00041450
+*       RCPT TO:<@CU20B.COLUMBIA.EDU:joe@CUTC20.COLUMBIA.EDU>           00041480
+*         if this node is 'xyz' otherwise it will generate:             00041510
+*       RCPT TO:<@CU20B.COLUMBIA.EDU,@xyz:joe@CUTC20.COLUMBIA.EDU>      00041540
+*                                                                [1.24] 00041660
+*  3. Passing the kludge-route parameter:                        [1.24] 00041720
+*     viaCSN=@CSNET-RELAY.ARPA                                   [1.24] 00041780
+*     ...                                                        [1.24] 00041840
+*     FOO.CSNET    *  GATEWAY BSMTP 3 %viaCSN                    [1.24] 00041900
+*     For "To: joe@FOO.CSNET" it will generate:                  [1.24] 00041960
+*       RCPT TO:<joe%FOO.CSNET@CSNET-RELAY.ARPA>                 [1.24] 00042020
+*     For "To: <@xyz:joe@FOO.CSNET>" it will generate:                  00042030
+*       RCPT TO:<joe%FOO.CSNET@CSNET-RELAY.ARPA>                        00042040
+*         if this node is 'xyz' otherwise it will generate:             00042050
+*       RCPT TO:<joe%FOO.CSNET%xyz@CSNET-RELAY.ARPA>                    00042060
+*                                                                [1.24] 00042080
+* NOTES:                                                         [1.24] 00042140
+*   1.  Clearly,  we need more than a single 8-char parameter.   [1.24] 00042200
+*       You can't mix and match the three parameters for a single[1.24] 00042260
+*       host.                                                    [1.24] 00042320
+*   2.  Since this is a type 3 exit and may be called with a     [1.24] 00042380
+*       list of recipients (ACTADR's),  multiple route-lists     [1.24] 00042440
+*       and kludge-routes may be generated into the same BSMTP   [1.24] 00042500
+*       transaction if the Outgoing/Domains table entries list   [1.24] 00042560
+*       the same server node/userid.  This is entirely what you  [1.24] 00042620
+*       want it to do (probably).                                [1.24] 00042680
+*   3.  Mixing and matching '%'/'@' and non-'%'/'@' parameters   [1.24] 00042740
+*       will probably not work right since the HELO domain is    [1.24] 00042800
+*       picked from the first ACTADR->ROUTD in the list passed   [1.24] 00042860
+*       while the '%'/'@' parameters are checked for each ACTADR [1.24] 00042920
+*       (as they are used to generate the RCPTs).  This is not   [1.24] 00042980
+*       a problem since there shouldn't even be a need overriding[1.24] 00043040
+*       the "correct" HELO domain that you get already.          [1.24] 00043100
+*   4.  xxx Maybe should add a Return-Path:  for % or @          [1.24] 00043160
+*                                                                       00043220
+* The MAIL FROM: name given will get the RSCS-DOMAIN tacked onto        00043280
+* the end if there is not other domain already there.                   00043340
+PAB      DSECT ,                                                        00044000
+@MBLOK   DS    A             MAILBLOK base                              00045000
+@ACT     DS    A             ACTADR base                                00046000
+* REGISTER USAGE -                                                      00047000
+R0  EQU  0 -                                                            00048000
+R1  EQU  1 -                                                            00049000
+R2  EQU  2 -                                                            00050000
+R3  EQU  3 -                                                            00051000
+R4  EQU  4 -                                                            00052000
+R5  EQU  5 -                                                            00053000
+R6  EQU  6 -                                                            00054000
+R7  EQU  7 - MBOX base                                                  00055490
+R8  EQU  8 - Stack pointer                                              00056590
+R9  EQU  9 - Stack length                                               00057180
+R10 EQU 10 - ACTADR base                                                00058000
+R11 EQU 11 - MAILBLOK base                                              00059000
+R12 EQU 12 - program base                                               00060000
+R13 EQU 13 - save area                                                  00061000
+R14 EQU 14 - linkage                                                    00062000
+R15 EQU 15 - linkage                                                    00063000
+         PRINT NOGEN                                                    00064000
+         BLOCKS ,                                                       00065000
+         MAILBLOK ,                                                     00066000
+         EJECT ,                                                        00067000
+BSMTP    CSECT ,                                                        00068000
+         USING BSMTP,R15          temp addr                             00069000
+         B     EYESKIP            around the eye-catcher                00070000
+MYNAME   DC    CL8'BSMTP',CL8'&SYSDATE'                                 00071000
+EYESKIP  DS    0H                                                       00072000
+         STM   R14,R12,12(R13)    save caller's registers               00073000
+         LR    R12,R15            a better base                         00074000
+         DROP  R15                done with temp base                   00075000
+         USING BSMTP,R12          get perm base                         00076000
+         LA    R15,SAVE           point to my save area                 00077000
+         ST    R13,4(R15)         play the chain game                   00078000
+         ST    R15,8(R13)                                               00079000
+         LR    R13,R15            set up my save pointer                00080000
+         USING PAB,R1             get to the parms                      00081000
+         L     R11,@MBLOK         MAILBLOK base                         00082000
+         L     R10,@ACT           ACTADR base                           00083000
+         DROP  R1                 done with 'em                         00084000
+         USING MAILBLOK,R11       address the mailblok                  00085000
+*---------------------------------------------------------------------- 00086000
+* Point the punch in the right direction.  This exit is "smart" enough  00087000
+* to handle a local or remote server (i.e. sent directly or via RSCS)   00088000
+* If RSCS Version 2 was installed,  I wouldn't have to go thru the      00089000
+* extra work!                                                           00090000
+*---------------------------------------------------------------------- 00091000
+         USING ACTADR,R10         get the 1st ACTADR block              00092000
+         L     R1,ACTRT           get the ROUTD                         00093000
+         USING ROUTD,R1           address it                            00094000
+         MVC   TAGNODE,RTROUTE    copy routd's node into tag cmd        00095000
+         MVC   TAGUSER,RTUSER     copy routd's userid into tag cmd      00096000
+         MVC   TAGWTR,RTUSER      dup it for the extwtr for jes         00097000
+         CLC   RTROUTE,CPUSTR     is it for my node?                    00098000
+         BE    POINTLCL           point the punch locally then          00099000
+         MVC   PUNUSER,RSCSNAME   get the rscs name into the buffer     00100000
+         LA    R1,TAGPUN          point to tag punch command            00101000
+         LA    R0,LTAGPUN         length of the command                 00102000
+         DC    X'83100008'        issue the tag command                 00103000
+         B     SPOOLIT            go issue the spool cmd                00104000
+POINTLCL EQU   *                  now point the punch itself            00105000
+         MVC   PUNUSER,RTUSER     move in the user from routd           00106000
+         DROP  R1                 done with routd                       00107000
+SPOOLIT  EQU   *                                                        00108000
+         LA    R1,POINTPUN        the command                           00109000
+         LA    R0,LPOINT          length                                00110000
+         DC    X'83100008'        issue the spool command               00111000
+*---------------------------------------------------------------------- 00112000
+* Set up the initial items: HELO, TICK, VERB, MAIL...                   00113000
+*---------------------------------------------------------------------- 00114000
+         MVI   HELODOM,C' '                       Clear field  HELOCLR  00114300
+         MVC   HELODOM+1(L'HELODOM-1),HELODOM     ...          HELOCLR  00114600
+         L     R4,ACTRT           get the routd again                   00115000
+         USING ROUTD,R4           address it                            00116000
+         CLI   RTPARM,C' '        is the parm blank?                    00117000
+         BE    NOPARM             no parm,  the easy way out.           00118000
+         CLI   RTPARM,C'@'        or '@' (for route-list)        [1.24] 00118300
+         BE    NOPARM             so this parm is not domain     [1.24] 00118600
+         LA    R4,RTPARM          point to the parm                     00119000
+         DROP  R4                 done with ROUTD                       00120000
+         LA    R1,8(R4)           end of parm                           00121000
+         MVI   TRAPTAB+C' ',X'FF' trap blanks                           00122000
+         TRT   0(8,R4),TRAPTAB    find end of string                    00123000
+         MVI   TRAPTAB+C' ',0     reset the trap table                  00124000
+         SR    R1,R4              get length of string                  00125000
+         LR    R5,R1              get into a better register            00126000
+         L     R6,MAILPTAB        address of parm table                 00127000
+         L     R15,ATBLUK         address of table lookup               00128000
+         CALL  (15),((R6),(R4),(R5),TWORK) find the parm                00129000
+         LTR   R15,R15            not found?                            00130000
+         BNZ   NOPARM             ignore it                             00131000
+         LR    R5,R1              get a better copy of it               00132000
+STUFFIT  EQU   *                  <- get here if lcldom was set. [1.24] 00132500
+         SR    R1,R1              zero it for IC                        00133000
+         IC    R1,0(R5)           length                                00134000
+         C     R1,=A(L'HELODOM)   room for it?                          00135000
+         BNL   OVERFLOW           doesn't fit                           00136000
+         BCTR  R1,0               -1 for execute                        00137000
+         EX    R1,MOVEDOM         MVC HELODOM(0),1(R5)                  00138000
+         B     HADPARM            skip over the noparm stuff            00139000
+NOPARM   EQU   *                  here if no parameter                  00140000
+         ICM   R5,B'1111',LCLDOM  see if Local-Domain was set    [1.24] 00140300
+         BNZ   STUFFIT            -> go back up and stuff it in  [1.24] 00140600
+         MVC   HELODOM(8),CPUSTR  copy in rscs node name                00141000
+         CLC   RSCSDOM,=A(0)      was a domain given?                   00142000
+         BE    HADPARM            no domain,  cpustr is enuf            00143000
+         L     R1,CPUSLEN         get the actual length of node name    00144000
+         LA    R2,HELODOM(R1)     where to start copying                00145000
+         LA    R3,HELODOM+L'HELODOM address of end of buffer            00146000
+         L     R4,RSCSDOM         ptr to string                         00147000
+         SR    R5,R5              get a zero                            00148000
+         IC    R5,0(R4)           get domain string length              00149000
+         LA    R0,0(R2,R5)        address of end                        00150000
+         CR    R0,R3              see if it will fit                    00151000
+         BNL   OVERFLOW           no room - croak                       00152000
+         BCTR  R5,0               -1 for execute                        00153000
+         EX    R5,COPYDEF         MVC 0(0,R2),1(R4)                     00154000
+HADPARM  EQU   *                                                        00155000
+         PUNCHC HELO,ERROR=PUNERR punch the HELO record                 00156000
+         MVC   TICKID,MAILFTXT    message id number                     00157000
+         PUNCHC TICK,ERROR=PUNERR punch the TICK                        00158000
+******** PUNCHC VERB,ERROR=PUNERR punch the VERB                 [1.24] 00159490
+*---------------------------------------------------------------------- 00160000
+* MAIL FROM:<sender> is a little more work...                           00161000
+*---------------------------------------------------------------------- 00162000
+         TM    MAILFLG2,MFLG2NLF  is it "MAIL FROM:<>"?                 00162300
+         BO    NULLFROM           --> propagate that fact               00162600
+         L     R6,MAILSFLD        sender fieldd                         00163000
+         USING FIELDD,R6          address it                            00164000
+         L     R6,FIPARS          point to mbox                         00165490
+         DROP  R6                 done with fieldd                      00166000
+         USING MBOX,R6          use the mbox now                        00167490
+         LA    R2,MAILFROM        address of buffer for userid          00168000
+         LA    R3,L'MAILFROM(R2)  length of it                          00169000
+         MVI   MAILFROM,C' '      blank it out                          00170000
+         MVC   MAILFROM+1(L'MAILFROM-1),MAILFROM propagate the blanks   00171000
+         ST    R6,GENMBMBX              Save address of MBOX dsect      00173670
+         ST    R2,GENMBSTK              Update stack address            00174660
+         MVC   GENSTKSZ,=A(L'MAILFROM)  Update stack length             00175650
+         CALL  GENMBOX,(GENMBMBX,GENMBSTR,GENMBSTL,GENMBSTK,GENSTKSZ)   00176640
+         LTR   R15,R15            did it fit?                           00177630
+         BNZ   OVERFLOW           didn't fit!                           00178620
+         A     R2,GENMBSTL        update buffer pointer                 00179610
+         CLC   RSCSDOM,=A(0)      do we have a RSCS-domain?             00181000
+         BE    NODEF              no - don't tack one on then           00182000
+*---------------------------------------------------------------------- 00183000
+* Check to see if a domain name is already there (more than 1 token     00184790
+* in the mailbox domain list).  If not, tack on our default domain      00185580
+* name on the assumption that the user is in the same domain as us      00186370
+* (since otherwise they would have included a fully qualified domain    00187160
+* name).                                                                00187950
+*---------------------------------------------------------------------- 00189000
+         CLC   MBXDCNT,=F'1'      More than 1 token?                    00191990
+         BH    NODEF              ---> Yes, no tack on                  00193980
+         BCTR  R2,0               backup over the ending '>'            00195970
+         SR    R1,R1              get a zero                            00199000
+         L     R4,RSCSDOM         get the string pointer                00200000
+         IC    R1,0(R4)           get the string length                 00201000
+         LA    R0,0(R1,R2)        address of end after copy             00202000
+         CR    R0,R3              see if it will fit                    00203000
+         BNL   OVERFLOW           nope - overflow                       00204000
+         BCTR  R1,0               decrement for executed mvc            00205000
+         EX    R1,COPYDEF         MVC 0(0,R2),1(R4)                     00206000
+         LA    R2,1(R1,R2)        bump output pointer                   00207000
+         CR    R2,R3              room for the ">"?                     00209000
+         BNL   OVERFLOW           didn't fit                            00210000
+         MVI   0(R2),C'>'         end of the mail from                  00211000
+NODEF    EQU   *                                                        00211500
+         PUNCHC MAIL,ERROR=PUNERR punch the MAIL FROM: line             00212000
+         DROP  R6                 done with MBOX                        00213490
+         B     OVERNULL           --> skip null "from" code             00213590
+         SPACE 1                                                        00213690
+NULLFROM EQU   *                  <-- here for MAIL FROM:<>             00213790
+         PUNCHC 'MAIL FROM:<>',ERROR=PUNERR                             00213890
+OVERNULL EQU   *                  <-- here when skipping over           00213990
+*---------------------------------------------------------------------- 00214090
+* Iterrate through the list of ACTADR's via ACTCHN.  For each one,      00214180
+* generate a RCPT TO: line.                                             00214270
+* First, see if they specified a route-list in RTPARM            [1.24] 00214360
+*---------------------------------------------------------------------- 00214450
+ACTLOOP  EQU   *                  top of loop to go thru the chain      00214540
+         MVC   RCPTP,=A(RCPTTO)   init. pointers for loop below  [1.24] 00214630
+         MVI   ATPCT,C'@'         set default                    [1.24] 00214720
+         XC    ADDRNODE,ADDRNODE  set default                           00214760
+         L     R4,ACTRT           get the current routd          [1.24] 00214810
+         USING ROUTD,R4           address it                     [1.24] 00214900
+         CLI   RTPARM,C' '        is the parm blank?             [1.24] 00214990
+         BE    NOPARM1            no parm,  the easy way out.    [1.24] 00215080
+         CLI   RTPARM,C'%'        is it a kludge-list?           [1.24] 00215170
+         BE    PARMPCT                                           [1.24] 00215260
+         CLI   RTPARM,C'@'        start with '@' for route-list? [1.24] 00215350
+         BNE   NOPARM1            no, it was a domain(above)     [1.24] 00215440
+         B     PARMAT             skip this:                     [1.24] 00215530
+PARMPCT  EQU   *                  '%' seen                       [1.24] 00215620
+         MVI   ATPCT,C'%'         remember it.                   [1.24] 00215710
+PARMAT   EQU   *                                                 [1.24] 00215800
+         LA    R4,RTPARM+1        point to the parm              [1.24] 00215890
+         DROP  R4                 done with ROUTD                [1.24] 00215980
+         LA    R1,7(R4)           end of parm                    [1.24] 00216070
+         MVI   TRAPTAB+C' ',X'FF' trap blanks                    [1.24] 00216160
+         TRT   0(7,R4),TRAPTAB    find end of string             [1.24] 00216250
+         MVI   TRAPTAB+C' ',0     reset the trap table           [1.24] 00216340
+         SR    R1,R4              get length of string           [1.24] 00216430
+         LR    R5,R1              get into a better register     [1.24] 00216520
+         L     R6,MAILPTAB        address of parm table          [1.24] 00216610
+         L     R15,ATBLUK         address of table lookup        [1.24] 00216700
+         CALL  (15),((R6),(R4),(R5),TWORK) find the parm         [1.24] 00216790
+         LTR   R15,R15            not found?                     [1.24] 00216880
+         BNZ   NOPARM1            ignore it                      [1.24] 00216970
+         LR    R5,R1              get a better copy of it        [1.24] 00217060
+         SR    R1,R1              zero it for IC                 [1.24] 00217150
+         IC    R1,0(R5)           length                         [1.24] 00217240
+         ST    R5,PARMSTR         parm string pointer for later  [1.24] 00217330
+         ST    R1,PARMLEN         (maybe)                        [1.24] 00217420
+         CLI   ATPCT,C'%'         is it % rather than @?         [1.24] 00217510
+         BE    NOPARM1            yes, skip this junk:           [1.24] 00217600
+         LM    R8,R9,STACKP       get stack pointer                     00217710
+         S     R9,=A(2*NODSIZ+TOKSIZ)   Will 2 NODEs + 1 TOKEND fit?    00217730
+         BL    OVERFLOW                 ---> No                         00217750
+         ST    R8,ADDRNODE        Save for call to ADDROUTE             00217770
+         XC    0(2*TOKSIZ+TOKSIZ,R8),0(R8) Zero NODEs and TOKEND        00217790
+         LA    R15,NODSIZ(,R8)          Point to second NODE            00217810
+         ST    R15,NODDOWN-NODE(R8)     Connect level 1 and level 2     00217830
+         LA    R8,NODSIZ(,R15)          Set base for TOKEND             00217850
+         ST    R8,NODDOWN-NODE(R15)     Point level 2 NODE to TOKEND    00217870
+         USING TOKEND,R8                                                00217890
+         LA    R15,1(,R5)         Point to parm string                  00217910
+         CLI   0(R15),C'@'        Does it begin with an '@'?            00217930
+         BNE   NOPARM0A           ---> No, all ok                       00217950
+         LA    R15,1(,R15)        Point past '@'                        00217970
+         BCTR  R1,0               Fix up field length                   00217990
+NOPARM0A DS    0H                                                       00218010
+         ST    R15,TOKPTR         Put ptr in TOKEND                     00218030
+         ST    R1,TOKLEN          Put length in TOKEND                  00218050
+         MVI   TOKTYPE,TOKATM     Call it an atom                       00218070
+         DROP  R8                                                       00218090
+         LA    R8,TOKSIZ(,R8)     Bump stack pointer                    00218110
+         STM   R8,R9,STACKP       Save updated pointer and length       00218130
+NOPARM1  EQU   *                  here if no parameter           [1.24] 00218410
+         L     R7,ACTMBOX         GET MBOX BLOCK                        00218560
+         USING MBOX,R7                                                  00218600
+         CLC   ADDRNODE,=F'0'     Have a routelist to add?              00219470
+         BE    NOPARM1A           ---> No                               00220260
+         ST    R7,ADDRMBOX        Save MBOX address in plist            00221050
+         CALL  ADDROUTE,(ADDRMBOX,ADDRNODE)                             00221840
+         LTR   R15,R15            Successful?                           00222630
+*        BNZ   ???                ---> What do I do here?               00223420
+NOPARM1A DS    0H                                                       00224210
+         LA    R2,RCPTTO          Address of buffer for userid          00225000
+         MVI   RCPTTO,C' '        fill with blanks first         [1.24] 00225790
+         MVC   RCPTTO+1(L'RCPTTO-1),RCPTTO                              00226580
+         ST    R7,GENMBMBX              Save address of MBOX dsect      00227370
+         ST    R2,GENMBSTK              Update stack address            00228160
+         MVC   GENSTKSZ,=A(L'RCPTTO)    Update stack length             00228950
+         CALL  GENMBOX,(GENMBMBX,GENMBSTR,GENMBSTL,GENMBSTK,GENSTKSZ)   00229740
+         LTR   R15,R15            Successful?                           00230530
+         BNZ   OVERFLOW           didn't fit!                           00231320
+         A     R2,GENMBSTL        update buffer pointer                 00232110
+         CLI   ATPCT,C'%'         is it a kludge-route?          [1.24] 00234080
+         BNE   NOPARM2            nope, all done.                [1.24] 00234160
+*        L     R5,PARMSTR         get ptr back from above        [1.24] 00234300
+*        L     R1,PARMLEN         and length of it               [1.24] 00234360
+*        LA    R0,1(R1,R2)        where end of string would be   [1.24] 00234420
+*        CR    R0,R3              compare to end of buffer       [1.24] 00234480
+*        BNL   OVERFLOW           not enough room                [1.24] 00234540
+*        BCTR  R1,0               -1 for executed move           [1.24] 00234600
+*        EX    R1,MOVER2          MVC 0(0,R2),0(R5)              [1.24] 00234660
+*        LA    R2,1(R1,R2)        update the pointer             [1.24] 00234720
+NOPARM2  EQU   *                  <- here if no kludge-route     [1.24] 00234880
+         PUNCHC RCPT,ERROR=PUNERR punch the MAIL FROM: line             00236000
+         ICM   R10,B'1111',ACTCHN get next ACTADR in the list           00237000
+         BNZ   ACTLOOP            there is another; back to top         00238000
+         DROP  R7                 done with MBOX                        00239490
+*---------------------------------------------------------------------- 00240000
+* done with RCPT's.  Now send the DATA                                  00241000
+*---------------------------------------------------------------------- 00242000
+         PUNCHC DATA,ERROR=PUNERR send the data                         00243000
+         OI    MAILFLG1,MFLG1DOT  do dot quoting                        00244000
+         L     R15,APUNHDR                                              00245000
+         CALL  (15),((R11))       send the header                       00246000
+         LTR   R15,R15                                                  00247000
+         BNZ   RET                                                      00248000
+         L     R15,APUNTXT                                              00249000
+         CALL  (15),((R11))       send the text                         00250000
+         LTR   R15,R15                                                  00251000
+         BNZ   RET                                                      00252000
+         PUNCHC ENDDATA,ERROR=PUNERR end the data                       00253000
+         PUNCHC QUIT,ERROR=PUNERR end the "session"                     00254000
+         L     R15,APUNCLS        close the punch                       00255000
+         CALL  (15),((R11))                                             00256000
+         LTR   R15,R15                                                  00257000
+         BNZ   RET                                                      00258000
+         LA    R4,CPUSTR          some sort of message??                00259000
+         LOG   BSM034,(CA,TAGUSER,CA,TAGNODE)                           00260000
+RET      EQU   *                                                        00261000
+         NI    MAILFLG1,255-MFLG1DOT turn off dot quoting               00262000
+         L     R13,4(R13)                                               00263000
+         L     R14,12(R13)                                              00264000
+         LM    R0,R12,20(R13)                                           00265000
+         BR    R14                                                      00266000
+         SPACE ,                                                        00267000
+*---------------------------------------------------------------------- 00268000
+* COPYTOK - copy tokens from NODE chain to buffer              [1.24]   00269680
+*                                                                       00270000
+* ENTRY -                                                               00271000
+*  R1 - address of NODE                                                 00272490
+*  R2 - address of output buffer                                        00273000
+*  R3 - address of end of output buffer                                 00274000
+* R14 - return address                                                  00275000
+* EXIT -                                                                00276000
+*  R2 - updated to reflect length of string copied                      00277000
+*  if overflow,  never returns to caller.                        [1.24] 00277500
+*---------------------------------------------------------------------- 00278000
+COPYTOK  DS    0H                                                       00279000
+         STM   R0,R5,COPYSAVE     save reg's I clobber                  00280000
+COPYTOK1 EQU   *                  <-- loop back here             [1.24] 00280500
+         USING NODE,R1          look at the node                        00281690
+         L     R1,NODDOWN         get the down pointer                  00282380
+         DROP  R1                 done with node                        00283070
+         USING TOKEND,R1          address the token descriptor          00284000
+         SR    R4,R4              get a zero                            00285000
+         L     R4,TOKLEN          length of it                          00286590
+         L     R5,TOKPTR          point to the string                   00287570
+         DROP  R1                 done with TOKEND                      00288000
+         LA    R0,1(R2,R4)        check the length against buffer       00289490
+         CR    R0,R3              will it overflow the buffer?          00290000
+         BNL   OVERFLOW           yes.  go croak.                       00291000
+         BCTR  R4,0               decrement for EXECUTE                 00292000
+         EX    R4,COPY            MVC 0(0,R2),0(R5)                     00293000
+         LA    R2,1(R4,R2)        update the buffer pointer             00294000
+         MVI   0(R2),C'.'         put in a '.'                          00294050
+         LA    R2,1(,R2)          update the buffer pointer again       00294100
+         L     R1,COPYSAVE+4      get NODE pointer again       [1.24]   00294160
+         USING NODE,R1          address it                     [1.24]   00294220
+         ICM   R1,B'1111',NODNEXT is there another one chained?  [1.24] 00294280
+         DROP  R1                                                [1.24] 00294400
+         ST    R1,COPYSAVE+4      save it, and then check cc:    [1.24] 00294500
+         BNZ   COPYTOK1           loop back up                   [1.24] 00294600
+         BCTR  R2,0               back up buffer pointer                00294700
+         MVI   0(R2),C' '         remove trailing '.'                   00294800
+         LM    R0,R1,COPYSAVE     restore clobbered regs                00295000
+         LM    R3,R5,COPYSAVE+12  "       "         "                   00296000
+         BR    R14                return to caller                      00297000
+         EJECT ,                                                        00297200
+* Executed instructions                                                 00297400
+         SPACE 1                                                        00297600
+COPY     MVC   0(0,R2),0(R5)      executed instr                        00298000
+COPYDEF  MVC   0(0,R2),1(R4)      executed mvc                          00299000
+TRAPDOT  TRT   0(0,R4),TRAPTAB    executed trt                          00300000
+MOVEDOM  MVC   HELODOM(0),1(R5)   executed mvc                          00301000
+MOVERTL  MVC   RCPTTO(0),1(R5)     "                             [1.24] 00301200
+MOVEBLK  MVC   1(0,R2),0(R2)       "                             [1.24] 00301400
+MOVER2   MVC   0(0,R2),1(R5)       "                             [1.24] 00301600
+         SPACE 1                                                        00301800
+COPYSAVE DS    6F                 save area for copytok                 00302000
+RCPTP    DS    A                  ptr to where rcpts get moved   [1.24] 00302200
+PARMSTR  DS    A                  ptr to parameter string value  [1.24] 00302400
+PARMLEN  DS    F                  length of above                [1.24] 00302600
+ATPCT    DS    C                  '@' or '%'                     [1.24] 00302800
+         SPACE 1                                                        00302803
+ADDRMBOX DS    A(0)               Address of MBOX to which to add       00302806
+*                                   new route-list part                 00302809
+ADDRNODE DS    A(0)               Address of NODE for route-list        00302812
+*                                   being added                         00302815
+         SPACE 1                                                        00302820
+GENMBSTK DS    A(0)               Stack area for MBOX expansion         00302840
+GENSTKSZ DS    F'0'               Size of stack area                    00302860
+GENMBMBX DS    A(0)               Address of MBOX dsect                 00302880
+GENMBSTR DS    A(0)               Address of generated MBOX string      00302900
+GENMBSTL DS    F'0'               Length of generated string            00302920
+         SPACE ,                                                        00303000
+OVERFLOW DS    0H                 overflow error                        00304000
+         LOG   BSM026,(CA,MYNAME) error message                         00305000
+         LA    R15,4              set error status                      00306000
+OVERPUR  EQU   *                                                        00307000
+         LA    R1,=C'SP PUN PURGE' purge what's been punched so far     00308000
+         LA    R0,12              length                                00309000
+         DC    X'83100008'        diagnose 8                            00310000
+         B     RET                and return                            00311000
+         SPACE ,                                                        00312000
+PUNERR   DS    0H                 punch error                           00313000
+         LOG   BSM026,(CA,MYNAME)                                       00314000
+         LA    R15,12             fatal error                           00315000
+         B     OVERPUR            do the purge stuff                    00316000
+         LTORG ,                                                        00317000
+SAVE     DS    18F                save area                             00318000
+HELO     DC    CL80' '            a helo message                        00319000
+         ORG   HELO               org back to it                        00320000
+         DC    CL5'HELO '         the constant part                     00321000
+HELODOM  DC    CL75' '            the domain that gets filled in        00322000
+         ORG   ,                                                        00323000
+VERB     DC    CL80'VERB ON'      the verb message                      00324000
+TICK     DC    CL80' '            the tick message                      00325000
+         ORG   TICK                                                     00326000
+         DC    CL5'TICK '                                               00327000
+TICKID   DC    CL4'0000'          the id number                         00328000
+         ORG   ,                                                        00329000
+MAIL     DC    CL80' '            the mail message                      00330000
+         ORG   MAIL                                                     00331000
+         DC    CL10'MAIL FROM:'                                         00332590
+MAILFROM DC    CL70' '            space for the userid                  00333180
+         ORG   ,                                                        00334000
+RCPT     DC    CL80' '            rcpt message                          00335000
+         ORG   RCPT                                                     00336000
+         DC    CL8'RCPT TO:'                                            00337590
+RCPTTO   DC    CL72' '            space for the address                 00338180
+         ORG   ,                                                        00339000
+DATA     DC    CL80'DATA'         data message                          00340000
+ENDDATA  DC    CL80'.'            end of data message                   00341000
+QUIT     DC    CL80'QUIT'         quit message                          00342000
+POINTPUN DC    C'SP PUN CLASS M TO '                                    00343000
+PUNUSER  DC    CL8' '                                                   00344000
+LPOINT   EQU   *-POINTPUN                                               00345000
+TAGPUN   DC    C'TAG DEV PUN '                                          00346000
+TAGNODE  DC    CL8' ',C' '                                              00347000
+TAGUSER  DC    CL8' ',C' 50 W='                                         00348000
+TAGWTR   DC    CL8' '                                                   00349000
+LTAGPUN  EQU   *-TAGPUN                                                 00350000
+TWORK    DS    512C                                                     00351000
+         END   BSMTP                                                    00352000

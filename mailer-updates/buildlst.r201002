@@ -1,0 +1,16 @@
+./ R 00070000 00071000 $ 70590 590                    10/25/88 16:54:40
+R9  EQU  9 -                                                            00070590
+R10 EQU 10 -                                                            00071180
+./ D 00099000                                         10/25/88 16:54:40
+./ D 00221380                                         10/25/88 16:54:40
+./ D 00289100 00289900                                10/25/88 16:54:40
+./ D 00335000                                         10/25/88 16:54:40
+./ R 00350760 00350880 $ 350790 30                    10/25/88 16:54:40
+         SALOC ACTLEN,NOSPACE Allocate space for ACTADR                 00350790
+         ST    R1,ACTCHN     set curr chain ptr to new space            00350820
+         LR    R7,R1         point to the new guy                       00350850
+./ R 00367000 00370000 $ 367790 790                   10/25/88 16:54:40
+         SALOC ACTLEN,NOSPACE Allocate space for ACTADR                 00367790
+         ST    R1,0(R7)      SET NEXT POINTER IN PREVIOUS ONE           00368580
+         LR    R7,R1         POINT TO CURRENT ONE                       00369370
+./ D 00371000 00371500                                10/25/88 16:54:40

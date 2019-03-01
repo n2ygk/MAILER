@@ -1,0 +1,46 @@
+./ I 00117000          $ 117500 500                   06/01/90 11:49:49
+         SPACE 1
+./ I 00118000          $ 118500 500                   06/01/90 11:49:49
+         SPACE 1
+./ R 00122000          $ 122290 290                   06/01/90 11:49:49
+         SPACE 1
+         L     R0,RCOUNT     Number of routing (OUTGOING) entries
+./ I 00124000          $ 124100 100                   06/01/90 11:49:49
+         L     R1,MAILRTAB   Table address
+         USING TBTAB,R1
+         OI    TB$FLG,TBT#EXAC     Exact matches required
+         DROP  R1
+         SPACE 1
+./ I 00127000          $ 127500 500                   06/01/90 11:49:49
+         SPACE 1
+./ I 00130000          $ 130500 500                   06/01/90 11:49:49
+         SPACE 1
+./ I 00133000          $ 133050 50                    06/01/90 11:49:49
+         SPACE 1
+./ I 00133700          $ 133800 100                   06/01/90 11:49:49
+         SPACE 1
+./ I 00134000          $ 134500 500                   06/01/90 11:49:49
+         SPACE 1
+./ R 00459580          $ 459600 20                    06/01/90 11:49:49
+         SPACE 1
+LVECTOR  DS    0A                  BRANCH TABLE
+LVECTVC  DC    A(VCODE)            +0  - Incoming
+LVECTRC  DC    A(RCODE)            +4  - Outgoing
+LVECTSC  DC    A(SCODE)            +8  - Special
+LVECTOC  DC    A(OCODE)            +12 - Origins
+LVECTDC  DC    A(DCODE)            +16 - Domains
+./ R 00545180          $ 545270 90                    06/01/90 11:49:49
+         CALL  TBADD,((R5),TBE,TWORK)
+         LTR   R15,R15       DID THE ADD WORK?
+         BZ    TLODRET       SURE DID, RETURN
+         C     R15,=F'8'     is it a duplicate?                  [1.24]
+         BNE   TLODERR1      no,  some other error               [1.24]
+         B     TLODERR0      sort it into the table              [1.22]
+./ I 00680200          $ 680250 50                    06/01/90 11:49:49
+TLODERR0 EQU   *
+./ R 00787500 00791000 $ 788190 690                   06/01/90 11:49:49
+         T 'DOMAINS',LVECTDC-LVECTOR
+         T 'INCOMING',LVECTVC-LVECTOR
+         T 'ORIGINS',LVECTOC-LVECTOR
+         T 'OUTGOING',LVECTRC-LVECTOR
+         T 'SPECIAL',LVECTSC-LVECTOR

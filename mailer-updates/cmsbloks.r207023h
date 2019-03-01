@@ -1,0 +1,9 @@
+./ R 00062000          $ 62090 90                     12/10/90 14:00:56
+    u_char sfbflag4;                                                    00055000
+#define SFBTUSE  0x40
+#define SFBNORET 0x20
+    char sfbuform[8];
+    char sfboform[8];
+    u_short sfbfcbnl;
+    u_short sfbfcbxl;
+    char sfbrsvd2[4];                                                   00062000

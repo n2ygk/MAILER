@@ -1,0 +1,96 @@
+./ I 00141000          $ 141100 100                   11/10/89 14:52:17
+         T 'MAILLIST',$MLIST Change a mailing list                      00141100
+./ R 00148000          $ 148490 490                   11/10/89 14:52:17
+         EJECT ,                                                        00148490
+./ R 00162000          $ 162490 490                   11/10/89 14:52:17
+         EJECT ,                                                        00162490
+./ R 00175000          $ 175490 490                   11/10/89 14:52:17
+         EJECT ,                                                        00175490
+./ R 00215000          $ 215490 490                   11/10/89 14:52:17
+         EJECT ,                                                        00215490
+./ R 00264000 00284000 $ 273990 9990                  11/10/89 14:52:17
+         BAL   R14,CHAINIT         Add to MAILCMDL list                 00273990
+./ R 00294000          $ 294490 490                   11/10/89 14:52:17
+         EJECT ,                                                        00294490
+./ R 00304450 00305110 $ 304740 290                   11/10/89 14:52:17
+         BAL   R14,CHAINIT         Chain command block                  00304740
+./ R 00308000          $ 308490 490                   11/10/89 14:52:17
+         EJECT ,                                                        00308490
+./ R 00325000          $ 325020 20                    11/10/89 14:52:17
+         EJECT ,                                                        00325020
+*--------------------------------------------------------------------   00325040
+*                            M A I L L I S T                            00325060
+*                                                                       00325080
+*  Creation, deletion and modification of mail distribution lists       00325100
+*  is done with the MAILLIST command.  Mailing lists are similar        00325120
+*  to FORWARD files, except that MAILLISTs are almost always created    00325140
+*  with names that do not match a real id on the system and mailing     00325160
+*  lists may have more than 1 owner (users allowed to make changes      00325180
+*  in the list's destination addressees).                               00325200
+*                                                                       00325220
+*  Since MAILER may be running disabled, MAILLIST commands are added    00325240
+*  to the MAILCMDL chain for later processing by MAILCMD2.              00325260
+*                                                                       00325280
+*--------------------------------------------------------------------   00325300
+$MLIST   DS    0H                                                       00325320
+         LR    R0,R8               Size of data field                   00325340
+         LA    R1,CMDMLS           Command type                         00325360
+         BAL   R14,BLDCMDBL        Build a command block                00325380
+         B     RET                 ---> Error building block            00325400
+         LR    R6,R1               Get into a better register           00325420
+         BCTR  R8,0                -1 for executed                      00325440
+         EX    R8,MOVECMD          MVC CMDDATA(0),0(R9)                 00325460
+         BAL   R14,CHAINIT         Chain command block                  00325480
+         L     R1,=A(DLSMSG)       Get msg                              00325500
+         LA    R0,L'DLSMSG                                              00325520
+         BAL   R14,MESSAGE                                              00325540
+         B     RET                                                      00325560
+         EJECT ,                                                        00325580
+./ R 00339000          $ 339490 490                   11/10/89 14:52:17
+         EJECT ,                                                        00339490
+./ R 00354000          $ 354490 490                   11/10/89 14:52:17
+         EJECT ,                                                        00354490
+./ R 00364000          $ 364490 490                   11/10/89 14:52:17
+         EJECT ,                                                        00364490
+./ R 00379000          $ 379490 490                   11/10/89 14:52:17
+         EJECT ,                                                        00379490
+./ R 00898680 00898690 $ 898688 8                     11/10/89 14:52:17
+*--------------------------------------------------------------------   00898688
+*                                                                       00898696
+*  Add command block to MAILCMDL chain                                  00898704
+*                                                                       00898712
+*  Regs at entry:                                                       00898720
+*                                                                       00898728
+*    R6  - Command block base                                           00898736
+*    R10 - Savearea dsect                                               00898744
+*    R14 - Return address                                               00898752
+*                                                                       00898760
+*--------------------------------------------------------------------   00898768
+         SPACE 1                                                        00898776
+CHAINIT  DS    0H                                                       00898784
+         CLC   @CODE,=A(CMDCONS)   From console?                        00898792
+         BNE   CHAIN05             No, SMSG                             00898800
+         SSM   =X'FE'              Turn off external interrupts         00898808
+CHAIN05  EQU   *                                                        00898816
+         LA    R15,MAILCMDL        Address of list                      00898824
+CHAIN10  EQU   *                                                        00898832
+         ICM   R1,B'1111',0(R15)   Get next command pointer             00898840
+         BZ    CHAIN20             Found end of chain                   00898848
+         USING COMMAND,R1                                               00898856
+         LA    R15,CMDNEXT         Chain along                          00898864
+         DROP  R1                                                       00898872
+         B     CHAIN10                                                  00898880
+CHAIN20  EQU   *                                                        00898888
+         ST    R6,0(R15)           Add onto chain                       00898896
+         OI    MAILCMD,MCMDCMD2    Indicate there is work for MAILCMD2  00898904
+         OI    CMDECB,POSTED       And post the command ECB.            00898912
+         CLC   @CODE,=A(CMDCONS)   Console?                             00898920
+         BNE   CHAIN30             No, SMSG                             00898928
+         SSM   =X'FF'              Enable SMSG again                    00898936
+CHAIN30  EQU   *                                                        00898944
+         BR    R14                 Return to caller                     00898952
+         EJECT ,                                                        00898960
+*  Check if user authorized                                             00898968
+         SPACE 1                                                        00898976
+./ I 00948130          $ 948140 10                    11/10/89 14:52:17
+DLSMSG   DC    C'MAILLIST command accepted.'                            00948140

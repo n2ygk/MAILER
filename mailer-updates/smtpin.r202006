@@ -1,0 +1,15 @@
+./ I 00299000          $ 299500 500                   02/09/89 14:26:03
+    int rlen;                                                           00299500
+./ I 00306000          $ 306100 100                   02/09/89 14:26:03
+                                                                        00306100
+    /* Check if BSMTP line is continued on second record.               00306200
+     * If continuation exists, read in next record and update total     00306300
+     * length                                                           00306400
+     */                                                                 00306500
+    if (s[79] == 0x15) {                                                00306600
+       if ((rlen = rdcard(&s[l],(int)mailsfb.sfbrecsz)) >= 0)           00306700
+          l = l+rlen;                                                   00306800
+    }                                                                   00306900
+./ D 00448700                                         02/09/89 14:26:03
+./ D 00460000 00460800                                02/09/89 14:26:03
+./ D 00567090 00567900                                02/09/89 14:26:03

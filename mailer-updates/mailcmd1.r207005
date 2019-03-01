@@ -1,0 +1,180 @@
+./ I 00411750          $ 411950 200                   06/01/90 15:00:35
+         T 'PATH'                                                       00411950
+./ R 00430690          $ 430880 190                   06/01/90 15:00:35
+         L     R15,=A(STMSG)                                            00430880
+         MVC   WORKBUF(LSTMSG),0(R15)   Copy msg skeleton               00431070
+./ D 00473000 00486000                                06/01/90 15:00:35
+./ R 00646000 00647000 $ 646010 10                    06/01/90 15:00:35
+         EJECT ,                                                        00646010
+*--------------------------------------------------------------------   00646020
+*        S H O W    P A T H                                             00646030
+*                                                                       00646040
+*  Shows information about the routing that will be used for a          00646050
+*  destination address.                                                 00646060
+*                                                                       00646070
+*  Finds the routing using the FNROUTD routine (also used by BUILDLST   00646080
+*  and SMTPIN).  Prints the ROUTD (if one is found).                    00646090
+*                                                                       00646100
+*--------------------------------------------------------------------   00646110
+         SPACE 1                                                        00646120
+$PATH    DS    0H                                                       00646130
+         CLC   ARGC,=F'0'          Any argument?                        00646140
+         BE    $PATHHLP            ---> No, go tell them how            00646150
+         L     R1,=A(PATHMSG)      Point to title lines                 00646160
+         LA    R0,LPATHMSG                                              00646170
+         BAL   R14,WRITEMSG        Print title lines                    00646180
+$PATH000 EQU   *                                                        00646190
+         CLC   ARGC,=F'0'          Done?                                00646200
+         BE    $PATHEND            ---> Yes                             00646210
+         L     R1,ARGVP            Get token address                    00646220
+         L     R4,0(R1)            Get ptr                              00646230
+         LA    R1,4(,R1)           Bump ARGV pointer to next token      00646240
+         ST    R1,ARGVP            Update ARGV pointer                  00646250
+         L     R1,ARGC             Get remaining token count            00646260
+         BCTR  R1,0                Decrement                            00646270
+         ST    R1,ARGC             Update it                            00646280
+         MVI   WORKBUF,C' '        Put blanks in output buffer          00646290
+         MVC   WORKBUF+1(PATHLEN-1),WORKBUF                             00646300
+         SRDL  R4,24               Get length here                      00646310
+         SRL   R5,8                   and address here                  00646320
+         CALL  FNROUTD,((R5),(R4)) Find ROUTD                           00646330
+         LTR   R1,R15              Found it?                            00646340
+         BZ    $PATHNF             ---> Nope                            00646350
+         USING ROUTD,R1                                                 00646360
+         C     R4,=A(PATHNODE-1)   Too long?                            00646370
+         BNH   $PATH100            ---> No                              00646380
+         LA    R4,=A(PATHNODE-1)   Use only this much                   00646390
+$PATH100 EQU   *                                                        00646400
+         LA    R2,WORKBUF               Format ROUTD here               00646410
+         LR    R3,R5                    Copy string pointer             00646420
+         BCTR  R4,0                     Decrement for EX                00646430
+         EX    R4,MOVEAL                MVC 0(0,R2),0(R3)               00646440
+         CLC   RTROUTE,CPUSTR           Is this my node?                00646450
+         BNE   $PATH105                 ---> No                         00646460
+         MVC   PATHNODE(8,R2),=CL8'   *' Show local node                00646470
+         B     $PATH110                                                 00646480
+$PATH105 EQU   *                                                        00646490
+         MVC   PATHNODE(8,R2),RTROUTE   Node from ROUTD                 00646500
+$PATH110 EQU   *                                                        00646510
+         CLC   RTUSER,MAILVMID          Is this my userid?              00646520
+         BNE   $PATH115                 ---> No                         00646530
+         MVC   PATHID(8,R2),=CL8'   *'  Show local id                   00646540
+         B     $PATH120                                                 00646550
+$PATH115 EQU   *                                                        00646560
+         MVC   PATHID(8,R2),RTUSER      Userid from ROUTD               00646570
+$PATH120 EQU   *                                                        00646580
+         MVC   PATHEXIT(8,R2),RTPROG    Exit name from ROUTD            00646590
+         DROP  R1                                                       00646600
+         B     $PATH300                 ---> Join common code           00646610
+         SPACE 1                                                        00646620
+$PATHNF  EQU   *                        ROUTD not found for destination 00646630
+         C     R4,=A(PATHLEN-10)        Too long?                       00646640
+         BNH   $PATH200                 ---> No                         00646650
+         LA    R4,=A(PATHLEN-10)        Use only this much              00646660
+$PATH200 EQU   *                                                        00646670
+         LA    R2,WORKBUF               Message goes here               00646680
+         LR    R3,R5                    Copy string pointer             00646690
+         BCTR  R4,0                     Decrement for EX                00646700
+         EX    R4,MOVEAL                MVC 0(0,R2),0(R3)               00646710
+         LA    R2,2(R4,R2)              Start here for next part        00646720
+         LA    R3,=CL9'not found'       Point to next part              00646730
+         LA    R4,8                     Decremented length              00646740
+         EX    R4,MOVEAL                MVC 0(0,R2),0(R3)               00646750
+         B     $PATH300                 ---> Join common code           00646760
+         SPACE 1                                                        00646770
+$PATH300 EQU   *                                                        00646780
+         LA    R0,PATHLEN               Length of msg                   00646790
+         LA    R1,WORKBUF               Msg is here                     00646800
+         BAL   R14,WRITEMSG             Print the message               00646810
+         B     $PATH000                 ---> Around again               00646820
+         SPACE 1                                                        00646830
+$PATHEND EQU   *                                                        00646840
+         B     RET                                                      00646850
+         SPACE 2                                                        00646860
+$PATHHLP EQU   *                                                        00646870
+         L     R1,=A(PATHHELP)                                          00646880
+         LA    R0,L'PATHHELP                                            00646890
+         BAL   R14,WRITEMSG             Write usage message             00646900
+         B     RET                                                      00646910
+         EJECT ,                                                        00646920
+./ I 00754000          $ 754070 70                    06/01/90 15:00:35
+*--------------------------------------------------------------------   00754070
+*  Routine for format a ROUTD                                           00754140
+*                                                                       00754210
+*  Regs at entry:                                                       00754280
+*                                                                       00754350
+*    R0  - TBENTRY pointer                                              00754420
+*    R1  - ROUTD pointer                                                00754490
+*    R2  - Buffer in which to format output                             00754560
+*                                                                       00754630
+*  Regs at exit: Restored to entry values                               00754700
+*                                                                       00754770
+*--------------------------------------------------------------------   00754840
+./ D 00945990 00948810                                06/01/90 15:00:35
+./ I 00950180          $ 950380 200                   06/01/90 15:00:35
+         SPACE 1                                                        00950380
+./ I 00950580          $ 950780 200                   06/01/90 15:00:35
+         SPACE 1                                                        00950780
+./ I 00951000          $ 951500 500                   06/01/90 15:00:35
+         SPACE 1                                                        00951500
+./ I 00952000          $ 956000 4000                  06/01/90 15:00:35
+         SPACE 1                                                        00956000
+./ I 00969000          $ 969030 30                    06/01/90 15:00:35
+         SPACE 2                                                        00969030
+*  Messages                                                             00969060
+         SPACE 1                                                        00969090
+BOGMSG   DC    C'Command not allowed or invalid.'                       00969120
+         SPACE 1                                                        00969150
+ENDMESG  DC    C'- output complete.'                                    00969180
+         SPACE 1                                                        00969210
+INHLP    DC    C'Specify a mail server node name and userid.'           00969240
+         SPACE 1                                                        00969270
+INMSG2   DC    C'Incoming server not found.'                            00969300
+         SPACE 1                                                        00969330
+INMSG    DC    C'      Server      Validity  Msg  '                     00969360
+         DC    C'Error   Avg    Max   Total',X'15'                      00969390
+         DC    C'  Node    Userid    Exit   count '                     00969420
+         DC    C'count  cards  cards  cards',X'15'                      00969450
+         DC    C'======== ======== ======== ===== '                     00969480
+         DC    C'===== ====== ====== ======'                            00969510
+LINMSG  EQU   *-INMSG                                                   00969540
+         SPACE 1                                                        00969570
+OUTHLP   DC    C'Specify a network host or alias name.'                 00969600
+         SPACE 1                                                        00969630
+OUTMSG2  DC    C'Host (or alias) not found.'                            00969660
+         SPACE 1                                                        00969690
+PATHMSG  DC    C'    Host                                             ' 00969720
+         DC    C' Server  Punching'                                     00969750
+         DC    X'15'                                                    00969780
+         DC    C' (or alias)                                   Node   ' 00969810
+         DC    C' Userid    Exit'                                       00969840
+         DC    X'15'                                                    00969870
+         DC    C'=========================================== ======== ' 00969900
+         DC    C'======== ========'                                     00969930
+LPATHMSG EQU   *-PATHMSG                                                00969960
+PATHNODE EQU   44                  Offset to field in output            00969990
+PATHID   EQU   53                                                       00970020
+PATHEXIT EQU   62                                                       00970050
+PATHLEN  EQU   72                  Total message length                 00970080
+         SPACE 1                                                        00970110
+PATHHELP DC    C'Specify one or more host or alias names.'              00970140
+         SPACE 1                                                        00970170
+SHLPMSG  DC    C'SHOW options:  STatus | Version | [ACtive] '           00970200
+         DC    C'{Domains | ORigins | OUtgoing | SPecial} | Path'       00970230
+LSHLP    EQU   *-SHLPMSG                                                00970260
+         SPACE 1                                                        00970290
+STMSG    DC    C'Since: 00/00/00 00:00:00  Status: WAITING'             00970320
+         DC    C'  Reader: QUIESCENT  ',X'15'                           00970350
+         DC    C'Msgs in: 00000  out: 00000'                            00970380
+         DC    C'  Max Multi: 00000  Stack max: **% of 0000K'           00970410
+LSTMSG   EQU   *-STMSG                                                  00970440
+STTIME   EQU   7                                                        00970470
+STSTAT   EQU   34                                                       00970500
+STRDR    EQU   51                                                       00970530
+STMIN    EQU   72                                                       00970560
+STMOUT   EQU   84                                                       00970590
+STMUL    EQU   102                                                      00970620
+STSTKM   EQU   120                                                      00970650
+STSTKA   EQU   127                                                      00970680
+STLEN    EQU   131                                                      00970710
+         SPACE 2                                                        00970740

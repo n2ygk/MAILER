@@ -1,0 +1,15 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R207007    Use VM30091 RSCS support to suppress transit messages
+R205018    Add flag to only trace a mail creating exit.
+*          When this flag is set, the exit should list the actions
+*          it would have performed, but *NOT* create the output file.
+R205015    Add control to allow acceptance of BSMTP streams with
+*          FILE FROM: header.
+R205012    Fixes for routeaddr processing
+*          These fixes do something more reasonable in routines that
+*          use default route delivery (DEFRT, TRYRSCS, LOCAL)
+R203012    Drop support of TRUNCATE for DEFRT
+*          Add support of RETURN for DEFRT
+R202001    Handle local address part correctly in tagging files
+*          Fix DEFRT (which was missed) and get spool file name right
+*          in PUNCLS

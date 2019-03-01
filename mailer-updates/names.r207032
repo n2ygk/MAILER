@@ -1,0 +1,37 @@
+./ R 00083000          $ 83490 490                    02/14/91 14:33:25
+    int c, c2;                                                          00083490
+./ I 00100050          $ 100060 10                    02/14/91 14:33:25
+                                                                        00100060
+        /* Handle comment beginning with '*' in column 1 */             00100070
+                                                                        00100080
+./ I 00100900          $ 100901 1                     02/14/91 14:33:25
+        }                                                               00100901
+                                                                        00100902
+        /* Handle comment beginning with '.*' in columns 1 & 2 */       00100903
+                                                                        00100904
+        if ((cardcol == 1) && (c == '.')) {                             00100905
+#ifdef DEBUG                                                            00100906
+          cbuf[0] = '.';                                                00100907
+          cb = &cbuf[1];                                                00100908
+#endif DEBUG                                                            00100909
+          c2 = getc(fp);                                                00100910
+          if (c2 == '*') {                                              00100911
+#ifdef DEBUG                                                            00100912
+            cbuf[1] = '*';                                              00100913
+            cb = &cbuf[2];                                              00100914
+#endif DEBUG                                                            00100915
+            while ((c != '\n') && (c != EOF)) {                         00100916
+              c = getc(fp);                                             00100917
+#ifdef DEBUG                                                            00100918
+              *cb++ = c;                                                00100919
+#endif DEBUG                                                            00100920
+            }                                                           00100921
+#ifdef DEBUG                                                            00100922
+            *cb++ = '\0';                                               00100923
+            printf("%s\n",cbuf);                                        00100924
+#endif DEBUG                                                            00100925
+            cardcol = 0;                                                00100926
+            continue;                                                   00100927
+          } else {                                                      00100928
+            ungetc(c2,fp);                                              00100929
+          }                                                             00100930

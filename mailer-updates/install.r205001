@@ -1,0 +1,38 @@
+./ I 00089910          $ 89970 60                     01/11/90 18:10:55
+.br                                                                     00090100
+9.1.5.^MUSIC!&c090105                                                   00090290
+./ R 00090290          $ 90370 80                     01/11/90 18:10:55
+9.1.6.^NOMAIL!&c090106                                                  00090290
+./ R 00090670          $ 90750 80                     01/11/90 18:10:55
+9.1.7.^INTERNET!&c090107                                                00090670
+./ R 00091050          $ 91130 80                     01/11/90 18:10:55
+9.1.8.^UTSMAIL!&c090108                                                 00091050
+./ R 00091430          $ 91510 80                     01/11/90 18:10:55
+9.1.9.^TRYRSCS!&c090109                                                 00091430
+./ R 00962770 00963160 $ 962790 20                    01/11/90 18:10:55
+.subhead 9.1.5. MUSIC                                                   00948590
+.sr c090105 = &sysppage                                                 00949380
+.in +.33i                                                               00949570
+This type 1 exit sends mail to a user on a MUSIC system on the same     00951590
+.us \node as \MAILER\.                                                  00952180
+.sp                                                                     00957590
+The mail file is punched the MUSIC system as a class M file with a
+DIST code of the MUSIC userid.
+The userid of the MUSIC system (i.e. the virtual machine id) is
+specified in the PARM field of the profile entry.
+.sp 1
+The MUSIC exit was originally written at Tulane by John Voight and
+modified at Marist by A. Harry Williams.
+.sp 1                                                                   00961420
+.in -.33i                                                               00962290
+.subhead 9.1.6. NOMAIL                                                  00962770
+.sr c090106 = &sysppage                                                 00963160
+./ R 00970590 00971380 $ 970880 290                   01/11/90 18:10:55
+.subhead 9.1.7. INTERNET                                                00970590
+.sr c090107 = &sysppage                                                 00971380
+./ R 00991590 00992380 $ 991880 290                   01/11/90 18:10:55
+.subhead 9.1.8. UTSMAIL                                                 00991590
+.sr c090108 = &sysppage                                                 00992380
+./ R 01003490 01004080 $ 1003680 190                  01/11/90 18:10:55
+.subhead 9.1.9. TRYRSCS                                                 01003490
+.sr c090109 = &sysppage                                                 01004080

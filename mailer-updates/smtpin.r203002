@@ -1,0 +1,465 @@
+./ R 00017000          $ 17080 80                     03/14/89 15:58:57
+                                                                        00017080
+/* Debugging flags (define at compile time) */                          00017160
+                                                                        00017240
+/* DEBUG_CHECK_LOCAL        Trace check_local routine                */ 00017320
+/* DEBUG_FIND_ROUTD         Trace find_routd routine                 */ 00017400
+/* DEBUG_S_GETDATA          Trace s_getdata routine                  */ 00017480
+/* DEBUG_S_INPUT            Trace s_input routine                    */ 00017560
+/* DEBUG_S_RCPT             Trace s_rcpt routine                     */ 00017640
+/* TRACE                    Procedure call trace                     */ 00017720
+                                                                        00017800
+./ I 00062000          $ 62200 200                    03/14/89 15:58:57
+                                                                        00062200
+#ifdef TRACE                                                            00062400
+    wrterm("==> Entered smtpin");                                       00062600
+#endif                                                                  00062800
+./ I 00089000          $ 89200 200                    03/14/89 15:58:57
+                                                                        00089200
+#ifdef TRACE                                                            00089400
+    wrterm("==> Entered check_incoming");                               00089600
+#endif                                                                  00089800
+./ I 00107000          $ 107200 200                   03/14/89 15:58:57
+                                                                        00107200
+#ifdef TRACE                                                            00107400
+    wrterm("==> Entered rep_init");                                     00107600
+#endif                                                                  00107800
+./ I 00119380          $ 119410 30                    03/14/89 15:58:57
+                                                                        00119410
+#ifdef TRACE                                                            00119440
+    wrterm("==> Entered rep_wrt");                                      00119470
+#endif                                                                  00119500
+./ I 00128980          $ 129080 100                   03/14/89 15:58:57
+                                                                        00129080
+#ifdef TRACE                                                            00129180
+    wrterm("==> Entered rep_send");                                     00129280
+#endif                                                                  00129380
+./ I 00179070          $ 179072 2                     03/14/89 15:58:57
+                                                                        00179072
+#ifdef TRACE                                                            00179074
+    wrterm("==> Entered rep_smtp");                                     00179076
+#endif                                                                  00179078
+./ I 00179740          $ 179742 2                     03/14/89 15:58:57
+                                                                        00179742
+#ifdef TRACE                                                            00179744
+    wrterm("==> Entered rep_mail");                                     00179746
+#endif                                                                  00179748
+./ I 00222000          $ 222200 200                   03/14/89 15:58:57
+                                                                        00222200
+#ifdef TRACE                                                            00222400
+    wrterm("==> Entered s_init");                                       00222600
+#endif                                                                  00222800
+./ I 00249390          $ 249430 40                    03/14/89 15:58:57
+                                                                        00249430
+#ifdef TRACE                                                            00249470
+    wrterm("==> Entered s_init0");                                      00249510
+#endif                                                                  00249550
+./ I 00271580          $ 271660 80                    03/14/89 15:58:57
+                                                                        00271660
+#ifdef TRACE                                                            00271740
+    wrterm("==> Entered mydomain");                                     00271820
+#endif                                                                  00271900
+./ I 00299500          $ 299560 60                    03/14/89 15:58:57
+#ifdef DEBUG_S_INPUT                                                    00299560
+    char dbgmsg[133];                                                   00299620
+                                                                        00299680
+#endif                                                                  00299740
+#ifdef TRACE                                                            00299800
+    wrterm("==> Entered s_input");                                      00299860
+#endif                                                                  00299920
+./ I 00306600          $ 306630 30                    03/14/89 15:58:57
+#ifdef DEBUG_S_INPUT                                                    00306630
+       wrterm("==> BSMTP: Continue line being processed");              00306660
+#endif                                                                  00306690
+./ I 00306800          $ 306810 10                    03/14/89 15:58:57
+#ifdef DEBUG_S_INPUT                                                    00306810
+       sprintf(dbgmsg, "==> BSMTP: Continued line - new length is %d" , 00306820
+               l);                                                      00306830
+       wrterm(dbgmsg);                                                  00306840
+#endif                                                                  00306850
+./ I 00307000          $ 307200 200                   03/14/89 15:58:57
+#ifdef DEBUG_S_INPUT                                                    00307200
+    bcopy("==> BSMTP:>", dbgmsg , 11);                                  00307400
+    bcopy(s, &dbgmsg[11], l);                                           00307600
+    bcopy("<", &dbgmsg[11+l], 2);                                       00307800
+    wrterm(dbgmsg);                                                     00308000
+#endif                                                                  00308200
+                                                                        00308400
+./ I 00335000          $ 335200 200                   03/14/89 15:58:57
+                                                                        00335200
+#ifdef TRACE                                                            00335400
+    wrterm("==> Entered s_finish");                                     00335600
+#endif                                                                  00335800
+                                                                        00336000
+./ I 00346000          $ 346200 200                   03/14/89 15:58:57
+                                                                        00346200
+#ifdef TRACE                                                            00346400
+    wrterm("==> Entered s_helo");                                       00346600
+#endif                                                                  00346800
+./ I 00376300          $ 376302 2                     03/14/89 15:58:57
+#ifdef DEBUG_CHECK_LOCAL                                                00376302
+    char dbgmsg[133];                                                   00376304
+#endif                                                                  00376306
+                                                                        00376308
+#ifdef TRACE                                                            00376310
+    wrterm("==> Entered check_local");                                  00376312
+#endif                                                                  00376314
+./ I 00376380          $ 376382 2                     03/14/89 15:58:57
+#ifdef DEBUG_CHECK_LOCAL                                                00376382
+    else {                                                              00376384
+        bcopy("==> No match: <", dbgmsg , 15);                          00376386
+        bcopy(mailblok.mailnode, &dbgmsg[15], mailblok.mailnlen);       00376388
+        bcopy(">", &dbgmsg[15+mailblok.mailnlen], 2);                   00376390
+        wrterm(dbgmsg);                                                 00376392
+    }                                                                   00376394
+#endif                                                                  00376396
+./ I 00376600          $ 376602 2                     03/14/89 15:58:57
+#ifdef DEBUG_CHECK_LOCAL                                                00376602
+           BCOPY("==> No match: <", dbgmsg , 15);                       00376604
+           bcopy(rp ,&dbgmsg[15], rl);                                  00376606
+           bcopy(">", &dbgmsg[15+rl], 2);                               00376608
+           wrterm(dbgmsg);                                              00376610
+#endif                                                                  00376612
+./ I 00376760          $ 376762 2                     03/14/89 15:58:57
+#ifdef DEBUG_CHECK_LOCAL                                                00376762
+        else {                                                          00376764
+            bcopy("==> No match: <", dbgmsg , 15);                      00376766
+            bcopy(rp ,&dbgmsg[15], rl);                                 00376768
+            bcopy(">", &dbgmsg[15+rl], 2);                              00376770
+            wrterm(dbgmsg);                                             00376772
+        }                                                               00376774
+#endif                                                                  00376776
+./ I 00393000          $ 393800 800                   03/14/89 15:58:57
+                                                                        00393800
+#ifdef TRACE                                                            00394600
+    wrterm("==> Entered check_domain");                                 00395400
+#endif                                                                  00396200
+./ I 00448500          $ 448600 100                   03/14/89 15:58:57
+                                                                        00448600
+#ifdef TRACE                                                            00448700
+    wrterm("==> Entered s_state");                                      00448800
+#endif                                                                  00448900
+./ I 00506450          $ 506456 6                     03/14/89 15:58:57
+                                                                        00506456
+#ifdef TRACE                                                            00506462
+    wrterm("==> Entered do_null_from");                                 00506468
+#endif                                                                  00506474
+./ I 00518840          $ 518870 30                    03/14/89 15:58:57
+                                                                        00518870
+#ifdef TRACE                                                            00518900
+    wrterm("==> Entered check_sender");                                 00518930
+#endif                                                                  00518960
+./ I 00559920          $ 559930 10                    03/14/89 15:58:57
+#ifdef DEBUG_S_RCPT                                                     00559930
+    char dbgmsg[133];                                                   00559940
+#endif                                                                  00559950
+                                                                        00559960
+#ifdef TRACE                                                            00559970
+    wrterm("==> Entered s_rcpt");                                       00559980
+#endif                                                                  00559990
+./ I 00620170          $ 620177 7                     03/14/89 15:58:57
+#ifdef DEBUG_S_RCPT                                                     00620177
+       wrterm("==> s_rcpt: Processing routeaddr");                      00620184
+#endif                                                                  00620191
+./ I 00620560          $ 620565 5                     03/14/89 15:58:57
+#ifdef DEBUG_S_RCPT                                                     00620565
+       bcopy("==> s_rcpt: <", dbgmsg, 13);                              00620570
+       bcopy(hs,&dbgmsg[13],hl);                                        00620575
+       bcopy(">",&dbgmsg[hl+13],2);                                     00620580
+       wrterm(dbgmsg);                                                  00620585
+#endif                                                                  00620590
+./ I 00620600          $ 620610 10                    03/14/89 15:58:57
+#ifdef DEBUG_S_RCPT                                                     00620610
+          wrterm("==> s_rcpt: Removing route address");                 00620620
+#endif                                                                  00620630
+./ R 00620810 00620816 $ 620811 1                     03/14/89 15:58:57
+#ifdef DEBUG_S_RCPT                                                     00620811
+       wrterm("==> s_rcpt: Adding @local-host to userid");              00620812
+#endif                                                                  00620813
+       fakenode = (struct node *)salloc(sizeof(*fakenode));             00620814
+       if (!fakenode) return s_nosp(st,s,l);                            00620815
+       faketoke = (struct tokend*)salloc(sizeof(*faketoke));            00620816
+       if (!faketoke) return s_nosp(st,s,l);                            00620817
+./ R 00623420          $ 623426 6                     03/14/89 15:58:57
+    if (a->mbxrtl == 0) {                                               00623426
+#ifdef DEBUG_S_RCPT                                                     00623432
+       wrterm("==> s_rcpt: Using domain for lookup");                   00623438
+#endif                                                                  00623444
+./ R 00623480          $ 623485 5                     03/14/89 15:58:57
+    }                                                                   00623485
+    else {                                                              00623490
+#ifdef DEBUG_S_RCPT                                                     00623495
+       wrterm("==> s_rcpt: Using route-addr for lookup");               00623500
+#endif                                                                  00623505
+./ I 00623510          $ 623520 10                    03/14/89 15:58:57
+    }                                                                   00623520
+./ I 00623780          $ 623810 30                    03/14/89 15:58:57
+#ifdef DEBUG_S_RCPT                                                     00623810
+    bcopy("==> s_rcpt routing with: <", dbgmsg, 26);                    00623840
+    bcopy(hs,&dbgmsg[26],hl);                                           00623870
+    bcopy(">",&dbgmsg[hl+26],2);                                        00623900
+    wrterm(dbgmsg);                                                     00623930
+#endif                                                                  00623960
+./ I 00656000          $ 656200 200                   03/14/89 15:58:57
+                                                                        00656200
+#ifdef TRACE                                                            00656400
+    wrterm("==> Entered add_mailchn");                                  00656600
+#endif                                                                  00656800
+./ I 00715000          $ 715060 60                    03/14/89 15:58:57
+                                                                        00715060
+#ifdef TRACE                                                            00715120
+    wrterm("==> Entered s_data");                                       00715180
+#endif                                                                  00715240
+                                                                        00715300
+./ I 00740000          $ 740100 100                   03/14/89 15:58:57
+#ifdef DEBUG_S_GETDATA                                                  00740100
+    char dbgmsg[133];                                                   00740200
+#endif                                                                  00740300
+                                                                        00740400
+#ifdef TRACE                                                            00740500
+    wrterm("==> Entered s_getdata");                                    00740600
+#endif                                                                  00740700
+./ I 00758490          $ 758590 100                   03/14/89 15:58:57
+#ifdef DEBUG_S_GETDATA                                                  00758590
+            wrterm("==> s_getdata: Calling sendlst");                   00758690
+#endif                                                                  00758790
+./ I 00763000          $ 763200 200                   03/14/89 15:58:57
+#ifdef DEBUG_S_GETDATA                                                  00763200
+                wrterm("==> s_getdata: RC=12 from sendlst");            00763400
+#endif                                                                  00763600
+./ I 00765990          $ 766190 200                   03/14/89 15:58:57
+#ifdef DEBUG_S_GETDATA                                                  00766190
+                wrterm("==> s_getdata: Errors from sendlst");           00766390
+#endif                                                                  00766590
+./ I 00782000          $ 782100 100                   03/14/89 15:58:57
+#ifdef DEBUG_S_GETDATA                                                  00782100
+        bcopy("==> s_getdata: >", dbgmsg, 16);                          00782200
+        bcopy(s, &dbgmsg[16], l);                                       00782300
+        bcopy("<", &dbgmsg[16+l], 2);                                   00782400
+        wrterm(dbgmsg);                                                 00782500
+#endif                                                                  00782600
+./ I 00806000          $ 806100 100                   03/14/89 15:58:57
+                                                                        00806100
+#ifdef TRACE                                                            00806200
+    wrterm("==> Entered s_rset");                                       00806300
+#endif                                                                  00806400
+                                                                        00806500
+./ I 00817000          $ 817100 100                   03/14/89 15:58:57
+                                                                        00817100
+#ifdef TRACE                                                            00817200
+    wrterm("==> Entered s_noop");                                       00817300
+#endif                                                                  00817400
+                                                                        00817500
+./ I 00828000          $ 828200 200                   03/14/89 15:58:57
+                                                                        00828200
+#ifdef TRACE                                                            00828400
+    wrterm("==> Entered s_quit");                                       00828600
+#endif                                                                  00828800
+./ I 00842000          $ 842100 100                   03/14/89 15:58:57
+                                                                        00842100
+#ifdef TRACE                                                            00842200
+    wrterm("==> Entered s_verb");                                       00842300
+#endif                                                                  00842400
+                                                                        00842500
+./ I 00860000          $ 860200 200                   03/14/89 15:58:57
+                                                                        00860200
+#ifdef TRACE                                                            00860400
+    wrterm("==> Entered s_tick");                                       00860600
+#endif                                                                  00860800
+                                                                        00861000
+./ I 00867210          $ 867215 5                     03/14/89 15:58:57
+                                                                        00867215
+#ifdef TRACE                                                            00867220
+    wrterm("==> Entered s_rply");                                       00867225
+#endif                                                                  00867230
+                                                                        00867235
+./ I 00867720          $ 867725 5                     03/14/89 15:58:57
+                                                                        00867725
+#ifdef TRACE                                                            00867730
+    wrterm("==> Entered s_read");                                       00867735
+#endif                                                                  00867740
+                                                                        00867745
+./ I 00874000          $ 874100 100                   03/14/89 15:58:57
+                                                                        00874100
+#ifdef TRACE                                                            00874200
+    wrterm("==> Entered s_oseq");                                       00874300
+#endif                                                                  00874400
+                                                                        00874500
+./ I 00883000          $ 883100 100                   03/14/89 15:58:57
+                                                                        00883100
+#ifdef TRACE                                                            00883200
+    wrterm("==> Entered s_badc");                                       00883300
+#endif                                                                  00883400
+                                                                        00883500
+./ I 00892000          $ 892100 100                   03/14/89 15:58:57
+                                                                        00892100
+#ifdef TRACE                                                            00892200
+    wrterm("==> Entered s_errr");                                       00892300
+#endif                                                                  00892400
+                                                                        00892500
+./ I 00903000          $ 903200 200                   03/14/89 15:58:57
+                                                                        00903200
+#ifdef TRACE                                                            00903400
+    wrterm("==> Entered s_nosp");                                       00903600
+#endif                                                                  00903800
+./ I 00917000          $ 917200 200                   03/14/89 15:58:57
+                                                                        00917200
+#ifdef TRACE                                                            00917400
+    wrterm("==> Entered s_syntax");                                     00917600
+#endif                                                                  00917800
+./ I 00928000          $ 928200 200                   03/14/89 15:58:57
+                                                                        00928200
+#ifdef TRACE                                                            00928400
+    wrterm("==> Entered s_syntax553");                                  00928600
+#endif                                                                  00928800
+./ I 00933490          $ 933500 10                    03/14/89 15:58:57
+                                                                        00933500
+#ifdef TRACE                                                            00933510
+    wrterm("==> Entered s_maxr");                                       00933520
+#endif                                                                  00933530
+./ I 00946000          $ 946100 100                   03/14/89 15:58:57
+                                                                        00946100
+#ifdef TRACE                                                            00946200
+    wrterm("==> Entered _aparse");                                      00946300
+#endif                                                                  00946400
+                                                                        00946500
+./ I 00952230          $ 952232 2                     03/14/89 15:58:57
+                                                                        00952232
+#ifdef TRACE                                                            00952234
+    wrterm("==> Entered parse_data_hdr");                               00952236
+#endif                                                                  00952238
+./ I 00965000          $ 965100 100                   03/14/89 15:58:57
+                                                                        00965100
+#ifdef TRACE                                                            00965200
+    wrterm("==> Entered _fnroutd");                                     00965300
+#endif                                                                  00965400
+                                                                        00965500
+./ I 00975000          $ 975060 60                    03/14/89 15:58:57
+#ifdef DEBUG_FIND_ROUTD                                                 00975060
+    char dbgmsg[133];                                                   00975120
+#endif                                                                  00975180
+                                                                        00975240
+#ifdef TRACE                                                            00975300
+    wrterm("==> Entered find_routd");                                   00975360
+#endif                                                                  00975420
+                                                                        00975480
+#ifdef DEBUG_FIND_ROUTD                                                 00975540
+    bcopy("==> find_routd: >", dbgmsg, 17);                             00975600
+    bcopy(s, &dbgmsg[17], l);                                           00975660
+    bcopy("<", &dbgmsg[17+l], 2);                                       00975720
+    wrterm(dbgmsg);                                                     00975780
+#endif                                                                  00975840
+./ I 00978980          $ 979080 100                   03/14/89 15:58:57
+#ifdef DEBUG_FIND_ROUTD                                                 00979080
+        wrterm("==> find_routd: Checking RSCS domains");                00979180
+#endif                                                                  00979280
+./ R 00982490          $ 982680 190                   03/14/89 15:58:57
+           if (rl < l && xcmp(rp, &s[l-rl], rl) == 0) {                 00982680
+./ I 00982980          $ 983010 30                    03/14/89 15:58:57
+#ifdef DEBUG_FIND_ROUTD                                                 00983010
+              bcopy("==> find_routd: >", dbgmsg, 17);                   00983040
+              bcopy(rp, &dbgmsg[17], rl);                               00983070
+              bcopy("< dropped", &dbgmsg[17+rl], 10);                   00983100
+              wrterm(dbgmsg);                                           00983130
+           }                                                            00983160
+           else {                                                       00983190
+              bcopy("==> find_routd: >", dbgmsg, 17);                   00983220
+              bcopy(rp, &dbgmsg[17], rl);                               00983250
+              bcopy("< no match", &dbgmsg[17+rl], 11);                  00983280
+              wrterm(dbgmsg);                                           00983310
+#endif                                                                  00983340
+           }                                                            00983370
+./ R 00987490          $ 987580 90                    03/14/89 15:58:57
+    if (ctbluk(&te, mailblok.mailrtab, s, l) == TBMATCH) {              00987580
+#ifdef DEBUG_FIND_ROUTD                                                 00987670
+        wrterm("==> find_routd: Found in MAILRTAB");                    00987760
+#endif                                                                  00987850
+./ I 00988000          $ 988500 500                   03/14/89 15:58:57
+    }                                                                   00988500
+./ R 00991490          $ 991580 90                    03/14/89 15:58:57
+    if (ctbluk(&te, mailblok.maildtab, s, ol) == TBMATCH) {             00991580
+#ifdef DEBUG_FIND_ROUTD                                                 00991670
+        wrterm("==> find_routd: Found in MAILDTAB");                    00991760
+#endif                                                                  00991850
+./ I 00992000          $ 992500 500                   03/14/89 15:58:57
+    }                                                                   00992500
+./ R 00996180          $ 996270 90                    03/14/89 15:58:57
+        && ctbluk(&te, mailblok.mailrtab, "*DEFAULT*", 9)               00996270
+                                                   == TBMATCH) {        00996360
+#ifdef DEBUG_FIND_ROUTD                                                 00996450
+        wrterm("==> find_routd: Using *DEFAULT*");                      00996540
+#endif                                                                  00996630
+./ I 00997000          $ 997500 500                   03/14/89 15:58:57
+    }                                                                   00997500
+./ I 00999000          $ 999200 200                   03/14/89 15:58:57
+#ifdef DEBUG_FIND_ROUTD                                                 00999200
+    wrterm("==> find_routd: Not found");                                00999400
+#endif                                                                  00999600
+./ I 01010000          $ 1010200 200                  03/14/89 15:58:57
+                                                                        01010200
+#ifdef TRACE                                                            01010400
+    wrterm("==> Entered log_errors");                                   01010600
+#endif                                                                  01010800
+./ I 01072000          $ 1072200 200                  03/14/89 15:58:57
+                                                                        01072200
+#ifdef TRACE                                                            01072400
+    wrterm("==> Entered add_received");                                 01072600
+#endif                                                                  01072800
+./ I 01116000          $ 1116200 200                  03/14/89 15:58:57
+                                                                        01116200
+#ifdef TRACE                                                            01116400
+    wrterm("==> Entered foldwrite");                                    01116600
+#endif                                                                  01116800
+./ I 01144000          $ 1144200 200                  03/14/89 15:58:57
+                                                                        01144200
+#ifdef TRACE                                                            01144400
+    wrterm("==> Entered count_received");                               01144600
+#endif                                                                  01144800
+./ I 01154000          $ 1154100 100                  03/14/89 15:58:57
+                                                                        01154100
+#ifdef TRACE                                                            01154200
+    wrterm("==> Entered _cntrcvd");                                     01154300
+#endif                                                                  01154400
+                                                                        01154500
+./ I 01181000          $ 1181200 200                  03/14/89 15:58:57
+                                                                        01181200
+#ifdef TRACE                                                            01181400
+    wrterm("==> Entered smtprep");                                      01181600
+#endif                                                                  01181800
+./ I 01203000          $ 1203100 100                  03/14/89 15:58:57
+                                                                        01203100
+#ifdef TRACE                                                            01203200
+    wrterm("==> Entered r_init");                                       01203300
+#endif                                                                  01203400
+                                                                        01203500
+./ I 01219000          $ 1219100 100                  03/14/89 15:58:57
+                                                                        01219100
+#ifdef TRACE                                                            01219200
+    wrterm("==> Entered r_finish");                                     01219300
+#endif                                                                  01219400
+                                                                        01219500
+./ I 01242000          $ 1242200 200                  03/14/89 15:58:57
+                                                                        01242200
+#ifdef TRACE                                                            01242400
+    wrterm("==> Entered r_input");                                      01242600
+#endif                                                                  01242800
+./ I 01302000          $ 1302200 200                  03/14/89 15:58:57
+                                                                        01302200
+#ifdef TRACE                                                            01302400
+    wrterm("==> Entered err_mail");                                     01302600
+#endif                                                                  01302800
+./ I 01408000          $ 1408200 200                  03/14/89 15:58:57
+                                                                        01408200
+#ifdef TRACE                                                            01408400
+    wrterm("==> Entered is_mailer");                                    01408600
+#endif                                                                  01408800
+./ I 01446000          $ 1446200 200                  03/14/89 15:58:57
+                                                                        01446200
+#ifdef TRACE                                                            01446400
+    wrterm("==> Entered err_loop");                                     01446600
+#endif                                                                  01446800
+./ I 01462000          $ 1462200 200                  03/14/89 15:58:57
+                                                                        01462200
+#ifdef TRACE                                                            01462400
+    wrterm("==> Entered punch");                                        01462600
+#endif                                                                  01462800

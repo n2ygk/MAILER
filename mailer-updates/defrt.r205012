@@ -1,0 +1,53 @@
+./ I 00076380          $ 76460 80                     01/25/90 14:47:15
+         SPACE 1                                                        00192790
+* ------------------------------------------------------------------- * 00192810
+*  Check if ROUTEADDR is present.                                     * 00192830
+*                                                                     * 00192850
+*  If DEFRT has been entered with a ROUTEADDR, there is nothing       * 00192870
+*  that can be done.  This is because DEFRT delivery requires both    * 00192890
+*  a destination node and a destination useris.  A routeaddr will     * 00192910
+*  have only a destination node.                                      * 00192930
+*                                                                     * 00192970
+*  Since we can't deliver, we will return to sender.                  * 00192990
+*                                                                     * 00193010
+*                                                                     * 00193030
+* ------------------------------------------------------------------- * 00193050
+         SPACE 1                                                        00193070
+         CLC   MBXRTL,=F'0'      Route list present?                    00193090
+         BNE   FAILRTL           ---> Yes, return to sender             00193110
+./ I 00125000          $ 125030 30                    01/25/90 14:47:15
+* Return mail due to presence of a routeaddress                         00528581
+         SPACE 1                                                        00528582
+FAILRTL  DS    0H                                                       00528583
+         USING MBOX,R7                                                  00528584
+         L     R1,MBXRTL           First NODE of routeaddress list      00528585
+         DROP  R7                                                       00528586
+         USING NODE,R1                                                  00528587
+         MVC   NODEA,NODDOWN       NODE for first routeaddress          00528588
+         DROP  R1                                                       00528589
+         LA    R14,STACKP          Stack pointer address ptr            00528590
+         LA    R15,STACKP+4        Stack size address ptr               00528591
+         CALL  GENLIST,(NODEA,LSTRA,LSTRL,(14),(15))                    00528592
+*                                  Expand local part                    00528593
+         LTR   R15,R15             Successful?                          00528594
+         BNZ   FAIL                ---> No, call it bad RSCS node name  00528595
+         L     R4,LSTRL            Length of string                     00528596
+         L     R3,LSTRA            Address of string                    00528597
+         LA    R2,WORK             Point to work area                   00528598
+         MVI   0(R2),C' '          Set up for buffer clear              00528599
+         MVC   1(L'WORK-1,R2),0(R2)  Propogate the blank                00528600
+         C     R4,=A(L'WORK)       Longer than WORK?                    00528601
+         BNH   FAILRTL2            ---> No                              00528602
+         LA    R4,L'WORK           Use shorter length                   00528603
+FAILRTL2 EQU   *                                                        00528604
+         BCTR  R4,0                Decrement for EXs                    00528605
+         EX    R4,COPY             Move the entire string to WORK       00528606
+         EX    R4,UPIT             Uppercase routeaddr                  00528607
+         WTR   DRT081                                                   00528608
+         WTR   DRT082,(CA,WORK)                                         00528609
+         LA    R15,8               Set return code                      00528610
+         B     RET                                                      00528611
+         SPACE 2                                                        00528612
+./ I 00141000          $ 141060 60                    01/25/90 14:47:15
+         SPACE 1                                                        00552990
+WORK     DS    CL255                                                    00560890

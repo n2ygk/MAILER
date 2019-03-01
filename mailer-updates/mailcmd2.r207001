@@ -1,0 +1,71 @@
+./ I 00035800          $ 35900 100                    05/15/90 11:15:31
+         TRACETBL ,                                                     00035900
+./ R 00098530          $ 98560 30                     05/15/90 11:15:31
+         BZ    $FWD0040            ---> No data                         00098560
+./ I 00101960          $ 101980 20                    05/15/90 11:15:31
+$FWD0040 EQU   *                                                        00101980
+         CLC   =F'0',$EXCARG2      MSGCMD argument set?                 00102000
+         BNE   $FWD0100            ---> Yes                             00102020
+         L     R14,MAILPTAB        Parameter table                      00102040
+         MAILTRC CALL,TBLUK        Trace the call                       00102060
+         L     R15,ATBLUK          Pick up TBLUK routine address        00102080
+         CALL  (15),((R14),MSGCMD,L'MSGCMD,TWORK)                       00102100
+         MAILTRC RETURN,TBLUK,(R15) Trace the return                    00102120
+         LTR   R15,R15             Found an entry?                      00102140
+         BNZ   $FWD0100            ---> No MSGCMD value                 00102160
+         LA    R0,1(,R1)           Point to start of string             00102180
+         ST    R0,$EXCARG2         Put address into argument            00102200
+         MVC   $EXCARG2+7(1),0(R1) Put length into argument             00102220
+./ R 00103250          $ 103540 290                   05/15/90 11:15:31
+         ICM   R1,B'1000',=X'05'   Doing REXX function call             00103540
+./ I 00108330          $ 108370 40                    05/15/90 11:15:31
+         BAL   R14,FREEEVAL        Go free up the EVAL block            00108370
+./ R 00118156          $ 118157 1                     05/15/90 11:15:31
+         BZ    $MLS0040            ---> No data                         00118157
+./ R 00118230 00118250 $ 118231 1                     05/15/90 11:15:31
+$MLS0040 EQU   *                                                        00118231
+         CLC   =F'0',$EXCARG2      MSGCMD argument set?                 00118232
+         BNE   $MLS0100            ---> Yes                             00118233
+         L     R14,MAILPTAB        Parameter table                      00118234
+         MAILTRC CALL,TBLUK        Trace the call                       00118235
+         L     R15,ATBLUK          Pick up TBLUK routine address        00118236
+         CALL  (15),((R14),MSGCMD,L'MSGCMD,TWORK)                       00118237
+         MAILTRC RETURN,TBLUK,(R15) Trace the return                    00118238
+         LTR   R15,R15             Found an entry?                      00118239
+         BNZ   $MLS0100            ---> No MSGCMD value                 00118240
+         LA    R0,1(,R1)           Point to start of string             00118241
+         ST    R0,$EXCARG2         Put address into argument            00118242
+         MVC   $EXCARG2+7(1),0(R1) Put length into argument             00118243
+$MLS0100 EQU   *                                                        00118244
+         LA    R1,$EXCPL           Point to tokenized plist             00118245
+         ICM   R1,B'1000',=X'05'   Doing REXX function call             00118246
+./ I 00118354          $ 118355 1                     05/15/90 11:15:31
+         BAL   R14,FREEEVAL        Go free up the EVAL block            00118355
+./ I 00127890          $ 127894 4                     05/15/90 11:15:31
+         EJECT ,                                                        00127894
+*--------------------------------------------------------------------   00127898
+*                          F R E E E V A L                              00127902
+*                                                                       00127906
+*  Free an EVALBLOK returned from REXX function call                    00127910
+*                                                                       00127914
+*--------------------------------------------------------------------   00127918
+         SPACE 1                                                        00127922
+FREEEVAL DS    0H                                                       00127926
+         CLC   $EXCFUNR,=F'0'      Anything to free?                    00127930
+         BER   R14                 ---> No                              00127934
+         L     R1,$EXCFUNR         Pick up EVALBLOK ptr                 00127938
+         L     R0,4(,R1)           Get length in dblwords               00127942
+         XC    $EXCFUNR,$EXCFUNR   Clear the pointer                    00127946
+         DMSFRET LOC=(1),DWORDS=(0) Free the EVALBLOK                   00127950
+         BR    R14                 Return to caller                     00127954
+./ I 00143560          $ 143860 300                   05/15/90 11:15:31
+MSGCMD   DC    C'Msgcmd'           For TBLUK lookup                     00143860
+         SPACE 1                                                        00144160
+./ I 00154109          $ 154110 1                     05/15/90 11:15:31
+         DC    A($EXCARGL)         Argument list ptr                    00154110
+$EXCFUNR DC    A(0)                Function return                      00154111
+         SPACE 1                                                        00154112
+$EXCARGL DS    0F                  REXX argument list                   00154113
+         DC    A($EXCARGS),A($EXCARGE-$EXCARGS)                         00154114
+$EXCARG2 DC    A(0),A(0)           Address/length of 'MSGCMD' value     00154115
+         DC    8X'FF'                                                   00154116

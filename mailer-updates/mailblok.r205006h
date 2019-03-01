@@ -1,0 +1,7 @@
+./ R 00025830 00026800 $ 25920 90                     11/28/89 10:27:04
+#define MOPTDEF  0x80        /* Supply defaults for omitted fields   */ 00025830
+#define MOPTAUN  0x40        /* Allow unknown nodes to send me mail  */ 00026120
+#define MOPTAC   0x20        /* Allow charlatans                     */ 00026410
+#define MOPTVL   0x10        /* Verbose console logging              */ 00026700
+#define MOPTTBD  0x08        /* Print debugging info in TBLUK        */ 00026800
+#define MOPTALLM 0x04        /* Print all messages received          */

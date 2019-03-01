@@ -1,0 +1,318 @@
+DISTSUB  TITLE 'VM Network Mailer Version 2 - List distribution subroutX00001000
+               ine'                                                     00002000
+*---------------------------------------------------------------------* 00003000
+*      MAILER -- Copyright (c) 1982,1986 Columbia University.         * 00004000
+*    Program Property of the Trustees of Columbia University in the   * 00005000
+*    City of New York.                                                * 00006000
+*---------------------------------------------------------------------* 00007000
+DISTSUB  CSECT ,                                                        00008000
+* DISTSUB  -                                                            00009000
+*                                                                       00010000
+* This exit implements a distribution list by punching a BSMTP file     00011000
+* back into the Mailer's reader for processing by the BSMTP code.       00012000
+* The list of RCPT's is obtained from the parameter list passed to      00013000
+* this routine.                                                         00014000
+*                                                                       00015000
+* This code is based on the DISTLIST exit of MAILER release 2.          00016000
+*                                                                       00017000
+* The generated file will look like:                                    00018000
+*  HELO domain                                                          00019000
+*  TICK message-id                                                      00020000
+*  MAIL FROM: <sender>     (from MAILSFLD)                              00021000
+*  RCPT TO: <recipient1>   (from parmater list)                         00022000
+*  RCPT TO: <recipient2>                                                00023000
+*   . . .                                                               00024000
+*  RCPT TO: <recipientN>                                                00025000
+*  DATA                                                                 00026000
+*   [the mail file itself]                                              00027000
+*  .                                                                    00028000
+*  QUIT                                                                 00029000
+*                                                                       00030000
+* The domain that gets plugged into the HELO command is simply the      00031000
+* Thisnode= string (RSCS node name).                                    00032000
+*                                                                       00033000
+         SPACE 1                                                        00034000
+PAB      DSECT ,                                                        00035000
+@MBLOK   DS    A             MAILBLOK base                              00036000
+@FILEBLK DS    A             @Fileblock                                 00037000
+         SPACE 1                                                        00038000
+*  The fileblock is the same control block used for EXECs in storage.   00039000
+*  The FBLDLS field points to the start of the address/length pairs     00040000
+*  that describe the file lines.  The FBLDLE field contains the total   00041000
+*  length of the address/length fields in bytes.                        00042000
+*                                                                       00043000
+*        FBLDLS    ---->    A(Line1),A(Length1)                         00044000
+*                           A(Line2),A(Length2)                         00045000
+*                              ...                                      00046000
+*                           A(Linen),A(Lengthn)                         00047000
+         SPACE 1                                                        00048000
+*        Line1              C'string1'                                  00049000
+*        Line2              C'string2'                                  00050000
+*                              ...                                      00051000
+*        Linen              C'stringn'                                  00052000
+*                                                                       00053000
+*        n = FBLDLE/8                                                   00054000
+*                                                                       00055000
+         SPACE 1                                                        00056000
+*  The lines ('stringn' fields) are assumed to be RFC821 formatted      00057000
+*  addresses.  The address '<*>' has been reserved as a special value   00058000
+*  to signify that local delivery of this file should also occur.  This 00059000
+*  request is signified by a return code of 4 on exit.                  00060000
+         SPACE 2                                                        00061000
+* REGISTER USAGE -                                                      00062000
+         SPACE 1                                                        00063000
+R0  EQU  0 -                                                            00064000
+R1  EQU  1 -                                                            00065000
+R2  EQU  2 - Target for executed MVCs                                   00066000
+R3  EQU  3 - Source for executed MVCs                                   00067000
+R4  EQU  4 - Length for executed instructions                           00068000
+R5  EQU  5 -                                                            00069000
+R6  EQU  6 -                                                            00070000
+R7  EQU  7 -                                                            00071000
+R8  EQU  8 - Fileline counter                                           00072000
+R9  EQU  9 - Fileline pointer                                           00073000
+R10 EQU 10 - FBLOCK base                                                00074000
+R11 EQU 11 - MAILBLOK base                                              00075000
+R12 EQU 12 - program base                                               00076000
+R13 EQU 13 - save area                                                  00077000
+R14 EQU 14 - linkage                                                    00078000
+R15 EQU 15 - linkage                                                    00079000
+         SPACE 3                                                        00080000
+         FBLOCK ,                                                       00081000
+         BLOCKS ,                                                       00082000
+         MAILBLOK ,                                                     00083000
+         EJECT ,                                                        00084000
+DISTSUB  CSECT ,                                                        00085000
+         USING DISTSUB,R15        Temp basing                           00086000
+         B     EYESKIP            around the eye-catcher                00087000
+MYNAME   DC    CL8'DISTSUB ',CL8'&SYSDATE'                              00088000
+EYESKIP  DS    0H                                                       00089000
+         STM   R14,R12,12(R13)    save caller's registers               00090000
+         LR    R12,R15            a better base                         00091000
+         DROP  R15                done with temp base                   00092000
+         USING DISTSUB,R12        get perm base                         00093000
+         LA    R15,SAVE           point to my save area                 00094000
+         ST    R13,4(R15)         play the chain game                   00095000
+         ST    R15,8(R13)                                               00096000
+         LR    R13,R15            set up my save pointer                00097000
+         USING PAB,R1             get to the parms                      00098000
+         L     R11,@MBLOK         MAILBLOK base                         00099000
+         L     R10,@FILEBLK       FBLOCK base                           00100000
+         SPACE 1                                                        00101000
+         DROP  R1                 done with 'em                         00102000
+         USING FBLOCK,R10         address the FBLOCK                    00103000
+         USING MAILBLOK,R11       address the mailblok                  00104000
+         SPACE 1                                                        00105000
+         XC    HAVLOCAL,HAVLOCAL  Reset local delivery flag             00106000
+         SPACE 1                                                        00107000
+*---------------------------------------------------------------------- 00108000
+* Spool punch to *                                                      00109000
+*---------------------------------------------------------------------- 00110000
+         LA    R1,=C'SPOOL PUN *' punch back to self                    00111000
+         LA    R0,11              length                                00112000
+         DC    X'83100008'        issue the spool command               00113000
+*---------------------------------------------------------------------- 00114000
+* Set up the initial items: HELO, TICK, VERB, MAIL...                   00115000
+*---------------------------------------------------------------------- 00116000
+         MVC   HELODOM(8),CPUSTR  copy in rscs node name                00117000
+         PUNCHC HELO,ERROR=PUNERR punch the HELO record                 00118000
+         MVC   TICKID,MAILFTXT    message id number                     00119000
+         PUNCHC TICK,ERROR=PUNERR punch the TICK                        00120000
+*---------------------------------------------------------------------- 00121000
+* MAIL FROM:<sender> is a little more work...                           00122000
+*---------------------------------------------------------------------- 00123000
+         L     R6,MAILSFLD        sender fieldd                         00124000
+         USING FIELDD,R6          address it                            00125000
+         L     R6,FIPARS          point to adaddr                       00126000
+         DROP  R6                 done with fieldd                      00127000
+         USING MBOX,R6            use the adaddr now                    00128000
+         LA    R2,MAILFROM        address of buffer for userid          00129000
+         LA    R3,L'MAILFROM(R2)  length of it                          00130000
+         MVI   MAILFROM,C' '      blank it out                          00131000
+         MVC   MAILFROM+1(L'MAILFROM-1),MAILFROM propagate the blanks   00132000
+         ST    R6,GENMBMBX              Save address of MBOX dsect      00133000
+         ST    R2,GENMBSTK              Update stack address            00134000
+         MVC   GENSTKSZ,=A(L'MAILFROM)  Update stack length             00135000
+         CALL  GENMBOX,(GENMBMBX,GENMBSTR,GENMBSTL,GENMBSTK,GENSTKSZ)   00136000
+         LTR   R15,R15            did it fit?                           00137000
+         BNZ   OVERFLOW           didn't fit                            00138000
+NODEF    EQU   *                                                        00139000
+         LR    R15,R2             Copy buffer pointer                   00140000
+         S     R15,=A(MAIL)       Compute length                        00141000
+         C     R15,=F'80'         Longer than 80?                       00142000
+         BH    NODEF2             ---> Yes                              00143000
+         PUNCHC MAIL,ERROR=PUNERR punch the MAIL FROM: line             00144000
+         DROP  R6                 done with MBOX                        00145000
+         B     DORCPT             --> skip null "from" code             00146000
+         SPACE 1                                                        00147000
+NODEF2   EQU   *                  Here if length > 80                   00148000
+         MVC   TWORK(1),MAIL+79      Save value                         00149000
+         MVI   MAIL+79,X'15'         Put in NL character                00150000
+         PUNCHC MAIL,ERROR=PUNERR    Punch the MAIL FROM: line          00151000
+         MVC   MAIL+79(1),TWORK      Restore char                       00152000
+         PUNCHC MAIL+79,ERROR=PUNERR Punch the continuation             00153000
+         B     DORCPT                                                   00154000
+         SPACE 1                                                        00155000
+*---------------------------------------------------------------------- 00156000
+* Get the recipients,  one per line,  from the in storage list.         00157000
+* Generate a RCPT TO: line for each one.                                00158000
+*---------------------------------------------------------------------- 00159000
+DORCPT   EQU   *                                                        00160000
+         L     R9,FBLDLS          Address of first addr/length pair     00161000
+         L     R8,FBLDLE          Length of addr/length pairs           00162000
+         SRL   R8,3               Count of addr/length pairs            00163000
+RCPTLOOP EQU   *                  top of recipient loop                 00164000
+         MVI   RCPTTO,C' '        blank it out                          00165000
+         MVC   RCPTTO+1(L'RCPTTO-1),RCPTTO propagate the blanks         00166000
+         LA    R2,RCPTTO          Probable target of move               00167000
+         L     R3,0(R9)           Pick up pointer                       00168000
+         L     R4,4(R9)           Pick up length field                  00169000
+RCPTLO10 EQU   *                                                        00170000
+         CLI   0(R3),C' '         This a blank?                         00171000
+         BNE   RCPTLO19           ---> No, found first char             00172000
+         LA    R3,1(,R3)          Bump pointer                          00173000
+         BCT   R4,RCPTLO10        ---> Decrement length                 00174000
+         B     RCPTLO60           ---> All blanks                       00175000
+         SPACE 1                                                        00176000
+RCPTLO19 EQU   *                                                        00177000
+         CLC   =C'<*>',0(R3)      Is it special address?                00178000
+         BE    RCPTLO90           ---> Yes, remember local forward      00179000
+         CLI   0(R3),C'<'         Have arrow?                           00180000
+         BE    RCPTLO20           ---> yes                              00181000
+         MVI   0(R2),C'<'         Put it in buffer                      00182000
+         LA    R2,1(,R2)          Bump pointer                          00183000
+RCPTLO20 EQU   *                                                        00184000
+         BCTR  R4,0               Decrement for EX                      00185000
+         EX    R4,RCPTMVC         Move in string                        00186000
+         LA    R2,0(R4,R2)        End of address                        00187000
+RCPTLO30 EQU   *                                                        00188000
+         CLI   0(R2),C' '         Is this a blank?                      00189000
+         BNE   RCPTLO35           ---> No, have last character          00190000
+         BCT   R2,RCPTLO30        Back up 1 and try again               00191000
+RCPTLO35 EQU   *                                                        00192000
+         CLI   0(R2),C'>'         Have closing arrow?                   00193000
+         BE    RCPTLO40           ---> Yes                              00194000
+         LA    R2,1(,R2)          Bump pointer                          00195000
+         MVI   0(R2),C'>'         close it off                          00196000
+RCPTLO40 EQU   *                                                        00197000
+         LA    R15,1(R2)          Next byte                             00198000
+         S     R15,=A(RCPT)       Compute length                        00199000
+         C     R15,=F'80'         Longer than 80?                       00200000
+         BH    RCPTLO50           ---> Yes                              00201000
+         PUNCHC RCPT,ERROR=PUNERR punch the MAIL FROM: line             00202000
+         B     RCPTLO60           --> Continue                          00203000
+         SPACE 1                                                        00204000
+RCPTLO50 EQU   *                                                        00205000
+         MVC   TWORK(1),RCPT+79   Save value of this char               00206000
+         MVI   RCPT+79,X'15'      Put in NL character                   00207000
+         PUNCHC RCPT,ERROR=PUNERR punch the MAIL FROM: line             00208000
+         MVC   RCPT+79(1),TWORK   Restore char                          00209000
+         PUNCHC RCPT+79,ERROR=PUNERR Punch the second line              00210000
+         SPACE 1                                                        00211000
+RCPTLO60 EQU   *                                                        00212000
+         LA    R9,8(,R9)          To next addr/length pari              00213000
+         BCT   R8,RCPTLOOP        ---> Have another one left            00214000
+         B     RCPTDONE           All done                              00215000
+         SPACE 3                                                        00216000
+RCPTLO90 EQU   *                                                        00217000
+         MVI   HAVLOCAL,X'01'     Remember '<@>' address found          00218000
+         B     RCPTLO60           Try for more                          00219000
+         SPACE 1                                                        00220000
+RCPTMVC  MVC   0(1,R2),0(R3)      Execute MVC                           00221000
+         SPACE 1                                                        00222000
+RCPTDONE EQU   *                                                        00223000
+*---------------------------------------------------------------------- 00224000
+* done with RCPT's.  Now send the DATA                                  00225000
+*---------------------------------------------------------------------- 00226000
+         PUNCHC DATA,ERROR=PUNERR send the data                         00227000
+         OI    MAILFLG1,MFLG1DOT  do dot quoting                        00228000
+         L     R15,APUNHDR                                              00229000
+         CALL  (15),((R11))       send the header                       00230000
+         LTR   R15,R15                                                  00231000
+         BNZ   RET                                                      00232000
+         L     R15,APUNTXT                                              00233000
+         CALL  (15),((R11))       send the text                         00234000
+         LTR   R15,R15                                                  00235000
+         BNZ   RET                                                      00236000
+         PUNCHC ENDDATA,ERROR=PUNERR end the data                       00237000
+         PUNCHC QUIT,ERROR=PUNERR end the "session"                     00238000
+         L     R15,APUNCLS        close the punch                       00239000
+         CALL  (15),((R11))                                             00240000
+RET      EQU   *                                                        00241000
+         NI    MAILFLG1,255-MFLG1DOT turn off dot quoting               00242000
+         C     R15,=F'0'          Return code = 0?                      00243000
+         BNE   RET020             ---> No                               00244000
+         C     R15,=F'4'          Return code = 4?                      00245000
+         BNE   RET010             ---> No                               00246000
+         LA    R15,104            Make it not 4                         00247000
+         B     RET020                                                   00248000
+RET010   EQU   *                                                        00249000
+         CLI   HAVLOCAL,0         '<@>' address seen?                   00250000
+         BE    RET020             ---> No                               00251000
+         LA    R15,4              Set special return code               00252000
+RET020   EQU   *                                                        00253000
+         L     R13,4(R13)                                               00254000
+         L     R14,12(R13)                                              00255000
+         LM    R0,R12,20(R13)                                           00256000
+         BR    R14                                                      00257000
+         SPACE 1                                                        00258000
+GENMBSTK DS    A(0)               Stack area for MBOX expansion         00259000
+GENSTKSZ DS    F'0'               Size of stack area                    00260000
+GENMBMBX DS    A(0)               Address of MBOX dsect                 00261000
+GENMBSTR DS    A(0)               Address of generated MBOX string      00262000
+GENMBSTL DS    F'0'               Length of generated string            00263000
+         SPACE ,                                                        00264000
+OVERFLOW DS    0H                 overflow error                        00265000
+         LOG   DST026,(CA,MYNAME) error message                         00266000
+         LA    R15,4              set error status                      00267000
+OVERPUR  EQU   *                                                        00268000
+         LA    R1,=C'SP PUN PURGE' purge what's been punched so far     00269000
+         LA    R0,12              length                                00270000
+         DC    X'83100008'        diagnose 8                            00271000
+         B     RET                and return                            00272000
+         SPACE ,                                                        00273000
+PUNERR   DS    0H                 punch error                           00274000
+         LOG   DST026,(CA,MYNAME)                                       00275000
+         LA    R15,12             fatal error                           00276000
+         B     OVERPUR            do the purge stuff                    00277000
+         EJECT ,                                                        00278000
+         LTORG ,                                                        00279000
+SAVE     DS    18F                save area                             00280000
+         SPACE 1                                                        00281000
+HAVLOCAL DC    X'0'               0 - '<@>' address not found           00282000
+*                                 1 - '<@>' address found               00283000
+         SPACE 1                                                        00284000
+HELO     DC    CL80' '            a helo message                        00285000
+         ORG   HELO               org back to it                        00286000
+         DC    CL5'HELO '         the constant part                     00287000
+HELODOM  DC    CL75' '            the domain that gets filled in        00288000
+         ORG   ,                                                        00289000
+         SPACE 1                                                        00290000
+VERB     DC    CL80'VERB ON'      the verb message                      00291000
+TICK     DC    CL80' '            the tick message                      00292000
+         ORG   TICK                                                     00293000
+         DC    CL5'TICK '                                               00294000
+TICKID   DC    CL4'0000'          the id number                         00295000
+         ORG   ,                                                        00296000
+         SPACE 1                                                        00297000
+MAIL     DC    CL160' '           the mail message                      00298000
+         ORG   MAIL                                                     00299000
+         DC    CL10'MAIL FROM:'                                         00300000
+MAILFROM DC    CL150' '           space for the userid                  00301000
+         ORG   ,                                                        00302000
+         SPACE 1                                                        00303000
+RCPT     DC    CL160' '           rcpt message                          00304000
+         ORG   RCPT                                                     00305000
+         DC    CL8'RCPT TO:'                                            00306000
+RCPTTO   DC    CL152' '           space for the address                 00307000
+         ORG   ,                                                        00308000
+         SPACE 1                                                        00309000
+DATA     DC    CL80'DATA'         data message                          00310000
+         SPACE 1                                                        00311000
+ENDDATA  DC    CL80'.'            end of data message                   00312000
+         SPACE 1                                                        00313000
+QUIT     DC    CL80'QUIT'         quit message                          00314000
+         SPACE 1                                                        00315000
+TWORK    DS    CL1' '                                                   00316000
+         SPACE 1                                                        00317000
+         END   DISTSUB                                                  00318000

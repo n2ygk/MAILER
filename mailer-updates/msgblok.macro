@@ -1,0 +1,47 @@
+         MACRO                                                          00001000
+         MSGBLOK                                                        00002000
+         PUSH  PRINT                                                    00445500
+         AIF   ('&SYSPARM' NE 'SUP').NOSUP                              00446200
+         PRINT OFF,NOGEN                                                00446400
+.NOSUP   ANOP                                                           00446600
+MSGBLOK  DSECT ,
+*********************************************************************   00003000
+**                                                                 **   00004000
+**  This DSECT is used to describe the IUCV buffer and control     **   00005000
+**  fields stacked by MAILSMSG for processing by the MAILCMDx      **   00006000
+**  routines.                                                      **   00007000
+**                                                                 **   00008000
+*********************************************************************   00009000
+MSGNEXT  DS    A                   Forward chain ptr                    00010000
+MSGBLEN  DS    F                   Length of block (in dbl words)       00011000
+MAILIPRM DS    (IPSIZE)D           IUCV IPARML for receive.             00012000
+*                                  IPARML must be doubleword aligned    00013000
+MESSAGE  DS    CL256               IUCV RECEIVE buffer.                 00014000
+@MESSAGE DS    A                   Start of message in 'MESSAGE'
+@MSGLEN  DS    F                   Length of message in 'MESSAGE'
+         SPACE 1                                                        00613000
+ARGVP    DS    A                   ARGV index ptr                       00614000
+ARGV     DS    20F                 Pointers set by UNIXSCAN             00615000
+ARGVL    EQU   *-ARGV              Length of pointers                   00616000
+ARGC     DS    F                   Count of tokens returned by UNIXSCAN 00617000
+         SPACE 1                                                        00613000
+SRCCODE  DS    F                   Message source code
+*                                      MSG/SMSG/console
+SRCNODE  DS    CL8                 Name of sending node.                00015000
+SRCUSER  DS    CL8                 Name of sending user.                00016000
+         SPACE 1                                                        00613000
+FLAG     DS    X                   Flag byte
+SMSFLG   EQU   X'80'               SMSG reply wanted                    00604000
+ACTFLG   EQU   X'40'               Only active entries should be shown  00967290
+         SPACE 1                                                        00613000
+MSGBUF   DS    CL18'MSGNOH '       Room for "SMSG rscsname MSG ".       00962190
+MSGNODE  DS    CL8                 Nodename of user for responses.      00962380
+         DS    C' '                                                     00962570
+MSGSENDR DS    CL8                 Userid for response                  00963000
+MSGSEP   DS    CL3                 ' * '                                00963000
+MSGLEN   EQU   *-MSGBUF                                                 00964000
+MSGDATA  DS    CL127               The real message                     00965000
+         DS    0D                  Boundary align                       00017000
+MSGBLOKL EQU   *-MSGBLOK                                                00018000
+         POP   PRINT                                                    00547000
+         MEND  ,

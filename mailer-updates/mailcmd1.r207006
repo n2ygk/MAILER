@@ -1,0 +1,159 @@
+./ I 00409390          $ 409590 200                   11/28/90 17:39:42
+         T 'BIT'                                                        00409590
+./ R 00428530 00428680 $ 428531 1                     11/28/90 17:39:42
+         EJECT ,                                                        00428531
+*--------------------------------------------------------------------   00428532
+*                          S H O W    B I T                             00428533
+*                                                                       00428534
+*  List bit flag info                                                   00428535
+*--------------------------------------------------------------------   00428536
+         SPACE 1                                                        00428537
+$BIT     DS    0H                                                       00428538
+         CLC   ARGC,=F'0'          Any args?                            00428539
+         BE    $BITHELP            ---> No, tell them how               00428540
+         L     R1,ARGVP            Get the token address                00428541
+         L     R4,0(R1)                                                 00428542
+         SRDL  R4,24               Token length                         00428543
+         SRL   R5,8                    and address                      00428544
+         CLI   0(R1),1             Length of 1                          00428545
+         BNE   $BIT0               ---> No                              00428546
+         CLI   0(R5),C'*'          Want all of them?                    00428547
+         BE    $BIT1               ---> Yes                             00428548
+         CLI   0(R5),C'?'          Want help?                           00428549
+         BNE   $BIT0               ---> No                              00428550
+$BITHELP EQU   *                                                        00428551
+         L     R1,=A(BITHLP)       Message address                      00428552
+         LA    R0,LBITHLP              and length                       00428553
+         BAL   R14,WRITEMSG        Write msg                            00428554
+         B     RET                 Return                               00428555
+         SPACE 2                                                        00428556
+$BIT0    EQU   *                                                        00428557
+         LA    R1,BITMSG           Write header lines                   00428558
+         LA    R0,LBITMSG                                               00428559
+         BAL   R14,WRITEMSG                                             00428560
+$BIT000  EQU   *                                                        00428561
+         L     R1,ARGVP            Get the token address                00428562
+         L     R4,0(R1)                                                 00428563
+         LA    R1,4(,R1)           Bump token ptr                       00428564
+         ST    R1,ARGVP            Update                               00428565
+         L     R1,ARGC             Get count                            00428566
+         BCTR  R1,0                Decrement                            00428567
+         ST    R1,ARGC             Update                               00428568
+         SRDL  R4,24               Token length                         00428569
+         SRL   R5,8                    and address                      00428570
+         LR    R15,R4              Copy value                           00428571
+         BCTR  R15,0               Decrement for EX                     00428572
+         EX    R15,BITMVC02        MVC WORKBUF(0),0(R5)                 00428573
+         EX    R15,BITTR01         TR  WORKBUF(0),UPCASE                00428574
+         LA    R6,PBITARR          Address of standard bit array        00428575
+         LA    R7,PBITLEN          Number of entries                    00428576
+         BAL   R10,BITSRCH         Check for entry in table             00428577
+         B     BIT020              ---> Found                           00428578
+         LA    R6,DBITARR          Address of standard bit array        00428579
+         LA    R7,DBITLEN          Number of entries                    00428580
+         BAL   R10,BITSRCH         Check for entry in table             00428581
+         B     BIT020              ---> Found                           00428582
+         LA    R1,WORKBUF+2(R4)    Where to put msg text                00428583
+         MVC   0(9,R1),=CL9'not found'                                  00428584
+         LA    R1,WORKBUF          Message address                      00428585
+         LA    R0,11(,R4)              & length                         00428586
+         BAL   R14,WRITEMSG                                             00428587
+         B     BIT099                                                   00428588
+         SPACE 1                                                        00428589
+BIT020   EQU   *                   Entry found                          00428590
+         BAL   R10,BITFMT          Format field                         00428591
+BIT099   EQU   *                                                        00428592
+         CLC   ARGC,=F'0'          Any args left?                       00428593
+         BNE   $BIT000             ---> Yes, around again               00428594
+         B     RET                 Return                               00428595
+         SPACE 2                                                        00428596
+$BIT1    EQU   *                   Request was SHOW BIT *               00428597
+         LA    R1,BITMSG           Write header lines                   00428598
+         LA    R0,LBITMSG                                               00428599
+         BAL   R14,WRITEMSG                                             00428600
+         SPACE 1                                                        00428601
+         LA    R6,PBITARR          Address of standard bit array        00428602
+         LA    R7,PBITLEN          Number of entries                    00428603
+$BIT100  EQU   *                                                        00428604
+         BAL   R10,BITFMT                                               00428605
+         LA    R6,12(,R6)          Bump entry pointer                   00428606
+         BCT   R7,$BIT100          ---> Do another one                  00428607
+         SPACE 1                                                        00428608
+         LA    R6,DBITARR          Address of standard bit array        00428609
+         LA    R7,DBITLEN          Number of entries                    00428610
+$BIT110  EQU   *                                                        00428611
+         BAL   R10,BITFMT                                               00428612
+         LA    R6,12(,R6)          Bump entry pointer                   00428613
+         BCT   R7,$BIT110          ---> Do another one                  00428614
+         SPACE 1                                                        00428615
+         B     ENDMSG                                                   00428616
+         SPACE 2                                                        00428617
+BITFMT   DS    0H                  Format 1 entry                       00428618
+*                                  R6  - Address of entry               00428619
+         LM    R14,R0,0(R6)        Get entry values                     00428620
+*                                  R14 - Offset to flag byte in MAILBLO 00428621
+*                                  R15 - Flag name (length/string) ptr  00428622
+*                                  R0  - Flag bit                       00428623
+         MVI   WORKBUF,C' '        Clear to blanks                      00428624
+         MVC   WORKBUF+1(LBITMSG),WORKBUF                               00428625
+         LH    R1,0(R15)           Get length of string                 00428626
+         BCTR  R1,0                Decrement for EX                     00428627
+         EX    R1,BITMVC01         MVC  WORKBUF(0),2(R15)               00428628
+         LA    R14,MAILBLOK(R14)   Address of flag byte                 00428629
+         LR    R1,R0               Copy to a different reg              00428630
+         EX    R1,BITTM01          Is bit on?                           00428631
+         BO    BITFMT10            ---> Yes                             00428632
+         MVC   WORKBUF+BITMSGVA(5),=C'False'                            00428633
+         B     BITFMT20                                                 00428634
+BITFMT10 EQU   *                                                        00428635
+         MVC   WORKBUF+BITMSGVA(4),=C'True'                             00428636
+BITFMT20 EQU   *                                                        00428637
+         LA    R1,WORKBUF          Buffer address                       00428638
+         LA    R0,LBITMSG              & length                         00428639
+         BAL   R14,WRITEMSG        Write the output line                00428640
+         BR    R10                 Return                               00428641
+         SPACE 2                                                        00428642
+BITSRCH  DS    0H                                                       00428643
+*  WORKBUF+0 - Name translated to uppercase                             00428644
+*  R4 - Name length                                                     00428645
+*  R6 - First entry address                                             00428646
+*  R7 - Count of entries                                                00428647
+         LR    R14,R4              Copy value                           00428648
+         BCTR  R14,0               Decrement for EX                     00428649
+BITSRCH0 EQU   *                                                        00428650
+         L     R15,4(,R6)          Flag name ptr                        00428651
+         CH    R4,0(R15)           Lengths match?                       00428652
+         BNE   BITSRCH2            ---> No                              00428653
+         EX    R14,BITCLC01        Names matchs?                        00428654
+         BER   R10                 ---> Return                          00428655
+BITSRCH2 EQU   *                                                        00428656
+         LA    R6,12(,R6)          Bump ptr to next entry               00428657
+         BCT   R7,BITSRCH0         ---> Keep looking                    00428658
+         B     4(,R10)             ---> Not found                       00428659
+         SPACE 2                                                        00428660
+BITCLC01 CLC   WORKBUF(0),2(R15)                                        00428661
+BITMVC01 MVC   WORKBUF(0),2(R15)                                        00428662
+BITMVC02 MVC   WORKBUF(0),0(R5)                                         00428663
+BITTM01  TM    0(R14),X'00'                                             00428664
+BITTR01  TR    WORKBUF(0),UPCASE                                        00428665
+         SPACE 2                                                        00428666
+BITMSG   DC    C' Flag name                                    Value '  00428667
+         DC    X'15'                                                    00428668
+         DC    C'===========================================  ======='  00428669
+LBITMSG  EQU   *-BITMSG                                                 00428670
+BITMSGVA EQU   46                  Offset to value field                00428671
+         SPACE 1                                                        00428672
+BITHLP   DC    C'SHOW BIT bitname',X'15'                                00428673
+         DC    C'            *   '                                      00428674
+LBITHLP  EQU   *-BITHLP                                                 00428675
+         EJECT ,                                                        00428676
+*--------------------------------------------------------------------   00428677
+*                       S H O W    S T A T U S                          00428678
+*                                                                       00428679
+*  List status info                                                     00428680
+*--------------------------------------------------------------------   00428681
+./ R 00970200 00970230 $ 970210 10                    11/28/90 17:39:42
+SHLPMSG  DC    C'SHOW options:  Bit | Path | STatus | Version'          00970210
+         DC    X'15'                                                    00970220
+         DC    C'               [ACtive] {Domains | ORigins | OUtgoing X00970230
+               | SPecial}'                                              00970240

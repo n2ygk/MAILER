@@ -1,0 +1,24 @@
+./ D 00214630                                         12/23/88 12:00:22
+./ I 00234880          $ 235080 200                   12/23/88 12:00:22
+         LR    R15,R2             Copy buffer ptr                       00235080
+         S     R15,=A(RCPT)       Compute length                        00235280
+         C     R15,=F'80'         Longer than 80?                       00235480
+         BH    NOPARM3            ---> Yes                              00235680
+./ R 00237000          $ 237070 70                    12/23/88 12:00:22
+         B     NOPARM99           --> Continue                          00237070
+         SPACE 1                                                        00237140
+NOPARM3  EQU   *                                                        00237210
+         MVC   TWORK(1),RCPT+79   Save value of this char               00237280
+         MVI   RCPT+79,X'15'      Put in NL character                   00237350
+         PUNCHC RCPT,ERROR=PUNERR punch the MAIL FROM: line             00237420
+         MVC   RCPT+79(1),TWORK   Restore char                          00237490
+         PUNCHC RCPT+79,ERROR=PUNERR Punch the second line              00237560
+         SPACE 1                                                        00237630
+NOPARM99 EQU   *                                                        00237700
+         ICM   R10,B'1111',ACTCHN get next ACTADR in the list           00237770
+./ D 00267000 00297000                                12/23/88 12:00:22
+./ D 00302000 00302200                                12/23/88 12:00:22
+./ R 00335000          $ 335490 490                   12/23/88 12:00:22
+RCPT     DC    CL160' '           rcpt message                          00335490
+./ R 00338180          $ 338570 390                   12/23/88 12:00:22
+RCPTTO   DC    CL152' '           space for the address                 00338570

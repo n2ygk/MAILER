@@ -1,0 +1,181 @@
+GETH     TITLE 'CUCCA VM NETWORK MAILER - VERSION 1 -  GETHDR -    READ*00001000
+               MESSAGE HEADER INTO CORE'                                00002000
+*---------------------------------------------------------------------* 00003000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00004000
+*    Program Property of the Trustees of Columbia University in the   * 00005000
+*    City of New York.                                                * 00006000
+*---------------------------------------------------------------------* 00007000
+GETHDR   CSECT                                                          00008000
+* GETHDR - READ MESSAGE HEADER.                                         00009000
+*  THIS ROUTINE READS A MESSAGE HEADER INTO A BUFFER SUPPLIED BY        00010000
+*  THE CALLER AND RETURNS.                                              00011000
+*                                                                       00012000
+*                                      ALAN CROSSWELL 7/81              00013000
+*                                                                       00014000
+* LAST EDIT: 4/27/82 BY ALAN CROSSWELL                                  00015000
+*                                                                       00016000
+* CALLED VIA - CALL GETHDR,(MAILBLOK)                                   00017000
+*   MAILBLOK=ADDRESS OF MAILBLOK MACRO EXPANSION                        00018000
+*                                                                       00019000
+PAB      DSECT ,                                                        00020000
+@MBLOK   DS    A             ADDRESS OF MAILBLOK                        00021000
+         SPACE ,                                                        00022000
+* REGISTER USAGE -                                                      00023000
+R0  EQU  0                                                              00024000
+R1  EQU  1                                                              00025000
+R2  EQU  2                                                              00026000
+R3  EQU  3                                                              00027000
+R4  EQU  4                                                              00028000
+R5  EQU  5                                                              00029000
+R6  EQU  6 -                                                            00030000
+R7  EQU  7 - STACK POINTER (HEADER PUT HERE)                            00031000
+R8  EQU  8 - STACK LENGTH                                               00032000
+R9  EQU  9 - SPOOL FILE NUMBER AND WORK REGISTER                        00033000
+R10 EQU 10 - CARD COUNTER                                               00034000
+R11 EQU 11 - MAILBLOK BASE                                              00035000
+R12 EQU 12 - PROGRAM BASE                                               00036000
+R13 EQU 13 - SAVE AREA ADDRESS                                          00037000
+R14 EQU 14 - SUBROUTINE LINKAGE                                         00038000
+R15 EQU 15 - SUBROUTINE LINKAGE                                         00039000
+         SPACE ,                                                        00040000
+         PRINT NOGEN                                                    00041000
+         BLOCKS ,                                                       00042000
+         MAILBLOK ,                                                     00043000
+         EJECT ,                                                        00044000
+GETHDR   CSECT ,                                                        00045000
+         USING GETHDR,R15    TEMPORARY ADDRESSABILITY                   00046000
+         B     EYESKIP       SKIP EYE CATCHER                           00047000
+MYNAME   DC    CL8'GETHDR',CL8'&SYSDATE'                                00048000
+EYESKIP  DS    0H                                                       00049000
+         DROP  R15                                                      00050000
+         STM   R14,R12,12(R13)                                          00051000
+         LR    R12,R15       GET PERMANENT ADDRESSABILITY               00052000
+         USING GETHDR,R12                                               00053000
+         LA    R14,SAVE                                                 00054000
+         ST    R13,4(R14)                                               00055000
+         ST    R14,8(R13)                                               00056000
+         LR    R13,R14                                                  00057000
+         USING PAB,R1        GET PARM                                   00058000
+         L     R11,@MBLOK    GET MAILBLOK BASE                          00059000
+         DROP  R1                                                       00060000
+         USING MAILBLOK,R11                                             00061000
+         MVC   MAILHBUF,STACKP   HEADER IS LOADED HERE                  00062000
+         LM    R7,R8,STACKP  GET PTR AND LENGTH IN REGS                 00063000
+         LA    R5,MAILSFB    ADDRESS OF SFBLOK                          00064000
+         USING SFBLOK,R5                                                00065000
+         LH    R5,SFBRECSZ   GET LRECL                                  00066000
+         DROP  R5                                                       00067000
+         LA    R1,=C'READY 00C'                                         00068000
+         LA    R0,9                                                     00069000
+         DC    X'83100008'   MAKE SURE IT'S READIED                     00070000
+         LTR   R15,R0        TEST IT                                    00071000
+         BNZ   RDERR                                                    00072000
+         LA    R10,1         START AT CARD 1                            00073000
+         RDCARD BUFFER,(R5),ERROR=EOF  READ FIRST CARD                  00074000
+         CLC   =C':READ',BUFFER  SENT VIA CMS PUNCH COMMAND?            00075000
+         BNE   RDLOOP1       NOPE, IT'S USEFUL DATA                     00076000
+RDLOOP   EQU   *                                                        00077000
+         LA    R10,1(R10)    INCREMENT THE CARD COUNTER                 00078000
+         RDCARD BUFFER,(R5),ERROR=EOF  READ A CARD                      00079000
+* NOW GET LENGTH OF RECORD AND STUFF IT INTO THE BUFFER....             00080000
+RDLOOP1  EQU   *                                                        00081000
+         LR    R4,R5         COPY LENGHT OF BUFFER                      00082000
+         LA    R3,REVTAB+LREVTAB  ADDR OF END OF REVTAB                 00083000
+         SR    R3,R5         ONLY WANT LAST (R5) BYTES OF IT            00084000
+         BCTR  R4,0          MINUS 1 FOR EXECUTE                        00085000
+         SR    R1,R1         KILL THE HIGH BYTE                         00086000
+         EX    R4,MOVEREV    COPY REVTAB INTO REVBUF                    00087000
+         EX    R4,TRANS1     REVERSE THE STRING                         00088000
+         EX    R4,TRANS2     GET LENGTH                                 00089000
+         BZ    HDREND        BLANK LINE; END OF HEADER.                 00090000
+* R1 POINTS TO 1ST NON-BLANK CHARACTER IN REVERSED STRING               00091000
+         LA    R2,REVBUF(R5) ADDR OF END OF REVERSED STR.               00092000
+         SR    R2,R1         LENGTH OF STRING                           00093000
+* NOW ADD THE STRING TO THE BUFFER AND THEN APPEND A LINEND (X'15')     00094000
+         SR    R8,R2         PAST END OF BUFFER?                        00095000
+         BL    NOSPACE       YES, GO DIE                                00096000
+         BCTR  R2,0                MINUS 1 FOR EXECUTE                  00097000
+         EX    R2,COPY       COPY INTO BUFFER                           00098000
+         LA    R7,1(R7,R2)   END OF NEW STRING                          00099000
+         MVI   0(R7),X'15'   TACK ON A LINEND                           00100000
+         LA    R7,1(R7)      POISE PTR. FOR NEXT STRING                 00101000
+         B     RDLOOP                                                   00102000
+HDREND   EQU   *                                                        00103000
+         BCTR  R8,0          -1 FROM STACK FOR THE LINEND               00104000
+         LTR   R8,R8         TEST IF THERE IS ROOM                      00105000
+         BL    NOSPACE       OUT OF SPACE                               00106000
+         MVI   0(R7),X'15'   ADD THE 2ND LINEND                         00107000
+* NOW SAVE THE LENGTH AND NUMBER OF RECORDS INTO MAILBLOK.              00108000
+         BCTR  R8,0          -1 FROM STACK                              00109000
+         LA    R7,1(R7)      NEW STACK POINTER                          00110000
+         STM   R7,R8,STACKP  SET NEW STACK POINTERS                     00111000
+         S     R7,MAILHBUF   GET LENGTH OF HEADER                       00112000
+         ST    R7,MAILHBUF+4 SET LENGTH OF HEADER BUFFER                00113000
+         ST    R10,MAILHREC  SAVE RECORD COUNT                          00114000
+*-------------------------------------------------------------------    00115000
+* NOW COUNT THE NUMBER OF NL'S IN THE HEADER (USER MAY HAVE IMBEDDED    00116000
+* MULTIPLE NL'S IN A SINGLE RECORD).                                    00117000
+*-------------------------------------------------------------------    00118000
+         SR    R6,R6         NEWLINE COUNTER                            00119000
+         LM    R7,R8,MAILHBUF GET ADDRESS AND LENGTH                    00120000
+         AR    R8,R7         END ADDRESS                                00121000
+         LA    R3,TRAPTAB    TRAP TABLE                                 00122000
+         MVI   X'15'(R3),1   TRAP ONLY X'15'                            00123000
+COUNT15  EQU   *                                                        00124000
+         CR    R7,R8         AT END OF HEADER?                          00125000
+         BNL   COUNTED       ALL DONE COUNTING                          00126000
+         LR    R4,R8         END ADDRESS                                00127000
+         SR    R4,R7         LENGTH REMAINING                           00128000
+         CH    R4,=Y(256)    MORE THAN ON EXECUTE'S WORTH?              00129000
+         BNH   *+8           NOPE, JUST DO IT                           00130000
+         LA    R4,256        TRUNC THE SEARCH                           00131000
+         LA    R1,0(R7,R4)   ADDRESS OF END OF TRT IF NO X15'S          00132000
+         BCTR  R4,0          -1 FOR EXECUTE                             00133000
+         EX    R4,TRAP       TRAP THE X15                               00134000
+         LA    R6,1(R6)      BUMP THE COUNTER                           00135000
+         LA    R7,1(R1)      GET UPDATED POINTER                        00136000
+         B     COUNT15       AND LOOP BACK                              00137000
+COUNTED  EQU   *                                                        00138000
+         BCTR  R6,0          -1 FOR THE LAST BLANK LINE                 00139000
+         ST    R6,MAILHLIN   SAVE "LINE" COUNT                          00140000
+         MVI   X'15'(R3),0   RESTORE TABLE FOR NEXT GUY                 00141000
+         SR    R15,R15       ALL DONE                                   00142000
+RET      EQU   *                                                        00143000
+         LA    R1,=C'CLOSE RDR'                                         00144000
+         LA    R0,9                                                     00145000
+         DC    X'83100008'             CLOSE THE READER                 00146000
+         L     R13,4(R13)                                               00147000
+         L     R14,12(R13)                                              00148000
+         LM    R0,R12,20(R13)                                           00149000
+         BR    R14                                                      00150000
+         SPACE ,                                                        00151000
+*--------------------------------------------------------------------   00152000
+*        ERROR RETURNS                                                  00153000
+*--------------------------------------------------------------------   00154000
+NOSPACE  EQU   *                                                        00155000
+         WTR   GTH003,(CA,MYNAME)                                [1.24] 00155500
+         LA    R15,12                                                   00156000
+         B     RET                                                      00157000
+         SPACE ,                                                        00158000
+EOF      EQU   *                                                        00159000
+         C     R15,=F'1'     IS IT EOF?                                 00160000
+         BE    HDREND        END THE HEADER                             00161000
+         WTR   GTH010,(D,(R15)) RDCARD ERROR MESSAGE                    00162000
+         LA    R15,12                                                   00163000
+         B     RET                                                      00164000
+RDERR    EQU   *                                                        00165000
+         WTR   GTH045,(D,(R15))                                         00166000
+         LA    R15,12                                                   00167000
+         B     RET                                                      00168000
+         SPACE ,                                                        00169000
+TRAP     TRT   0(0,R7),0(R3)                                            00170000
+*                                                                       00171000
+SAVE     DS    18F                                                      00172000
+BUFFER   DS    CL132                                                    00173000
+REVBUF   DS    CL132                                                    00174000
+MOVEREV  MVC   REVBUF(0),0(R3)                                          00175000
+TRANS1   TR    REVBUF(0),BUFFER                                         00176000
+TRANS2   TRT   REVBUF(0),SKIPBLKS                                       00177000
+COPY     MVC   0(0,R7),BUFFER                                           00178000
+         LTORG ,                                                        00179000
+         END   GETHDR                                                   00180000

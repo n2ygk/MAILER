@@ -1,0 +1,90 @@
+/*-------------------------------------------------------------------*  00001000
+ *    MAILER -- Copyright (c) 1982,1985 Columbia University.         *  00002000
+ *  Program Property of the Trustees of Columbia University in the   *  00003000
+ *  City of New York.                                                *  00004000
+ *-------------------------------------------------------------------*/ 00005000
+/*                                                                      00006000
+ * declarations of useful entries in MAILBLOK CSECT.  Used in           00007000
+ * conjunction with Waterloo C's Global Base Register facility          00008000
+ * and the CGLUE AUX file which all C functions must be compiled        00009000
+ * with for it to work.  The CGLUE ASSEMBLE FUNC macro sets up the      00010000
+ * Global Base Register (r10) with the address of MAILBLOK.             00011000
+ *                                                                      00012000
+ * Alan Crosswell, 11/85                                                00013000
+ */                                                                     00014000
+#include "cmsbloks.h"                                                   00015000
+#include "structs.h"                                                    00016000
+#include "tbluk.h"                                                      00017000
+                                                                        00018000
+extern mailblok;                                                        00019000
+extern int mailhbuf[2];         /* addr, len of header buffer */        00019500
+extern char upcase[256];        /* the upper-case translate table */    00020000
+extern struct sfblok mailsfb;   /* sfblok for current reader file */    00021000
+extern int stackp[2];           /* stack pointer, length */             00022000
+extern struct fscb *mailulfs;   /* error log fscb pointer */            00022500
+extern char *lcldom;            /* local-domain string */               00023000
+extern char *rscsdom;           /* rscs-domain string */                00024000
+extern char cpustr[8];          /* rscs node name */                    00025000
+extern int cpuslen;             /*  length */                           00025500
+extern char rscsname[8];        /* rscs vmid */                         00026000
+extern char mailvmid[8];        /* mail vmid */                         00026200
+extern char mailtime[16];       /* time of last start/reload */         00026400
+extern char mailvers[16];       /* mailer version, assembly date */     00026600
+extern char mailnode[8];        /* origin node name */                  00027000
+extern int mailnlen;            /*  length */                           00027600
+extern char mailuser[8];        /* origin userid */                     00028000
+extern int mailulen;            /*  length */                           00029490
+extern struct actadr *mailchn;  /* action address list */               00030000
+extern struct fieldd *mailfld;                                          00030500
+extern struct fieldd *mailsfld;                                         00031000
+extern struct tbtab *mailktab;                                          00032000
+extern struct tbtab *maildtab;                                          00033000
+extern struct tbtab *mailrtab;                                          00034000
+extern struct tbtab *mailvtab;                                          00035000
+extern struct tbtab *mailptab;                                          00035200
+extern int mailhrec;                                                    00035400
+extern int mailhlin;                                                    00035600
+extern char mailftxt[];                                                 00035800
+extern char mailopts;                                                   00036000
+#define MOPTDEF 0x80                                                    00037000
+#define MOPTAUN 0x40                                                    00038000
+#define MOPTAC  0x20                                                    00038300
+#define MOPTVL  0x10                                                    00038600
+extern char mailflg1;                                                   00039000
+#define MFLGDEST 0x80                                                   00040000
+#define MFLG1LCL 0x40                                                   00041000
+#define MFLG1GTW 0x20                                                   00042000
+#define MFLG1EDI 0x10                                                   00043000
+#define MFLG1REJ 0x08                                                   00044000
+#define MFLG1HDS 0x04                                                   00045000
+#define MFLG1DOT 0x02                                                   00046000
+#define MFLG1RES 0x01                                                   00047000
+extern char mailflg2;                                                   00048000
+#define MFLG2SMT 0x80                                                   00049000
+#define MFLG2VLF 0x40                                                   00050000
+#define MFLG2NOR 0x20                                                   00051000
+#define MFLG2NLF 0x10                                                   00051300
+#define MFLG2NOH 0x08                                                   00051600
+extern int maxrcvd;                                                     00052000
+/* extern struct fscb ulfscb */                                         00053000
+/* extern struct trcent *trtblst  */                                    00054000
+/* extern struct trcent *trtblcur */                                    00055000
+/* extern struct trcent *trtblend */                                    00056000
+extern char maintid[8];         /* maintainer's userid */               00057000
+extern char maintnod[8];        /* maintainer's node name */            00058000
+extern char maintid2[8];        /* maintainer's userid */               00059000
+extern char maintno2[8];        /* maintainer's node name */            00060000
+extern char maintid3[8];        /* maintainer's userid */               00061000
+extern char maintno3[8];        /* maintainer's node name */            00062000
+extern char maintid4[8];        /* maintainer's userid */               00063000
+extern char maintno4[8];        /* maintainer's node name */            00064000
+extern char maintid5[8];        /* maintainer's userid */               00065000
+extern char maintno5[8];        /* maintainer's node name */            00066000
+extern char maintid6[8];        /* maintainer's userid */               00067000
+extern char maintno6[8];        /* maintainer's node name */            00068000
+extern char maintid7[8];        /* maintainer's userid */               00069000
+extern char maintno7[8];        /* maintainer's node name */            00070000
+extern char maintid8[8];        /* maintainer's userid */               00071000
+extern char maintno8[8];        /* maintainer's node name */            00072000
+extern char maintid9[8];        /* maintainer's userid */               00073000
+extern char maintno9[8];        /* maintainer's node name */            00074000

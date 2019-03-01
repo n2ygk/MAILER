@@ -1,0 +1,153 @@
+*[1.22]added checking for RSCS-domain                            [1.22] 00001290
+RSCSVER TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - INCOMING RSCS EXIT'  00001580
+*---------------------------------------------------------------------* 00002000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00003000
+*    Program Property of the Trustees of Columbia University in the   * 00004000
+*    City of New York.                                                * 00005000
+*---------------------------------------------------------------------* 00006000
+RSCSVER  CSECT ,                                                        00007000
+* RSCSVER -                                                             00008000
+*  Files from RSCS nodes that are not running  Mailer are checked       00009000
+*  to make sure that the userid that generated a file matches the       00010000
+*  userid specified in the from/sender field of the message.            00011000
+*                                                                       00012000
+*  CALLED VIA -- CALL RSCSVER,(MAILBLOK)                                00015000
+         SPACE ,                                                        00016000
+PAB      DSECT                                                          00017000
+@MBLOK   DS    A                                                        00018000
+         SPACE ,                                                        00019000
+* REGISTER USAGE -                                                      00020000
+R0  EQU  0 -                                                            00021000
+R1  EQU  1 -                                                            00022000
+R2  EQU  2 -                                                            00023000
+R3  EQU  3 -                                                            00024000
+R4  EQU  4 -                                                            00025000
+R5  EQU  5 -                                                            00026000
+R6  EQU  6 -                                                            00027000
+R7  EQU  7 -                                                            00028000
+R8  EQU  8 -                                                            00029000
+R9  EQU  9 -                                                            00030000
+R10 EQU 10 -                                                            00031000
+R11 EQU 11 - MAILBLOK BASE                                              00032000
+R12 EQU 12 - PROGRAM BASE                                               00033000
+R13 EQU 13 - SAVE AREA                                                  00034000
+R14 EQU 14 - SUBROUTINE LINKAGE                                         00035000
+R15 EQU 15 - SUBROUTINE LINKAGE                                         00036000
+         SPACE                                                          00037000
+         PRINT NOGEN                                                    00038000
+         BLOCKS ,                                                       00039000
+         MAILBLOK ,                                                     00040000
+         EJECT                                                          00041000
+RSCSVER  CSECT ,                                                        00042000
+         USING RSCSVER,R15   TEMPORARY ADDRESSABILITY                   00043000
+         B     EYESKIP       BRANCH OVER EYESKIP                        00044000
+MYNAME   DC    CL8'RSCSVER',CL8'&SYSDATE'                               00045000
+EYESKIP  DS    0H                                                       00046000
+         DROP  R15                                                      00047000
+         STM   R14,R12,12(R13) SAVE CALLER'S REGS                       00048000
+         LR    R12,R15       PERMANENT ADDRESSABILITY                   00049000
+         USING RSCSVER,R12                                              00050000
+         LA    R14,SAVE      MY SAVE AREA                               00051000
+         ST    R13,4(R14)    SAVE CALLER'S PTR                          00052000
+         ST    R14,8(R13)    CHAIN MINE BACK                            00053000
+         LR    R13,R14       SET MY SAVE PTR                            00054000
+         USING PAB,R1        ADDRESS PLIST                              00055000
+         L     R11,@MBLOK    GET MAILBLOK BASE                          00056000
+         DROP  R1                                                       00057000
+         USING MAILBLOK,R11                                             00058000
+         ICM   R10,B'1111',MAILSFLD    GET SENDER FIELD                 00059000
+         BZ    BADFLD        NO SENDER, DIE.                            00060000
+         USING FIELDD,R10    ADDRESS IT                                 00061000
+         ICM   R10,B'1111',FIPARS    GET MBOX POINTER                   00062490
+         BZ    BADFLD                                                   00063000
+         USING MBOX,R10    ADDRESS IT                                   00064590
+         L     R9,MBXLCL          GET USER NODE POINTER                 00065570
+         BZ    BADFLD                                                   00066000
+         USING NODE,R9     ADDRESS IT                                   00067590
+         L     R9,NODDOWN    GET POINTER TO USER NAME TOKEN             00068180
+         USING TOKEND,R9     ADDRESS IT                                 00069000
+         SR    R1,R1         GET A ZERO                                 00070000
+         L     R1,TOKLEN     GET LENGTH OF USER NAME                    00071490
+         MVC   SENDER,=CL8' ' BLANK OUT SENDER                          00072000
+         C     R1,=F'8'      12 OR LESS                                 00073000
+         BL    SEND1         OK                                         00074000
+         LA    R1,8          TRUNC IT                                   00075000
+SEND1    EQU   *                                                        00076000
+         BCTR  R1,0          -1 FOR EXECUTE                             00077000
+         LA    R2,SENDER     DEST OF COPY                               00078000
+         L     R3,TOKPTR          SOURCE                                00079680
+         EX    R1,COPY       COPY IT IN                                 00080000
+         EX    R1,UPIT       UPPER CASE                                 00081000
+         L     R9,MBXDML          GET HOST NODE POINTER                 00082770
+         BZ    BADFLD                                                   00083000
+         USING NODE,R9     ADDRESS IT                                   00084590
+         L     R9,NODDOWN    GET POINTER TO HOST NAME TOKEN             00085180
+         USING TOKEND,R9     ADDRESS IT                                 00086000
+         SR    R7,R7         GET A ZERO                          [1.22] 00087040
+         L     R7,TOKLEN     GET LENGTH OF host NAME             [1.22] 00087090
+         L     R2,TOKPTR         address of token                [1.22] 00087120
+*----------------------------------------------------------------[1.22] 00087160
+* If a RSCS-domain is defined and the hostname ends in it, then  [1.22] 00087200
+* strip it off since the various tables don't include it.        [1.22] 00087240
+*----------------------------------------------------------------[1.22] 00087280
+         ICM   R4,B'1111',RSCSDOM no RSCS domain string defined  [1.22] 00087320
+         BZ    NORSCSD       so stop wasting time!               [1.22] 00087360
+         SR    R5,R5         get a zero                          [1.22] 00087400
+         IC    R5,0(R4)      get length of domain string         [1.22] 00087440
+         LR    R3,R5         make a copy for later               [1.22] 00087480
+         LR    R1,R7         length of token                     [1.22] 00087520
+         SR    R1,R5         minus length of domain string       [1.22] 00087560
+         BM    NORSCSD       token too short to include it       [1.22] 00087600
+         LA    R1,0(R1,R2)   beginning of possible match         [1.22] 00087640
+         LA    R4,1(R4)      beginning of domain string          [1.22] 00087680
+         SR    R0,R0         0 will contain one character        [1.22] 00087720
+         SR    R6,R6         and 6 the other                     [1.22] 00087760
+DOMLOOP  EQU   *             loop to compare token end to domain [1.22] 00087800
+         IC    R0,0(R1)      get next token character            [1.22] 00087840
+         O     R0,=X'00000040' upper case it                     [1.22] 00087880
+         IC    R6,0(R4)      get next domain string character    [1.22] 00087920
+         O     R6,=X'00000040' upper case it too                 [1.22] 00087960
+         CR    R0,R6         compare the upper case characters   [1.22] 00088000
+         BNE   DOMNOMAT      do match; exit loop                 [1.22] 00088040
+         LA    R1,1(R1)      increment pointer                   [1.22] 00088080
+         LA    R4,1(R4)      ditto for domain string             [1.22] 00088120
+         BCT   R5,DOMLOOP    loop for length of string           [1.22] 00088160
+* falling thru here means they match.                            [1.22] 00088200
+         SR    R7,R3         chop off end of string              [1.22] 00088240
+NORSCSD  EQU   *             no rscs domain given                [1.22] 00088280
+DOMNOMAT EQU   *             fall thru here to old lookup code   [1.22] 00088320
+         MVC   HOSTNODE,=CL8' '  BLANK OUT HOST                         00089690
+         C     R7,=F'8'      8 OR LESS                           [1.22] 00090490
+         BL    SEND2         OK                                         00091000
+         LA    R7,8          TRUNC IT                            [1.22] 00092490
+SEND2    EQU   *                                                        00093000
+         LR    R1,R7         get back into r1 (scotch tape!!!)   [1.22] 00093500
+         BCTR  R1,0          -1 FOR EXECUTE                             00094000
+         LA    R2,HOSTNODE   DEST OF COPY                               00095690
+         L     R3,TOKPTR          SOURCE                                00096680
+         EX    R1,COPY       COPY IT IN                                 00097000
+         EX    R1,UPIT                                                  00098000
+         CLC   SENDER,MAILUSER  USER AND NODE AGREE?                    00099000
+         BNE   BADSNDR       SORRY                                      00100000
+         CLC   HOSTNODE,MAILNODE                                        00101490
+         BNE   BADSNDR                                                  00102000
+         SR    R15,R15                                                  00103000
+RET      EQU   *                                                        00104000
+         L     R13,4(R13)              GET CALLER'S SAVE PTR            00105000
+         L     R14,12(R13)             GET R14                          00106000
+         LM    R0,R12,20(R13)          GET R0-R12                       00107000
+         BR    R14                     RETURN                           00108000
+         SPACE ,                                                        00109000
+BADFLD   EQU   *                                                        00110000
+         XC    MAILSFLD,MAILSFLD                                        00111000
+BADSNDR  EQU   *                                                        00112000
+         LA    R15,4                                                    00113000
+         B     RET                                                      00114000
+         SPACE ,                                                        00115000
+COPY     MVC   0(0,R2),0(R3)                                            00116000
+UPIT     TR    0(0,R2),UPCASE                                           00117000
+         LTORG ,                                                        00118000
+SAVE     DS    18F                     SAVE AREA                        00119000
+SENDER   DS    CL8                                                      00120000
+HOSTNODE DS    CL8                                                      00121490
+         END   RSCSVER                                                  00122000

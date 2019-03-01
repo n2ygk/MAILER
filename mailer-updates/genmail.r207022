@@ -1,0 +1,60 @@
+./ D 00030000                                         12/06/90 14:58:49
+./ R 00032000          $ 32190 190                    12/06/90 14:58:49
+txtlibs = 'MAILLCL MAILGEN CLIB'
+say 'Globalling' txtlibs
+'GLOBAL TXTLIB' txtlibs                                                 00032000
+./ I 00034000          $ 34300 300                    12/06/90 14:58:49
+say ' '
+say 'Loading MAILER code'
+./ I 00036000          $ 36500 500                    12/06/90 14:58:49
+call fixdate                                                            00036500
+./ I 00038990          $ 39990 1000                   12/06/90 14:58:49
+say 'MAILER MODULE generated with rc='rc
+./ I 00046000          $ 46030 30                     12/06/90 14:58:49
+say 'Load map saved as MAILER MAP'
+./ I 00046140          $ 46160 20                     12/06/90 14:58:49
+say ' '
+say 'Loading MG code'
+./ I 00046420          $ 46450 30                     12/06/90 14:58:49
+say 'MG MODULE generated with rc='rc
+./ I 00046840          $ 46920 80                     12/06/90 14:58:49
+say 'Load map saved as MG MAP'
+./ I 00053000          $ 54000 1000                   12/06/90 14:58:49
+                                                                        00054000
+/* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ */00055000
+/*  Modify the generation date field in the MAILBLOK to reflect the   */00056000
+/*  correct date and time of creation of the module.                  */00057000
+/* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ */00058000
+                                                                        00059000
+FixDate: procedure                                                      00060000
+'FINIS LOAD MAP A'                                                      00061000
+'EXECIO * DISKR LOAD MAP A ( LOCATE /MAILBLOK SD/ STEM MAILBLOK. FINIS' 00062000
+if mailblok.0 <> 2  then  do                                            00063000
+   say ' '                                                              00064000
+   say '** NOTE ** Unable to update generation date in MAILBLOK'        00065000
+   if mailblok.0 = 0  then                                              00066000
+      say '           Address not found in LOAD MAP'                    00067000
+   else                                                                 00068000
+      say '           Too many addresses found in LOAD MAP'             00069000
+   say ' '                                                              00070000
+   return                                                               00071000
+   end                                                                  00072000
+mailblok = word(mailblok.1,3)                /* Csect address         */00073000
+dateoffset = 'A1'                            /* Offset to date field  */00074000
+dateaddr = d2x(x2d(mailblok)+x2d(dateoffset))/* Address in old module */00075000
+parse value storage(dateaddr,17) with ,                                 00076000
+   . +2 slash1 +1 . +2 slash2 +1 . +5 colon1 +1 . +2 colon2 +1 .        00077000
+                                                                        00078000
+if slash1 <> '/' | slash2 <> '/' | colon1 <> ':' | colon2 <> ':' then do00079000
+   say ' '                                                              00080000
+   say '** NOTE ** Unable to update generation date in MAILBLOK'        00081000
+   say '           Date address is no longer' dateaddr                  00082000
+   say ' '                                                              00083000
+   end                                                                  00084000
+else  do                                                                00085000
+   newdate = date('U') time()                                           00086000
+   x = storage(dateaddr,17,newdate)                                     00087000
+   say 'MAILBLOK asembled' word(x,1) 'at' word(x,2)                     00088000
+   say 'Generation time changed to' word(newdate,1) 'at' word(newdate,2)00089000
+   end                                                                  00090000
+return                                                                  00091000

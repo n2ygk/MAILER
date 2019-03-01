@@ -1,0 +1,23 @@
+./ R 00035000          $ 35490 490                    05/15/90 14:51:59
+          cmdstring , msgcmd .               /*                       */00035490
+./ R 00045000          $ 45290 290                    05/15/90 14:51:59
+if msgcmd = ''  then                         /* Set msg cmd default   */00045290
+   msgcmd  = 'MSGNOH'                        /*    if none given      */00045580
+./ I 00081000          $ 81500 500                    05/15/90 14:51:59
+say '       :  Msgcmd    = "'msgcmd'"'                                  00081500
+./ R 00159000          $ 159490 490                   05/15/90 14:51:59
+      expose cmdstring console foruser localnode msgcmd requestor       00159000
+./ R 00191000          $ 191490 490                   05/15/90 14:51:59
+         expose foruser                                                 00191000
+./ R 00258000          $ 258490 490                   05/15/90 14:51:59
+         expose cmdstring console foruser localnode msgcmd requestor    00258000
+./ R 00306000          $ 306490 490                   05/15/90 14:51:59
+            expose cmdstring console foruser localnode msgcmd requestor 00306000
+./ R 00351000          $ 351490 490                   05/15/90 14:51:59
+       expose cmdstring console foruser localnode msgcmd requestor      00351000
+./ R 00408000          $ 408490 490                   05/15/90 14:51:59
+      expose console localnode msgcmd requestor                         00408000
+./ R 00416000          $ 416490 490                   05/15/90 14:51:59
+   if node = localnode  then  do             /* On local node         */00416490
+./ R 00419000          $ 419490 490                   05/15/90 14:51:59
+         msgcmd <> 'MSG'  then               /*    in MAILER          */00419490

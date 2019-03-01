@@ -1,0 +1,44 @@
+./ R 00124964          $ 124974 10                    01/11/90 17:29:20
+         EJECT ,                                                        00124974
+./ I 00127000          $ 127200 200                   01/11/90 17:29:20
+         SPACE 1                                                        00127200
+         XC    LOADRC,LOADRC Zero highest RC from LOAD                  00127400
+         SPACE 1                                                        00127600
+./ I 00131000          $ 131500 500                   01/11/90 17:29:20
+         SPACE 1                                                        00131500
+./ I 00133000          $ 133500 500                   01/11/90 17:29:20
+         SPACE 1                                                        00133500
+./ I 00135000          $ 135100 100                   01/11/90 17:29:20
+         SPACE 1                                                        00135100
+./ I 00135600          $ 135800 200                   01/11/90 17:29:20
+         SPACE 1                                                        00135800
+./ I 00167000          $ 167200 200                   01/11/90 17:29:20
+         C     R15,LOADRC    Highest so far?                            00167200
+         BNP   GOTIT2        ---> No                                    00167400
+         ST    R15,LOADRC    Remember it                                00167600
+./ R 00180000          $ 180490 490                   01/11/90 17:29:20
+         L     R15,LOADRC     Pick up return code                       00180490
+./ I 00260000          $ 260200 200                   01/11/90 17:29:20
+         C     R15,LOADRC    Highest so far?                            00260200
+         BNP   GOTIT         ---> No                                    00260400
+         ST    R15,LOADRC    Remember it                                00260600
+./ R 00309000 00310000 $ 309490 490                   01/11/90 17:29:20
+* LOADIT subroutine - loads the named user exit into CMS storage        00309490
+* and returns address of loaded routine in R1                           00309980
+*                                                                       00310470
+./ D 00319000                                         01/11/90 17:29:20
+./ D 00323000                                         01/11/90 17:29:20
+./ I 00327000          $ 327500 500                   01/11/90 17:29:20
+         SR    R15,R15       Set return code                            00327500
+./ I 00328000          $ 328100 100                   01/11/90 17:29:20
+         SPACE 1                                                        00328100
+BADLOAD  EQU   *                                                        00328200
+         LR    R4,R15        Save return code                           00328300
+         WTR   STI017,(CA,(R3),D,(R15))                                 00328400
+         LR    R15,R4        Restore return code                        00328500
+         L     R14,SAVE14    Restore return address                     00328600
+         BR    R14                                                      00328700
+./ D 00349000 00352000                                01/11/90 17:29:20
+./ I 00384500          $ 384600 100                   01/11/90 17:29:20
+LOADRC   DS    F                   Highest RC from LOAD
+         SPACE 1                                                        00384500

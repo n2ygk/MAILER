@@ -1,0 +1,11 @@
+./ I 00160000          $ 160100 100                   09/06/90 10:35:39
+         SPACE 1
+*  Message 41 is used by the NOMAIL exit to display the service name
+*  or destination for which no service is being provided.  The length
+*  of the service name field must be coordinated with the code in
+*  NOMAIL.
+         SPACE 1
+./ R 00162000          $ 162490 490                   09/06/90 10:35:39
+         DC    C' for ',CL40' '                                         00162000
+./ R 00164000          $ 164490 490                   09/06/90 10:35:39
+M41      DC    A(T41),AL1(3,3,45,40,0)                                  00164000

@@ -1,0 +1,10 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R207013    Fix for abend after returning from HNDEXT exit
+R206003    Fix processing of commands from network when Show-All-Messages
+*          is true.
+R206001    Fix to MSG/SMSG handling
+R205006    Provide support to turn on listing of all msgs received
+*          This is meant to be used for debugging
+R203018    Fix case sensitivity problems.
+R202010    Command processing enhancements.
+R201013    Fix validation bug for SMSG of privileged commands.

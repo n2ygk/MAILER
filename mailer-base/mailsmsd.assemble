@@ -1,0 +1,75 @@
+MAILSMSD TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - SMSG DISABLE'       00001000
+*---------------------------------------------------------------------* 00002000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00003000
+*    Program Property of the Trustees of Columbia University in the   * 00004000
+*    City of New York.                                                * 00005000
+*---------------------------------------------------------------------* 00006000
+MAILSMSD CSECT                                                          00007000
+* MAILSMSD -                                                            00008000
+*  This routine disables smsgs.                                         00009000
+*                                                                       00010000
+* LAST EDIT: 5/14/82 by Alan Crosswell                                  00011000
+*                                                                       00012000
+         SPACE                                                          00013000
+* REGISTER USAGE -                                                      00014000
+R0  EQU  0 -                                                            00015000
+R1  EQU  1 -                                                            00016000
+R2  EQU  2 -                                                            00017000
+R3  EQU  3 -                                                            00018000
+R4  EQU  4 -                                                            00019000
+R5  EQU  5 -                                                            00020000
+R6  EQU  6 -                                                            00021000
+R7  EQU  7 -                                                            00022000
+R8  EQU  8 -                                                            00023000
+R9  EQU  9 -                                                            00024000
+R10 EQU 10 - VMCPARM BASE                                               00025000
+R11 EQU 11 - mailblok base                                              00026000
+R12 EQU 12 - PROGRAM BASE                                               00027000
+R13 EQU 13 - SAVE AREA                                                  00028000
+R14 EQU 14 - SUBROUTINE LINKAGE                                         00029000
+R15 EQU 15 - SUBROUTINE LINKAGE                                         00030000
+         SPACE                                                          00031000
+         PRINT NOGEN                                                    00032000
+         BLOCKS ,                                                       00033000
+         MAILBLOK ,                                                     00034000
+         COPY IPARML                                                    00035990
+         EJECT                                                          00038000
+MAILSMSD CSECT ,                                                        00039000
+         USING MAILSMSD,R15  TEMPORARY ADDRESSABILITY                   00040000
+         B     EYESKIP       BRANCH OVER EYESKIP                        00041000
+MYNAME   DC    CL8'MAILSMSD',CL8'&SYSDATE'                              00042000
+EYESKIP  DS    0H                                                       00043000
+         DROP  R15                                                      00044000
+         STM   R14,R12,12(R13) SAVE CALLER'S REGS                       00045000
+         LR    R12,R15       PERMANENT ADDRESSABILITY                   00046000
+         USING MAILSMSD,R12                                             00047000
+         LA    R14,SAVE      MY SAVE AREA                               00048000
+         ST    R13,4(R14)    SAVE CALLER'S PTR                          00049000
+         ST    R14,8(R13)    CHAIN MINE BACK                            00050000
+         LR    R13,R14       SET MY SAVE PTR                            00051000
+         L     R11,=V(MAILBLOK)                                         00052000
+         USING MAILBLOK,R11                                             00053000
+         LA    R10,IUCVP                                                00054490
+         USING IPARML,R10                                               00054980
+         LA    R0,CPSET            Stop                                 00055470
+         LA    R1,CPSETL              trapping                          00055960
+         DIAG  R0,R1,X'0008'             (S)MSGs.                       00056450
+         IUCV  SEVER,PRMLIST=(R10),PATHID=MAILIUCP Break *MSG conn.     00056940
+         IUCV  RTRVBFR             Get our IUCV buffer back.            00057430
+         STCTL 0,0,CR0       GET CONTROL REGISTER 0                     00058000
+         NI    CR0+3,X'FF'-X'02'   We don't want IUCV interrupts.       00059490
+         LCTL  0,0,CR0       PUT IT BACK                                00060000
+         HNDEXT CLR          CLEAR EXTERNAL HANDLER                     00061000
+RET      EQU   *                                                        00062000
+         L     R13,4(R13)              GET CALLER'S SAVE PTR            00063000
+         L     R14,12(R13)             GET R14                          00064000
+         LM    R0,R12,20(R13)          GET R0-R12                       00065000
+         BR    R14                     RETURN                           00066000
+         SPACE ,                                                        00067000
+         LTORG ,                                                        00068000
+SAVE     DS    18F                     SAVE AREA                        00069000
+CR0      DS    F                                                        00070000
+CPSET    DC    C'SET MSG OFF',X'15',C'SET SMSG OFF'                     00071190
+CPSETL   EQU   *-CPSET                                                  00071380
+IUCVP    DC    (IPSIZE)D'0'                                             00071570
+         END   MAILSMSD                                                 00072000

@@ -1,0 +1,26 @@
+./ I 00338300          $ 338308 8                     03/01/90 16:53:57
+         MVC   TWORK(80),=CL80' '  Clear work area                      00338308
+         USING FSCBD,R8                                                 00338316
+         L     R15,FSCBBUFF        Original line address                00338324
+         L     R14,FSCBNORD        Original line length                 00338332
+         DROP  R8                                                       00338340
+         C     R14,=F'80'          Longer than 80?                      00338348
+         BNH   *+8                 ---> No                              00338356
+         LA    R14,80              Use first 80                         00338364
+         BCTR  R14,0               Decrement for EX                     00338372
+         EX    R14,MVCTWORK        Move into work area                  00338380
+         WTR   RDI075,(CA,TWORK)                                        00338388
+./ I 00680300          $ 680308 8                     03/01/90 16:53:57
+         MVC   TWORK(80),=CL80' '  Clear work area                      00680308
+         USING FSCBD,R8                                                 00680316
+         L     R15,FSCBBUFF        Original line address                00680324
+         L     R14,FSCBNORD        Original line length                 00680332
+         DROP  R8                                                       00680340
+         C     R14,=F'80'          Longer than 80?                      00680348
+         BNH   *+8                 ---> No                              00680356
+         LA    R14,80              Use first 80                         00680364
+         BCTR  R14,0               Decrement for EX                     00680372
+         EX    R14,MVCTWORK        Move into work area                  00680380
+         WTR   RDI075,(CA,TWORK)                                        00680388
+./ I 00786000          $ 786500 500                   03/01/90 16:53:57
+MVCTWORK MVC   TWORK(1),0(R15)                                          00786500

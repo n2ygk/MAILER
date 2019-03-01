@@ -1,0 +1,14 @@
+./ R 00122590 00131000 $ 123580 990                   11/01/88 11:58:07
+         USING MBOX,R6           address list thing                     00122590
+         L     R1,MBXLCL         pointer to list of user adnodes        00123180
+         ST    R1,NODEA          Save for GENLIST call
+         LA    R14,STACKP        Stack pointer address ptr              00423190
+         LA    R15,STACKP+4      Stack size address ptr                 00423380
+         CALL  GENLIST,(NODEA,LSTRA,LSTRL,(14),(15))
+         L     R3,LSTRA          address of user name token             00128680
+         L     R4,LSTRL          length of it                           00130490
+./ I 00330910          $ 331010 100                   11/01/88 11:58:07
+         SPACE 1                                                        00571000
+NODEA    DC    A(0)                Address of node for GENLIST          00578990
+LSTRA    DC    A(0)                Address of local part                00585980
+LSTRL    DC    A(0)                Length of local part                 00592970

@@ -1,0 +1,4 @@
+./ I 00109600          $ 110000 400                   05/31/90 17:05:33
+         DBGMSG 'TBLUK: Searching binary table'                         00110000
+./ I 00221200          $ 221250 50                    05/31/90 17:05:33
+         DBGMSG 'TBLUK: Searching sequential table'                     00221250

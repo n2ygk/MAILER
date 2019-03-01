@@ -1,0 +1,9 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R207037    Validate node entries in maintainers list (MAINTNODEn values)
+*          Validate THISNODE value
+R207022    GENMAIL will update the date/time field returned by SHOW
+*          VERSION whenever a new MAILER MODULE is created.
+R204004    Support for DISTLIST command
+R203021    Use full name for GENMOD command
+*          Generate both MAILER and MG in GENMAIL
+R203014    Support for FORWARD command

@@ -1,0 +1,6 @@
+./ I 00133000          $ 133200 200                   10/11/88 16:02:04
+         CH    R7,=Y(L'BUFFER)     Too long for buffer?
+         BNH   *+8                 No  : Skip.
+         LA    R7,L'BUFFER         Yes : Truncate it.
+./ R 00377000          $ 377490 490                   10/11/88 16:02:04
+BUFFER   DS        CL220           Room for more than you could want.

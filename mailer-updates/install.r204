@@ -1,0 +1,1412 @@
+./ I 00029160          $ 29180 20                     10/13/89 15:58:35
+.cc 3                                                                   00029180
+./ I 00029200          $ 29220 20                     10/13/89 15:58:35
+.bd on                                                                  00029220
+./ I 00029240          $ 29260 20                     10/13/89 15:58:35
+.bd off                                                                 00029260
+./ I 00029560          $ 29570 10                     10/13/89 15:58:35
+.sp 2                                                                   00029570
+.cc 5                                                                   00029580
+./ I 00029600          $ 29620 20                     10/13/89 15:58:35
+.bd on                                                                  00029620
+./ I 00029640          $ 29650 10                     10/13/89 15:58:35
+.bd off                                                                 00029650
+.sp 1                                                                   00029660
+./ R 00033260          $ 33270 10                     10/13/89 15:58:35
+.sr version = 2.04                                                      00033270
+./ R 00037000          $ 37490 490                    10/13/89 15:58:35
+.bt ///Updated: &lastup/                                                00037490
+./ R 00042490          $ 42680 190                    10/13/89 15:58:35
+.title .bd .ce Release &version                                         00042680
+./ R 00045000 00051790 $ 47990 2990                   10/13/89 15:58:35
+.sp 19                                                                  00047990
+./ I 00067000          $ 67800 800                    10/13/89 15:58:35
+.ju off                                                                 00067800
+./ R 00071000          $ 71490 490                    10/13/89 15:58:35
+.in +.3i                                                                00071490
+./ R 00073380          $ 73460 80                     10/13/89 15:58:35
+.in +.4i                                                                00073460
+./ R 00073950          $ 74030 80                     10/13/89 15:58:35
+.hi .5i                                                                 00074030
+./ R 00074900          $ 74980 80                     10/13/89 15:58:35
+.in -.4i                                                                00074980
+./ R 00076610          $ 76690 80                     10/13/89 15:58:35
+.in +.4i                                                                00076690
+./ R 00077370          $ 77450 80                     10/13/89 15:58:35
+.in -.4i                                                                00077450
+./ R 00078130          $ 78210 80                     10/13/89 15:58:35
+.in +.4i                                                                00078210
+./ R 00079840          $ 79870 30                     10/13/89 15:58:35
+6.4.^^Verify receipt of the files!&c0604                                00079870
+.br                                                                     00079900
+6.5.^^Link the disk read/write!&c0604                                   00079930
+./ R 00080220          $ 80300 80                     10/13/89 15:58:35
+6.6.^^Load files to disk!&c0606                                         00080300
+./ R 00080600          $ 80680 80                     10/13/89 15:58:35
+6.7.^^Link the disk read/only!&c0607                                    00080680
+./ R 00080980          $ 81060 80                     10/13/89 15:58:35
+6.8.^^Modify MTPLATE!&c0608                                             00081060
+./ R 00081360          $ 81440 80                     10/13/89 15:58:35
+6.9.^^Modify MAILLCL!&c0609                                             00081440
+./ R 00081740          $ 81770 30                     10/13/89 15:58:35
+6.10.^Run MG!&c0610                                                     00081770
+.br                                                                     00081800
+6.11.^Modify the MABNXIT EXEC!&c0611                                    00081830
+./ R 00082120          $ 82200 80                     10/13/89 15:58:35
+.us \6.12.^Copy files to \MAILER\ DVM 193 disk!&c0612                   00082200
+./ R 00082500          $ 82580 80                     10/13/89 15:58:35
+6.13.^Modify SAMPPROF!&c0613                                            00082580
+./ R 00082880 00083070 $ 82970 90                     10/13/89 15:58:35
+.in +.6i                                                                00082970
+6.13.1^^Modify the 'errids' value!&c061301                              00083060
+./ R 00083450          $ 83530 80                     10/13/89 15:58:35
+6.13.2^^Modify the 'smartnodes' value!&c061302                          00083530
+./ R 00083830          $ 83910 80                     10/13/89 15:58:35
+.in -.6i                                                                00083910
+./ R 00084210 00084400 $ 84300 90                     10/13/89 15:58:35
+6.14.^Copy files to the mailer DVM's 191 disk!&c0614                    00084300
+.in -.4i                                                                00084390
+./ R 00085350          $ 85430 80                     10/13/89 15:58:35
+.in +.4i                                                                00085430
+./ R 00088200          $ 88280 80                     10/13/89 15:58:35
+.in +.4i                                                                00088280
+./ R 00096370          $ 96450 80                     10/13/89 15:58:35
+.in -.4i                                                                00096450
+./ R 00096940          $ 97020 80                     10/13/89 15:58:35
+.in +.4i                                                                00097020
+./ R 00101120          $ 101200 80                    10/13/89 15:58:35
+.in -.4i                                                                00101200
+./ R 00101690          $ 101770 80                    10/13/89 15:58:35
+.in +.4i                                                                00101770
+./ R 00102450          $ 102530 80                    10/13/89 15:58:35
+.in +.6i                                                                00102530
+./ R 00103970 00104160 $ 104060 90                    10/13/89 15:58:35
+.in -.6i                                                                00104060
+.in -.4i                                                                00104150
+./ R 00105110          $ 105190 80                    10/13/89 15:58:35
+.in +.4i                                                                00105190
+./ R 00106250          $ 106330 80                    10/13/89 15:58:35
+.in -.4i                                                                00106330
+./ R 00106630 00106820 $ 106720 90                    10/13/89 15:58:35
+.hi 1.2i                                                                00106720
+Appendix^A.^Inventory of Materials for Object Code Distribution!&appa   00106810
+./ R 00107770          $ 107850 80                    10/13/89 15:58:35
+Appendix^C.^Sample template file!&appc                                  00107850
+./ R 00108150          $ 108230 80                    10/13/89 15:58:35
+Appendix^D.^Sample local replacements file!&appd                        00108230
+./ R 00108530          $ 108610 80                    10/13/89 15:58:35
+Appendix^E.^Standard Maintenance ID Definition!&appe                    00108610
+./ R 00108910          $ 108990 80                    10/13/89 15:58:35
+.us \Appendix^F.^Standard \MAILER\ ID Definition!&appf                  00108990
+./ R 00109290          $ 109370 80                    10/13/89 15:58:35
+Appendix^G.^Inventory of Files on VMM2xx disk!&appg                     00109370
+./ R 00109670          $ 109750 80                    10/13/89 15:58:35
+Appendix^H.^Inventory of Files on V2-MNT disk!&apph                     00109750
+./ R 00110050          $ 110130 80                    10/13/89 15:58:35
+Appendix^I.^Inventory of Files on V2-SRC disk!&appi                     00110130
+./ R 00110430          $ 110510 80                    10/13/89 15:58:35
+Appendix^J.^Inventory of Files on V2-DST disk!&appj                     00110510
+./ I 00110620          $ 119620 9000                  10/13/89 15:58:35
+.ju on                                                                  00119620
+./ R 00142690          $ 142980 290                   10/13/89 15:58:35
+.heading 1. Introduction                                                00142980
+./ R 00170000 00171590 $ 170990 990                   10/13/89 15:58:35
+.subhead 1.1. Copyright Notice                                          00170990
+./ D 00173360                                         10/13/89 15:58:35
+./ R 00188000 00189590 $ 188990 990                   10/13/89 15:58:35
+.subhead 1.2. Additional Terms for Waterloo C Library Object Code       00188990
+./ D 00191360                                         10/13/89 15:58:35
+./ R 00199000          $ 199490 490                   10/13/89 15:58:35
+.hi .3i                                                                 00199490
+./ R 00225000 00226590 $ 225990 990                   10/13/89 15:58:35
+.subhead 1.3. Support                                                   00225990
+./ D 00228360                                         10/13/89 15:58:35
+./ R 00246170 00246560 $ 246360 190                   10/13/89 15:58:35
+.hi .4i                                                                 00246360
+.heading 2.^MAILER Maintainer and Postmaster Job Descriptions           00246550
+./ R 00257000          $ 257690 690                   10/13/89 15:58:35
+.hi .3i                                                                 00257690
+./ R 00260000          $ 260390 390                   10/13/89 15:58:35
+.sp                                                                     00260390
+.hi .3i                                                                 00260780
+./ R 00263000          $ 263290 290                   10/13/89 15:58:35
+.sp                                                                     00263290
+.hi .3i                                                                 00263580
+./ R 00285000          $ 285490 490                   10/13/89 15:58:35
+.hi .3i                                                                 00285490
+./ R 00288000          $ 288490 490                   10/13/89 15:58:35
+.hi .3i                                                                 00288490
+./ R 00292000          $ 292490 490                   10/13/89 15:58:35
+.hi .3i                                                                 00292490
+./ R 00312970          $ 313360 390                   10/13/89 15:58:35
+.heading 3. Obtaining a copy of MAILER                                  00313360
+./ R 00353560          $ 353950 390                   10/13/89 15:58:35
+.heading 4. Additional Files Needed for BITNET                          00353950
+./ R 00414790          $ 415180 390                   10/13/89 15:58:35
+.heading 5. Your MAILER subscription and registration                   00415180
+./ R 00427000 00429990 $ 428990 1990                  10/13/89 15:58:35
+.subhead 5.1. Subscription via LISTSERV                                 00428990
+./ D 00435960                                         10/13/89 15:58:35
+./ R 00459980          $ 460170 190                   10/13/89 15:58:35
+This will keep the flow of duplicate files to a minimum.                00460170
+./ R 00461000 00462390 $ 461790 790                   10/13/89 15:58:35
+.subhead 5.2. Registration :mailer tag                                  00461790
+./ D 00463560                                         10/13/89 15:58:35
+./ R 00470390          $ 470480 90                    10/13/89 15:58:35
+.bd \\:mailer.\vmid\ DEFRT 1                                            00470480
+./ R 00488950          $ 489440 490                   10/13/89 15:58:35
+.us \\MAILER\ installation can set up to bypass all other mailers.      00489440
+./ R 00501590          $ 501780 190                   10/13/89 15:58:35
+.bd \\:mailer.\vmid \BSMTP 3                                            00501780
+./ R 00506570          $ 506650 80                    10/13/89 15:58:35
+.heading 6. Installation Procedure                                      00506650
+./ R 00510940 00516400 $ 511930 990                   10/13/89 15:58:35
+.in -.33i                                                               00511930
+.subhead 6.1. Create the mail server DVM and mail maintenance ids.      00512920
+.sr c0601 = &sysppage                                                   00513910
+./ D 00516560                                         10/13/89 15:58:35
+./ R 00516960          $ 516970 10                    10/13/89 15:58:35
+The mailer DVM's 191 is used to store incoming mail and user defined    00516970
+forwarding files.                                                       00516980
+./ I 00517840          $ 517846 6                     10/13/89 15:58:35
+.sp 1                                                                   00517846
+Once the userid for your mailer DVM is announced to the network         00517852
+it becomes difficult to change it.                                      00517858
+In order to change it you will need to update your                      00517864
+node data base entry and wait for it to be redistributed to all         00517870
+.us \\MAILER\ sites.                                                    00517876
+You may end up having to run two copies of                              00517882
+.us \\MAILER\                                                           00517888
+during the transition period; one under the old userid and              00517894
+one under the new userid, to avoid any disruption in mail traffic.      00517900
+The best solution is to simply use MAILER as the id (which has become   00517906
+a pseudo standard) or to never change the id you announce to the network00517912
+./ R 00518000 00518080 $ 518070 70                    10/13/89 15:58:35
+.subhead 6.2.  Create the MAILMNT 'PROFILE EXEC'                        00518070
+./ D 00518320                                         10/13/89 15:58:35
+./ R 00519280          $ 519310 30                    10/13/89 15:58:35
+!C!VMM2xx disk (the object code disk)                                   00519310
+./ R 00519440          $ 519470 30                    10/13/89 15:58:35
+!D!V2-MNT disk (updates/new source code)                                00519470
+./ R 00520480 00520560 $ 520550 70                    10/13/89 15:58:35
+.subhead 6.3.  Request the initial MAILER distribution                  00520550
+./ D 00520800                                         10/13/89 15:58:35
+./ R 00521040          $ 521050 10                    10/13/89 15:58:35
+.in +.4i                                                                00521050
+.bd TELL LISTSERV AT PUCC GET MAILR2 PACKAGE                            00521060
+.in -.4i                                                                00521070
+./ R 00522240          $ 522250 10                    10/13/89 15:58:35
+.in +.4i                                                                00522250
+.bd TELL LISTSERV AT PUCC GET MAILR2S PACKAGE                           00522260
+.in -.4i                                                                00522270
+./ R 00524400 00524480 $ 524440 40                    10/13/89 15:58:35
+.subhead 6.4. Verify receipt of the files                               00524440
+.sr c0604 = &sysppage                                                   00524480
+./ D 00524640                                         10/13/89 15:58:35
+./ R 00524880          $ 524910 30                    10/13/89 15:58:35
+Look for the file 'MAILR2I $PACKAGE' (object code distribution) or      00524910
+./ R 00526240 00526400 $ 526310 70                    10/13/89 15:58:35
+.subhead 6.5. Link the disk read/write                                  00526310
+.sr c0605 = &sysppage                                                   00526380
+./ D 00526560                                         10/13/89 15:58:35
+./ R 00527840 00528000 $ 527910 70                    10/13/89 15:58:35
+.subhead 6.6. Load files to disk                                        00527910
+.sr c0606 = &sysppage                                                   00527980
+./ R 00528160 00528240 $ 528170 10                    10/13/89 15:58:35
+Enter                                                                   00528170
+.sp 1                                                                   00528180
+.in +.33i                                                               00528190
+.bd RDRLIST                                                             00528200
+.in -.33i                                                               00528210
+./ I 00528880          $ 528890 10                    10/13/89 15:58:35
+.sp 1                                                                   00528890
+.in +.33i                                                               00528900
+.bd \\RECEIVE\ spoolid \= = A\                                          00528910
+.in -.33i                                                               00528920
+./ R 00529520          $ 529550 30                    10/13/89 15:58:35
+Leave RDRLIST (by pressing PF3).                                        00529550
+./ R 00530800          $ 530830 30                    10/13/89 15:58:35
+The file that the CARD command will load is the first file listed by the00530830
+./ R 00531600          $ 531630 30                    10/13/89 15:58:35
+.bd \\C\ for \VMM2xx\                                                   00531630
+./ R 00532320 00532480 $ 532370 50                    10/13/89 15:58:35
+As the CARD command processes the file from the reader it will give you 00532370
+a list of all the individual files it contained (the files it is putting00532420
+on disk).                                                               00532470
+./ R 00532880 00533040 $ 532950 70                    10/13/89 15:58:35
+.subhead 6.7. Link the disk read/only                                   00532950
+.sr c0607 = &sysppage                                                   00533020
+./ D 00533200                                         10/13/89 15:58:35
+./ R 00534400 00534560 $ 534470 70                    10/13/89 15:58:35
+.subhead 6.8. Modify MTPLATE                                            00534470
+.sr c0608 = &sysppage                                                   00534540
+./ D 00534720                                         10/13/89 15:58:35
+./ R 00535360          $ 535390 30                    10/13/89 15:58:35
+.in -4                                                                  00535390
+./ R 00536320 00536480 $ 536390 70                    10/13/89 15:58:35
+.subhead 6.9. Modify MAILLCL                                            00536390
+.sr c0609 = &sysppage                                                   00536460
+./ D 00536640                                         10/13/89 15:58:35
+./ R 00537680 00537840 $ 537750 70                    10/13/89 15:58:35
+.subhead 6.10. Run MG                                                   00537750
+.sr c0610 = &sysppage                                                   00537820
+./ D 00538000                                         10/13/89 15:58:35
+./ I 00538320          $ 538360 40                    10/13/89 15:58:35
+.cc 7                                                                   00538360
+./ R 00539040 00539200 $ 539044 4                     10/13/89 15:58:35
+.subhead 6.11. Modify the MABNXIT EXEC                                  00539044
+.sr c0611 = &sysppage                                                   00539048
+.in +.33i                                                               00539052
+.us \The MABNXIT EXEC provides abend recovery for \MAILER\ failures that00539056
+occur during header parsing.                                            00539060
+You may want to make changes to this code to match your sites           00539064
+requirements.                                                           00539068
+.sp 1                                                                   00539072
+If no changes are made, MABNXIT does the following:                     00539076
+.sp 1                                                                   00539080
+.in +.33i                                                               00539084
+.hi .4i                                                                 00539088
+1.^^Places a message in the console log showing the primary mail        00539092
+maintainer's userid and the spoolid of the file being processed when the00539096
+abend occurred.                                                         00539100
+.sp 1                                                                   00539104
+.hi .4i                                                                 00539108
+.us \2.^^Takes a VMDUMP of the of the \MAILER\ DVM if the primary       00539112
+.us \maintainer's userid is on the same node as the \MAILER\ DVM.       00539116
+.sp 1                                                                   00539120
+.hi .4i                                                                 00539124
+3.^^Saves a copy of the mail file being processed at the time of the    00539128
+abend.                                                                  00539132
+.us \This is saved on the \MAILER\ DVM's 191 disk as "MAILPROB nnnn"    00539136
+where "nnnn" is a 4 digit number from '0001' through '9999'.            00539140
+The file name used is displayed in the console log.                     00539144
+.sp 1                                                                   00539148
+.hi .4i                                                                 00539152
+4.^^Sends a mail message to the primary mail maintainer announcing      00539156
+the failure and the associated MALPROB file.                            00539160
+This mail is sent directly, using standard RSCS NJE routing services.   00539164
+.us \It does not rely on \MAILER\ to deliver this error notice.         00539168
+.sp 1                                                                   00539172
+.hi .4i                                                                 00539176
+5.^^Checks the spoolid of the failing file.                             00539180
+If this file failed before, then it is purged.                          00539184
+If this is (believed to be) the first failure for this file, the spoolid00539188
+is remembered for later checking.                                       00539192
+.sp 1                                                                   00539196
+.hi .4i                                                                 00539200
+.us \6.^^Returns to \MAILER\ with a return code indicating if the spool 00539204
+file should be purged.                                                  00539208
+.hi 0                                                                   00539212
+.in -.33i                                                               00539216
+.sp 1                                                                   00539220
+Modifications to the MABNXIT EXEC should be made using the XEDIT update 00539224
+facility with a control file name of MAILER.                            00539228
+For information on UPDATE see the description of UPDATE in the "CMS     00539232
+Command Reference".                                                     00539236
+You should also read about using the UPDATE and CTL options of XEDIT.   00539240
+.in -.33i                                                               00539244
+.subhead 6.12. Copy files to MAILER DVM 193 disk                        00539248
+.sr c0612 = &sysppage                                                   00539252
+./ R 00539360 00539440 $ 539430 70                    10/13/89 15:58:35
+Copy the following files from the A and C disks to the mailer DVM       00539430
+./ I 00539920          $ 539930 10                    10/13/89 15:58:35
+.br                                                                     00539930
+MABNXIT  EXEC                                                           00539940
+.br                                                                     00539950
+FORWARD  MAILER                                                         00539960
+./ I 00540880          $ 540890 10                    10/13/89 15:58:35
+.br                                                                     00540890
+.bd COPYFILE MABNXIT EXEC C = = Z (OLDD                                 00540900
+.br                                                                     00540910
+.bd COPYFILE FORWARD MAILER C = = Z (OLDD                               00540920
+./ R 00541280          $ 541290 10                    10/13/89 15:58:35
+maintenance disks (because the date and time will match).               00541290
+Release the mailer DVM's 193 disk.                                      00541300
+./ R 00541920 00542080 $ 541990 70                    10/13/89 15:58:35
+.subhead 6.13. Modify SAMPPROF                                          00541990
+.sr c0613 = &sysppage                                                   00542060
+./ R 00542240 00542400 $ 542310 70                    10/13/89 15:58:35
+.bd \\SAMPPROF EXEC\ contains a sample \PROFILE EXEC\ and a sample      00542310
+.bd \\MAILER EXEC\ to allow you to run the mailer DVM in an automated   00542380
+./ R 00543280 00543360 $ 543320 40                    10/13/89 15:58:35
+Saving the file as PROFILE EXEC will wipe out the PROFILE EXEC you      00543280
+created earlier (in section 6.2).                                       00543360
+./ D 00543840                                         10/13/89 15:58:35
+./ R 00544000 00544080 $ 544040 40                    10/13/89 15:58:35
+.subhead 6.13.1.  Modify the 'errids' value                             00544040
+.sr c061301 = &sysppage                                                 00544080
+./ R 00544720 00544880 $ 544790 70                    10/13/89 15:58:35
+.subhead 6.13.2.  Modify the 'smartnodes' value                         00544790
+.sr c061302 = &sysppage                                                 00544860
+./ R 00546720 00546880 $ 546790 70                    10/13/89 15:58:35
+.subhead 6.14. Copy files to the mailer DVM's 191 disk                  00546790
+.sr c0614 = &sysppage                                                   00546860
+./ D 00547040                                         10/13/89 15:58:35
+./ R 00547440          $ 547450 10                    10/13/89 15:58:35
+.us MAILER                                                              00547450
+.bd \\before\ sending the files to the mailer DVM.                      00547460
+./ D 00549040                                         10/13/89 15:58:35
+./ R 00549200          $ 549230 30                    10/13/89 15:58:35
+.sp 1                                                                   00549230
+./ R 00559380 00559570 $ 559440 60                    10/13/89 15:58:35
+.sp 1                                                                   00559440
+.cc 5                                                                   00559500
+Since you are currently logged on to the mailer DVM you can try starting00559560
+.us \\MAILER\ by issuing the following                                  00559620
+./ R 00561470          $ 561550 80                    10/13/89 15:58:35
+.heading 7. Overview of MAILER Operation                                00561550
+./ R 00613000 00614000 $ 613990 990                   10/13/89 15:58:35
+.us \This is one reason that BSMTP support was added to \MAILER\.       00613990
+./ I 00616000          $ 616700 700                   10/13/89 15:58:35
+.sp 1                                                                   00616700
+./ I 00623000          $ 623020 20                    10/13/89 15:58:35
+.sp 1                                                                   00623020
+The OUTGOING and DOMAINS tables describe where to send mail that has    00623040
+been processed.                                                         00623060
+The mail may be sent locally (i.e. to a local recipient), to a local    00623080
+server, or to a remote recipient or server on BITNET.                   00623100
+.sp 1                                                                   00623120
+To determine how the mail for an individual recipient will be handled   00623140
+a table lookup is done for every addressee who has not yet received the 00623160
+mail.                                                                   00623180
+The key for the table lookup is the destination hostid.                 00623200
+This is the string to the right of the '@' in a user address (i.e.      00623220
+"hostid" in "userid@hostid") or the first host in the route address     00623240
+(i.e. "a" in "<@a,@b:userid@hostid").                                   00623260
+.sp 1                                                                   00623280
+The table lookup is done in the following order until a match is found  00623300
+or the lookup process fails:                                            00623320
+.in +.33i                                                               00623340
+.sp 1                                                                   00623360
+.hi .33i                                                                00623380
+1.^Look up the full hostid in the OUTGOING table                        00623400
+.hi .33i                                                                00623420
+.sp 1                                                                   00623440
+2.^Compare each of the RSCS-Domain# strings against the right end       00623460
+(a right hand match)                                                    00623480
+of the host id and remove that value if a match is found.               00623500
+.hi .33i                                                                00623520
+.sp 1                                                                   00623540
+3.^Look for the resulting value in the OUTGOING table                   00623560
+.hi .33i                                                                00623580
+.sp 1                                                                   00623600
+4.^Look for the full host value in the DOMAINS table.                   00623620
+Searches in the domains table are done as a right hand match.           00623640
+.hi .33i                                                                00623660
+.sp 1                                                                   00623680
+5.^If Allow-Unknown-Nodes is 'true' then look for *DEFAULT*             00623700
+.in +.33i                                                               00623720
+.hi .4i                                                                 00623740
+.sp 1                                                                   00623760
+5A.^If the original hostid (the one used for the lookup in step 1)      00623780
+has no dot ('.') in it (i.e. the hostid is not expressed in domain      00623800
+name format) then look for the *DEFAULT* entry in the OUTGOING table.   00623820
+.hi .4i                                                                 00623840
+.sp 1                                                                   00623860
+5B.^If the original hostid has a dot in it (i.e. in domain name format) 00623880
+then:                                                                   00623900
+.in +.4i                                                                00623920
+.hi .6i                                                                 00623940
+.sp 1                                                                   00623960
+5B.1.^If an RSCS-Domain match was found look for                        00623980
+*DEFAULT*ROUTE*.RSCS-Domain in the DOMAINS table                        00624000
+.hi .6i                                                                 00624020
+.sp 1                                                                   00624040
+5B.2.^Look for *DEFAULT* in the DOMAINS table.                          00624060
+.in -.4i                                                                00624080
+.in -.33i                                                               00624100
+.hi 0                                                                   00624120
+.in -.33i                                                               00624140
+./ R 00655000 00656190 $ 655590 590                   10/13/89 15:58:35
+.subhead 8.1. Variable Declarations                                     00655590
+./ D 00657000                                         10/13/89 15:58:35
+./ R 00681490          $ 681680 190                   10/13/89 15:58:35
+RSCSalt^!VMID of a secondary RSCS/Networking server.                    00681680
+./ R 00684000          $ 684490 490                   10/13/89 15:58:35
+.us \\MAILER\ will always send files to the primary RSCS (\RSCSname\),  00684490
+./ R 00692470          $ 692550 80                    10/13/89 15:58:35
+RSCS node name (ThisNode) when domain-style names are needed (unless    00692550
+./ I 00693610          $ 693700 90                    10/13/89 15:58:35
+.cc 4                                                                   00693700
+./ R 00694370          $ 694450 80                    10/13/89 15:58:35
+This is an optional host name for the machine                           00694450
+./ R 00694750 00695130 $ 694840 90                    10/13/89 15:58:35
+A host name consists of the local hostid plus the domain name, if any   00694840
+(i.e. PUCC.Princeton.EDU).                                              00694930
+./ R 00695510          $ 695590 80                    10/13/89 15:58:35
+Local-Host1 specifies the host name for this node.                      00695590
+./ I 00695890          $ 695950 60                    10/13/89 15:58:35
+.us \When specified, the \Local-Host1\ value takes precedence over      00695950
+.us \the \ThisNode.RSCS-Domain1\ concatenation.                         00696010
+./ R 00721000          $ 721590 590                   10/13/89 15:58:35
+are not listed in its tables.                                           00721590
+./ I 00726000          $ 726800 800                   10/13/89 15:58:35
+.cc 5                                                                   00726800
+./ R 00738190          $ 738270 80                    10/13/89 15:58:35
+MsgCmd^^!How to send local messages                                     00738270
+./ R 00743080          $ 743110 30                    10/13/89 15:58:35
+You may specify any (blank delimited) string you want, but it is        00743110
+./ I 00745000          $ 745600 600                   10/13/89 15:58:35
+.cc 5                                                                   00745600
+./ R 00750000 00751390 $ 750790 790                   10/13/89 15:58:35
+.subhead 8.2. ORIGINS Table                                             00750790
+./ D 00752560                                         10/13/89 15:58:35
+./ I 00753730          $ 753780 50                    10/13/89 15:58:35
+The format of an entry in the ORIGINS table is:                         00753780
+.sp 1                                                                   00753830
+.in +.4i                                                                00753880
+Local-Userid Exitname ; comment                                         00753930
+.in -.4i                                                                00753980
+.sp 1                                                                   00754030
+./ R 00758000 00759490 $ 758890 890                   10/13/89 15:58:35
+.subhead 8.3. INCOMING Table                                            00758890
+./ D 00760960                                         10/13/89 15:58:35
+./ I 00763000          $ 763100 100                   10/13/89 15:58:35
+The format of an entry in the INCOMING table is:                        00763100
+.sp 1                                                                   00763200
+.in +.4i                                                                00763300
+NJEnode NJEuserid Exitname ; comment                                    00763400
+.in -.4i                                                                00763500
+.sp 1                                                                   00763600
+./ R 00767000 00768590 $ 767990 990                   10/13/89 15:58:35
+.subhead 8.4. OUTGOING Table                                            00767990
+./ D 00770360                                         10/13/89 15:58:35
+./ R 00772000          $ 772090 90                    10/13/89 15:58:35
+The format of an entry in the OUTGOING table is:                        00772090
+.sp 1                                                                   00772180
+.in +.4i                                                                00772270
+Hostname NJEnode NJEuserid Exitname Exittype ; comment                  00772360
+.in -.4i                                                                00772450
+.sp 1                                                                   00772540
+For this discussion,                                                    00772630
+./ R 00780000 00781400 $ 780190 190                   10/13/89 15:58:35
+.us \\MAILER\ looks up the hostname in the OUTGOING table.              00780190
+A match is found when the destination hostname matches the hostname     00780380
+coded in the OUTGOING table entry (i.e. partial matches do not occur    00780570
+in this table).                                                         00780760
+.us \If a match is found, \MAILER\ invokes the OUTGOING exit            00780950
+specified.                                                              00781140
+./ R 00782000 00786000 $ 782990 990                   10/13/89 15:58:35
+.us \The variable \Allow-Unknown-Nodes\ affects this searching process. 00782990
+.us \See section 7, \Overview of MAILER operation\ for a complete       00783980
+description of how the OUTGOING and DOMAIN table entries are searched.  00784970
+.sp                                                                     00785960
+./ R 00788000 00789390 $ 788790 790                   10/13/89 15:58:35
+.subhead 8.5. DOMAINS Table                                             00788790
+./ D 00790560                                         10/13/89 15:58:35
+./ I 00792000          $ 792100 100                   10/13/89 15:58:35
+The format of an entry in the DOMAINS table is:                         00792100
+.sp 1                                                                   00792200
+.in +.4i                                                                00792300
+DomainName NJEnode NJEuserid Exitname Exittype ; comment                00792400
+.in -.4i                                                                00792500
+.sp 1                                                                   00792600
+./ R 00795590 00798000 $ 795980 390                   10/13/89 15:58:35
+It need only match the right-hand, dot-delimited words.                 00795980
+.sp                                                                     00796370
+.us \The variable \Allow-Unknown-Nodes\ affects this searching process. 00796760
+.us \See section 7, \Overview of MAILER operation\ for a complete       00797150
+description of how the OUTGOING and DOMAIN table entries are searched.  00797540
+.sp                                                                     00797930
+./ R 00800000 00801390 $ 800790 790                   10/13/89 15:58:35
+.subhead 8.6. SPECIAL Table                                             00800790
+./ D 00802560                                         10/13/89 15:58:35
+./ I 00804570          $ 804630 60                    10/13/89 15:58:35
+The format of an entry in the SPECIAL table is:                         00804630
+.sp 1                                                                   00804690
+.in +.4i                                                                00804750
+UserName Exitname Exittype ; comment                                    00804810
+.in -.4i                                                                00804870
+.sp 1                                                                   00804930
+./ R 00812170          $ 812260 90                    10/13/89 15:58:35
+.heading 9. MAILER User Exits and MAILER TXTLIB                         00812260
+./ R 00817000 00818490 $ 817890 890                   10/13/89 15:58:35
+.subhead 9.1. OUTGOING Exits                                            00817890
+./ D 00819960                                         10/13/89 15:58:35
+./ R 00826000 00827000 $ 826490 490                   10/13/89 15:58:35
+There are six types of OUTGOING exit (only three of which are currently 00826490
+implemented) which determine exactly when the exit is invoked and with  00826980
+what information.                                                       00827470
+./ R 00830000          $ 830490 490                   10/13/89 15:58:35
+The exit types are:                                                     00830490
+./ R 00836000          $ 836490 490                   10/13/89 15:58:35
+2^^^Called once for all recipients having the same NJE node/userid      00836490
+./ I 00837000          $ 837400 400                   10/13/89 15:58:35
+The number and identity of the recipients is not available to this      00837400
+exit.                                                                   00837800
+./ R 00847000 00848190 $ 847590 590                   10/13/89 15:58:35
+.subhead 9.1.1. BITNET                                                  00847590
+./ D 00849000                                         10/13/89 15:58:35
+./ R 00854000 00855190 $ 854590 590                   10/13/89 15:58:35
+.subhead 9.1.2. BSMTP                                                   00854590
+./ D 00856000                                         10/13/89 15:58:35
+./ R 00872490          $ 872680 190                   10/13/89 15:58:35
+.us \\var\^^^^^^^A variable name.                                       00872680
+./ R 00899000          $ 899490 490                   10/13/89 15:58:35
+Note that for the at-sign and percent forms of the parameter, the       00899490
+./ R 00904000          $ 904290 290                   10/13/89 15:58:35
+parameter) are given below.                                             00904290
+Assume the following (skeleton) profile has been coded:                 00904580
+./ I 00930190          $ 930280 90                    10/13/89 15:58:35
+.sp 1                                                                   00930280
+./ I 00930380          $ 930390 10                    10/13/89 15:58:35
+The '%' kludge is not supported by all sites.                           00930390
+The routeaddress format is another way to describe the same addressing  00930400
+information and it is specified as part of RFC822.                      00930410
+For example:                                                            00930420
+.sp 1                                                                   00930430
+.in +.33i                                                               00930440
+<JOE%DEC123.DEC@DECWRL.DEC.COM)                                         00930450
+.sp 1                                                                   00930460
+^^is equvalent to                                                       00930470
+.sp 1                                                                   00930480
+<@DECWRL.DEC.DOM:JOE@DEC123.DEC>                                        00930490
+.sp 1                                                                   00930500
+.in -.33i                                                               00930510
+Given the profile coded above, the first form would be produced by the  00930520
+BSMTP exit with a parm of '%viaDEC".                                    00930530
+The second form would be produced by the BSMTP exit with a parm of      00930540
+"@viaDEC".                                                              00930550
+It is recommended that the "@var" format be used whenever possible.     00930560
+./ R 00931000 00932190 $ 931590 590                   10/13/89 15:58:35
+.subhead 9.1.3. DEFRT                                                   00931590
+./ D 00933000                                         10/13/89 15:58:35
+./ R 00948000 00949190 $ 948590 590                   10/13/89 15:58:35
+.subhead 9.1.4. LOCAL                                                   00948590
+./ D 00950000                                         10/13/89 15:58:35
+./ I 00961000          $ 961100 100                   10/13/89 15:58:35
+.sp                                                                     00961100
+The LOCAL exit also handles processing of the '%' kludge (for forwarding00961200
+mail through your mailer) and for forwarding of mail to local users     00961300
+who have requested that their mail be delivered to a different address  00961400
+by using the FORWARD command.                                           00961500
+In both these cases, the mail is rerouted (forwarded) by building a     00961600
+new BSMTP header and sending the mail to the mailer DVM for further     00961700
+processing.                                                             00961800
+./ R 00962580 00962870 $ 962770 190                   10/13/89 15:58:35
+.subhead 9.1.5. NOMAIL                                                  00962770
+./ D 00964000                                         10/13/89 15:58:35
+./ R 00970000 00971190 $ 970590 590                   10/13/89 15:58:35
+.subhead 9.1.6. INTERNET                                                00970590
+./ D 00972000                                         10/13/89 15:58:35
+./ R 00978590          $ 978780 190                   10/13/89 15:58:35
+INTERNET was intended to be used in the "*DEFAULT*" position of the     00978780
+./ R 00991000 00992190 $ 991590 590                   10/13/89 15:58:35
+.subhead 9.1.7. UTSMAIL                                                 00991590
+./ D 00993000                                         10/13/89 15:58:35
+./ R 01003000 01004040 $ 1003490 490                  10/13/89 15:58:35
+.subhead 9.1.8. TRYRSCS                                                 01003490
+./ D 01004160                                         10/13/89 15:58:35
+./ R 01004320          $ 1004330 10                   10/13/89 15:58:35
+If the local RSCS system does not recognize the node requested, the mail01004330
+./ R 01004520 01004560 $ 1004550 30                   10/13/89 15:58:35
+.subhead 9.2. INCOMING Exits                                            01004550
+./ D 01005000                                         10/13/89 15:58:35
+./ R 01006360 01006450 $ 1006440 80                   10/13/89 15:58:35
+.subhead 9.2.1. RSCSVER                                                 01006440
+./ D 01007000                                         10/13/89 15:58:35
+./ R 01014000 01015190 $ 1014590 590                  10/13/89 15:58:35
+.subhead 9.2.2. (none)                                                  01014590
+./ R 01016000 01017000 $ 1016990 990                  10/13/89 15:58:35
+Not specifying an Incoming exit causes the builtin validation code to   01016990
+./ R 01021400 01023390 $ 1022390 990                  10/13/89 15:58:35
+.subhead 9.3. SPECIAL Exits                                             01022390
+./ D 01024560                                         10/13/89 15:58:35
+./ R 01027000 01028190 $ 1027590 590                  10/13/89 15:58:35
+.subhead 9.3.1. FWDMAIL                                                 01027590
+./ D 01029000                                         10/13/89 15:58:35
+./ R 01035000 01036190 $ 1035590 590                  10/13/89 15:58:35
+.subhead 9.3.2. RSMAIL                                                  01035590
+./ D 01037000                                         10/13/89 15:58:35
+./ R 01055000 01056190 $ 1055590 590                  10/13/89 15:58:35
+.subhead 9.3.3. DISTLIST                                                01055590
+./ D 01057000                                         10/13/89 15:58:35
+./ R 01091000 01092190 $ 1091590 590                  10/13/89 15:58:35
+.subhead 9.3.4. VMMLOG                                                  01091590
+./ D 01093000                                         10/13/89 15:58:35
+./ R 01108000 01109190 $ 1108590 590                  10/13/89 15:58:35
+.subhead 9.3.5. PROFS                                                   01108590
+./ D 01110000                                         10/13/89 15:58:35
+./ R 01116000 01117190 $ 1116590 590                  10/13/89 15:58:35
+.subhead 9.3.6. (none)                                                  01116590
+./ R 01118000 01119000 $ 1118990 990                  10/13/89 15:58:35
+Omitting the exit name causes the builtin exit to be invoked which      01118990
+./ R 01123000 01124390 $ 1123790 790                  10/13/89 15:58:35
+.subhead 9.4. ORIGINS Exits                                             01123790
+./ D 01125560                                         10/13/89 15:58:35
+./ R 01133580 01133870 $ 1133770 190                  10/13/89 15:58:35
+.subhead 9.4.1. (none)                                                  01133770
+./ R 01134740 01135030 $ 1135330 590                  10/13/89 15:58:35
+Leaving the exit name blank causes the builtin                          01135330
+./ R 01138000          $ 1138290 290                  10/13/89 15:58:35
+This is useful to disallow users (like your MVS system or batch servers)01138290
+from sending any files                                                  01138580
+./ R 01143370          $ 1143660 290                  10/13/89 15:58:35
+.heading 10. MAILER Commands                                            01143660
+./ R 01161020 01161030 $ 1161030 10                   10/13/89 15:58:35
+.subhead 10.1. ACTIVATE                                                 01161030
+./ D 01161060                                         10/13/89 15:58:35
+./ R 01161100 01161110 $ 1161110 10                   10/13/89 15:58:35
+.subhead 10.2. CHECK                                                    01161110
+./ D 01161140                                         10/13/89 15:58:35
+./ R 01161180 01161190 $ 1161190 10                   10/13/89 15:58:35
+.subhead 10.3. CMS                                                      01161190
+./ D 01161220                                         10/13/89 15:58:35
+./ R 01161260 01161270 $ 1161270 10                   10/13/89 15:58:35
+.subhead 10.4. CP                                                       01161270
+./ D 01161300                                         10/13/89 15:58:35
+./ R 01161330 01161340 $ 1161340 10                   10/13/89 15:58:35
+.subhead 10.5. FORWARD                                                  01161340
+./ D 01161370                                         10/13/89 15:58:35
+./ I 01161480          $ 1161485 5                    10/13/89 15:58:35
+.cc 6                                                                   01161485
+./ R 01161590 01161600 $ 1161600 10                   10/13/89 15:58:35
+.subhead 10.6. HELP  or  ?                                              01161600
+./ D 01161630                                         10/13/89 15:58:35
+./ R 01161660 01161670 $ 1161670 10                   10/13/89 15:58:35
+.subhead 10.7. QUIESCE                                                  01161670
+./ D 01161700                                         10/13/89 15:58:35
+./ R 01161730          $ 1161735 5                    10/13/89 15:58:35
+processing of commands from the console or sent via MSG/SMSG).          01161735
+./ R 01161750 01161760 $ 1161760 10                   10/13/89 15:58:35
+.subhead 10.8. RELOAD                                                   01161760
+./ D 01161790                                         10/13/89 15:58:35
+./ R 01161830 01161840 $ 1161840 10                   10/13/89 15:58:35
+.subhead 10.9. SHOW                                                     01161840
+./ D 01161870                                         10/13/89 15:58:35
+./ R 01161910 01161920 $ 1161920 10                   10/13/89 15:58:35
+.subhead 10.10. SMSG                                                    01161920
+./ D 01161950                                         10/13/89 15:58:35
+./ R 01161990 01162000 $ 1162000 10                   10/13/89 15:58:35
+.subhead 10.11. STOP                                                    01162000
+./ D 01162030                                         10/13/89 15:58:35
+./ R 01162080          $ 1162085 5                    10/13/89 15:58:35
+.heading 11. Maintenance                                                01162085
+./ R 01168000 01169190 $ 1168590 590                  10/13/89 15:58:35
+.subhead 11.1. New versions                                             01168590
+./ R 01169760 01181000 $ 1170150 390                  10/13/89 15:58:35
+New versions will be sent to you automatically whenever the files are   01170150
+updated on the LISTSERV at PUCC.                                        01170540
+Files are sent in NETDATA format.                                       01170930
+Unlike the initial distribution, they are not grouped by disks.         01171320
+.sp 1                                                                   01171710
+When you receive a new version, it is recommended that you back up the  01172100
+current maintenance disks (in case you need to get back to the previous 01172490
+version).                                                               01172880
+After backing up the disks, you can load the new files onto the         01173270
+appropriate disks.                                                      01173660
+.sp 1                                                                   01174050
+A current copy of this document is always shipped with a new version.   01174440
+Appendix G and H can be used to determine where to load the files you   01174830
+receive.                                                                01175220
+Object code sites can load all the new files on the VMMxxx disk.        01175610
+In general, source code sites should load files with filetypes of       01176000
+'R20xxxx', 'AUXxxx', 'ASSEMBLE', '$EXEC' and '$MAILER' on the V2-MNT    01176390
+disk and all other files go on the VMMxxx disk but refer to the         01176780
+appendices to be certain.                                               01177170
+.sp 1                                                                   01177560
+After loading the new version you may want to change the volser of the  01177950
+VMMxxx disk to match the version number (i.e. VMM204 for release 2.04). 01178340
+You will now need to redo any local changes you have made and then      01178730
+.us \copy the appropriate pieces of \MAILER\ to the mailer DVM's 191 and01179120
+193 disks.                                                              01179510
+./ R 01182000 01183490 $ 1182890 890                  10/13/89 15:58:35
+.subhead 11.2. "MAILER PROFILE" updates                                 01182890
+./ D 01184960                                         10/13/89 15:58:35
+./ R 01187000          $ 1187490 490                  10/13/89 15:58:35
+latest "XMAILER/MAILER/DOMAIN NAMES" files become available.            01187490
+./ R 01190000 01191390 $ 1190790 790                  10/13/89 15:58:35
+.subhead 11.2.1. Files Used by MG                                       01190790
+./ D 01192560                                         10/13/89 15:58:35
+./ R 01196000          $ 1196490 490                  10/13/89 15:58:35
+"*^NAMES"^^^^^^^The NAMES files previously described in section 4.      01196490
+./ R 01199000          $ 1199490 490                  10/13/89 15:58:35
+.us \"\name\^MTPLATE"^^The template file used by MG to build            01199490
+./ R 01212000          $ 1212490 490                  10/13/89 15:58:35
+.us \"\name\^MAILLCL"^^This file consists of the lines in the           01212490
+./ R 01214000          $ 1214290 290                  10/13/89 15:58:35
+That is, the entry or entries for the local system are different from   01214290
+what a remote system would have.                                        01214580
+./ R 01216590          $ 1216780 190                  10/13/89 15:58:35
+the BSMTP exit in all other sites' profiles and the LOCAL exit for      01216780
+./ I 01219000          $ 1219100 100                  10/13/89 15:58:35
+These lines will be used to replace the appropriate lines in the        01219100
+profile.                                                                01219200
+If you include a line which begins with a host/domain name that does    01219300
+not appear in the NAMES files, that line will not be included in the    01219400
+profile.                                                                01219500
+./ I 01223770          $ 1223870 100                  10/13/89 15:58:35
+These instructions are written assuming the "Name = NodeName"           01223870
+convention.                                                             01223970
+./ R 01225000 01226390 $ 1225790 790                  10/13/89 15:58:35
+.subhead 11.2.2. Invoking MG                                            01225790
+./ D 01227560                                         10/13/89 15:58:35
+./ R 01231380          $ 1231670 290                  10/13/89 15:58:35
+.us \MG^^[-i]^^\nodename\^^[\alternate NAMES file names\]               01231670
+./ R 01241580          $ 1241870 290                  10/13/89 15:58:35
+MG nodename                                                             01241870
+./ R 01247580          $ 1247870 290                  10/13/89 15:58:35
+MG nodename NEWBIT.NAMES.G MAILER.NAMES                                 01247870
+./ R 01253380          $ 1253670 290                  10/13/89 15:58:35
+MG nodename -d NEWDOM.NAMES                                             01253670
+./ R 01268000 01278990 $ 1277990 9990                 10/13/89 15:58:35
+.subhead 11.2.3. Examples of MG input files                             01277990
+./ R 01298970 01343790 $ 1305960 6990                 10/13/89 15:58:35
+.us \A listing of the SAMPLE MTPLATE file distribute with \MAILER\ can  01305960
+be found in Appendix C.                                                 01312950
+A listing of the SAMPLE MAILLCL file can be found in Appendix D (second 01319940
+example).                                                               01326930
+.subhead 11.2.4. Cookbook                                               01333920
+./ R 01346160 01346950 $ 1347050 890                  10/13/89 15:58:35
+.us \The cookbook approach to build your \MAILER\ profile with MG       01347050
+./ I 01348000          $ 1348600 600                  10/13/89 15:58:35
+This section needs additional modification to bring it inline with the  01348600
+standardized disk layout, but you may find it useful anyway.            01349200
+./ R 01354000 01355580 $ 1354490 490                  10/13/89 15:58:35
+.hi .3i                                                                 01354490
+.us \1. Create a "\nodename\ MTPLATE" file similar to the one in        01354980
+Appendix C.                                                             01355470
+./ R 01357000 01358000 $ 1357590 590                  10/13/89 15:58:35
+.hi .3i                                                                 01357590
+.us \2. Create a "\nodename\ MAILLCL" file with a single line in it:    01358180
+./ R 01361000          $ 1361690 690                  10/13/89 15:58:35
+.bd \SITENAME\  *        *        LOCAL     1                           01361690
+./ R 01364000          $ 1364490 490                  10/13/89 15:58:35
+.hi .3i                                                                 01364490
+./ R 01377000          $ 1377490 490                  10/13/89 15:58:35
+.hi .3i                                                                 01377490
+./ R 01380000 01381000 $ 1380390 390                  10/13/89 15:58:35
+.hi .3i                                                                 01380390
+.us \2. Obtain read access to "\nodename\ MTPLATE" and "\nodename\      01380780
+MAILLCL"                                                                01381170
+on                                                                      01381560
+./ R 01384000          $ 1384690 690                  10/13/89 15:58:35
+.hi .3i                                                                 01384690
+./ R 01388000          $ 1388690 690                  10/13/89 15:58:35
+.us \MG \nodename                                                       01388690
+./ R 01391000 01392000 $ 1391490 490                  10/13/89 15:58:35
+.hi .3i                                                                 01391490
+.us \4. When MG is done, a new file, "\nodename\ PROFILE A1" will have  01391980
+been                                                                    01392470
+./ R 01395000 01396000 $ 1395490 490                  10/13/89 15:58:35
+.hi .3i                                                                 01395490
+.us \5. Compare "\nodename\ PROFILE A1" to "MAILER PROFILE" on the disk 01395980
+that                                                                    01396470
+./ R 01401000 01402000 $ 1401590 590                  10/13/89 15:58:35
+.hi .3i                                                                 01401590
+.us \6. If you are satisfied with the new "\nodename\ PROFILE", replace 01402180
+./ R 01408000          $ 1408690 690                  10/13/89 15:58:35
+.hi .3i                                                                 01408690
+./ I 01411590          $ 1411790 200                  10/13/89 15:58:35
+.hi 0                                                                   01411790
+./ R 01417000          $ 1417490 490                  10/13/89 15:58:35
+.hi .3i                                                                 01417490
+./ R 01421000          $ 1421490 490                  10/13/89 15:58:35
+.hi .3i                                                                 01421490
+./ R 01424000          $ 1424490 490                  10/13/89 15:58:35
+.hi .3i                                                                 01424490
+./ R 01431000 01432490 $ 1431590 590                  10/13/89 15:58:35
+ * CMS command accepted.                                                01431590
+ * R(00000) for: ACCESS 193 B                                           01432180
+./ R 01434000          $ 1434690 690                  10/13/89 15:58:35
+ * Reload command accepted.                                             01434690
+./ R 01437000 01438000 $ 1437590 590                  10/13/89 15:58:35
+(These commands will only be accepted from the userids listed as        01437590
+.us \the \MAILER\ maintainer(s) in the profile.)                        01438180
+./ R 01441770          $ 1441960 190                  10/13/89 15:58:35
+.heading 12. Diagnosing Problems                                        01441960
+./ R 01447000          $ 1447490 490                  10/13/89 15:58:35
+This may lead to                                                        01447490
+./ R 01461290 01461580 $ 1461300 10                   10/13/89 15:58:35
+.sp 1                                                                   01461300
+If mailer abends while parsing headers, some automatic error recovery   01461310
+will be performed by the MABNXIT EXEC (see section 6.11, "Modifying     01461320
+the MABNXIT EXEC").                                                     01461330
+The most important part of this process for diagnosing problems is the  01461340
+taking of a dump of the mailer DVM (with the CP VMDUMP command)         01461350
+and saving of a copy of the file that was being processed when the      01461360
+failure occurred.                                                       01461370
+You can use this file to attempt to reproduce the problem in a test     01461380
+mailer.                                                                 01461390
+.sp 1                                                                   01461400
+If you can reproduce the problem using the saved file, send a copy of   01461410
+it, along with a description of the failure (copy the section of the    01461420
+console log where the failure occurred) to the XMAILBUG@PUCC list.      01461430
+.us \XMAILBUG is a central error reporting list for \MAILER\.           01461440
+.us \This allows discussion of \MAILER\ problems on the XMAILER list    01461450
+without cluttering it up with error reports.                            01461460
+The XMAILBUG list is open for subscripton, but members of the list      01461470
+are expected to be willing to act as beta test sites for new code.      01461480
+This restriction is not made on sites simply using XMAILBUG to report   01461490
+problems.                                                               01461500
+./ R 01462740          $ 1462830 90                   10/13/89 15:58:35
+.heading 13. Messages                                                   01462830
+./ I 01482000          $ 1482600 600                  10/13/89 15:58:35
+.hi 0                                                                   01482600
+./ R 01486000 01487390 $ 1486790 790                  10/13/89 15:58:35
+.subhead 13.1. Message Codes                                            01486790
+./ D 01488560                                         10/13/89 15:58:35
+./ D 01492000                                         10/13/89 15:58:35
+./ R 01495000 01497000 $ 1495490 490                  10/13/89 15:58:35
+.us \MAILER001I CUCCA VM Network MAILER \version\ \date\                01495490
+.br                                                                     01495980
+Copyright (c) 1982,1987 Columbia University                             01496470
+.br                                                                     01496960
+Copyright (c) 1989 Princeton University                                 01497450
+./ D 01499000                                         10/13/89 15:58:35
+./ D 01502000                                         10/13/89 15:58:35
+./ R 01504000          $ 1504290 290                  10/13/89 15:58:35
+.in +.4i                                                                01504290
+.sp                                                                     01504580
+./ I 01508000          $ 1508500 500                  10/13/89 15:58:35
+.in -.4i                                                                01508500
+./ D 01510000                                         10/13/89 15:58:35
+./ D 01513000                                         10/13/89 15:58:35
+./ D 01516000                                         10/13/89 15:58:35
+./ D 01519000                                         10/13/89 15:58:35
+./ R 01521000          $ 1521290 290                  10/13/89 15:58:35
+.in +.4i                                                                01521290
+.sp                                                                     01521580
+./ I 01523000          $ 1523500 500                  10/13/89 15:58:35
+.in -.4i                                                                01523500
+./ D 01525000                                         10/13/89 15:58:35
+./ R 01527000          $ 1527290 290                  10/13/89 15:58:35
+.in +.4i                                                                01527290
+.sp                                                                     01527580
+./ I 01529000          $ 1529500 500                  10/13/89 15:58:35
+.in -.4i                                                                01529500
+./ R 01531000          $ 1531490 490                  10/13/89 15:58:35
+.hi 11                                                                  01531490
+./ I 01533000          $ 1533500 500                  10/13/89 15:58:35
+.hi 0                                                                   01533500
+./ D 01535000                                         10/13/89 15:58:35
+./ R 01537000          $ 1537290 290                  10/13/89 15:58:35
+.in +.4i                                                                01537290
+.sp                                                                     01537580
+./ I 01539000          $ 1539500 500                  10/13/89 15:58:35
+.in -.4i                                                                01539500
+./ D 01541000                                         10/13/89 15:58:35
+./ R 01543000          $ 1543290 290                  10/13/89 15:58:35
+.in +.4i                                                                01543290
+.sp                                                                     01543580
+./ I 01546000          $ 1546500 500                  10/13/89 15:58:35
+.in -.4i                                                                01546500
+./ D 01548000                                         10/13/89 15:58:35
+./ D 01551000                                         10/13/89 15:58:35
+./ R 01553000          $ 1553290 290                  10/13/89 15:58:35
+.in +.4i                                                                01553290
+.sp                                                                     01553580
+./ I 01555000          $ 1555500 500                  10/13/89 15:58:35
+.in -.4i                                                                01555500
+./ D 01557000                                         10/13/89 15:58:35
+./ D 01560000                                         10/13/89 15:58:35
+./ R 01562000          $ 1562290 290                  10/13/89 15:58:35
+.in +.4i                                                                01562290
+.sp                                                                     01562580
+./ I 01566000          $ 1566500 500                  10/13/89 15:58:35
+.in -.4i                                                                01566500
+./ D 01568000                                         10/13/89 15:58:35
+./ D 01571000                                         10/13/89 15:58:35
+./ R 01573000          $ 1573290 290                  10/13/89 15:58:35
+.in +.4i                                                                01573290
+.sp                                                                     01573580
+./ I 01579000          $ 1579500 500                  10/13/89 15:58:35
+.in -.4i                                                                01579500
+./ D 01581000                                         10/13/89 15:58:35
+./ R 01583000          $ 1583290 290                  10/13/89 15:58:35
+.in +.4i                                                                01583290
+.sp                                                                     01583580
+./ I 01584000          $ 1584500 500                  10/13/89 15:58:35
+.in -.4i                                                                01584500
+./ D 01586000                                         10/13/89 15:58:35
+./ R 01588000          $ 1588290 290                  10/13/89 15:58:35
+.in +.4i                                                                01588290
+.sp                                                                     01588580
+./ I 01591490          $ 1591690 200                  10/13/89 15:58:35
+.in -.4i                                                                01591690
+./ D 01593000                                         10/13/89 15:58:35
+./ R 01595000          $ 1595290 290                  10/13/89 15:58:35
+.in +.4i                                                                01595290
+.sp                                                                     01595580
+./ I 01596000          $ 1596500 500                  10/13/89 15:58:35
+.in -.4i                                                                01596500
+./ R 01598000          $ 1598490 490                  10/13/89 15:58:35
+.hi 11                                                                  01598490
+./ R 01600000          $ 1600190 190                  10/13/89 15:58:35
+.hi 0                                                                   01600190
+.in +.4i                                                                01600380
+.sp                                                                     01600570
+./ I 01601000          $ 1601500 500                  10/13/89 15:58:35
+.in -.4i                                                                01601500
+./ D 01603000                                         10/13/89 15:58:35
+./ R 01607000          $ 1607290 290                  10/13/89 15:58:35
+.in +.4i                                                                01607290
+.sp                                                                     01607580
+./ I 01608000          $ 1608500 500                  10/13/89 15:58:35
+.in -.4i                                                                01608500
+./ D 01610000                                         10/13/89 15:58:35
+./ R 01612000          $ 1612290 290                  10/13/89 15:58:35
+.in +.4i                                                                01612290
+.sp                                                                     01612580
+./ I 01613000          $ 1613500 500                  10/13/89 15:58:35
+.in -.4i                                                                01613500
+./ D 01615000                                         10/13/89 15:58:35
+./ R 01617000          $ 1617390 390                  10/13/89 15:58:35
+.in +.4i                                                                01617390
+.sp                                                                     01617780
+./ I 01620000          $ 1620500 500                  10/13/89 15:58:35
+.in -.4i                                                                01620500
+./ D 01622000                                         10/13/89 15:58:35
+./ D 01625000                                         10/13/89 15:58:35
+./ D 01628000                                         10/13/89 15:58:35
+./ I 01629000          $ 1629300 300                  10/13/89 15:58:35
+.in +.4i                                                                01629300
+.sp 1                                                                   01629600
+./ I 01633000          $ 1633500 500                  10/13/89 15:58:35
+.in -.4i                                                                01633500
+./ D 01635000                                         10/13/89 15:58:35
+./ D 01638000                                         10/13/89 15:58:35
+./ D 01641000                                         10/13/89 15:58:35
+./ D 01644000                                         10/13/89 15:58:35
+./ D 01647000                                         10/13/89 15:58:35
+./ R 01649000 01650000 $ 1649290 290                  10/13/89 15:58:35
+.in +.4i                                                                01649290
+.sp                                                                     01649580
+.us \\Vmid\ is defined in the SPECIAL table but no exit is defined for  01649870
+it.                                                                     01650160
+.in -.4i                                                                01650450
+./ D 01652000                                         10/13/89 15:58:35
+./ R 01655000 01656000 $ 1655990 990                  10/13/89 15:58:35
+MAILER035U File is not a PUNCH file.                                    01655990
+./ R 01658000          $ 1658490 490                  10/13/89 15:58:35
+.hi 1.0i                                                                01658490
+./ R 01661000          $ 1661190 190                  10/13/89 15:58:35
+.hi 0                                                                   01661190
+.in +.4i                                                                01661380
+.sp                                                                     01661570
+./ I 01666000          $ 1666500 500                  10/13/89 15:58:35
+.in -.4i                                                                01666500
+./ D 01668000                                         10/13/89 15:58:35
+./ D 01671000                                         10/13/89 15:58:35
+./ D 01674000                                         10/13/89 15:58:35
+./ D 01677000                                         10/13/89 15:58:35
+./ D 01680000                                         10/13/89 15:58:35
+./ R 01682000          $ 1682290 290                  10/13/89 15:58:35
+.in +.4i                                                                01682290
+.sp                                                                     01682580
+./ I 01683000          $ 1683500 500                  10/13/89 15:58:35
+.in -.4i                                                                01683500
+./ D 01685000                                         10/13/89 15:58:35
+./ R 01687000          $ 1687290 290                  10/13/89 15:58:35
+.in +.4i                                                                01687290
+.sp                                                                     01687580
+./ I 01690000          $ 1690500 500                  10/13/89 15:58:35
+.in -.4i                                                                01690500
+./ D 01692000                                         10/13/89 15:58:35
+./ D 01695000                                         10/13/89 15:58:35
+./ R 01697000          $ 1697290 290                  10/13/89 15:58:35
+.in +.4i                                                                01697290
+.sp                                                                     01697580
+./ I 01699000          $ 1699500 500                  10/13/89 15:58:35
+.in -.4i                                                                01699500
+./ D 01701000                                         10/13/89 15:58:35
+./ R 01703000          $ 1703290 290                  10/13/89 15:58:35
+.in +.4i                                                                01703290
+.sp                                                                     01703580
+./ I 01704000          $ 1704500 500                  10/13/89 15:58:35
+.in -.4i                                                                01704500
+./ D 01706000                                         10/13/89 15:58:35
+./ D 01709000                                         10/13/89 15:58:35
+./ R 01712000          $ 1712490 490                  10/13/89 15:58:35
+.hi 1.0i                                                                01712490
+./ I 01714000          $ 1714500 500                  10/13/89 15:58:35
+.hi 0                                                                   01714500
+./ D 01716000                                         10/13/89 15:58:35
+./ R 01718000          $ 1718290 290                  10/13/89 15:58:35
+.in +.4i                                                                01718290
+.sp                                                                     01718580
+./ I 01719000          $ 1719500 500                  10/13/89 15:58:35
+.in -.4i                                                                01719500
+./ D 01721000                                         10/13/89 15:58:35
+./ D 01724000                                         10/13/89 15:58:35
+./ R 01727000          $ 1727490 490                  10/13/89 15:58:35
+.hi 11                                                                  01727490
+./ I 01729000          $ 1729500 500                  10/13/89 15:58:35
+.hi 0                                                                   01729500
+./ D 01731000                                         10/13/89 15:58:35
+./ D 01734000                                         10/13/89 15:58:35
+./ D 01737000                                         10/13/89 15:58:35
+./ R 01739000          $ 1739490 490                  10/13/89 15:58:35
+.sp 2                                                                   01739490
+./ D 01742000                                         10/13/89 15:58:35
+./ D 01745000                                         10/13/89 15:58:35
+./ D 01748000                                         10/13/89 15:58:35
+./ D 01751000                                         10/13/89 15:58:35
+./ R 01754000          $ 1754490 490                  10/13/89 15:58:35
+.hi 11                                                                  01754490
+./ I 01756000          $ 1756500 500                  10/13/89 15:58:35
+.hi 0                                                                   01756500
+./ R 01758000 01759000 $ 1758990 990                  10/13/89 15:58:35
+MAILER062E A-disk not writeable.                                        01758990
+./ D 01761000                                         10/13/89 15:58:35
+./ R 01763000          $ 1763290 290                  10/13/89 15:58:35
+.in +.4i                                                                01763290
+.sp                                                                     01763580
+./ I 01767000          $ 1767500 500                  10/13/89 15:58:35
+.in -.4i                                                                01767500
+./ D 01769000                                         10/13/89 15:58:35
+./ R 01771000          $ 1771290 290                  10/13/89 15:58:35
+.in +.4i                                                                01771290
+.sp                                                                     01771580
+./ I 01774000          $ 1774500 500                  10/13/89 15:58:35
+.in -.4i                                                                01774500
+./ D 01776000                                         10/13/89 15:58:35
+./ D 01779000                                         10/13/89 15:58:35
+./ D 01780120                                         10/13/89 15:58:35
+./ D 01780300                                         10/13/89 15:58:35
+./ D 01780480                                         10/13/89 15:58:35
+./ D 01780660                                         10/13/89 15:58:35
+./ D 01780840                                         10/13/89 15:58:35
+./ R 01781000 01783290 $ 1781040 40                   10/13/89 15:58:35
+.sp 2                                                                   01781040
+MAILER072W Local-Host not found in OUTGOING table:                      01781080
+.in +11                                                                 01781120
+.us \\Local-Host# value\                                                01781160
+.in -11                                                                 01781200
+.in +4                                                                  01781240
+.sp 1                                                                   01781280
+A Local-Host# variable was looked for in the OUTGOING table and not     01781320
+found.                                                                  01781360
+This may indicate a problem with delivering mail to this host name.     01781400
+.in -4                                                                  01781440
+.sp 2                                                                   01781480
+MAILER073W Local-Host also not found in DOMAINS table                   01781520
+.in +4                                                                  01781560
+.sp 1                                                                   01781600
+The Local-Host# var displayed in msg 072 was looked for in the DOMAINS  01781640
+table and no match was found.                                           01781680
+This indicates you have no way to deliver files to this Local-Host#.    01781720
+This is a serious error.                                                01781760
+.sp                                                                     01781800
+To correct the problem add an entry to the OUTGOING table to handle this01781840
+Local-Host name.                                                        01781880
+.in -4                                                                  01781920
+.sp 2                                                                   01781960
+MAILER074W Local-Host will be processed in DOMAINS table                01782000
+.in +4                                                                  01782040
+.sp 1                                                                   01782080
+The Local-Host# var displayed in msg 072 was looked for in the DOMAINS  01782120
+table and a match was found.                                            01782160
+This usually indicates a problem with routing, because a Local-Host name01782200
+should be delivered to the local system.                                01782240
+.in -4                                                                  01782280
+.sp 2                                                                   01782320
+.us \MAILER075W \variable-name\=\value\                                 01782360
+.in +4                                                                  01782400
+.sp 1                                                                   01782440
+This message is used to display the values of important variables set   01782480
+in the profile.                                                         01782520
+.us \This allows you to verify what \MAILER\ is using for these values  01782560
+(as opposed to what you think it was using).                            01782600
+.in -4                                                                  01782640
+.in -.33i                                                               01782680
+.subhead 13.2. BSMTP Messages                                           01782720
+./ R 01784000          $ 1784490 490                  10/13/89 15:58:35
+.in +.33i                                                               01784490
+./ R 01790000          $ 1790490 490                  10/13/89 15:58:35
+.in +6                                                                  01790490
+./ D 01798000                                         10/13/89 15:58:35
+./ D 01801000                                         10/13/89 15:58:35
+./ D 01804000                                         10/13/89 15:58:35
+./ R 01806000          $ 1806290 290                  10/13/89 15:58:35
+.in +4                                                                  01806290
+.sp                                                                     01806580
+./ I 01807000          $ 1807500 500                  10/13/89 15:58:35
+.in -4                                                                  01807500
+./ D 01809000                                         10/13/89 15:58:35
+./ D 01812000                                         10/13/89 15:58:35
+./ D 01815000                                         10/13/89 15:58:35
+./ D 01817000                                         10/13/89 15:58:35
+./ D 01823000                                         10/13/89 15:58:35
+./ R 01826000 01828000 $ 1826990 990                  10/13/89 15:58:35
+.hi 4                                                                   01826990
+.us \250 <\my\ \domain\> You are a charlatan;                           01827980
+./ R 01831000 01833000 $ 1831390 390                  10/13/89 15:58:35
+.hi 0                                                                   01831390
+.in +4                                                                  01831780
+.sp                                                                     01832170
+However, the mail will be allowed to continue if Allow-Charlatans       01832560
+is True.                                                                01832950
+.in -4                                                                  01833340
+./ R 01838000          $ 1838190 190                  10/13/89 15:58:35
+.hi 0                                                                   01838190
+.in +4                                                                  01838380
+.sp                                                                     01838570
+./ R 01840000          $ 1840490 490                  10/13/89 15:58:35
+.in -4                                                                  01840490
+./ D 01846000                                         10/13/89 15:58:35
+./ R 01853490          $ 1853680 190                  10/13/89 15:58:35
+.in -6                                                                  01853680
+./ R 01856490          $ 1856680 190                  10/13/89 15:58:35
+.in +6                                                                  01856680
+./ D 01858000                                         10/13/89 15:58:35
+./ D 01861000                                         10/13/89 15:58:35
+./ R 01863000          $ 1863290 290                  10/13/89 15:58:35
+.in +4                                                                  01863290
+.sp                                                                     01863580
+./ R 01866000          $ 1866490 490                  10/13/89 15:58:35
+.in -4                                                                  01866490
+./ D 01872000                                         10/13/89 15:58:35
+./ R 01874000          $ 1874290 290                  10/13/89 15:58:35
+.in +4                                                                  01874290
+.sp                                                                     01874580
+./ I 01876000          $ 1876500 500                  10/13/89 15:58:35
+.in -4                                                                  01876500
+./ D 01878000                                         10/13/89 15:58:35
+./ D 01881000                                         10/13/89 15:58:35
+./ D 01884000                                         10/13/89 15:58:35
+./ D 01887000                                         10/13/89 15:58:35
+./ R 01889000          $ 1889290 290                  10/13/89 15:58:35
+.in +4                                                                  01889290
+.sp                                                                     01889580
+./ R 01892000          $ 1892490 490                  10/13/89 15:58:35
+.in -4                                                                  01892490
+./ D 01898000                                         10/13/89 15:58:35
+./ D 01900000                                         10/13/89 15:58:35
+./ D 01906000                                         10/13/89 15:58:35
+./ D 01908000                                         10/13/89 15:58:35
+./ D 01914000                                         10/13/89 15:58:35
+./ D 01916000                                         10/13/89 15:58:35
+./ D 01924000                                         10/13/89 15:58:35
+./ D 01926000                                         10/13/89 15:58:35
+./ D 01932000                                         10/13/89 15:58:35
+./ D 01934000                                         10/13/89 15:58:35
+./ I 01937000          $ 1937500 500                  10/13/89 15:58:35
+.in +6                                                                  01937500
+./ D 01939000                                         10/13/89 15:58:35
+./ R 01941000          $ 1941290 290                  10/13/89 15:58:35
+.in +4                                                                  01941290
+.sp                                                                     01941580
+./ I 01943000          $ 1943500 500                  10/13/89 15:58:35
+.in -4                                                                  01943500
+./ D 01945000                                         10/13/89 15:58:35
+./ R 01947000          $ 1947290 290                  10/13/89 15:58:35
+.in +4                                                                  01947290
+.sp                                                                     01947580
+./ R 01950000          $ 1950490 490                  10/13/89 15:58:35
+.in -4                                                                  01950490
+./ D 01956000                                         10/13/89 15:58:35
+./ I 01957000          $ 1957300 300                  10/13/89 15:58:35
+.in +4                                                                  01957300
+.sp                                                                     01957600
+./ R 01960000          $ 1960490 490                  10/13/89 15:58:35
+.in -4                                                                  01960490
+./ D 01966000                                         10/13/89 15:58:35
+./ D 01968000                                         10/13/89 15:58:35
+./ R 01970000 01971290 $ 1970690 690                  10/13/89 15:58:35
+.subhead 13.3. Miscellaneous Messages                                   01970690
+./ D 01972000 01973000                                10/13/89 15:58:35
+./ R 01975000          $ 1975290 290                  10/13/89 15:58:35
+.in +4                                                                  01975290
+.sp 1                                                                   01975580
+./ R 01979000          $ 1979490 490                  10/13/89 15:58:35
+.in -4                                                                  01979490
+./ R 01981000          $ 1981490 490                  10/13/89 15:58:35
+.heading .ce Appendix A                                                 01981490
+./ R 01994000          $ 1994490 490                  10/13/89 15:58:35
+.bd \\"MAILR2 $PACKAGE"\    List of files in MAILR2 PACKAGE.            01994490
+./ R 01998000          $ 1998490 490                  10/13/89 15:58:35
+.bd \\"VMM2xx   $PACKAGE"\  List of files that go on the VMM2xx disk    01998490
+./ R 02003000          $ 2003490 490                  10/13/89 15:58:35
+.bd \\"V2-DST   $PACKAGE"\  List of files that go on the V2-DST disk    02003490
+./ R 02008000          $ 2008490 490                  10/13/89 15:58:35
+.heading .ce Appendix B                                                 02008490
+./ R 02025000 02027000 $ 2025990 990                  10/13/89 15:58:35
+.in +.3i                                                                02025990
+1. Object code distribution files (VMM2xx disk)                         02026980
+./ R 02034000          $ 2034490 490                  10/13/89 15:58:35
+.in -.3i                                                                02034490
+./ R 02036000          $ 2036490 490                  10/13/89 15:58:35
+The files for the VMM2xx and V2-DST disk are sent as the MAILR2 package 02036490
+./ I 02043000          $ 2043500 500                  10/13/89 15:58:35
+.us \use \MAILER\ on BITNET.                                            02043500
+./ R 02057000          $ 2057490 490                  10/13/89 15:58:35
+.heading .ce Appendix C                                                 02057490
+./ R 02093000          $ 2093490 490                  10/13/89 15:58:35
+;** domain identifier (such as .BITNET, which is a kludge)              02093490
+./ R 02095000 02097000 $ 2095690 690                  10/13/89 15:58:35
+RSCS-Domain1=.BITNET         ; Accept .BITNET                           02095690
+RSCS-Domain2=.EARN           ; Accept .EARN                             02096380
+RSCS-Domain3=.NETNORTH       ; Accept .Netnorth                         02097070
+./ R 02110000 02113000 $ 2110590 590                  10/13/89 15:58:35
+;** The following lines allow you to specify host names for your host.  02110590
+;** This is useful if your host is known by more than 1 name.           02111180
+;**                                                                     02111770
+;** If your system is known only by its NJE node name, delete these     02112360
+;** lines.                                                              02112950
+./ R 02115000 02123000 $ 2115890 890                  10/13/89 15:58:35
+Local-Host1=Host.DOMAIN.EDU       ; The real host name                  02115890
+;** Local-Host2=                     ; Alternate host identifier        02116780
+;** Local-Host3=                     ; Alternate host identifier        02117670
+;** Local-Host4=                     ; Alternate host identifier        02118560
+;** Local-Host5=                     ; Alternate host identifier        02119450
+;** Local-Host6=                     ; Alternate host identifier        02120340
+;** Local-Host7=                     ; Alternate host identifier        02121230
+;** Local-Host8=                     ; Alternate host identifier        02122120
+;** Local-Host9=                     ; Alternate host identifier        02123010
+./ R 02151000          $ 2151490 490                  10/13/89 15:58:35
+;** Change this value to TRUE if you are willing to assume that any     02151490
+./ R 02153000          $ 2153490 490                  10/13/89 15:58:35
+;** node.  Leaving the value set as FALSE requires that the source      02153490
+./ R 02157000 02158000 $ 2157590 590                  10/13/89 15:58:35
+allow-unknown-nodes=FALSE    ; Do not allow nodes I do not know         02157590
+                             ; about to exchange mail.                  02158180
+./ I 02239000          $ 2239500 500                  10/13/89 15:58:35
+; *DEFAULT* MAILER              ; Allow userid MAILER from anywhere     02239500
+./ R 02246000 02247000 $ 2246590 590                  10/13/89 15:58:35
+; Host name      Node     Userid   Exit     Type Parm                   02246590
+; -------------- -------- -------- -------- ---- --------               02247180
+./ R 02280000          $ 2280490 490                  10/13/89 15:58:35
+.heading .ce Appendix D                                                 02280490
+./ R 02302000          $ 2302490 490                  10/13/89 15:58:35
+.heading .ce Appendix E                                                 02302490
+./ R 02320000          $ 2320490 490                  10/13/89 15:58:35
+* Mailer 2.xx local modifications/work disk                             02320490
+./ R 02325000          $ 2325490 490                  10/13/89 15:58:35
+* Mailer 2.xx object code mailer files and production files             02325490
+./ R 02330000          $ 2330490 490                  10/13/89 15:58:35
+* Mailer 2.xx updates                                                   02330490
+./ R 02335000          $ 2335490 490                  10/13/89 15:58:35
+* Mailer 2.00 base source files                                         02335490
+./ R 02340000          $ 2340490 490                  10/13/89 15:58:35
+* Mailer 2.xx misc. tools                                               02340490
+./ R 02346000          $ 2346490 490                  10/13/89 15:58:35
+.heading .ce Appendix F                                                 02346490
+./ R 02376000          $ 2376490 490                  10/13/89 15:58:35
+.heading .ce Appendix G                                                 02376490
+./ R 02390000 02393000 $ 2391990 1990                 10/13/89 15:58:35
+.bd \\"VMM2xx   $PACKAGE"\     List of files that go on the VMM2xx disk 02391990
+./ R 02396000          $ 2396190 190                  10/13/89 15:58:35
+.bd \\"CHANGES  MEMO"\         Description of changes to MAILER         02396190
+.sp 1                                                                   02396380
+.hi 24                                                                  02396570
+.bd \\"MABNXIT  EXEC"\         A REXX program for handling MAILER abends02396760
+./ R 02459000          $ 2459490 490                  10/13/89 15:58:35
+.bd \\"MAILGEN  TXTLIB"\       Library of all MAILER and MG text files  02459490
+./ R 02462000          $ 2462490 490                  10/13/89 15:58:35
+.heading .ce Appendix H                                                 02462490
+./ R 02468000          $ 2468490 490                  10/13/89 15:58:35
+.tb 12                                                                  02468490
+./ D 02473000                                         10/13/89 15:58:35
+./ D 02479000                                         10/13/89 15:58:35
+./ D 02483000                                         10/13/89 15:58:35
+./ D 02487000                                         10/13/89 15:58:35
+./ D 02497000                                         10/13/89 15:58:35
+./ D 02507000 02508000                                10/13/89 15:58:35
+./ D 02514000                                         10/13/89 15:58:35
+./ D 02520000                                         10/13/89 15:58:35
+./ I 02524000          $ 2524500 500                  10/13/89 15:58:35
+DEFRT!R203012                                                           02524500
+./ D 02526000                                         10/13/89 15:58:35
+./ I 02530000          $ 2530100 100                  10/13/89 15:58:35
+DISTSUB!ASSEMBLE                                                        02530100
+FORWARD!$MAILER                                                         02530200
+FORWARD!MAILER                                                          02530300
+GENMAIL!$EXEC                                                           02530400
+GENMAIL!AUXEXCR2                                                        02530500
+GENMAIL!EXEC                                                            02530600
+GENMAIL!R203014                                                         02530700
+GENMAIL!R203021                                                         02530800
+./ D 02532000                                         10/13/89 15:58:35
+./ D 02548000                                         10/13/89 15:58:35
+./ I 02551000          $ 2551200 200                  10/13/89 15:58:35
+LOCAL!R203011                                                           02551200
+LOCAL!R203014                                                           02551400
+LOCAL!R203020                                                           02551600
+LOCAL!R203022                                                           02551800
+./ R 02555000          $ 2555490 490                  10/13/89 15:58:35
+MAILBLOK!AUXW3$H                                                        02555490
+./ I 02562000          $ 2562300 300                  10/13/89 15:58:35
+MAILBLOK!R203013H                                                       02562300
+MAILBLOK!R204000                                                        02562600
+./ D 02564000                                         10/13/89 15:58:35
+./ I 02570000          $ 2570200 200                  10/13/89 15:58:35
+MAILCMD1!R203010                                                        02570200
+MAILCMD1!R203014                                                        02570400
+MAILCMD1!R203024                                                        02570600
+./ I 02573000          $ 2573500 500                  10/13/89 15:58:35
+MAILCMD2!R203014                                                        02573500
+./ D 02582000                                         10/13/89 15:58:35
+./ I 02594000          $ 2594500 500                  10/13/89 15:58:35
+MAILER!R203014                                                          02594500
+./ D 02602000 02604000                                10/13/89 15:58:35
+./ I 02608000          $ 2608500 500                  10/13/89 15:58:35
+MAILGEN!R203021                                                         02608500
+./ D 02616000                                         10/13/89 15:58:35
+./ I 02625000          $ 2625300 300                  10/13/89 15:58:35
+MAILMACS!R203014                                                        02625300
+MAILMACS!R203026                                                        02625600
+./ D 02627000                                         10/13/89 15:58:35
+./ D 02634000 02635000                                10/13/89 15:58:35
+./ I 02638000          $ 2638500 500                  10/13/89 15:58:35
+MAILMOD1!R203011                                                        02638500
+./ D 02640000                                         10/13/89 15:58:35
+./ D 02644000                                         10/13/89 15:58:35
+./ D 02651000                                         10/13/89 15:58:35
+./ I 02653000          $ 2653500 500                  10/13/89 15:58:35
+MAILSMSG!R203018                                                        02653500
+./ D 02657000                                         10/13/89 15:58:35
+./ I 02661000          $ 2661200 200                  10/13/89 15:58:35
+MG!R203012                                                              02661200
+MG!R203018                                                              02661400
+MG!R204000                                                              02661600
+./ I 02663000          $ 2663500 500                  10/13/89 15:58:35
+MINICLIB!R203017                                                        02663500
+./ D 02665000                                         10/13/89 15:58:35
+./ I 02669000          $ 2669100 100                  10/13/89 15:58:35
+MSGTEXT!R203014                                                         02669100
+MSGTEXT!R203028                                                         02669200
+MSGTEXT!R203030                                                         02669300
+NAMES!AUXR2                                                             02669400
+NAMES!R203018                                                           02669500
+NAMES!R203027                                                           02669600
+./ I 02671000          $ 2671500 500                  10/13/89 15:58:35
+ORGFILTR!R203015                                                        02671500
+./ D 02673000                                         10/13/89 15:58:35
+./ I 02675000          $ 2675500 500                  10/13/89 15:58:35
+PROFS!R203023                                                           02675500
+./ D 02677000                                         10/13/89 15:58:35
+./ D 02686000                                         10/13/89 15:58:35
+./ I 02688000          $ 2688500 500                  10/13/89 15:58:35
+READINIT!R203029                                                        02688500
+./ D 02690000                                         10/13/89 15:58:35
+./ I 02693000          $ 2693500 500                  10/13/89 15:58:35
+SALOC!AUXR2                                                             02693500
+./ I 02694000          $ 2694300 300                  10/13/89 15:58:35
+SALOC!R203011                                                           02694300
+SALOC!R203019                                                           02694600
+./ D 02702000                                         10/13/89 15:58:35
+./ I 02706000          $ 2706300 300                  10/13/89 15:58:35
+SETINIT!R203028                                                         02706300
+SETINIT!R203030                                                         02706600
+./ D 02708000                                         10/13/89 15:58:35
+./ I 02724000          $ 2724300 300                  10/13/89 15:58:35
+SMTPIN!R203016                                                          02724300
+SMTPIN!R203017                                                          02724600
+./ I 02732000          $ 2732500 500                  10/13/89 15:58:35
+TBLUK!R203026                                                           02732500
+./ D 02739000                                         10/13/89 15:58:35
+./ D 02748000                                         10/13/89 15:58:35
+./ I 02754000          $ 2754500 500                  10/13/89 15:58:35
+VALIDATE!R203025                                                        02754500
+./ D 02757000                                         10/13/89 15:58:35
+./ I 02764000          $ 2764500 500                  10/13/89 15:58:35
+VERSION!R204000                                                         02764500
+./ R 02774000          $ 2774490 490                  10/13/89 15:58:35
+.heading .ce Appendix I                                                 02774490
+./ R 02780000          $ 2780490 490                  10/13/89 15:58:35
+.tb 12                                                                  02780490
+./ R 02872000          $ 2872490 490                  10/13/89 15:58:35
+.heading .ce Appendix J                                                 02872490
+./ R 02878000          $ 2878490 490                  10/13/89 15:58:35
+.tb 12                                                                  02878490

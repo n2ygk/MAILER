@@ -1,0 +1,25 @@
+./ R 00064980 00073000 $ 65770 790                    02/15/89 16:49:41
+         L     R6,ACTMBOX    GET MBOX BLOCK                             00064980
+         USING MBOX,R6                                                  00065380
+         L     R1,MBXLCL         pointer to list of user adnodes        00124570
+         ST    R1,NODEA          Save for GENLIST call                  00125560
+         LA    R14,STACKP        Stack pointer address ptr              00126550
+         LA    R15,STACKP+4      Stack size address ptr                 00127540
+         CALL  GENLIST,(NODEA,LSTRA,LSTRL,(14),(15))                    00128530
+         L     R3,LSTRA          address of user name token             00129520
+         L     R4,LSTRL          length of it                           00130510
+         DROP  R6                                                       00073000
+./ R 00077000          $ 77490 490                    02/15/89 16:49:41
+         BNH   OK0           [3]                                        00077000
+./ I 00078000          $ 78500 500                    02/15/89 16:49:41
+OK0      EQU   *
+./ R 00080000 00081000 $ 80490 490                    02/15/89 16:49:41
+         LA    R2,RECVR           Destination of copy
+         EX    R1,COPY            Move into RECVR                       00080000
+         EX    R1,UPIT            Upper case it.                        00081000
+./ R 00087000          $ 87490 490                    02/15/89 16:49:41
+         CALL  (15),((R5),(R3),(R4),TWORK)  LOOK FOR THE ID             00087000
+./ R 00284000          $ 284490 490                   02/15/89 16:49:41
+         LOG   LCL031,(CA,(R4))                                         00284000
+./ R 00294000 00295000 $ 294990 990                   02/15/89 16:49:41
+UPIT     TR    0(0,R2),UPCASE                                           00295000

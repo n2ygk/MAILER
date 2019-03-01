@@ -1,0 +1,80 @@
+./ R 00072890          $ 72891 1                      12/01/89 16:48:59
+         EJECT ,                                                        00072891
+*--------------------------------------------------------------------   00072892
+*    Check for '%' in address                                           00072893
+*--------------------------------------------------------------------   00072894
+         SPACE 1                                                        00072895
+./ D 00072990                                         12/01/89 16:48:59
+./ R 00073220 00073280 $ 73221 1                      12/01/89 16:48:59
+         B     RESEND            ---> Join common resend code           00073221
+         EJECT ,                                                        00073222
+*--------------------------------------------------------------------   00073223
+*    Check for '!' in address                                           00073224
+*--------------------------------------------------------------------   00073225
+         SPACE 1                                                        00073226
+NOPCT    EQU   *                                                        00073227
+         MVI   TRAPTAB+C'%',0    Clear '%' trap                         00073228
+         MVI   TRAPTAB+C'!',1    Set '!' trap                           00073229
+         LR    R15,R4            Copy length value                      00073230
+         BCTR  R15,0             Decrement for EX                       00073231
+         EX    R15,TRAPIT        Any '%'s?                              00073232
+         BC    B'0100',DOBANG    ---> Found '!' in address              00073233
+         B     NOBANG            ---> No '!' in address or              00073234
+*                                    '!' is last character              00073235
+         SPACE 1                                                        00073236
+TRAPIT   TRT   0(1,R3),TRAPTAB   Executed                               00073237
+         SPACE 1                                                        00073238
+*--------------------------------------------------------------------   00073239
+*    Process address containing a '!'                                   00073240
+*--------------------------------------------------------------------   00073241
+         SPACE 1                                                        00073242
+DOBANG   DS    0H                                                       00073243
+         SR    R1,R3             Length of string to '!'                00073244
+         BZ    NOBANG            ---> Was first character
+         LA    R15,1(,R1)        Length including '!'
+         LR    R14,R3            Save since R3 will be destroyed
+         BCTR  R1,0              Decrement for EX
+         LA    R2,TEMPSAVE       Save string here
+         EX    R1,COPY           Copy string before '!'
+         SPACE 1
+         LR    R2,R3             Want to copy to here
+         LA    R3,0(R15,R3)      Copy from here
+         LR    R1,R4             Original length of string
+         SR    R1,R15            Length of rest of string
+         BCTR  R1,0              Decrement for EX
+         EX    R1,COPY           Copy string after '!'
+         SPACE 1
+         LA    R2,1(R1,R2)       Where the '@' goes
+         MVI   0(R2),C'@'        Change to '@'                          00073254
+         SPACE 1
+         LA    R2,1(,R2)         Copy rest to here
+         LA    R3,TEMPSAVE       We saved it here
+         S     R15,=F'2'         Decrement for EX
+         EX    R15,COPY          Copy in node part
+         SPACE 1
+         LR    R3,R14            Restore R3
+         L     R2,LSTRL          Length of string                       00073255
+         LA    R2,FBLLENL+16(,R2)  + parameter list (8)                 00073256
+*                                  + fileblock length (FBLLENL)         00073257
+*                                  + pointer list (8)                   00073258
+         SALOC (R2),RET          Allocate stack space                   00073259
+         LR    R2,R1             Remember storage address               00073260
+         B     RESEND            ---> Join common resend code           00073261
+         EJECT ,                                                        00073262
+*--------------------------------------------------------------------   00073263
+*  Resend an address containing '%' or '!'                              00073264
+*--------------------------------------------------------------------   00073265
+*  Building the following:                                              00073266
+*                                                                       00073267
+*        DC    A(MAILBLOK)              <--  R2                         00073268
+*        DC    A(FBLOCK)                                                00073270
+*                                                                       00073280
+./ I 00073390          $ 73393 3                      12/01/89 16:48:59
+RESEND   EQU   *                                                        00073393
+         SPACE 1                                                        00073396
+./ R 00073745          $ 73747 2                      12/01/89 16:48:59
+*    Process address not containing a '%' or '!'                        00073747
+./ R 00073770          $ 73860 90                     12/01/89 16:48:59
+NOBANG   EQU   *                                                        00073860
+./ I 00331710          $ 331750 40                    12/01/89 16:48:59
+TEMPSAVE DC    CL256' '            Temporary work area

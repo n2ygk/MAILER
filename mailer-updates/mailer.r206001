@@ -1,0 +1,58 @@
+./ I 00024220          $ 24240 20                     04/18/90 11:32:26
+         COPY  IPARML                                                   00024240
+         MSGBLOK ,                                                      00024260
+./ R 00146000 00150170 $ 146190 190                   04/18/90 11:32:26
+         SPACE 1                                                        00146190
+* Interrupt was from CONSOLE attn                                       00146380
+         SPACE 1                                                        00146570
+         DMSFREE DWORDS=MSGBLOKL/8,ERR=WAIT                             00146760
+*                                  Ignore interrupt if no storage       00146950
+         LR    R5,R1               Base into better reg                 00147140
+         USING MSGBLOK,R5          Map it for assembler                 00147330
+         LR    R14,R5              Start of area to clear               00147520
+         L     R15,=A(MSGBLOKL)    Length to clear                      00147710
+         LA    R1,0                Set from length of 0 and pad of x'0' 00147900
+         MVCL  R14,R0              Clear MSGBLOK to zeros               00148090
+         ST    R0,MSGBLEN          Remember length                      00148280
+         MVC   SRCNODE,CPUSTR      Init to me                           00148470
+         MVC   SRCUSER,=CL8'CONSOLE'   on this cpu                      00148660
+         LA    R15,MESSAGE         Message buffer address               00148850
+         ST    R15,@MESSAGE        Into MSGBLOK                         00149040
+         RDTERM (15)                                                    00149230
+         ST    R0,@MSGLEN          Command length into MSGBLOK          00149420
+         MVC   SRCCODE,=A(CMDCONS) Type = CONSOLE.                      00149610
+         BAL   R14,CHAINIT         Add to command processing chain      00149800
+         DROP  R5                                                       00149990
+./ R 00177580 00177760 $ 177670 90                    04/18/90 11:32:26
+         MAILTRC CALL,MAILCMD0                                          00177670
+         CALL  MAILCMD0,((R11))    2nd level command handler            00177760
+         MAILTRC RETURN,MAILCMD0,(R15)                                  00177850
+./ I 00195720          $ 195722 2                     04/18/90 11:32:26
+         EJECT ,                                                        00195722
+*--------------------------------------------------------------------   00195724
+*                                                                       00195726
+*  Add command block to MAILCMDL chain                                  00195728
+*                                                                       00195730
+*  Regs at entry:                                                       00195732
+*                                                                       00195734
+*    R5  - MSGBLOK base                                                 00195736
+*    R14 - Return address                                               00195738
+*                                                                       00195740
+*--------------------------------------------------------------------   00195742
+         SPACE 1                                                        00195744
+CHAINIT  DS    0H                                                       00195746
+         SSM   =X'00'              Disable for EXT & I/O interrupts     00195748
+         LA    R15,MAILCMDL        Address of list                      00195750
+CHAIN10  EQU   *                                                        00195752
+         ICM   R1,B'1111',0(R15)   Get next command pointer             00195754
+         USING MSGBLOK,R1                                               00195756
+         BZ    CHAIN20             Found end of chain                   00195758
+         LA    R15,MSGNEXT         Chain along                          00195760
+         DROP  R1                                                       00195762
+         B     CHAIN10                                                  00195764
+CHAIN20  EQU   *                                                        00195766
+         ST    R5,0(R15)           Add onto chain                       00195768
+         OI    MAILCMD,MCMDCMD     Indicate there is work to do         00195770
+         OI    CMDECB,POSTED       And post the command ECB.            00195772
+         SSM   =X'FF'              Enable interrupts                    00195774
+         BR    R14                 Return to caller                     00195776

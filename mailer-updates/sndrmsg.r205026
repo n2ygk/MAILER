@@ -1,0 +1,38 @@
+./ I 00036000          $ 36500 500                    03/06/90 10:06:37
+         TRACETBL ,                                                     00036500
+./ R 00062160 00071000 $ 62450 290                    03/06/90 10:06:37
+         ICM   R15,B'1111',MBXLCNT Count of tokens                      00062450
+         BZ    RET                 ---> None                            00062740
+         ICM   R9,B'1111',MBXLCL   Get user node pointer (the safe way) 00063030
+         BZ    RET                 ---> Quit if none there              00063320
+         C     R15,=F'1'           Only 1 token                         00063610
+         BNE   MULTITOK            ---> No, multiple                    00063900
+         USING NODE,R9                                                  00064190
+         L     R9,NODDOWN          Get pointer to user name token
+         USING TOKEND,R9
+         L     R3,TOKPTR           Get address of token                 00064480
+         L     R1,TOKLEN           Get length of token                  00064770
+         B     CHKLONG             Back to common code                  00065060
+         DROP  R9
+         SPACE                                                          00065350
+MULTITOK EQU   *                   Multi-token username field           00065640
+         ST    R9,NODEA          Save for GENLIST call                  00065930
+         LA    R14,STACKP        Stack pointer address ptr              00066220
+         LA    R15,STACKP+4      Stack size address ptr                 00066510
+         MAILTRC CALL,GENLIST                                           00066800
+         CALL  GENLIST,(NODEA,LSTRA,LSTRL,(14),(15))                    00067090
+         MAILTRC RETURN,GENLIST,(R15)                                   00067380
+         L     R3,LSTRA          address of user name token             00067670
+         L     R1,LSTRL          length of it                           00067960
+CHKLONG  EQU   *                                                        00068250
+         MVC   SENDER,=CL8' '    Blank out sender                       00068540
+         C     R1,=F'8'          8 or less                              00068830
+         BNH   SEND1             ---> OK                                00069120
+         LA    R1,8              Use only first 8                       00069410
+./ D 00075680                                         03/06/90 10:06:37
+./ I 00125000          $ 125100 100                   03/06/90 10:06:37
+         SPACE 1                                                        00125100
+NODEA    DC    A(0)                Address of node for GENLIST          00125200
+LSTRA    DC    A(0)                Address of local part                00125300
+LSTRL    DC    A(0)                Length of local part                 00125400
+         SPACE 1                                                        00125500

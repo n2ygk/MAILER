@@ -1,0 +1,5 @@
+./ R 00096000          $ 96490 490                    10/28/88 15:44:10
+         BL    HDRENDOV      YES, Pretend at end of headers             00096000
+./ I 00102000          $ 102300 300                   10/28/88 15:44:10
+HDRENDOV EQU   *
+         AR    R8,R2         Add length not used back in

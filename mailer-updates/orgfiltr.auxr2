@@ -1,0 +1,5 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R203015    Support for *default* in userid and node/userid fields.
+*          This change allows control of all mail from a node or
+*          from all nodes.
+R202018    Remove PRINT NOGENs, make DSECTs honor SYSPARM(SUP)/SYSPARM(EXP)

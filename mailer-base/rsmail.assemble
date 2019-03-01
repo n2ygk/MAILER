@@ -1,0 +1,187 @@
+RSMAIL   TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - mail resending'     00001000
+*---------------------------------------------------------------------* 00002000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00003000
+*    Program Property of the Trustees of Columbia University in the   * 00004000
+*    City of New York.                                                * 00005000
+*---------------------------------------------------------------------* 00006000
+RSMAIL   CSECT ,                                                        00007000
+* RSMAIL -                                                              00008000
+*  This routine resends mail to the user(s) named indirectly thru       00009000
+*  the parm.  The parm is used to find the entry in MAILPTAB that       00010000
+*  has the actual address(es) in it.  A new mail file is built          00011000
+*  and punched back to my reader that contains a header saying          00012000
+*  that automatic forwarding has been performed followed by the         00013000
+*  original file.                                                       00014000
+*                                                                       00015000
+*                                                                       00016000
+PAB      DSECT ,                                                        00017000
+@MBLOK   DS    A             MAILBLOK BASE                              00018000
+@ACT     DS    A             ACTADR BASE                                00019000
+* REGISTER USAGE -                                                      00020000
+R0  EQU  0 -                                                            00021000
+R1  EQU  1 -                                                            00022000
+R2  EQU  2 -                                                            00023000
+R3  EQU  3 -                                                            00024000
+R4  EQU  4 -                                                            00025000
+R5  EQU  5 -                                                            00026000
+R6  EQU  6 -                                                            00027000
+R7  EQU  7 -                                                            00028000
+R8  EQU  8 -                                                            00029000
+R9  EQU  9 -                                                            00030000
+R10 EQU 10 - ACTADR BASE                                                00031000
+R11 EQU 11 - MAILBLOK BASE                                              00032000
+R12 EQU 12 - PROGRAM BASE                                               00033000
+R13 EQU 13 - SAVE AREA                                                  00034000
+R14 EQU 14 - SUBROUTINE LINKAGE                                         00035000
+R15 EQU 15 - SUBROUTINE LINKAGE                                         00036000
+         BLOCKS ,                                                       00037000
+         MAILBLOK ,                                                     00038000
+         EJECT ,                                                        00039000
+RSMAIL   CSECT ,                                                        00040000
+         STM   R14,R12,12(R13)                                          00041000
+         BALR  R12,0                                                    00042000
+         USING *,R12                                                    00043000
+         LA    R14,SAVE                                                 00044000
+         ST    R13,4(R14)                                               00045000
+         ST    R14,8(R13)                                               00046000
+         LR    R13,R14                                                  00047000
+         USING PAB,R1        ADDRESS PARMS                              00048000
+         L     R11,@MBLOK    GET MAILBLOK BASE                          00049000
+         L     R10,@ACT      GET ACTADR BASE                            00050000
+         DROP  R1                                                       00051000
+         USING MAILBLOK,R11                                             00052000
+         USING ACTADR,R10                                               00053000
+         L     R1,ACTRT      get routd pointer                          00054000
+         USING ROUTD,R1                                                 00055000
+         MVC   LOCUSER,RTPARM Copy for later use                        00056000
+*--------------------------------------------------------------------   00057000
+*        Look up the parm in the mailer parameter table and see if      00058000
+*        it's been defined.  If so,  use the string definition          00059000
+*        as the name of the recipient of the forwarded mail.            00060000
+*--------------------------------------------------------------------   00061000
+         LA    R4,RTPARM                                                00062000
+         DROP  R1                                                       00063000
+         LA    R1,8(R4)      end of parm                                00064000
+         MVI   TRAPTAB+C' ',X'FF' trap blanks                           00065000
+         TRT   0(8,R4),TRAPTAB find end of string                       00066000
+         MVI   TRAPTAB+C' ',0                                           00067000
+         SR    R1,R4         get length of string                       00068000
+         LR    R5,R1         get into a better register                 00069000
+         L     R6,MAILPTAB   address of parm table                      00070000
+         L     R15,ATBLUK                                               00071000
+         CALL  (15),((R6),(R4),(R5),TWORK) find the parm                00072000
+         LTR   R15,R15       nope -- die                                00073000
+         BNZ   NOFWD         sorry...                                   00074000
+         LR    R5,R1         get a better handle on string              00075000
+         IC    R1,0(R5)      length                                     00076000
+         BCTR  R1,0          -1 for execute                             00077000
+         MVI   HTO,C' '      init to blanks                             00078000
+         MVC   HTO+1(LHTO-1),HTO                                        00079000
+         EX    R1,MOVETO     fill in the to field                       00080000
+*--------------------------------------------------------------------   00081000
+*        Fill in the date for the new memo.                             00082000
+*--------------------------------------------------------------------   00083000
+         LA    R1,HDATE      date to be filled in                       00084000
+         L     R15,AARPADAT                                             00085000
+         BALR  R14,R15       fill the arpa format date in               00086000
+*--------------------------------------------------------------------   00087000
+*        Fill in the from id (my id)                                    00088000
+*--------------------------------------------------------------------   00089000
+         MVI   TRAPTAB+C' ',X'FF' trap on blank                         00090000
+         LA    R4,MAILVMID   address of my vmid                         00091000
+         LA    R1,8(R4)      point to end of vmid                       00092000
+         TRT   0(8,R4),TRAPTAB get trailing blank                       00093000
+         SR    R1,R4         length of the vmid                         00094000
+         LR    R0,R4         address of it                              00095000
+         LA    R6,HFROM      where to move it                           00096000
+         LR    R7,R1         length to move                             00097000
+         MVCL  R6,R0         copy the id                                00098000
+         MVI   0(R6),C'@'    now stick in the atsign                    00099000
+         LA    R6,1(R6)      point past the @                           00100000
+         LA    R4,CPUSTR     address of my node                         00101000
+         LA    R1,8(R4)      point to end of node                       00102000
+         TRT   0(8,R4),TRAPTAB get trailing blank                       00103000
+         SR    R1,R4         length of the node                         00104000
+         LR    R0,R4         address of it                              00105000
+         LR    R7,R1         length to move                             00106000
+         MVCL  R6,R0         copy the node                              00107000
+         MVI   0(R6),C'>'    now stick in the closing >                 00108000
+         MVI   TRAPTAB+C' ',0 back to initial state                     00109000
+         SPACE ,                                                        00110000
+*--------------------------------------------------------------------   00111000
+*        Finally,  punch the file back to myself!                       00112000
+*--------------------------------------------------------------------   00113000
+PUNCHIT  EQU   *                                                        00114000
+         LA    R1,=C'TAG DEV PUN --- returned mail file ---'            00115000
+         LA    R0,38                                                    00116000
+         DC    X'83100008'                                              00117000
+         LA    R1,=C'SP PUN TO *'                                       00118000
+         LA    R0,11                                                    00119000
+         DC    X'83100008'   aim the punch                              00120000
+         L     R15,APUNHDR                                              00121000
+         CALL  (15),((R11))  PUNCH THE HEADER                           00122000
+         LTR   R15,R15       ANY SCREW UPS?                             00123000
+         BNZ   RET                                                      00124000
+         LA    R3,H0         point to header                            00125000
+         LA    R4,NUMHDR     number of records in new header            00126000
+HDRLOOP  EQU   *                                                        00127000
+         PUNCHC (R3)                                                    00128000
+         LA    R3,80(R3)                                                00129000
+         BCT   R4,HDRLOOP                                               00130000
+         SPACE ,                                                        00131000
+         L     R15,APUNTXT                                              00132000
+         CALL  (15),((R11))  PUNCH THE REST                             00133000
+         LTR   R15,R15      ANY ERRORS?                                 00134000
+         BNZ   RET           OH WEEELLL....                             00135000
+         L     R15,APUNCLS   ROUTINE TO CLOSE PUNCH                     00136000
+         CALL  (15),((R11))  CALL IT                                    00137000
+         LTR   R15,R15       ANY ERRORS?                                00138000
+         BNZ   RET           SORRY...                                   00139000
+         LOG   RSD047,(CA,LOCUSER,CA,HTO)                               00140000
+RET      EQU   *                                                        00141000
+         L     R13,4(R13)                                               00142000
+         L     R14,12(R13)                                              00143000
+         LM    R0,R12,20(R13)                                           00144000
+         BR    R14                                                      00145000
+         SPACE ,                                                        00146000
+*--------------------------------------------------------------------   00147000
+*  ERROR/SPECIAL HANDLING                                               00148000
+*--------------------------------------------------------------------   00149000
+NOFWD    EQU   *                                                        00150000
+         LOG   RSD046                                                   00151000
+         LA    R15,4                                                    00152000
+         B     RET                                                      00153000
+         SPACE ,                                                        00154000
+NOFROM   EQU   *                                                        00155000
+         LOG   RSD046                                                   00156000
+         LA    R15,4                                                    00157000
+         B     RET                                                      00158000
+         SPACE ,                                                        00159000
+*                                                                       00160000
+MOVETO   MVC   HTO(0),1(R5)                                             00161000
+         SPACE ,                                                        00162000
+         LTORG ,                                                        00163000
+SAVE     DS    18F                                                      00164000
+TWORK    DS    64F                                                      00165000
+LOCUSER  DS    CL8                                                      00166000
+H0       DS    0C                                                       00167000
+H1       DC    CL80' '                                                  00168000
+         ORG   H1                                                       00169000
+H1T      DC    C'ReSent-Date: '                                         00170000
+HDATE    DS    0C                                                       00171000
+LHDATE   EQU   L'H1-L'H1T                                               00172000
+         ORG   ,                                                        00173000
+H2       DC    CL80' '                                                  00174000
+         ORG   H2                                                       00175000
+H2T      DC    C'ReSent-From: Network Mailer <'                         00176000
+HFROM    DS    0C                                                       00177000
+LHFROM   EQU   L'H2-L'H2T                                               00178000
+         ORG   ,                                                        00179000
+H5       DC    CL80' '                                                  00180000
+         ORG   H5                                                       00181000
+H5T      DC    C'ReSent-To: '                                           00182000
+HTO      DS    0C                                                       00183000
+LHTO     EQU   L'H5-L'H5T                                               00184000
+         ORG   ,                                                        00185000
+NUMHDR   EQU   (*-H0)/80                                                00186000
+         END   RSMAIL                                                   00187000

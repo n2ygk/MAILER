@@ -1,0 +1,9 @@
+*COPY DEBUG                                                             00001000
+         LCLB  &DBGTOK                                                  00002000
+         SPACE 1                                                        00003000
+*  Setting a value of 0 causes no debugging messages to be issued       00004000
+*  Setting a value of 1 causes debugging messages to be issued          00005000
+*                                                                       00006000
+*  Changing a value requires reassembly of MAILER                       00007000
+         SPACE 1                                                        00008000
+&DBGTOK  SETB  0             No debugging messages for TOKEND           00009000

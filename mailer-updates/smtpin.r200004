@@ -1,0 +1,10 @@
+./ R 00497750          $ 497780 30                    09/19/88 14:47:06
+        } else {  /* not trusted, but sender checks out ok */           00497750
+            bcopy("250 ", buf, 4);                                      00498530
+            bcopy(s+10, &buf[4], l-10);     /* copy in from address */  00498920
+            len = 4 + l-10;                                             00499310
+            bcopy("... sender OK.", &buf[len], 14);                     00499700
+            (*S.repf)(buf, len+14);                                     00500090
+            return seenmail;                                            00500480
+        }
+./ D 00521100 00524000                                09/19/88 14:47:06

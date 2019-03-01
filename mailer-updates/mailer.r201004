@@ -1,0 +1,35 @@
+./ D 00022500                                         10/27/88 16:36:32
+./ I 00023000          $ 23200 200                    10/27/88 16:36:32
+         MAILBLOK ,                                                     00023200
+./ I 00039000          $ 39200 200                    10/27/88 16:36:32
+         L     R11,=V(MAILBLOK) Address of MAILBLOK                     00039200
+         USING MAILBLOK,R11                                             00039400
+         SPACE ,                                                        00039600
+./ R 00055680          $ 55770 90                     10/27/88 16:36:32
+         LA    R15,MAILVERS        Point at version id                  00055770
+         WTR   LER001,(CA,(R15),CA,MYNAME+8,CA,ASMTIME)                 00055860
+./ R 00063000          $ 63290 290                    10/27/88 16:36:32
+         LA    R15,STACKORG       Point at getmain list                 00063290
+         GETMAIN VC,LA=LIMITS,A=(15) Allocate the stack                 00063580
+./ R 00088000 00089000 $ 88990 990                    10/27/88 16:36:32
+         CALL  (15),(11)     Call it                                    00088990
+./ R 00106000          $ 106490 490                   10/27/88 16:36:32
+         CALL  READINIT,((R11))    Read MAILER PROFILE                  00106490
+./ R 00109000          $ 109490 490                   10/27/88 16:36:32
+         CALL  SETINIT,((R11))     Now set values read                  00109490
+./ R 00116000 00117000 $ 116190 190                   10/27/88 16:36:32
+         LA    R15,CPUSTR           Point to CPU identifier             00116190
+         WTR   LER004,(CA,(R15))    Write startup message               00116380
+         LA    R15,STACK+4          Stack size value here               00116570
+         WTR   LER011,(DA,(R15))    Tell how big remaining stack is     00116760
+./ R 00117600          $ 117690 90                    10/27/88 16:36:32
+         LA    R15,STACK+4          Stack size value here               00117690
+         WTR   LER011,(DA,(R15))    Tell how big remaining stack is     00117780
+./ R 00135000          $ 135490 490                   10/27/88 16:36:32
+         CALL  MAILMAIN,((R11))                                         00135490
+./ R 00149000          $ 149290 290                   10/27/88 16:36:32
+         LA    R15,MAILVMID                                             00149290
+         CALL  MAILCMD1,((R11),TERMBUF,(R5),(R15),0,CMDCONS)            00149580
+./ R 00177000          $ 177490 490                   10/27/88 16:36:32
+         CALL  MAILCMD2,((R11))    2nd level command handler            00177490
+./ D 00215000 00217490                                10/27/88 16:36:32

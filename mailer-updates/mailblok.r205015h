@@ -1,0 +1,7 @@
+./ I 00026570          $ 26770 200                    12/21/89 17:41:10
+#define MOPTFIOK 0x01        /* Accept FILE FROM:                    */ 00026770
+./ I 00053670          $ 53720 50                     12/21/89 17:41:10
+#define MFLG2N82 0x02        /* Don't look for 822 headers in BSMTP  */ 00053770
+                             /* Set when Allow-file-from=true and    */
+                             /* FILE FROM: found in BSMTP file       */
+

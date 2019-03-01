@@ -1,0 +1,493 @@
+* Added Allow-Charlatans, Verbose-Logging, DISTLIST.             [1.24] 00001370
+*[1.22] Added MAILDTAB, PPTRARR, RSCSDOM, CPUSLEN, built-in exits[1.22] 00001450
+*[1.20] Added MAILOTAB                                                  00001580
+*[1.13] Added RSCSALT keyword for a second RSCS vmid.                   00002000
+SETINIT  TITLE 'CUCCA VM MAILER VERSION 1 - SET INITIAL VALUES'         00003000
+*---------------------------------------------------------------------* 00004000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00005000
+*    Program Property of the Trustees of Columbia University in the   * 00006000
+*    City of New York.                                                * 00007000
+*---------------------------------------------------------------------* 00008000
+SETINIT  CSECT ,                                                        00009000
+* SETINIT -                                                             00010000
+*  THIS ROUTINE PROCESSES THE INFORMATION READ BY READINIT AND          00011000
+*  LOADS THE NAMED USER EXITS.                                          00012000
+*                                                                       00013000
+*                                                                       00014000
+*  CALLED VIA -                                                         00015000
+*  CALL SETINIT,(MAILBLOK)                                              00016000
+         SPACE ,                                                        00017000
+PAB      DSECT ,             PARAMETER LIST DEFINED                     00018000
+@MBLOK   DS    A             ADDRESS OF MAILBLOK                        00019000
+         SPACE ,                                                        00020000
+* REGISTER USAGE -                                                      00021000
+R0  EQU  0 -                                                            00022000
+R1  EQU  1 -                                                            00023000
+R2  EQU  2 -                                                            00024000
+R3  EQU  3 -                                                            00025000
+R4  EQU  4 -                                                            00026000
+R5  EQU  5 -                                                            00027000
+R6  EQU  6 -                                                            00028000
+R7  EQU  7 -                                                            00029000
+R8  EQU  8 - PTAB BASE                                                  00030000
+R9  EQU  9 - STACK POINTER                                              00031000
+R10 EQU 10 - STACK LENGTH                                               00032000
+R11 EQU 11 - MAILBLOK BASE                                              00033000
+R12 EQU 12 - PROGRAM BASE                                               00034000
+R13 EQU 13 - SAVE AREA                                                  00035000
+R14 EQU 14 - SUBROUTINE LINKAGE                                         00036000
+R15 EQU 15 - SUBROUTINE LINKAGE                                         00037000
+         SPACE                                                          00038000
+         PRINT NOGEN                                                    00039000
+         BLOCKS ,                                                       00040000
+         MAILBLOK ,                                                     00041000
+         TBTAB DSECT=YES                                                00042000
+         TBENTRY ,                                                      00043000
+         EJECT ,                                                        00044000
+SETINIT  CSECT ,                                                        00045000
+         USING SETINIT,R15  TEMPORARY ADDRESSABILITY                    00046000
+         B     EYESKIP       BRANCH OVER EYESKIP                        00047000
+MYNAME   DC    CL8'SETINIT',CL8'&SYSDATE'                               00048000
+EYESKIP  DS    0H                                                       00049000
+         DROP  R15                                                      00050000
+         STM   R14,R12,12(R13) SAVE CALLER'S REGS                       00051000
+         LR    R12,R15       PERMANENT ADDRESSABILITY                   00052000
+         USING SETINIT,R12                                              00053000
+         LA    R14,SAVE      MY SAVE AREA                               00054000
+         ST    R13,4(R14)    SAVE CALLER'S PTR                          00055000
+         ST    R14,8(R13)    CHAIN MINE BACK                            00056000
+         LR    R13,R14       SET MY SAVE PTR                            00057000
+         USING PAB,R1        ADDRESS PLIST                              00058000
+         L     R11,@MBLOK    GET MAILBLOK ADDRESS                       00059000
+         USING MAILBLOK,R11  ADDRESS IT                                 00060000
+         DROP  R1                                                       00061000
+         LM    R9,R10,STACK  GET STACK POINTER                          00062000
+         SPACE ,                                                        00063000
+*--------------------------------------------------------------------   00064000
+*        SET MAILBLOK VALUES FROM THE PARMS TABLE                       00065000
+*--------------------------------------------------------------------   00066000
+         L     R8,MAILPTAB   ADDRESS OF TABLE                           00067000
+         LA    R5,PTABLEN    LENGTH OF PTAB ARRAY                       00068000
+         LA    R6,PTABARR    ADDRESS OF ARRAY                           00069000
+PTABLOOP EQU   *                                                        00070000
+         L     R3,0(R6)      GET OFFSET INTO MAILBLOK                   00071000
+         LA    R3,0(R11,R3)  GET ACTUAL MAILBLOK ADDRESS                00072000
+         L     R7,4(R6)      GET STRING POINTER                         00073000
+         LH    R4,0(R7)      GET LENGTH                                 00074000
+         LA    R7,2(R7)      AND STRING ADDRESS                         00075000
+         CALL  TBLUK,((R8),(R7),(R4),TWORK)                             00076000
+         LTR   R15,R15       FIND IT?                                   00077000
+         BNZ   SET1          NOPE, TAKE THE DEFAULT                     00078000
+         MVC   0(8,R3),=CL8' '   BLANK IT                               00079000
+         LR    R2,R1         COPY STRING ADDRESS                        00080000
+         SR    R1,R1         GET A ZERO                                 00081000
+         IC    R1,0(R2)      GET LENGTH OF STRING                       00082000
+         LA    R2,1(R2)      POINT TO DATA                              00083000
+         CH    R1,=H'8'      IS IT MORE THAN 8 CHARS?                   00084000
+         BNH   *+8           NOPE...                                    00085000
+         LA    R1,8          TRUNCATE IT TO 8                           00086000
+         BCTR  R1,0          -1 FOR EXECUTE                             00087000
+         EX    R1,COPY       COPY THE STRING INTO TABLE                 00088000
+         TR    0(8,R3),UPCASE MAKE SURE IT IS UPPER CASE                00089000
+SET1     EQU   *                                                        00090000
+         LA    R6,8(R6)      GET NEXT ENTRY                             00091000
+         BCT   R5,PTABLOOP   GET NEXT ONE                               00092000
+*----------------------------------------------------------------[1.22] 00092050
+*        SET MAILBLOK pointers from the parms table              [1.22] 00092100
+*----------------------------------------------------------------[1.22] 00092150
+         L     R8,MAILPTAB   ADDRESS OF TABLE                    [1.22] 00092200
+         LA    R5,PPTRLEN    LENGTH OF PPTR ARRAY                [1.22] 00092250
+         LA    R6,PPTRARR    ADDRESS OF ARRAY                    [1.22] 00092300
+PPTRLOOP EQU   *                                                 [1.22] 00092350
+         L     R3,0(R6)      GET OFFSET INTO MAILBLOK            [1.22] 00092400
+         LA    R3,0(R11,R3)  GET ACTUAL MAILBLOK ADDRESS         [1.22] 00092450
+         L     R7,4(R6)      GET STRING POINTER                  [1.22] 00092500
+         LH    R4,0(R7)      GET LENGTH                          [1.22] 00092550
+         LA    R7,2(R7)      AND STRING ADDRESS                  [1.22] 00092600
+         CALL  TBLUK,((R8),(R7),(R4),TWORK)                      [1.22] 00092650
+         LTR   R15,R15       FIND IT?                            [1.22] 00092700
+         BNZ   SET$1         NOPE, TAKE THE DEFAULT              [1.22] 00092750
+         ST    R1,0(R3)      just stuff the string address       [1.22] 00092800
+SET$1    EQU   *                                                 [1.22] 00092850
+         LA    R6,8(R6)      GET NEXT ENTRY                      [1.22] 00092900
+         BCT   R5,PPTRLOOP   GET NEXT ONE                        [1.22] 00092950
+         SPACE ,                                                        00093000
+*----------------------------------------------------------------[1.22] 00093200
+* do the same for the bit values now                             [1.22] 00093400
+*----------------------------------------------------------------[1.22] 00093600
+         LA    R5,PBITLEN    SET BIT-VALUES NOW                         00094000
+         LA    R6,PBITARR    ADDRESS OF ARRAY                           00095000
+PBITLOOP EQU   *                                                        00096000
+         L     R3,0(R6)      GET OFFSET INTO MAILBLOK                   00097000
+         LA    R3,0(R11,R3)  GET ACTUAL ADDRESS                         00098000
+         L     R7,4(R6)      GET STRING POINTER                         00099000
+         LH    R4,0(R7)      LENGTH                                     00100000
+         LA    R7,2(R7)      ADDRESS                                    00101000
+         CALL  TBLUK,((R8),(R7),(R4),TWORK)                             00102000
+         LTR   R15,R15       FIND IT?                                   00103000
+         BNZ   SET2          NOPE, TAKE THE DEFAULT                     00104000
+         OI    1(R1),X'40'   MAKE IT UPPER CASE                         00105000
+         CLI   1(R1),C'T'    SET BIT TRUE?                              00106000
+         BNE   PBITFALS      SET IT FALSE                               00107000
+         L     R1,8(R6)      GET VALUE TO SET                           00108000
+         SR    R2,R2         GET ZERO                                   00109000
+         IC    R2,0(R3)      GET CURRENT VALUE                          00110000
+         OR    R2,R1         OR IN THE NEW FLAG                         00111000
+         STC   R2,0(R3)      AND PUT IT BACK                            00112000
+         B     SET2          GET NEXT ONE                               00113000
+PBITFALS EQU   *             SET THE FLAG FALSE                         00114000
+         L     R1,8(R6)      GET VALUE TO SET                           00115000
+         X     R1,=F'-1'     FLIP THE BITS                              00116000
+         SR    R2,R2         GET ZERO                                   00117000
+         IC    R2,0(R3)      GET CURRENT FLAG VALUE                     00118000
+         NR    R2,R1         AND THEM                                   00119000
+         STC   R2,0(R3)      PUT NEW FLAG BACK                          00120000
+SET2     EQU   *                                                        00121000
+         LA    R6,12(R6)                                                00122000
+         BCT   R5,PBITLOOP                                              00123000
+         SPACE ,                                                        00124000
+*----------------------------------------------------------------[1.22] 00124080
+* save some time later by having the length of CPUSTR available. [1.22] 00124160
+*----------------------------------------------------------------[1.22] 00124240
+         L     R8,MAILPTAB   get the parameter table again       [1.22] 00124320
+         CALL  TBLUK,((R8),STRTHIS+2,8,TWORK)                    [1.22] 00124400
+         LTR   R15,R15       find it                             [1.22] 00124480
+         BNZ   NOSETLEN      don't set it                        [1.22] 00124560
+         SR    R0,R0         get a zero                          [1.22] 00124640
+         IC    R0,0(R1)      get the string length               [1.22] 00124720
+         ST    R0,CPUSLEN    and save it for later               [1.22] 00124800
+NOSETLEN EQU   *                                                 [1.22] 00124880
+*--------------------------------------------------------------------   00125000
+*        LOAD USER ROUTING EXITS                                        00126000
+*--------------------------------------------------------------------   00127000
+         L     R1,MAILRTAB   ROUTING TABLE                              00128000
+         BAL   R14,LOADRTAB                                             00129000
+         LTR   R15,R15                                                  00130000
+         BNZ   NOROUT        NEED A ROUTING TABLE!                      00131000
+         L     R1,MAILSTAB   SPECIAL TABLE                              00132000
+         BAL   R14,LOADRTAB                                             00133000
+         L     R1,MAILOTAB   [1.20]Origins table                        00134000
+         BAL   R14,LOADRTAB  [1.20]                                     00135000
+         L     R1,MAILDTAB   Domains table                       [1.22] 00135300
+         BAL   R14,LOADRTAB                                      [1.22] 00135600
+*--------------------------------------------------------------------   00136000
+*        DUPLICATE ABOVE FOR VALIDATION USER EXITS NOW                  00137000
+*--------------------------------------------------------------------   00138000
+         L     R6,MAILVTAB   GET VALIDATION TABLE                       00139000
+         USING TBTAB,R6      ADDRESS THE DSECT                          00140000
+         ICM   R7,B'1111',TB$LEN  GET COUNT OF ENTRIES                  00141000
+         BZ    NOVAL        NO ENTRIES IN TABLE                         00142000
+         BCTR  R7,0          -1 TO GET START ADDRESS OF LAST ONE        00143000
+         MH    R7,=Y(TBE$LEN)  #ENTRIES * LENGTH OF EACH                00144000
+         L     R8,TB$ADR     BXLE INDEX                                 00145000
+         AR    R7,R8         BXLE COMPARAND ADDRESS                     00146000
+         LA    R6,TBE$LEN    BXLE INCREMENT                             00147000
+         DROP  R6                                                       00148000
+VALLOOP  EQU   *                                                        00149000
+         USING TBENTRY,R8    DSECT IT                                   00150000
+         L     R5,TBE$DSP    GET ROUTD ADDRESS                          00151000
+         USING VALD,R5       DSECT                                      00152000
+         DROP  R8                                                       00153000
+         SPACE ,                                                        00154000
+         SR    R1,R1         START WITH A ZERO                          00155000
+         CLC   VAPROG,=CL8' '  NO USER EXIT WANTED?                     00156000
+         BE    GOTIT2        FINE, DON'T TRY TO LOAD IT                 00157000
+         CLC   VAPROG,=CL8'*' SAME AS FOR BLANK                         00158000
+         BE    GOTIT2                                                   00159000
+         L     R2,MAILVTAB   ADDRESS OF VTAB                            00160000
+         LA    R3,VAPROG-VALD OFFSET FROM BEGINNING OF VALD             00161000
+         LA    R4,VAADDR-VALD                                           00162000
+         BAL   R14,FINDIT    SEE IF THIS EXIT HAS BEEN LOADED           00163000
+         LTR   R1,R1         IF ZERO, THE ENTRY HASN'T BEEN LOADED      00164000
+         BNZ   GOTIT2        YES, IT'S ALREADY LOADED                   00165000
+         LA    R3,VAPROG     ADDRESS OF NAME TO LOAD                    00166000
+         BAL   R14,LOADIT    LOAD IT IN (ADDRESS RETURNED IN R1)        00167000
+GOTIT2   EQU   *                                                        00168000
+         ST    R1,VAADDR     SAVE ADDRESS OF USER EXIT ROUTINE          00169000
+**-- CLEAR THE STATISTICS COUNTERS                                      00170000
+         XC    VAMSGCNT,VAMSGCNT                                        00171000
+         XC    VAMSGFAI,VAMSGFAI                                        00172000
+         XC    VAMSGMAX,VAMSGMAX                                        00173000
+         XC    VAMSGLEN,VAMSGLEN                                        00174000
+         BXLE  R8,R6,VALLOOP  LOOP BACK FOR NEXT ENTRY                  00175000
+         DROP  R5                                                       00176000
+         SPACE ,                                                        00177000
+*-------- RESTORE STACK POINTERS AND RETURN -------------------------   00178000
+         STM   R9,R10,STACK                                             00179000
+         SR    R15,R15                                                  00180000
+RET      EQU   *                                                        00181000
+         L     R13,4(R13)              GET CALLER'S SAVE PTR            00182000
+         L     R14,12(R13)             GET R14                          00183000
+         LM    R0,R12,20(R13)          GET R0-R12                       00184000
+         BR    R14                     RETURN                           00185000
+         EJECT ,                                                        00186000
+*--------------------------------------------------------------------   00187000
+*        LOAD USER EXITS NAMED IN ROUTING TABLE (MAILRTAB)              00188000
+*        ALSO, CHECK VALIDITY OF ROUTD ENTRIES.                         00189000
+* REGISTERS - R8=BXLE INDEX            R5=ROUTD BASE                    00190000
+*             R6=BXLE INCREMENT        R2,3,4=WORK                      00191000
+*             R7=BXLE COMPARAND                                         00192000
+*--------------------------------------------------------------------   00193000
+LOADRTAB EQU   *                                                        00194000
+         ST    R14,LOADS14                                              00195000
+         LR    R6,R1         GET TABLE                                  00196000
+         ST    R6,TABLE      REMEMBER FOR LATER                         00197000
+         USING TBTAB,R6      ADDRESS IT                                 00198000
+         LA    R15,4                                                    00199000
+         ICM   R7,B'1111',TB$LEN  GET COUNT OF ENTRIES                  00200000
+         BZ    LOADRRET     NO ALIAS ENTRIES IN TABLE                   00201000
+         BCTR  R7,0          -1 TO GET START ADDRESS OF LAST ONE        00202000
+         MH    R7,=Y(TBE$LEN)  #ENTRIES * LENGTH OF EACH                00203000
+         L     R8,TB$ADR     BXLE INDEX                                 00204000
+         AR    R7,R8         BXLE COMPARAND ADDRESS                     00205000
+         LA    R6,TBE$LEN    BXLE INCREMENT                             00206000
+         DROP  R6                                                       00207000
+LOADLOOP EQU   *                                                        00208000
+         USING TBENTRY,R8    DSECT IT                                   00209000
+         L     R5,TBE$DSP    GET ROUTD ADDRESS                          00210000
+         USING ROUTD,R5      DSECT                                      00211000
+         DROP  R8                                                       00212000
+*--------  CHECK FOR DEFAULT MAILER USERID  -------------------------   00213000
+         CLC   RTUSER,=CL8' '  IS IT BLANK                              00214000
+         BE    DEFUSER       YES, DEFAULT IT                            00215000
+         CLC   RTUSER,=CL8'*'  OR ASTERISK                              00216000
+         BNE   DEFUSER2      NO, DON'T DEFAULT IT                       00217000
+DEFUSER  EQU   *                                                        00218000
+         MVC   RTUSER,MAILVMID  DEFAULT USERID IS MY CURRENT ID         00219000
+DEFUSER2 EQU   *                                                        00220000
+*--------  CHECK FOR DEFAULT MAILER NODE NAME  ----------------------   00221000
+         CLC   RTROUTE,=CL8' ' IS IT BLANK?                             00222000
+         BE    DEFNODE       YES, DEFAULT IT                            00223000
+         CLC   RTROUTE,=CL8'*' OR ASTERISK?                             00224000
+         BNE   DEFNODE2      NO, DON'T DEFAULT IT                       00225000
+DEFNODE  EQU   *                                                        00226000
+         MVC   RTROUTE,CPUSTR THIS MACHINE'S NODE NAME                  00227000
+DEFNODE2 EQU   *                                                        00228000
+**-- IF A RTPROG IS SUPPLIED, CHECK THE RTTYPE  ---------------------   00229000
+         SR    R1,R1         GET A ZERO IN CASE OF DEFAULT RTPROG       00230000
+         CLC   RTPROG,=CL8' ' RTPROG NOT SUPPLIED?                      00231000
+         BE    GOTIT         INDICATE DEFAULT BY ZERO POINTER           00232000
+         CLC   RTPROG,=CL8'*' DEFAULT REQUESTED THIS WAY?               00233000
+         BE    GOTIT                                                    00234000
+         CLC   RTTYPE,=CL2'1 '  TYPE 1 SPECIFIED?                       00235000
+         BE    SETT1         SET TYPE 1                                 00236000
+         CLC   RTTYPE,=CL2'2 '  TYPE 2 SPECIFIED?                       00237000
+         BE    SETT2         SET TYPE 2                                 00238000
+         CLC   RTTYPE,=CL2'3'   type 3 specified?                [1.22] 00238300
+         BE    SETT3         (this is dumb code)                 [1.22] 00238600
+         B     BADTYPE       INVALID ROUTD ENTRY                        00239000
+SETT1    EQU   *                                                        00240000
+         MVI   RTFLAGS,RTP1  RTPROG IS TYPE 1                    [1.22] 00241490
+         B     LOAD2                                                    00242000
+SETT2    EQU   *                                                        00243000
+         MVI   RTFLAGS,RTP2  RTPROG IS TYPE 2                           00244190
+         B     LOAD2                                             [1.22] 00244380
+SETT3    EQU   *                                                 [1.22] 00244570
+         MVI   RTFLAGS,RTP3  type 3 of course                    [1.22] 00244760
+LOAD2    EQU   *                                                        00245000
+**-- CLEAR THE STATISTICS COUNTERS                                      00246000
+         XC    RTMSGCNT,RTMSGCNT                                        00247000
+         XC    RTMSGLEN,RTMSGLEN                                        00248000
+         XC    RTMSGMAX,RTMSGMAX                                        00249000
+         XC    RTMSGFAI,RTMSGFAI                                        00250000
+         SPACE ,                                                        00251000
+**-- NOW LOAD THE USER EXIT  ----------------------------------------   00252000
+         L     R2,TABLE                                                 00253000
+         LA    R3,RTPROG-ROUTD OFFSET FROM BEGINNING OF ROUTD           00254000
+         LA    R4,RTADDR-ROUTD                                          00255000
+         BAL   R14,FINDIT    SEE IF THIS EXIT HAS BEEN LOADED           00256000
+         LTR   R1,R1         IF ZERO, THE ENTRY HASN'T BEEN LOADED      00257000
+         BNZ   GOTIT         YES, IT'S ALREADY LOADED                   00258000
+         LA    R3,RTPROG     ADDRESS OF NAME TO LOAD                    00259000
+         BAL   R14,LOADIT    LOAD IT IN (ADDRESS RETURNED IN R1)        00260000
+GOTIT    EQU   *                                                        00261000
+         ST    R1,RTADDR     SAVE ADDRESS OF USER EXIT ROUTINE          00262000
+         BXLE  R8,R6,LOADLOOP  LOOP BACK FOR NEXT ENTRY                 00263000
+         DROP  R5                                                       00264000
+         SR    R15,R15                                                  00265000
+LOADRRET EQU   *                                                        00266000
+         L     R14,LOADS14                                              00267000
+         BR    R14                                                      00268000
+         SPACE ,                                                        00269000
+*--------------------------------------------------------------------   00270000
+*  FINDIT SUBROUTINE - LOOKS FOR A PROG NAME IN A SPECIFIED RANGE       00271000
+*  OF TABLE ENTRIES.                                                    00272000
+*  REGISTERS ON ENTRY-                                                  00273000
+*    R8 - ADDRESS OF CURRENT TBENTRY                                    00274000
+*    R5 - ADDRESS OF CURRENT RECORD                                     00275000
+*    R4 - OFFSET FROM BEGINNING OF REC FOR ROUTINE ADDRESS              00276000
+*    R3 - OFFSET FROM BEGINNING OF REC FOR ROUTINE NAME                 00277000
+*    R2 - ADDRESS OF RTAB OR VTAB                                       00278000
+*  REGISTERS ON EXIT -                                                  00279000
+*    R1 - ADDRESS OF ALREADY LOADED EXIT OR 0 IF NOT FOUND              00280000
+*--------------------------------------------------------------------   00281000
+FINDIT   EQU   *                                                        00282000
+         STM   R9,R10,FINDSAVE  RAN OUT OF REGISTERS!                   00283000
+         USING TBTAB,R2      DSECT THE TABLE                            00284000
+         L     R2,TB$ADR     ADDRESS OF FIRST ENTRY                     00285000
+         DROP  R2                                                       00286000
+FINDLOOP EQU   *                                                        00287000
+         CR    R2,R8         UP TO CURRENT ENTRY YET?                   00288000
+         BNL   FINDOUT       YUP, RETURN                                00289000
+         USING TBENTRY,R2    ADDRESS ENTRY DSECT                        00290000
+         L     R1,TBE$DSP    GET ROUTD ADDRESS                          00291000
+         DROP  R2                                                       00292000
+         LA    R9,0(R3,R1)   ADDRESS OF RTPROG OR RTPROG2               00293000
+         LA    R10,0(R3,R5)  DITTO                                      00294000
+         CLC   0(8,R9),0(R10)  COMPARE THE RTPROGS                      00295000
+         BE    FOUNDIT       FOUND THE SAME RTPROG                      00296000
+         LA    R2,TBE$LEN(R2)  GET NEXT ENTRY                           00297000
+         B     FINDLOOP                                                 00298000
+FINDOUT  EQU   *                                                        00299000
+         SR    R1,R1         ENTRY NOT FOUND                            00300000
+         LM    R9,R10,FINDSAVE                                          00301000
+         BR    R14           RETURN                                     00302000
+FOUNDIT  EQU   *                                                        00303000
+         L     R1,0(R4,R1)   GET ADDRESS OF ROUTINE                     00304000
+         LM    R9,R10,FINDSAVE                                          00305000
+         BR    R14           AND RETURN IT                              00306000
+         SPACE ,                                                        00307000
+*--------------------------------------------------------------------   00308000
+* LOADIT SUBROUTINE - LOADS THE NAMED USER EXIT INTO STACK SPACE        00309000
+* AND RETURNS ADDRESS OF LOADED ROUTINE IN R1/                          00310000
+* REGISTERS ON ENTRY -                                                  00311000
+*  R3 - ADDRESS OF CL8 PROGRAM NAME                                     00312000
+*  R9,R10 - STACK POINTERS                                              00313000
+* REGISTERS ON RETURN -                                                 00314000
+*  R1 - ADDRESS OF LOADED ROUTINE                                       00315000
+*--------------------------------------------------------------------   00316000
+LOADIT   EQU   *                                                        00317000
+         ST    R14,SAVE14    HOLD ON TO THIS OVER SUBR CALL             00318000
+         CALL  TBLUK,(BUILTINS,(R3),8,TWORK)   check for builtin [1.22] 00318200
+         LTR   R15,R15       is it a builtin?                    [1.22] 00318400
+         BZ    LOADED        yes,  already loaded                [1.22] 00318600
+         STM   R9,R10,STK    STACK POINTERS                             00319000
+         CALL  LOAD,((R3),STK)  LOAD THE CODE                           00320000
+         LTR   R15,R15       DID IT LOAD OK?                            00321000
+         BNZ   BADLOAD       NOPE                                       00322000
+         LM    R9,R10,STK    GET UPDATED STACK POINTERS                 00323000
+LOADED   EQU   *                                                 [1.22] 00323500
+         LR    R4,R1         COPY LOAD ADDRESS                          00324000
+         WTR   STI018,(CA,(R3),X,(R4))  WRITE LOAD MSG                  00325000
+         LR    R1,R4         RETURN LOAD ADDRESS                        00326000
+         L     R14,SAVE14    RESTORE RETURN ADDRESS                     00327000
+         BR    R14                                                      00328000
+         SPACE ,                                                        00329000
+*--------------------------------------------------------------------   00330000
+*        ERROR EXITS                                                    00331000
+*--------------------------------------------------------------------   00332000
+NOROUT  EQU   *             ROUTING TABLE IS EMPTY                      00333000
+         WTR   STI016,(CA,ROUTING)                                      00334000
+         LA    R15,4                                                    00335000
+         B     RET                                                      00336000
+BADTYPE  EQU   *             BAD ROUTING ENTRY                          00337000
+         USING ROUTD,R5                                                 00338000
+         LA    R2,RTTYPE                                                00339000
+         LA    R3,RTPROG                                                00340000
+         WTR   STI022,(CA,(R2),CA,(R3))                                 00341000
+         DROP  R5                                                       00342000
+         LA    R15,8                                                    00343000
+         B     RET                                                      00344000
+NOVAL   EQU   *             VAL TABLE IS EMPTY                          00345000
+         WTR   STI016,(CA,VALID)                                        00346000
+         LA    R15,4                                                    00347000
+         B     RET                                                      00348000
+BADLOAD  EQU   *                                                        00349000
+         WTR   STI017,(CA,(R3),D,(R15))                                 00350000
+         LA    R15,4                                                    00351000
+         B     RET                                                      00352000
+         SPACE ,                                                        00353000
+*--------------------------------------------------------------------   00354000
+*        READ/ONLY DATA                                                 00355000
+*--------------------------------------------------------------------   00356000
+COPY     MVC   0(0,R3),0(R2)                                            00357000
+PTABARR  DC    A(CPUSTR-MAILBLOK,STRTHIS)                               00358000
+         DC    A(RSCSNAME-MAILBLOK,STRRSCS)                             00359000
+         DC    A(RSCSALT-MAILBLOK,STRRALT)       [1.13]                 00360000
+         DC    A(MAINTID-MAILBLOK,STRMUSE)                              00361000
+         DC    A(MAINTID2-MAILBLOK,STRMUSE2)                            00361050
+         DC    A(MAINTNO2-MAILBLOK,STRMNOD2)                            00361100
+         DC    A(MAINTID3-MAILBLOK,STRMUSE3)                            00361150
+         DC    A(MAINTNO3-MAILBLOK,STRMNOD3)                            00361200
+         DC    A(MAINTID4-MAILBLOK,STRMUSE4)                            00361250
+         DC    A(MAINTNO4-MAILBLOK,STRMNOD4)                            00361300
+         DC    A(MAINTID5-MAILBLOK,STRMUSE5)                            00361350
+         DC    A(MAINTNO5-MAILBLOK,STRMNOD5)                            00361400
+         DC    A(MAINTID6-MAILBLOK,STRMUSE6)                            00361450
+         DC    A(MAINTNO6-MAILBLOK,STRMNOD6)                            00361500
+         DC    A(MAINTID7-MAILBLOK,STRMUSE7)                            00361550
+         DC    A(MAINTNO7-MAILBLOK,STRMNOD7)                            00361600
+         DC    A(MAINTID8-MAILBLOK,STRMUSE8)                            00361650
+         DC    A(MAINTNO8-MAILBLOK,STRMNOD8)                            00361700
+         DC    A(MAINTID9-MAILBLOK,STRMUSE9)                            00361750
+         DC    A(MAINTNO9-MAILBLOK,STRMNOD9)                            00361800
+         DC    A(MAINTNOD-MAILBLOK,STRMNOD)                             00362000
+PTABLEN  EQU   (*-PTABARR)/8                                            00363000
+PBITARR  DC    A(MAILOPTS-MAILBLOK,STRALLOW,MOPTAUN)                    00364000
+         DC    A(MAILOPTS-MAILBLOK,STRSUPPL,MOPTDEF)                    00365000
+         DC    A(MAILOPTS-MAILBLOK,STRCHAR,MOPTAC)               [1.24] 00365300
+         DC    A(MAILOPTS-MAILBLOK,STRVL,MOPTVL)                 [1.24] 00365600
+PBITLEN  EQU   (*-PBITARR)/12                                           00366000
+PPTRARR  DC    A(RSCSDOM-MAILBLOK,STRDOMAI)                      [1.22] 00366200
+         DC    A(LCLDOM-MAILBLOK,STRLCLDO)                       [1.22] 00366400
+PPTRLEN  EQU   (*-PPTRARR)/8                                     [1.22] 00366600
+         LTORG ,                                                        00367000
+STRTHIS  DC    Y(8),C'THISNODE'                                         00368000
+STRRSCS  DC    Y(8),C'RSCSNAME'                                         00369000
+STRRALT  DC    Y(7),C'RSCSALT'                   [1.13]                 00370000
+STRMUSE  DC    Y(9),C'MAINTUSER'                                        00371000
+STRMNOD  DC    Y(9),C'MAINTNODE'                                        00372000
+STRMUSE2 DC    Y(10),C'MAINTUSER2'                                      00372050
+STRMNOD2 DC    Y(10),C'MAINTNODE2'                                      00372100
+STRMUSE3 DC    Y(10),C'MAINTUSER3'                                      00372150
+STRMNOD3 DC    Y(10),C'MAINTNODE3'                                      00372200
+STRMUSE4 DC    Y(10),C'MAINTUSER4'                                      00372250
+STRMNOD4 DC    Y(10),C'MAINTNODE4'                                      00372300
+STRMUSE5 DC    Y(10),C'MAINTUSER5'                                      00372350
+STRMNOD5 DC    Y(10),C'MAINTNODE5'                                      00372400
+STRMUSE6 DC    Y(10),C'MAINTUSER6'                                      00372450
+STRMNOD6 DC    Y(10),C'MAINTNODE6'                                      00372500
+STRMUSE7 DC    Y(10),C'MAINTUSER7'                                      00372550
+STRMNOD7 DC    Y(10),C'MAINTNODE7'                                      00372600
+STRMUSE8 DC    Y(10),C'MAINTUSER8'                                      00372650
+STRMNOD8 DC    Y(10),C'MAINTNODE8'                                      00372700
+STRMUSE9 DC    Y(10),C'MAINTUSER9'                                      00372750
+STRMNOD9 DC    Y(10),C'MAINTNODE9'                                      00372800
+STRALLOW DC    Y(19),C'ALLOW-UNKNOWN-NODES'                             00373000
+STRCHAR  DC    Y(16),C'ALLOW-CHARLATANS'                         [1.24] 00373300
+STRVL    DC    Y(15),C'VERBOSE-LOGGING'                          [1.24] 00373600
+STRSUPPL DC    Y(21),C'SUPPLY-DEFAULT-FIELDS'                           00374000
+STRDOMAI DC    Y(11),C'RSCS-DOMAIN'                              [1.22] 00374300
+STRLCLDO DC    Y(12),C'LOCAL-DOMAIN'                             [1.22] 00374600
+ROUTING  DC    CL8'Outgoing'                                            00375000
+VALID    DC    CL8'Incoming'                                            00376000
+*----------------------------------------------------------------[1.22] 00376050
+*  TABLE of built-in user exits.  All the standard stuff is      [1.22] 00376100
+*  here so avg user doesn't even need a MAILER TXTLIB anymore.   [1.22] 00376150
+*----------------------------------------------------------------[1.22] 00376200
+         EXTRN BITNET,BSMTP,DEFRT,FWDMAIL,LOCAL,NOMAIL,RSCSVER   [1.22] 00376250
+         EXTRN RSMAIL,DISTLIST                                   [1.24] 00376310
+BUILTINS TBSTART ,                                               [1.22] 00376350
+*           12345678   <- pad to 8 chars to make lookup easier   [1.22] 00376400
+         T 'BITNET  ',BITNET                                     [1.22] 00376450
+         T 'BSMTP   ',BSMTP                                      [1.22] 00376500
+         T 'DEFRT   ',DEFRT                                      [1.22] 00376550
+         T 'DISTLIST',DISTLIST                                   [1.24] 00376570
+         T 'FWDMAIL ',FWDMAIL                                    [1.22] 00376600
+         T 'LOCAL   ',LOCAL                                      [1.22] 00376650
+         T 'NOMAIL  ',NOMAIL                                     [1.22] 00376700
+         T 'RSCSVER ',RSCSVER                                    [1.22] 00376750
+         T 'RSMAIL  ',RSMAIL                                     [1.22] 00376800
+         TBEND ,                                                 [1.22] 00376850
+         SPACE ,                                                        00377000
+*--------------------------------------------------------------------   00378000
+*        READ/WRITE DATA                                                00379000
+*--------------------------------------------------------------------   00380000
+SAVE     DS    18F                     SAVE AREA                        00381000
+STK      DS    2F                                                       00382000
+FINDSAVE DS    2F                                                       00383000
+SAVE14   DS    F                                                        00384000
+LOADS14  DS    F                                                        00385000
+TABLE    DS    F                                                        00386000
+TWORK    DS    64F                                                      00387000
+         END   SETINIT                                                  00388000

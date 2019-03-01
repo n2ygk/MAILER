@@ -1,0 +1,21 @@
+./ I 00008000          $ 8200 200                     02/03/89 16:34:51
+         PUSH  PRINT
+         AIF   ('&SYSPARM' NE 'SUP').NOSUP
+         PRINT OFF,NOGEN
+.NOSUP   ANOP
+./ I 00018000          $ 18500 500                    02/03/89 16:34:51
+         POP   PRINT
+./ I 00035000          $ 35200 200                    02/03/89 16:34:51
+         PUSH  PRINT
+         AIF   ('&SYSPARM' NE 'SUP').NOSUP
+         PRINT OFF,NOGEN
+.NOSUP   ANOP
+./ I 00036000          $ 36500 500                    02/03/89 16:34:51
+         POP   PRINT
+./ I 00084000          $ 84200 200                    02/03/89 16:34:51
+         PUSH  PRINT
+         AIF   ('&SYSPARM' NE 'SUP').NOSUP
+         PRINT OFF,NOGEN
+.NOSUP   ANOP
+./ I 00100000          $ 100500 500                   02/03/89 16:34:51
+         POP   PRINT

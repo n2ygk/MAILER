@@ -1,0 +1,260 @@
+CHKLOCAL TITLE 'CHKLOCAL    Columbia Univ Network MAILER (Rel. 2)      *00001000
+               Check for local node'                                    00002000
+*-------------------------------------------------------------------*   00003000
+*                                                                   *   00004000
+*        VM Network MAILER - Release 2                              *   00005000
+*                                                                   *   00006000
+*-------------------------------------------------------------------*   00007000
+         SPACE ,                                                        00008000
+*-------------------------------------------------------------------*   00009000
+*                                                                   *   00010000
+* Module Name:                                                      *   00011000
+*                                                                   *   00012000
+*        CHKLOCAL                                                   *   00013000
+*                                                                   *   00014000
+* Function:                                                         *   00015000
+*                                                                   *   00016000
+*        Determine if a host address is for the local node.         *   00017000
+*                                                                   *   00018000
+* Attributes:                                                       *   00019000
+*                                                                   *   00020000
+* Entry Points:                                                     *   00021000
+*                                                                   *   00022000
+*        CHKLOCAL            local address determination            *   00023000
+*                                                                   *   00024000
+* Entry Conditions:                                                 *   00025000
+*                                                                   *   00026000
+*        CHKLOCAL:                                                  *   00027000
+*          R1  = A(LCLPARMS) see LCLPARMS DSECT, below              *   00028000
+*          R15 = A(CHKLOCAL)                                        *   00029000
+*          R14 = return address                                     *   00030000
+*          R13 = register save area                                 *   00031000
+*                                                                   *   00032000
+* Sample Invocation:                                                *   00033000
+*                                                                   *   00034000
+*        CALL CHKLOCAL,(MAILBLOK,STRING,LENGTH)                     *   00035000
+*              mailblok - MAILBLOK                                      00036000
+*              string - Comparison string                           *   00037000
+*              length - Length of comparison string                 *   00038000
+*                                                                   *   00039000
+* Exit Conditions:                                                  *   00040000
+*                                                                   *   00041000
+*        Normal                                                     *   00042000
+*                                                                   *   00043000
+*              R15 = 1       Local host id                          *   00044000
+*              R15 = 0       Not local host id                      *   00045000
+*                                                                   *   00046000
+*                                                                   *   00047000
+* Calls to other routines, etc:                                     *   00048000
+*                                                                   *   00049000
+*        None                                                       *   00050000
+*                                                                   *   00051000
+* External References:                                              *   00052000
+*                                                                   *   00053000
+*        None                                                       *   00054000
+*                                                                   *   00055000
+* Work Areas:                                                       *   00056000
+*                                                                   *   00057000
+* Operation:                                                        *   00058000
+*                                                                   *   00059000
+*        The following steps are performed until a match is hit or  *   00060000
+*        or all comparisons fail:                                   *   00061000
+*                                                                   *   00062000
+*        1) Compare string to mailnode                              *   00063000
+*        2) Compare string to mailnode concatenated w/RSCS-domains  *   00064000
+*        3) Compare string to local-hosts                           *   00065000
+*                                                                   *   00066000
+*-------------------------------------------------------------------*   00067000
+         EJECT ,                                                        00068000
+*-------------------------------------------------------------------*   00069000
+*        Local Macros                                               *   00070000
+*-------------------------------------------------------------------*   00071000
+         SPACE ,                                                        00072000
+         AIF   ('&SYSPARM' EQ 'SUP').NOGEN                              00073000
+         PRINT GEN                                                      00074000
+         AGO   .SKIPIT                                                  00075000
+.NOGEN   ANOP                                                           00076000
+         PRINT NOGEN                                                    00077000
+.SKIPIT  ANOP                                                           00078000
+         EJECT ,                                                        00079000
+*-------------------------------------------------------------------*   00080000
+*        Parameters                                                 *   00081000
+*-------------------------------------------------------------------*   00082000
+         SPACE ,                                                        00083000
+LCLPARMS DSECT ,             parameters for CHKLOCAL                    00084000
+@MBLOK   DS    A             address of mailblok                        00085000
+@STR     DS    A             address of string                          00086000
+@LEN     DS    A             address of length                          00087000
+         EJECT ,                                                        00088000
+*-------------------------------------------------------------------*   00089000
+*        Control block definitions                                  *   00090000
+*-------------------------------------------------------------------*   00091000
+         SPACE ,                                                        00092000
+         BLOCKS ,                                                       00093000
+         MAILBLOK ,                                                     00094000
+         EJECT ,                                                        00095000
+*-------------------------------------------------------------------*   00096000
+*        Register definitions                                       *   00097000
+*-------------------------------------------------------------------*   00098000
+         SPACE ,                                                        00099000
+R0       EQU   0                                                        00100000
+R1       EQU   1                                                        00101000
+R2       EQU   2                                                        00102000
+R3       EQU   3                   RSCS-Domain/Local-Host array ptr     00103000
+R4       EQU   4                   RSCS-Domain/Local-Host array counter 00104000
+R5       EQU   5                   RSCS-Domain/Local-Host string ptr    00105000
+R6       EQU   6                                                        00106000
+R7       EQU   7                                                        00107000
+R8       EQU   8                   Decremented string length            00108000
+R9       EQU   9                   String address                       00109000
+R10      EQU   10                  String length                        00110000
+R11      EQU   11                  MAILBLOK base                        00111000
+R12      EQU   12                  Program base                         00112000
+R13      EQU   13                  Save area                            00113000
+R14      EQU   14                  Subroutine linkage                   00114000
+R15      EQU   15                  Subroutine linkage                   00115000
+         SPACE ,                                                        00116000
+*-------------------------------------------------------------------*   00117000
+*        Main program                                               *   00118000
+*-------------------------------------------------------------------*   00119000
+         SPACE ,                                                        00120000
+CHKLOCAL CSECT ,                                                        00121000
+         SPACE 1                                                        00122000
+         USING LCLPARMS,R1                                              00123000
+         USING CHKLOCAL,R15        Temporary addressability             00124000
+         SPACE 1                                                        00125000
+         B     EYESKIP             Branch over eyeskip                  00126000
+MYNAME   DC    CL8'CHKLOCLA',CL8'&SYSDATE'                              00127000
+         SPACE 1                                                        00128000
+EYESKIP  DS    0H                                                       00129000
+         SPACE 1                                                        00130000
+         DROP  R15                                                      00131000
+         SPACE 1                                                        00132000
+         STM   R14,R12,12(R13)     Save regs                            00133000
+         LR    R12,R15             Set program base                     00134000
+         SPACE 1                                                        00135000
+         USING CHKLOCAL,R12                                             00136000
+         SPACE 1                                                        00137000
+         LA    R14,SAVE            My save area                         00138000
+         ST    R13,4(,R14)         Chain back                           00139000
+         ST    R14,8(,R13)         Chain forward                        00140000
+         LR    R13,R14             Point to my save area                00141000
+         L     R11,@MBLOK          Get mailblok address                 00142000
+         SPACE 1                                                        00143000
+         USING MAILBLOK,R11                                             00144000
+         SPACE 1                                                        00145000
+         L     R9,@STR             Get string pointer                   00146000
+         L     R10,@LEN            Get address of length                00147000
+         L     R10,0(R10)          Pick up string length                00148000
+         SPACE 1                                                        00149000
+         DROP  R1                                                       00150000
+         SPACE 1                                                        00151000
+         LR    R8,R10              Copy length                          00152000
+         BCTR  R8,0                Decrement for EX                     00153000
+         LA    R14,LOCALSTR        Destination                          00154000
+         LR    R15,R9              Source                               00155000
+         EX    R8,MOVIT            Copy into LOCALSTR                   00156000
+         EX    R8,UPIT             Uppercase entire string              00157000
+         SPACE 2                                                        00158000
+*  Compare string to mailnode                                           00159000
+         SPACE 1                                                        00160000
+STEP1    DS    0H                                                       00161000
+         C     R10,MAILNLEN        Length match MAILNODE?               00162000
+         BNE   STEP2                                                    00163000
+         LA    R14,CHKVALUE        Destination                          00164000
+         LA    R15,MAILNODE        Source                               00165000
+         EX    R8,MOVIT            Copy into work area                  00166000
+         EX    R8,UPIT             Uppercase entire string              00167000
+         EX    R8,CLCIT            Do they match?                       00168000
+         BE    EXIT1               ---> Yes                             00169000
+         SPACE 2                                                        00170000
+*  Compare string to MAILNODE concatenated with RSCS-domain(s)          00171000
+STEP2    DS    0H                                                       00172000
+         LA    R3,RSCSDOM          Point to start of array              00173000
+         LA    R4,L'RSCSDOM/4      Maximum number of entries            00174000
+         SPACE 1                                                        00175000
+STEP2001 DS    0H                                                       00176000
+         ICM   R5,B'1111',0(R3)    Have an entry here?                  00177000
+         BZ    STEP3               ---> No, done check RSCS-Domains(s)  00178000
+         LA    R6,0                Clear reg                            00179000
+         IC    R6,0(R5)            Get RSCS-Domain length               00180000
+         A     R6,MAILNLEN         Total length                         00181000
+         CR    R6,R10              Do lengths match?                    00182000
+         BNE   STEP2099            ---> No                              00183000
+         LA    R14,CHKVALUE        Destination                          00184000
+         LA    R15,MAILNODE        Source                               00185000
+         L     R1,MAILNLEN         Length                               00186000
+         BCTR  R1,0                Decrement for EX                     00187000
+         EX    R1,MOVIT            Copy into work area                  00188000
+         EX    R1,UPIT             Uppercase entire string              00189000
+         LA    R14,1(R1,R14)       Destination                          00190000
+         LA    R15,1(,R5)          Source                               00191000
+         LA    R6,0                Clear reg                            00192000
+         IC    R6,0(R5)            Get RSCS-Domain length               00193000
+         BCTR  R6,0                Decrement for EX                     00194000
+         EX    R6,MOVIT            Copy into work area                  00195000
+         EX    R6,UPIT             Uppercase entire string              00196000
+         EX    R8,CLCIT            Do they match?                       00197000
+         BE    EXIT1               ---> Yes                             00198000
+STEP2099 DS    0H                                                       00199000
+         LA    R3,4(,R3)           To next array entry                  00200000
+         BCT   R4,STEP2001         ---> Try again                       00201000
+         SPACE 2                                                        00202000
+*  Compare string with Local-Host(s)                                    00203000
+         SPACE 1                                                        00204000
+STEP3    DS    0H                                                       00205000
+         LA    R3,LCLHOST          Point to start of array              00206000
+         LA    R4,L'LCLHOST/4      Maximum number of entries            00207000
+         SPACE 1                                                        00208000
+STEP3001 DS    0H                                                       00209000
+         ICM   R5,B'1111',0(R3)    Have an entry here?                  00210000
+         BZ    EXIT0               ---> No, done                        00211000
+         LA    R6,0                Clear reg                            00212000
+         IC    R6,0(R5)            Get RSCS-Domain length               00213000
+         CR    R6,R10              Do lengths match?                    00214000
+         BNE   STEP3099            ---> No                              00215000
+         LA    R14,CHKVALUE        Destination                          00216000
+         LA    R15,1(,R5)          Source                               00217000
+         BCTR  R6,0                Decrement for EX                     00218000
+         EX    R6,MOVIT            Copy into work area                  00219000
+         EX    R6,UPIT             Uppercase entire string              00220000
+         EX    R8,CLCIT            Do they match?                       00221000
+         BE    EXIT1               ---> Yes                             00222000
+STEP3099 DS    0H                                                       00223000
+         LA    R3,4(,R3)           To next array entry                  00224000
+         BCT   R4,STEP3001         ---> Try again                       00225000
+         B     EXIT0               ---> No match                        00226000
+         EJECT ,                                                        00227000
+*  Exit code                                                            00228000
+         SPACE 2                                                        00229000
+EXIT0    DS    0H                                                       00230000
+         LA    R15,0               Set false                            00231000
+         B     EXIT                                                     00232000
+         SPACE 1                                                        00233000
+EXIT1    DS    0H                                                       00234000
+         LA    R15,1               Set true                             00235000
+         B     EXIT                                                     00236000
+         SPACE 1                                                        00237000
+EXIT     DS    0H                                                       00238000
+         L     R13,4(,R13)         To previous save area                00239000
+         L     R14,12(,R13)        Reload R14                           00240000
+         LM    R0,R12,20(R13)      Reload R0-R12                        00241000
+         BR    R14                 Return to caller                     00242000
+         EJECT ,                                                        00243000
+*  Executed instructions                                                00244000
+         SPACE 2                                                        00245000
+MOVIT    MVC   0(1,R14),0(R15)     Executed MVC                         00246000
+UPIT     TR    0(1,R14),UPCASE     Executed TR (to uppercase string)    00247000
+CLCIT    CLC   LOCALSTR(1),CHKVALUE    Executed CLC                     00248000
+         SPACE 2                                                        00249000
+*  Static data areas                                                    00250000
+         SPACE 2                                                        00251000
+         LTORG ,                                                        00252000
+         SPACE 2                                                        00253000
+SAVE     DC    18F'0'              Save area                            00254000
+         SPACE 1                                                        00255000
+LOCALSTR DC    CL256' '            Local copy of string                 00256000
+         SPACE 1                                                        00257000
+CHKVALUE DC    CL256' '            Comparison string built here         00258000
+         SPACE 3                                                        00259000
+         END   ,                                                        00260000

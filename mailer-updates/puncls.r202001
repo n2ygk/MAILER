@@ -1,0 +1,20 @@
+./ R 00064170 00071490 $ 64960 790                    01/20/89 10:29:12
+         ICM   R1,B'1111',MBXLCL Get local address node pointer         00064170
+         BZ    SFLDNG            ---> Bad sender field                  00066000
+         ST    R1,NODEA          Save for GENLIST call                  00078450
+         LA    R14,STACKP        Stack pointer address ptr              00079140
+         LA    R15,STACKP+4      Stack size address ptr                 00079830
+         CALL  GENLIST,(NODEA,LSTRA,LSTRL,(14),(15))                    00080520
+         L     R3,LSTRA      Address of user name token                 00081210
+         L     R1,LSTRL      Length of it                               00081900
+./ R 00079680 00080000 $ 80670 990                    01/20/89 10:29:12
+         EX    R1,COPY       Copy it in:  MVC 0(0,R2),0(R3)             00080000
+./ I 00094000          $ 95000 1000                   01/20/89 10:29:12
+         BCTR  R1,0          -1 FOR EXECUTE                             00077000
+./ R 00098090 00098630 $ 98480 390                    01/20/89 10:29:12
+         EX    R1,COPY       Copy it in:  MVC 0(0,R2),0(R3)             00080000
+./ I 00124000          $ 124200 200                   01/20/89 10:29:12
+         SPACE 1                                                        00141200
+NODEA    DC    A(0)                Address of node for GENLIST          00141400
+LSTRA    DC    A(0)                Address of local part                00141600
+LSTRL    DC    A(0)                Length of local part                 00141800

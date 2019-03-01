@@ -1,0 +1,28 @@
+./ D 00069630 00069660                                04/20/90 10:09:28
+./ R 00070170          $ 70178 8                      04/20/90 10:09:28
+         BNL   MSG1B               ---> Yes                             00070170
+         TM    MAILOPTS,MOPTALLM   Display all received messages?       00069630
+         BNO   RCVLOOP2            ---> No, ignore it                   00069660
+         B     SMSG                Pretend it was an SMSG
+         SPACE 1
+MSG1B    EQU   *
+./ R 00070710          $ 70720 10                     04/20/90 10:09:28
+         BE    MSG2                ---> Yes, keep trying                00070710
+         TM    MAILOPTS,MOPTALLM   Display all received messages?       00069630
+         BNO   RCVLOOP2            ---> No, ignore it                   00069660
+         B     SMSG                Pretend it was an SMSG
+         SPACE 1
+./ R 00071040          $ 71042 2                      04/20/90 10:09:28
+         BE    MSG2B               ---> Yes                             00071040
+         TM    MAILOPTS,MOPTALLM   Display all received messages?       00069630
+         BNO   RCVLOOP2            ---> No, ignore it                   00069660
+         B     SMSG                Pretend it was an SMSG
+         SPACE 1
+MSG2B    EQU   *
+./ R 00071130          $ 71134 4                      04/20/90 10:09:28
+         BE    MSG2C               ---> Yes                             00071130
+         TM    MAILOPTS,MOPTALLM   Display all received messages?       00069630
+         BNO   RCVLOOP2            ---> No, ignore it                   00069660
+         B     SMSG                Pretend it was an SMSG
+         SPACE 1
+MSG2C    EQU   *

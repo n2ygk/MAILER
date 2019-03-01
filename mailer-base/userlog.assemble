@@ -1,0 +1,81 @@
+USERLOG  TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - USER LOG WTR'       00001000
+*---------------------------------------------------------------------* 00002000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00003000
+*    Program Property of the Trustees of Columbia University in the   * 00004000
+*    City of New York.                                                * 00005000
+*---------------------------------------------------------------------* 00006000
+USERLOG  CSECT                                                          00007000
+* USERLOG  -                                                            00008000
+* Userlog writes error messages to the disk user error log file         00009000
+* which is eventually returned to the sender of an errant mail file.    00010000
+* A later enhancement is planned to maintain the log file in core.      00011000
+*                                                                       00012000
+* LAST EDIT: 4/28/82 BY ALAN CROSSWELL                                  00013000
+*                                                                       00014000
+* ENTRY -  R1 MESSAGE ADDRESS, R0 - MESSAGE LENGTH                      00015000
+         SPACE ,                                                        00016000
+*                                                                       00017000
+         SPACE                                                          00018000
+* REGISTER USAGE -                                                      00019000
+R0  EQU  0 -                                                            00020000
+R1  EQU  1 -                                                            00021000
+R2  EQU  2 -                                                            00022000
+R3  EQU  3 -                                                            00023000
+R4  EQU  4 -                                                            00024000
+R5  EQU  5 -                                                            00025000
+R6  EQU  6 -                                                            00026000
+R7  EQU  7 -                                                            00027000
+R8  EQU  8 -                                                            00028000
+R9  EQU  9 - MESSAGE ADDRESS                                            00029000
+R10 EQU 10 - MESSAGE LENGTH                                             00030000
+R11 EQU 11 - MAILBLOK BASE                                              00031000
+R12 EQU 12 - PROGRAM BASE                                               00032000
+R13 EQU 13 - SAVE AREA                                                  00033000
+R14 EQU 14 - SUBROUTINE LINKAGE                                         00034000
+R15 EQU 15 - SUBROUTINE LINKAGE                                         00035000
+         SPACE                                                          00036000
+         PRINT NOGEN                                                    00037000
+         BLOCKS ,                                                       00038000
+         MAILBLOK ,                                                     00039000
+         EJECT                                                          00040000
+USERLOG  CSECT ,                                                        00041000
+         USING USERLOG,R15   TEMPORARY ADDRESSABILITY                   00042000
+         B     EYESKIP       BRANCH OVER EYESKIP                        00043000
+MYNAME   DC    CL8'USERLOG',CL8'&SYSDATE'                               00044000
+EYESKIP  DS    0H                                                       00045000
+         DROP  R15                                                      00046000
+         STM   R14,R12,12(R13) SAVE CALLER'S REGS                       00047000
+         LR    R12,R15       PERMANENT ADDRESSABILITY                   00048000
+         USING USERLOG,R12                                              00049000
+         LA    R14,SAVE      MY SAVE AREA                               00050000
+         ST    R13,4(R14)    SAVE CALLER'S PTR                          00051000
+         ST    R14,8(R13)    CHAIN MINE BACK                            00052000
+         LR    R13,R14       SET MY SAVE PTR                            00053000
+         L     R11,@MBLOK    GET MAILBLOK BASE                          00054000
+         USING MAILBLOK,R11                                             00055000
+         LR    R9,R1         GET MESSAGE ADDRESS                        00056000
+         LR    R10,R0        GET MESSAGE LENGTH PTR                     00057000
+         MVI   BUFFER,C' '                                              00058000
+         MVC   BUFFER+1(79),BUFFER                                      00059000
+         BCTR  R10,0         -1 FOR EXECUTE                             00060000
+         BL    RET                                                      00061000
+         C     R10,=F'79'    LINE TOO LONG                              00062000
+         BNH   OK                                                       00063000
+         LA    R10,79        TOO BAD                                    00064000
+OK       EQU   *                                                        00065000
+         EX    R10,COPY       COPY INTO BUFFER                          00066000
+         L     R5,MAILULFS   point to FSCB for it.               [1.23] 00067590
+         FSWRITE FSCB=(R5),BUFFER=BUFFER,BSIZE=80,RECFM=F        [1.23] 00068180
+RET      EQU   *                                                        00069000
+         L     R13,4(R13)              GET CALLER'S SAVE PTR            00070000
+         L     R14,12(R13)             GET R14                          00071000
+         LM    R0,R12,20(R13)          GET R0-R12                       00072000
+         BR    R14                     RETURN                           00073000
+         SPACE ,                                                        00074000
+COPY     MVC   BUFFER(0),0(R9)                                          00075000
+         SPACE ,                                                        00076000
+         LTORG ,                                                        00077000
+@MBLOK   DC    V(MAILBLOK)                                              00078000
+SAVE     DS    18F                     SAVE AREA                        00079000
+BUFFER   DS    CL80                                                     00080000
+         END   USERLOG                                                  00081000

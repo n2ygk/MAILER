@@ -1,0 +1,988 @@
+/* ***************************************************************** */ 00001000
+/*  FWD - Add a mail/file forwarding entry to the mailer FORWARDing  */ 00002000
+/*        files for a user.                                          */ 00003000
+/* ***************************************************************** */ 00004000
+/*                                                                   */ 00005000
+/*              (c) Copyright Princeton University 1990              */ 00006000
+/*                                                                   */ 00007000
+/* ***************************************************************** */ 00008000
+/*                                                                   */ 00009000
+/*  command format:                                                  */ 00010000
+/*                                                                   */ 00011000
+/*      FWD   < parameters > < ( options >                           */ 00012000
+/*                                                                   */ 00013000
+/*                                                                   */ 00014000
+/*  parameters:                                                      */ 00015000
+/*                                                                   */ 00016000
+/*      DELeteall                                                    */ 00017000
+/*                                                                   */ 00018000
+/*      DELFILEforward   address                                     */ 00019000
+/*                                                                   */ 00020000
+/*      DELMAILforward   address                                     */ 00021000
+/*                                                                   */ 00022000
+/*      FILEforward  address  class(es)  LOGGEDOFF|ANYTIME           */ 00023000
+/*                                                                   */ 00024000
+/*      LIst                                                         */ 00025000
+/*                                                                   */ 00026000
+/*      MAILfoward  address                                          */ 00027000
+/*                                                                   */ 00028000
+/*  options:                                                         */ 00029000
+/*                                                                   */ 00030000
+/*      FOR userid                                                   */ 00031000
+/*                                                                   */ 00032000
+/*      FORCE                                                        */ 00033000
+/*                                                                   */ 00034000
+/*      MAILERid  userid                                             */ 00035000
+/*                                                                   */ 00036000
+/*      TRACE                                                        */ 00037000
+/*                                                                   */ 00038000
+/*  See the help file for a complete description of the parameters   */ 00039000
+/*  and options.                                                     */ 00040000
+/*                                                                   */ 00041000
+/*  *** Note *** The userid existence check is currently not         */ 00042000
+/*               implemented.                                        */ 00043000
+/*                                                                   */ 00044000
+/* ***************************************************************** */ 00045000
+                                                                        00046000
+address "COMMAND"                                                       00047000
+parse arg parms "(" options ")" .                                       00048000
+                                                                        00049000
+signal on halt                                                          00050000
+signal on syntax                                                        00051000
+signal on novalue                                                       00052000
+                                                                        00053000
+if parms = '?' | parms = ''  then  do        /* Handle help request   */00054000
+   address cms 'HELP FWD'                                               00055000
+   exit                                                                 00056000
+   end                                                                  00057000
+                                                                        00058000
+/* ****************************************************************** */00059000
+/*                          Initializations                           */00060000
+/* ****************************************************************** */00061000
+                                                                        00062000
+/* ------------------------------------------------------------------ */00063000
+/*                       Site dependent values                        */00064000
+/* ------------------------------------------------------------------ */00065000
+                                                                        00066000
+mailerid = 'MAILER'                          /* MAILER userid         */00067000
+                                                                        00068000
+'IDENTIFY ( LIFO'                            /* Local node name       */00069000
+parse pull userid . localnode .                                         00070000
+                                                                        00071000
+/* ------------------------------------------------------------------ */00072000
+/*                   End of site dependent values                     */00073000
+/*                                                                    */00074000
+/*                             ---------                              */00075000
+/*                                                                    */00076000
+/*                      Site independent values                       */00077000
+/* ------------------------------------------------------------------ */00078000
+                                                                        00079000
+delete  = 0                                                             00080000
+error   = 0                                                             00081000
+filedel = 0                                                             00082000
+filefwd = 0                                                             00083000
+force   = 0                                                             00084000
+list    = 0                                                             00085000
+maildel = 0                                                             00086000
+mailfwd = 0                                                             00087000
+trace   = 0                                                             00088000
+                                                                        00089000
+creationdate = ''                                                       00090000
+updatedate   = ''                                                       00091000
+                                                                        00092000
+/* ****************************************************************** */00093000
+/*                      End of initializations                        */00094000
+/* ****************************************************************** */00095000
+                                                                        00096000
+totaloptions = words(options)                /* Total options         */00097000
+do i=1 to totaloptions                                                  00098000
+   option = translate(word(options,i))       /* Get next possible opt */00099000
+   select                                                               00100000
+      when option = 'FOR'  then  do          /* FOR userid            */00101000
+         if i=totaloptions  then  do         /* Missing pieces        */00102000
+            say 'Userid for FOR option not supplied'                    00103000
+            error = 1                                                   00104000
+            end                                                         00105000
+         else  do                            /* Maybe ok              */00106000
+            userid = word(options,i+1)       /* Get userid            */00107000
+            i = i + 1                        /* Update loop counter   */00108000
+            end                                                         00109000
+         end                                                            00110000
+      when option = 'FORCE'  then            /* FORCE                 */00111000
+         force = 1                                                      00112000
+      when abbrev('MAILERID',option,5) then do /* MAILERID            */00113000
+         if i=totaloptions  then  do         /* Missing pieces        */00114000
+            say 'Userid for MAILERID option not supplied'               00115000
+            error = 1                                                   00116000
+            end                                                         00117000
+         else  do                            /* Maybe ok              */00118000
+            mailerid = word(options,i+1)     /* Get userid            */00119000
+            i = i + 1                        /* Update loop counter   */00120000
+            end                                                         00121000
+         end                                                            00122000
+      when option = 'TRACE'  then            /* TRACE                 */00123000
+         trace = 1                                                      00124000
+      otherwise  do                                                     00125000
+         say 'Unrecognized option "'option'"'                           00126000
+         error = 1                                                      00127000
+         end                                                            00128000
+      end                                                               00129000
+   end                                                                  00130000
+                                                                        00131000
+if error  then  do                                                      00132000
+   say 'FWD stopping due to parameter error(s)'                         00133000
+   exit 8                                                               00134000
+   end                                                                  00135000
+                                                                        00136000
+parse var userid userid'@'node .             /* See if node provided  */00137000
+if node = ''  then  node = localnode         /* Set if not there      */00138000
+upper userid node                                                       00139000
+                                                                        00140000
+if node <> localnode  then  do               /* Working with local?   */00141000
+   say 'The id to be forwarded must be on the local node' ,             00142000
+      '('localnode') not on' node                                       00143000
+   exit 8                                                               00144000
+   end                                                                  00145000
+                                                                        00146000
+if length(userid) > 8  then  do                                         00147000
+   say "Userid '"userid"' is longer than 8 characters."                 00148000
+   exit 8                                                               00149000
+   end                                                                  00150000
+                                                                        00151000
+if trace  then  trace ?r                     /* Trace if requested    */00152000
+                                                                        00153000
+temp = getloc()                                                         00154000
+parse upper var temp address mode .                                     00155000
+if mode = ''  then  do                                                  00156000
+   say 'Unable to find a free disk mode for accessing forwarding data' ,00157000
+       'disk'                                                           00158000
+   exit 4                                                               00159000
+   end                                                                  00160000
+                                                                        00161000
+call link mailerid '191' address 'RR'        /* Link to mailer 191    */00162000
+if result <> 0  then  exit result            /* Link failed           */00163000
+"ACCESS" address mode                                                   00164000
+say ' '                                                                 00165000
+                                                                        00166000
+call getoldinfo mode                         /* Get any old info      */00167000
+                                                                        00168000
+delfiles = 0                                 /* Set counters          */00169000
+delmail  = 0                                                            00170000
+newfiles = 0                                                            00171000
+newmail  = 0                                                            00172000
+                                                                        00173000
+totalparms = words(parms)                                               00174000
+do i=1 to totalparms                                                    00175000
+   parm = translate(word(parms,i))           /* Take next parm        */00176000
+   select                                                               00177000
+      when abbrev('DELETEALL',parm,3)  then  /* Deletion request      */00178000
+         delete = 1                                                     00179000
+      when abbrev('DELFILEFORWARD',parm,4) | ,                          00180000
+           abbrev('DELETEFILEFORWARD',parm,7)  then  do                 00181000
+         select                              /* File deletion         */00182000
+            when i=totalparms  then  do      /* Missing pieces        */00183000
+               say 'Destination address not supplied for file' ,        00184000
+                  'forwarding deletion'                                 00185000
+               error = 1                                                00186000
+               end                                                      00187000
+            otherwise  do                    /* Maybe ok              */00188000
+               delfiles = delfiles + 1       /* Bump counters         */00189000
+               delfilesdest.delfiles  = word(parms,i+1)                 00190000
+               i = i + 1                     /* Update loop counter   */00191000
+               filedel = 1                   /* Remember we had one   */00192000
+               end                                                      00193000
+            end                                                         00194000
+         end                                                            00195000
+      when abbrev('DELMAILFORWARD',parm,4) | ,                          00196000
+           abbrev('DELETEMAILFORWARD',parm,4)  then  do                 00197000
+         select                              /* Mail deleteion        */00198000
+            when i=totalparms  then  do      /* Missing pieces        */00199000
+               say 'Destination address not supplied for file' ,        00200000
+                  'forwarding deletion'                                 00201000
+               error = 1                                                00202000
+               end                                                      00203000
+            otherwise  do                    /* Maybe ok              */00204000
+               delmail = delmail + 1         /* Bump counters         */00205000
+               delmaildest.delmail  = word(parms,i+1)                   00206000
+               i = i + 1                     /* Update loop counter   */00207000
+               maildel = 1                   /* Remember we had one   */00208000
+               end                                                      00209000
+            end                                                         00210000
+         end                                                            00211000
+      when abbrev('FILEFORWARD',parm,4) then do /* File forwarding    */00212000
+         select                                                         00213000
+            when i=totalparms  then  do      /* Missing pieces        */00214000
+               say 'Destination, class(es) and logon status not' ,      00215000
+                   'supplied for file forwarding'                       00216000
+               error = 1                                                00217000
+               end                                                      00218000
+            when i+1=totalparms  then  do    /* Missing pieces        */00219000
+               say 'Class(es) and logon status not supplied for file' , 00220000
+                  'forwarding'                                          00221000
+               error = 1                                                00222000
+               end                                                      00223000
+            when i+2=totalparms  then  do    /* Missing pieces        */00224000
+               say 'Logon status not supplied for file forwarding'      00225000
+               error = 1                                                00226000
+               end                                                      00227000
+            otherwise  do                    /* Maybe ok              */00228000
+               newfiles = newfiles + 1       /* Bump counters         */00229000
+               newfilesdest.newfiles  = word(parms,i+1)                 00230000
+               parm2 = word(parms,i+2)       /* Standardize class     */00231000
+               newclasses = left(parm2,1)    /*   string              */00232000
+               do j=2 for length(parm2)                                 00233000
+                  classx = substr(parm2,j,1) /* Next character        */00234000
+                  if pos(classx,newclasses) = 0  then                   00235000
+                     newclasses = newclasses||classx                    00236000
+                  end                                                   00237000
+               newfilesclass.newfiles = newclasses                      00238000
+               newfileslogon.newfiles = translate(word(parms,i+3))      00239000
+               loggedon  = (newfileslogon.newfiles = 'ANYTIME')         00240000
+               loggedoff = (newfileslogon.newfiles = 'LOGGEDOFF')       00241000
+               if ^loggedon & ^loggedoff  then  do                      00242000
+                  say 'Logon status for file destination of' ,          00243000
+                     newfilesdest.newfiles 'not ANYTIME or LOGGEDOFF'   00244000
+                  error = 1                                             00245000
+                  end                                                   00246000
+               i = i + 3                     /* Update loop counter   */00247000
+               filefwd = 1                   /* Remember we had one   */00248000
+               end                                                      00249000
+            end                                                         00250000
+         end                                                            00251000
+      when abbrev('FORCE',parm,3)  then      /* Force if necessary    */00252000
+         force = 1                                                      00253000
+      when abbrev('LIST',parm,2)  then       /* List request          */00254000
+         list = 1                                                       00255000
+      when abbrev('MAILFORWARD',parm,4) then do /* File forwarding    */00256000
+         select                                                         00257000
+            when i=totalparms  then  do      /* Missing pieces        */00258000
+               say 'Destination not supplied for mail forwarding'       00259000
+               error = 1                                                00260000
+               end                                                      00261000
+            otherwise  do                    /* Maybe ok              */00262000
+               newmail = newmail + 1         /* Bump counters         */00263000
+               newmaildest.newmail = word(parms,i+1)                    00264000
+               i = i + 1                     /* Update loop counter   */00265000
+               mailfwd = 1                   /* Remember we had one   */00266000
+               end                                                      00267000
+            end                                                         00268000
+         end                                                            00269000
+      otherwise  do                          /*                       */00270000
+         say 'Unrecognized parameter "'parm'"'                          00271000
+         error = 1                           /*                       */00272000
+         end                                                            00273000
+      end                                                               00274000
+   end                                                                  00275000
+                                                                        00276000
+if delete & (filedel | filefwd | maildel | mailfwd | list)  then  do    00277000
+   excludelist = ''                                                     00278000
+   if filedel  then  excludelist = 'DELFILEforward '                    00279000
+   if filefwd  then  excludelist = excludelist || 'FILEforward '        00280000
+   if list     then  excludelist = excludelist || 'LIST '               00281000
+   if maildel  then  excludelist = excludelist || 'DELMAILforward '     00282000
+   if mailfwd  then  excludelist = excludelist || 'MAILforward '        00283000
+   say 'DELETE is mutually exclusive with the' ,                        00284000
+      formatlist(excludelist) 'parameters'                              00285000
+   error = 1                                                            00286000
+   end                                                                  00287000
+                                                                        00288000
+if error  then  do                                                      00289000
+   say 'FWD stopping due to parameter error(s)'                         00290000
+   exitrc = 8                                                           00291000
+   signal exit                                                          00292000
+   end                                                                  00293000
+                                                                        00294000
+if list & (filefwd | mailfwd)  then          /* Soft error            */00295000
+   list = 0                                  /* Will do this anyway   */00296000
+                                                                        00297000
+if ^(delete | filedel | filefwd | maildel | mailfwd | list)  then       00298000
+   list = 1                                  /* Default is list       */00299000
+                                                                        00300000
+select                                                                  00301000
+   when list  then  do                       /* Just listing info     */00302000
+      'VMFCLEAR'                             /* Clear screen          */00303000
+      say ' '                                                           00304000
+      say 'Current forwardings in effect for' userid':'                 00305000
+      say ' '                                                           00306000
+      call listforward                       /*                       */00307000
+      if creationdate <> ''  then  do                                   00308000
+         say ' '                                                        00309000
+         say 'Created:' creationdate '   Updated:' updatedate           00310000
+         end                                                            00311000
+      exitrc = 0                             /*                       */00312000
+      end                                                               00313000
+   when delete & forward.0 = 0  then  do     /* Delete but no forward */00314000
+      say 'Forwarding not in effect for' userid                         00315000
+      exitrc = 4                                                        00316000
+      end                                                               00317000
+   otherwise  do                             /* Addition request      */00318000
+      if delete  then  do                    /* Delete all request    */00319000
+         say 'Deleting any existing mail and file forwards'             00320000
+         forward.0 = 0                       /* No mail forwards      */00321000
+         fileforward.0 = 0                   /* No file forwards      */00322000
+         end                                                            00323000
+      else                                   /* Not delete all        */00324000
+         call update                         /* Build new sample      */00325000
+      say ' '                                                           00326000
+      if error  then  do                     /* Fatal errors          */00327000
+         say 'Correct errors and reissue command'                       00328000
+         exitrc = 8                                                     00329000
+         end                                                            00330000
+      else  do                               /* No errors             */00331000
+         say 'After applying requested changes the following' ,         00332000
+             'forwarding(s) will be in effect:'                         00333000
+         say ' '                                                        00334000
+         call listforward                    /* Show the results      */00335000
+         if doforward()  then                /* A chance to stop      */00336000
+            call sendcmds                    /* Send the update       */00337000
+         else                                /* Don't do update       */00338000
+            say 'No changes made'                                       00339000
+         exitrc = 0                                                     00340000
+         end                                                            00341000
+      end                                                               00342000
+   end                                                                  00343000
+                                                                        00344000
+Exit:                                                                   00345000
+say ' '                                                                 00346000
+"RELEASE" mode "(DET"                                                   00347000
+exit exitrc                                                             00348000
+                                                                        00349000
+/* ******************* */                                               00350000
+/*  Internal routines  */                                               00351000
+/* ******************* */                                               00352000
+                                                                        00353000
+                                                                        00354000
+/**********************************************************************/00355000
+AddFile:  procedure , /* Add a new file destination */                  00356000
+          expose fileforward. fileclasses. localnode loggedon.          00357000
+parse arg destination classes logonstatus .                             00358000
+if logonstatus = 'ANYTIME'  then             /* Standardize value     */00359000
+   logonstatus = 'YES'                                                  00360000
+else                                                                    00361000
+   logonstatus = 'NO'                                                   00362000
+allok = 1                                    /* No errors (yet)       */00363000
+if validdest('NJE')  then  do                /* Check address         */00364000
+   matches = filematch(destination classes)  /* Check for matches &   */00365000
+                                             /*   overlaps            */00366000
+   select                                                               00367000
+      when overlap.0 > 0  then  do           /* Found an overlap      */00368000
+         say 'The classes specified for' destination '('classes')' ,    00369000
+            'overlap with the following other destination ids:'         00370000
+         say ' '                                                        00371000
+         do i=1 for fileforward.0            /* Show the              */00372000
+            if overlap.i  then               /*   overlap lines       */00373000
+               say '  'left(fileforward.i,19) fileclasses.i             00374000
+            end                                                         00375000
+         allok = 0                           /* Not ok                */00376000
+         end                                                            00377000
+      when matches = 0  then  do             /* Add a new dest        */00378000
+         last = fileforward.0 + 1            /* Pick the next spot    */00379000
+         fileforward.last = destination      /* Add into list         */00380000
+         fileclasses.last = classes                                     00381000
+         loggedon.last    = logonstatus                                 00382000
+         fileforward.0 = last                /* Update the count      */00383000
+         fileclasses.0 = last                                           00384000
+         loggedon.0    = last                                           00385000
+         end                                                            00386000
+      when matches = 1  then  do             /* Replace a dest        */00387000
+         do i=1 for fileforward.0                                       00388000
+            if match.i  then  leave          /* Stop at match         */00389000
+            end                                                         00390000
+         fileforward.i = destination         /* Replace the entry     */00391000
+         fileclasses.i = classes                                        00392000
+         loggedon.i    = logonstatus                                    00393000
+         end                                                            00394000
+      otherwise  do                                                     00395000
+         say ' '                                                        00396000
+         say '*** ERROR *** File structure error in FORWARD file'       00397000
+         say '"'destination'" exists more than once in the file'        00398000
+         say 'This error must be corrected by hand before further' ,    00399000
+             'processing can be done'                                   00400000
+         say '*** ERROR ***'                                            00401000
+         say ' '                                                        00402000
+         allok = 0                           /* Not ok                */00403000
+         end                                                            00404000
+      end                                                               00405000
+   end                                                                  00406000
+else  do                                     /* Bad address           */00407000
+   say '"'destination'" is not valid: ' failure                         00408000
+   allok = 0                                                            00409000
+   end                                                                  00410000
+return allok                                                            00411000
+                                                                        00412000
+                                                                        00413000
+/**********************************************************************/00414000
+AddMail:  procedure , /* Add a new mail destination */                  00415000
+          expose forward. localnode                                     00416000
+parse arg destination .                                                 00417000
+allok = 1                                    /* No errors (yet)       */00418000
+if validdest()  then  do                     /* Check address         */00419000
+   if mailmatch(destination) = 0  then  do   /* Check for duplicate   */00420000
+      last = forward.0 + 1                   /* Pick the next spot    */00421000
+      forward.last = destination             /* Add into list         */00422000
+      forward.0 = last                       /* Update count          */00423000
+      end                                                               00424000
+   else                                      /* Duplicate address     */00425000
+      say '"'destination'" is a duplicate mail destination'             00426000
+   end                                                                  00427000
+else  do                                     /* Bad address           */00428000
+   say '"'destination'" is not valid: ' failure                         00429000
+   allok = 0                                                            00430000
+   end                                                                  00431000
+return allok                                                            00432000
+                                                                        00433000
+                                                                        00434000
+/**********************************************************************/00435000
+DelFile:  procedure , /* Add a new file destination */                  00436000
+          expose fileforward. fileclasses. localnode loggedon.          00437000
+parse arg destination .                                                 00438000
+allok = 1                                    /* No errors (yet)       */00439000
+if validdest('NJE')  then  do                /* Check address         */00440000
+   if filematch(destination) = 0  then       /* Check for exists      */00441000
+      say '"'destination'" is not a file forwarding destination'        00442000
+   else  do                                  /* Destination exists    */00443000
+      j=0                                    /* Initialize counter    */00444000
+      do i=1 to fileforward.0                /* Do all lines          */00445000
+         if ^match.i  then  do               /* Keep this one         */00446000
+            j=j+1                            /* Increment line ctr    */00447000
+            if j<>i  then  do                /* If 1 or more dropped  */00448000
+               fileforward.j = fileforward.i /*   copy line forward   */00449000
+               fileclasses.j = fileclasses.i                            00450000
+               loggedon.j = loggedon.i                                  00451000
+               end                                                      00452000
+            end                                                         00453000
+         end                                                            00454000
+      fileforward.0 = j                      /* Update line count     */00455000
+      fileclasses.0 = j                                                 00456000
+      loggedon.0    = j                                                 00457000
+      end                                                               00458000
+   end                                                                  00459000
+else  do                                     /* Bad address           */00460000
+   say '"'destination'" is not valid: ' failure                         00461000
+   allok = 0                                                            00462000
+   end                                                                  00463000
+return allok                                                            00464000
+                                                                        00465000
+                                                                        00466000
+/**********************************************************************/00467000
+DelMail:  procedure , /* Add a new mail destination */                  00468000
+          expose forward. localnode                                     00469000
+parse arg destination .                                                 00470000
+allok = 1                                    /* No errors (yet)       */00471000
+if validdest()  then  do                     /* Check address         */00472000
+   if mailmatch(destination) = 0  then       /* Check for exists      */00473000
+      say '"'destination'" is not a mail forwarding destination'        00474000
+   else  do                                  /* Destination exists    */00475000
+      j=0                                    /* Initialize counter    */00476000
+      do i=1 to forward.0                    /* Do all lines          */00477000
+         if ^match.i  then  do               /* Keep this one         */00478000
+            j=j+1                            /* Increment line ctr    */00479000
+            if j<>i  then                    /* If 1 or more dropped  */00480000
+               forward.j = forward.i         /*   copy line forward   */00481000
+            end                                                         00482000
+         end                                                            00483000
+      forward.0 = j                          /* Update line count     */00484000
+      end                                                               00485000
+   end                                                                  00486000
+else  do                                     /* Bad address           */00487000
+   say '"'destination'" is not valid: ' failure                         00488000
+   allok = 0                                                            00489000
+   end                                                                  00490000
+return allok                                                            00491000
+                                                                        00492000
+                                                                        00493000
+/**********************************************************************/00494000
+DoForward:  procedure , /* See if updates should occur */               00495000
+            expose fileclasses. fileforward. forward. loggedon. ,       00496000
+                   userid                                               00497000
+reply = ''                                                              00498000
+say ' '                                                                 00499000
+do until reply <> ''                                                    00500000
+   say ' '                                                              00501000
+   say 'Apply updates?'                      /* Ask the question      */00502000
+   parse upper pull reply .                  /* Get the response      */00503000
+   select                                                               00504000
+      when abbrev('LIST',reply,1)  then  do  /* LIST request          */00505000
+         call listforward                                               00506000
+         reply = ''                                                     00507000
+         end                                                            00508000
+      when abbrev('QUIT',reply,1)  then      /* QUIT response         */00509000
+         reply = 0                                                      00510000
+      when abbrev('NO',reply,1)  then        /* NO response           */00511000
+         reply = 0                                                      00512000
+      when abbrev('YES',reply,1)  then       /* YES response          */00513000
+         reply = 1                                                      00514000
+      otherwise  do                                                     00515000
+         say 'Please respond with List, Yes, No or Quit'                00516000
+         reply = ''                                                     00517000
+         end                                                            00518000
+      end                                                               00519000
+   end                                                                  00520000
+return  reply                                                           00521000
+                                                                        00522000
+                                                                        00523000
+/**********************************************************************/00524000
+FileMatch:  procedure , /* Scan for matching destinations */            00525000
+            expose fileforward. fileclasses. localnode loggedon. ,      00526000
+                   match. overlap.                                      00527000
+parse upper arg dest classes .                                          00528000
+matches = 0                                  /* No matches yet        */00529000
+overlaps = 0                                 /* No overlaps yet       */00530000
+                                                                        00531000
+do i=1 for fileforward.0                     /* Scan all lines        */00532000
+   if translate(fileforward.i) = dest then do/* Have a match          */00533000
+      matches = matches + 1                  /* Update counter        */00534000
+      match.i = 1                            /* Update line flag      */00535000
+      overlap.i = 0                          /* By definition         */00536000
+      end                                                               00537000
+   else  do                                  /* Not a match           */00538000
+      match.i = 0                            /* Update line flag      */00539000
+      if overlap(classes,fileclasses.i)  then  do                       00540000
+         overlap.i = 1                       /* Remember overlap      */00541000
+         overlaps = overlaps + 1             /* Update count          */00542000
+         end                                                            00543000
+      else  overlap.i = 0                    /* Remember no overlap   */00544000
+      end                                                               00545000
+   end                                                                  00546000
+                                                                        00547000
+overlap.0 = overlaps                         /* Set overlap count     */00548000
+return matches                                                          00549000
+                                                                        00550000
+                                                                        00551000
+/**********************************************************************/00552000
+FormatList:  procedure  /* Format a list of words into a comma        */00553000
+                        /*    separated string for a sentence         */00554000
+parse var wordlist                                                      00555000
+newlist = word(wordlist,1)                   /* Seed the list         */00556000
+totalwords = words(wordlist)                                            00557000
+do i=2 to totalwords-1                                                  00558000
+   newlist = newlist',' word(wordlist,i)     /* Add on next word      */00559000
+   end                                                                  00560000
+if totalwords > 1  then                      /* Add in the last word  */00561000
+   newlist = newlist 'and' word(wordlist,totalwords)                    00562000
+return newlist                                                          00563000
+                                                                        00564000
+                                                                        00565000
+/**********************************************************************/00566000
+GetLoc:  procedure   /* Get a disk address and mode */                  00567000
+parse arg diskmodes                                                     00568000
+                                                                        00569000
+do addr=x2d(111)                             /* Free address > 110    */00570000
+   parse value diagrc(8,'CP QUERY VIRTUAL' d2x(addr)) with ,            00571000
+     rc +10 .                                                           00572000
+   if rc <> 0  then  do                                                 00573000
+      freeaddr = d2x(addr)                                              00574000
+      leave                                                             00575000
+      end                                                               00576000
+   end                                                                  00577000
+                                                                        00578000
+if diskmodes = ''  then                                                 00579000
+   diskmodes = 'G H I J K L M N O P Q R T U V W X Z B C D E F'          00580000
+diskmodes = space(diskmodes,0)                                          00581000
+                                                                        00582000
+freemode = ''                                                           00583000
+do while diskmodes <> ''                                                00584000
+   parse var diskmodes diskmode +1 diskmodes                            00585000
+   'ESTATE * *' diskmode                                                00586000
+   if rc = 36  then  do                                                 00587000
+      freemode = diskmode                                               00588000
+      leave                                                             00589000
+      end                                                               00590000
+   end                                                                  00591000
+                                                                        00592000
+return freeaddr freemode                                                00593000
+                                                                        00594000
+                                                                        00595000
+/**********************************************************************/00596000
+GetOldInfo:  procedure , /* Initialize with any existing info */        00597000
+             expose fileclasses. fileforward. forward. loggedon. ,      00598000
+                    userid creationdate updatedate                      00599000
+parse upper arg mode .                                                  00600000
+                                                                        00601000
+fileclasses.0 = 0                            /* Initialize for safety */00602000
+fileforward.0 = 0                                                       00603000
+forward.0     = 0                                                       00604000
+loggedon.0    = 0                                                       00605000
+                                                                        00606000
+'ESTATE' userid 'FORWARD' mode               /* Any forwarding?       */00607000
+if rc <> 0  then  return                     /* No, all done          */00608000
+                                                                        00609000
+'EXECIO * DISKR' userid 'FORWARD' mode '(FINIS STEM LINE.'              00610000
+                                                                        00611000
+mailfwds = 0                                 /* Set some counters     */00612000
+filefwds = 0                                                            00613000
+do i=1 to line.0                             /* Scan the file         */00614000
+   if left(word(line.i,1),1) <> '*'  then  do/* Found mail forward    */00615000
+      mailfwds = mailfwds + 1                /* Up the count          */00616000
+      forward.mailfwds = strip(line.i)       /* Save forwarding       */00617000
+      end                                                               00618000
+   else  do                                  /* Found a comment       */00619000
+      parse upper var line.i '*' type ':' .  /* Check line type       */00620000
+      if i=1 then  do                                                   00621000
+         if type = 'CREATED'  then           /* Have control line     */00622000
+            parse upper var line.i '*' . 'CREATED:' creationdate ,      00623000
+               'UPDATED:' updatedate                                    00624000
+         creationdate = space(creationdate)                             00625000
+         updatedate   = space(updatedate)                               00626000
+         end                                                            00627000
+      if type = 'FILES'  then  do            /* Found file forward    */00628000
+         filefwds = filefwds + 1             /* Up the count          */00629000
+         parse upper var line.i '*' . ':' ,  /* Get the values        */00630000
+            fileforward.filefwds . 'CLASSES:' fileclasses.filefwds . ,  00631000
+            'LOGGEDON:' loggedon.filefwds .                             00632000
+         end                                                            00633000
+      end                                                               00634000
+   end                                                                  00635000
+                                                                        00636000
+fileclasses.0 = filefwds                     /* Update the counts     */00637000
+fileforward.0 = filefwds                                                00638000
+forward.0     = mailfwds                                                00639000
+loggedon.0    = filefwds                                                00640000
+                                                                        00641000
+return                                                                  00642000
+                                                                        00643000
+/**********************************************************************/00644000
+Link: procedure  /* Link to disk */                                     00645000
+parse upper arg linkparms                                               00646000
+"CP LINK" linkparms                          /* Try standard link     */00647000
+if rc <> 0  then                                                        00648000
+   say 'Unable to link to' subword(linkparms,1,2)                       00649000
+return rc                                                               00650000
+                                                                        00651000
+                                                                        00652000
+/**********************************************************************/00653000
+ListForward:  procedure , /* List forwarding info */                    00654000
+              expose fileclasses. fileforward. forward. loggedon. ,     00655000
+                     userid creationdate updatedate                     00656000
+                                                                        00657000
+say ' '                                      /* For pretty            */00658000
+if forward.0 = 0  then  do                   /* No forward exists     */00659000
+   say 'No forwarding is being done for' userid                         00660000
+   end                                                                  00661000
+else  do                                     /* List mail fowardings  */00662000
+   msgline = 'Mail forwards:'                                           00663000
+   sofar = length(msgline)                                              00664000
+   do i=1 to forward.0                                                  00665000
+      if(sofar+length(forward.i)+2 > 80)  then do                       00666000
+         say msgline                         /* Write this line now   */00667000
+         msgline = left(' ',16) || forward.i /* Start a new line      */00668000
+         end                                                            00669000
+      else                                   /* Add on to this line   */00670000
+         msgline = msgline'  'forward.i                                 00671000
+      end                                                               00672000
+   say msgline                                                          00673000
+   say ' '                                                              00674000
+   if fileforward.0 > 0  then  do            /* Have file forwards    */00675000
+      say 'File forwards:'                                              00676000
+      say ' '                                                           00677000
+      say ,                                  /* Write headings        */00678000
+         center('transfer',21)'  'left(' ',38)'  'center('When to',12)  00679000
+      say ,                                                             00680000
+         center('destination',21)'  ' || ,                              00681000
+         left(' classes to transfer',38)'  'center('transfer',12)       00682000
+      say ,                                                             00683000
+         copies('=',21)'  'copies('=',38)'  'copies('=',12)             00684000
+      do i=1 to fileforward.0                /* List file forwardings */00685000
+         if loggedon.i = 'YES'  then  striptime = ' Any time '          00686000
+         else                         striptime = 'Logged off'          00687000
+         say ,                               /* Write line            */00688000
+            center(fileforward.i,21)'  ' || ,                           00689000
+            center(left(fileclasses.i,36),38)'  'center(striptime,12)   00690000
+         end                                                            00691000
+      end                                                               00692000
+   else  say 'No file forwarding is being done'                         00693000
+   end                                                                  00694000
+                                                                        00695000
+say ' '                                      /* For pretty            */00696000
+return                                                                  00697000
+                                                                        00698000
+                                                                        00699000
+/**********************************************************************/00700000
+Logit:  procedure ,  /* Place activity entry in log file */             00701000
+        expose mode                          /*                       */00702000
+parse arg logline                            /*                       */00703000
+'EXECIO 1 DISKW FWDMAIL LOG' mode '(FINIS STRING' logline               00704000
+say logline                                  /*                       */00705000
+return                                                                  00706000
+                                                                        00707000
+                                                                        00708000
+/**********************************************************************/00709000
+MailMatch:  procedure , /* Scan for matching destinations */            00710000
+            expose forward. match.                                      00711000
+parse upper arg dest .                                                  00712000
+matches = 0                                  /* No matches yet        */00713000
+                                                                        00714000
+do i=1 for forward.0                         /* Scan all lines        */00715000
+   if translate(forward.i) = dest then do    /* Have a match          */00716000
+      matches = matches + 1                  /* Update counter        */00717000
+      match.i = 1                            /* Update line flag      */00718000
+      end                                                               00719000
+   else                                      /* Not a match           */00720000
+      match.i = 0                            /* Update line flag      */00721000
+   end                                                                  00722000
+                                                                        00723000
+return matches                                                          00724000
+                                                                        00725000
+                                                                        00726000
+/**********************************************************************/00727000
+Overlap:  procedure  /* Check for class overlaps */                     00728000
+parse upper arg list1 , list2                                           00729000
+if list1 = '' | list2 = ''  then  return 0   /* By definition         */00730000
+if list1 = '*'  then  return 1               /* By definition         */00731000
+if list2 = '*'  then  return 1               /* By definition         */00732000
+                                                                        00733000
+list1 = strip(list1)                         /* Get rid of pesky      */00734000
+list2 = strip(list2)                         /*     blanks            */00735000
+                                                                        00736000
+do i=1 to length(list1)                      /* Scan all characters   */00737000
+   if pos(substr(list1,i,1),list2) > 0  then  return 1                  00738000
+   end                                                                  00739000
+                                                                        00740000
+return 0                                     /* No match              */00741000
+                                                                        00742000
+                                                                        00743000
+/**********************************************************************/00744000
+SendCmds:  procedure ,  /* Issue commands to mailer to make changes   */00745000
+         expose delete delfiles delfilesdest. delmail delmaildest. ,    00746000
+                filedel filefwd maildel mailerid mailfwd newfiles ,     00747000
+                newfilesclass. newfilesdest. newfileslogon. ,           00748000
+                newmail newmaildest. userid                             00749000
+                                                                        00750000
+if userid <> userid()  then                  /* Need FOR value       */ 00751000
+   for = 'FOR' userid                                                   00752000
+else                                         /* No FOR value         */ 00753000
+   for = ''                                                             00754000
+                                                                        00755000
+if delete  then                              /* Do total delete       */00756000
+   'EXEC TELL' mailerid 'FORWARD' for 'DELETE ALL'                      00757000
+                                                                        00758000
+if mailfwd  then  do                         /* Mail forwards to add  */00759000
+   do i=1 for newmail                                                   00760000
+      'EXEC TELL' mailerid 'FORWARD' for 'MAIL ADD' newmaildest.i       00761000
+      end                                                               00762000
+   end                                                                  00763000
+                                                                        00764000
+if maildel  then  do                         /* Mail forwards to del. */00765000
+   do i=1 for delmail                                                   00766000
+      'EXEC TELL' mailerid 'FORWARD' for 'MAIL DELETE' delmaildest.i    00767000
+      end                                                               00768000
+   end                                                                  00769000
+                                                                        00770000
+if filedel  then  do                         /* File forwards to del. */00771000
+   do i=1 for delfiles                                                  00772000
+      'EXEC TELL' mailerid 'FORWARD' for 'FILES' delfilesdest.i ,       00773000
+         'DELETE'                                                       00774000
+      end                                                               00775000
+   end                                                                  00776000
+                                                                        00777000
+if filefwd  then  do                         /* File forwards to add  */00778000
+   do i=1 for newfiles                                                  00779000
+      'EXEC TELL' mailerid 'FORWARD' for 'FILES' newfilesdest.i ,       00780000
+         'CLASS' newfilesclass.i newfileslogon.i                        00781000
+      end                                                               00782000
+   end                                                                  00783000
+                                                                        00784000
+                                                                        00785000
+return                                                                  00786000
+                                                                        00787000
+                                                                        00788000
+/**********************************************************************/00789000
+Update:  procedure , /* Run the update process locally */               00790000
+         expose delete delfiles delfilesdest. delmail delmaildest. ,    00791000
+                error fileclasses. filedel fileforward. filefwd ,       00792000
+                force forward. localnode loggedon. maildel mailfwd ,    00793000
+                newfiles newfilesclass. newfilesdest. newfileslogon. ,  00794000
+                newmail newmaildest.                                    00795000
+                                                                        00796000
+if mailfwd  then  do                         /* Mail forwards to add  */00797000
+   say 'Adding new mail forward(s)s'                                    00798000
+   do i=1 for newmail                                                   00799000
+      if ^addmail(newmaildest.i) then        /* Add a new entry       */00800000
+         error = 1                           /* Had an error          */00801000
+      end                                                               00802000
+   end                                                                  00803000
+                                                                        00804000
+if maildel  then  do                         /* Mail forwards to del. */00805000
+   say 'Deleting mail forward destination(s)'                           00806000
+   if forward.0 = 0  then  do                /* No forwards in place  */00807000
+      say 'No mail forwardings exist, all deletions will fail'          00808000
+      error = 1                              /* This is not good      */00809000
+      end                                                               00810000
+   do i=1 for delmail                                                   00811000
+      if ^delmail(delmaildest.i) then        /* Delete an old entry   */00812000
+         error = 1                           /* Had an error          */00813000
+      end                                                               00814000
+   end                                                                  00815000
+                                                                        00816000
+if filedel  then  do                         /* File forwards to del. */00817000
+   say 'Deleting file forward destination(s)'                           00818000
+   if fileforward.0 = 0  then  do            /* No forwards in place  */00819000
+      say 'No file forwardings exist, all deletions will fail'          00820000
+      error = 1                              /* This is not good      */00821000
+      end                                                               00822000
+   do i=1 for delfiles                                                  00823000
+      if ^delfile(delfilesdest.i) then       /* Delete an old entry   */00824000
+         error = 1                           /* Had an error          */00825000
+      end                                                               00826000
+   end                                                                  00827000
+                                                                        00828000
+if filefwd  then  do                         /* File forwards to add  */00829000
+   say 'Adding new file forward(s)s'                                    00830000
+   do i=1 for newfiles                                                  00831000
+      if ^addfile(newfilesdest.i newfilesclass.i newfileslogon.i)  then 00832000
+         error = 1                           /* Had an error          */00833000
+      end                                                               00834000
+   end                                                                  00835000
+                                                                        00836000
+return                                                                  00837000
+                                                                        00838000
+                                                                        00839000
+/* *****************************************************************  */00840000
+/*                                                                    */00841000
+/*  ValidDest will validate an address against RFC822 (I hope).       */00842000
+/*                                                                    */00843000
+/*  The address to be check is passed in the REXX variable            */00844000
+/*  'destination'.  This value may be changed during the validation   */00845000
+/*  process so that all addresses will be in a standard form.         */00846000
+/*                                                                    */00847000
+/*  If there is a problem with the address, the reason for the        */00848000
+/*  failure will be returned in the exposed variable 'failure'        */00849000
+/*                                                                    */00850000
+/* *****************************************************************  */00851000
+                                                                        00852000
+ValidDest:  procedure , /* Validate a destination address */            00853000
+            expose destination failure localnode                        00854000
+parse upper arg type .                       /*                       */00855000
+if type = ''  then  type = 'RFC822'          /* Default type          */00856000
+                                                                        00857000
+workdest = strip(destination)                /*                       */00858000
+                                                                        00859000
+if workdest = '*'  then  do                  /* To user?              */00860000
+   destination = '<*>'                       /* Yes, kludge address   */00861000
+   return 1                                  /*                       */00862000
+   end                                                                  00863000
+                                                                        00864000
+failure = ''                                 /*                       */00865000
+routeaddr = ''                               /*                       */00866000
+userid = ''                                  /*                       */00867000
+domain = ''                                  /*                       */00868000
+quoted.0 = 0                                 /*                       */00869000
+                                                                        00870000
+do while left(workdest,1) = '<'              /* Strip any hairpins    */00871000
+   if right(workdest,1) <> '>'  then  do     /*                       */00872000
+      failure = '"<" missing matching ">"'   /*                       */00873000
+      return 0                               /*                       */00874000
+      end                                                               00875000
+   else                                      /*                       */00876000
+      workdest = substr(workdest,2,length(workdest)-2)                  00877000
+   end                                                                  00878000
+                                                                        00879000
+do i=1                                       /* Remove quoted strings */00880000
+   first = pos('"',workdest)                 /*                       */00881000
+   if first = 0  then  leave                 /*                       */00882000
+   second = pos('"',workdest,first+1)        /*                       */00883000
+   if second = 0  then  do                   /* Not matched           */00884000
+      failure = 'Missing ending quote on quoted string'                 00885000
+      return 0                               /*                       */00886000
+      end                                                               00887000
+   quoted.0 = i                              /*                       */00888000
+   quoted.i = substr(workdest,first+1,second-first-1)                   00889000
+   workdest = delstr(workdest,first,second-first+1) /* Delete quote   */00890000
+   workdest = insert(d2c(i),workdest,first-1)/* Insert flag           */00891000
+   end                                                                  00892000
+                                                                        00893000
+/* May have an RFC733 address at this point.  The only problem is the */00894000
+/* use of ' AT ' for '@' in 733.  See if this is the case and convert */00895000
+/* to valid RFC822 form.                                              */00896000
+                                                                        00897000
+if words(workdest) = 3  then  do             /* Possible RFC733 format*/00898000
+   if translate(word(workdest,2)) = 'AT'  then  /* It is 733 format   */00899000
+      workdest = word(workdest,1)'@'word(workdest,3)                    00900000
+   end                                                                  00901000
+                                                                        00902000
+/* Have <routeaddr:>userid<@node> at this point with quoted strings   */00903000
+/* hidden as unprintable values.                                      */00904000
+                                                                        00905000
+if pos(':',workdest) > 0  then               /*                       */00906000
+   parse var workdest routeaddr ':' userid '@' domain                   00907000
+else                                         /*                       */00908000
+   parse var workdest userid '@' domain                                 00909000
+                                                                        00910000
+if routeaddr <> '' & domain = ''  then  do   /*                       */00911000
+   routeaddr = reverse(routeaddr)            /*                       */00912000
+   parse var routeaddr domain '@' routeaddr                             00913000
+   domain = reverse(domain)                  /*                       */00914000
+   if left(routeaddr,1) = ','  then                                     00915000
+      routeaddr = substr(routeaddr,2)                                   00916000
+   routeaddr = reverse(routeaddr)            /*                       */00917000
+   end                                                                  00918000
+                                                                        00919000
+if type = 'NJE'  then  do                    /* Validate for NJE      */00920000
+   if routeaddr <> '' | ,                    /* Not allowed           */00921000
+      pos('.',domain) > 0  then  do          /* Only 1 token          */00922000
+      failure = 'Not a valid NJE address'                               00923000
+      return 0                               /*                       */00924000
+      end                                                               00925000
+   end                                                                  00926000
+                                                                        00927000
+select                                       /*                       */00928000
+   when routeaddr = '' & domain = ''  then  do  /*                    */00929000
+      if type = 'NJE'  then                  /*                       */00930000
+         destination = '<'userid'@'localnode'>'                         00931000
+      else                                   /*                       */00932000
+         destination = '<'userid'>'                                     00933000
+      end                                                               00934000
+   when routeaddr = '' & domain <> '' then  do  /*                    */00935000
+      upper domain                           /*                       */00936000
+      destination = '<'userid'@'domain'>'    /*                       */00937000
+      end                                                               00938000
+   otherwise  do                             /*                       */00939000
+      upper routeaddr domain                 /*                       */00940000
+      destination = '<'routeaddr':'userid'@'domain'>'                   00941000
+      end                                                               00942000
+   end                                       /*                       */00943000
+                                                                        00944000
+do i=1 to quoted.0                           /*                       */00945000
+   spot = pos(d2c(i),destination)            /*                       */00946000
+   destination = delstr(destination,spot,1)  /*                       */00947000
+   destination = insert('"'quoted.i'"',destination,spot-1)              00948000
+   end                                                                  00949000
+                                                                        00950000
+return 1                                                                00951000
+                                                                        00952000
+/* **************** */                                                  00953000
+/*  Error handlers  */                                                  00954000
+/* **************** */                                                  00955000
+                                                                        00956000
+ERROR:                                                                  00957000
+parse source . . myname .                                               00958000
+say "Error in" myname "line" sigl":"                                    00959000
+say sourceline(sigl)                                                    00960000
+exitrc = rc                                                             00961000
+signal errexit                                                          00962000
+                                                                        00963000
+HALT:                                                                   00964000
+parse source . . myname .                                               00965000
+say "Halt in" myname "line" sigl":"                                     00966000
+say sourceline(sigl)                                                    00967000
+exitrc = 16                                                             00968000
+signal errexit                                                          00969000
+                                                                        00970000
+NOVALUE:                                                                00971000
+parse source . . myname .                                               00972000
+say "NOVALUE error in" myname "line" sigl":"                            00973000
+say sourceline(sigl)                                                    00974000
+exitrc = 16                                                             00975000
+signal errexit                                                          00976000
+                                                                        00977000
+SYNTAX:                                                                 00978000
+parse source . . myname .                                               00979000
+say "SYNTAX error in" myname "line" sigl": " errortext(rc)              00980000
+say sourceline(sigl)                                                    00981000
+exitrc = 16                                                             00982000
+signal errexit                                                          00983000
+                                                                        00984000
+ERREXIT:                                                                00985000
+trace ?r                                                                00986000
+nop                                                                     00987000
+exit exitrc                                                             00988000

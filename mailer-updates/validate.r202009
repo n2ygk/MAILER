@@ -1,0 +1,19 @@
+./ R 00397270 00397360 $ 397290 20                    02/10/89 11:51:26
+*    the network.  Check to see if sending userid is a generic          00397290
+*    id (identified as '*DEFAULT* userid' in the INCOMING table.        00397310
+*                                                                       00397330
+*    If a generic id is not found, check to see if Allow-Unknown-Nodes  00397350
+*    is true and try the *DEFAULT* entry in the table before giving up  00397370
+./ I 00397630          $ 397680 50                    02/10/89 11:51:26
+         MVC   GENERICU,MAILUSER       Source user                      00397680
+         CALL  TBLUK,((R5),GENERIC,L'GENERIC,TWORK)                     00397730
+         LR    R8,R1         Get a better handle                        00397780
+         LTR   R15,R15       Found it?                                  00397830
+         BZ    DEFAUN        Do default unknown node processing         00397880
+         SPACE 1                                                        00397930
+./ I 00478000          $ 478100 100                   02/10/89 11:51:26
+         SPACE 1                                                        00478100
+GENERIC  DS    0CL16                                                    00478200
+         DC    CL8'*DEFAULT*'                                           00478300
+GENERICU DC    CL8'userid   '          Replaced with sender's id        00478400
+         SPACE 1                                                        00478500

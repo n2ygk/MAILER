@@ -1,0 +1,57 @@
+./ R 00063490          $ 63680 190                    12/31/90 15:34:16
+          cmdstring , msgcmd , diskmode .    /*                       */00063680
+./ I 00070000          $ 70300 300                    12/31/90 15:34:16
+if diskmode = ''  then  diskmode = 'A'       /* Disk mode on which    */00070300
+                                             /*   to write files      */00070600
+./ I 00107500          $ 107700 200                   12/31/90 15:34:16
+say '        :  Diskmode  = "'diskmode'"'                               00107700
+./ R 00153490 00154000 $ 153980 490                   12/31/90 15:34:16
+      expose cmdstring console diskmode localnode maillist. ,           00153490
+             maintainer msgcmd requestor                                00154000
+./ R 00253590 00254180 $ 253980 390                   12/31/90 15:34:16
+           expose cmdstring console diskmode localnode maillist. ,      00253590
+                  maintainer msgcmd requestor                           00254180
+./ R 00334490          $ 334580 90                    12/31/90 15:34:16
+         expose cmdstring console diskmode localnode maintainer msgcmd ,00334490
+                requestor
+./ R 00349000          $ 349490 490                   12/31/90 15:34:16
+if exists(listid 'MAILLIST' diskmode)  then  do                         00349490
+./ R 00401590 00402180 $ 401980 390                   12/31/90 15:34:16
+         expose cmdstring console diskmode localnode maillist. ,        00401590
+                maintainer msgcmd requestor
+./ R 00462290 00462580 $ 462480 190                   12/31/90 15:34:16
+            expose cmdstring console diskmode listid localnode ,        00462290
+                   maillist. msgcmd requestor
+./ R 00528590 00529180 $ 528980 390                   12/31/90 15:34:16
+           expose cmdstring console diskmode localnode maillist. ,      00528590
+                  maintainer msgcmd requestor
+./ R 00589490          $ 589580 90                    12/31/90 15:34:16
+          expose cmdstring console diskmode localnode maintainer ,      00589490
+                  msgcmd requestor
+./ R 00604000          $ 604490 490                   12/31/90 15:34:16
+if ^exists(listid 'MAILLIST' diskmode)  then  do                        00604490
+./ R 00609000          $ 609490 490                   12/31/90 15:34:16
+'ERASE' listid 'MAILLIST' diskmode                                      00609000
+./ R 00625490          $ 625680 190                   12/31/90 15:34:16
+       expose cmdstring console diskmode localnode msgcmd requestor     00625490
+./ R 00635000          $ 635490 490                   12/31/90 15:34:16
+if ^exists(listid 'MAILLIST' diskmode)  then  do                        00635490
+./ R 00642000          $ 642690 690                   12/31/90 15:34:16
+      'TYPE' listid 'MAILLIST' diskmode                                 00642000
+./ R 00649000          $ 649490 490                   12/31/90 15:34:16
+         'EXEC SENDFILE' listid 'MAILLIST' diskmode 'TO' userid         00649000
+./ R 00651000          $ 651290 290                   12/31/90 15:34:16
+         'EXEC SENDFILE' listid 'MAILLIST' diskmode 'TO' userid ,       00651000
+            'AT' node
+./ R 00721000          $ 721490 490                   12/31/90 15:34:16
+ReadDistList:  procedure expose diskmode listid maillist.               00721490
+./ R 00723000 00724000 $ 723590 590                   12/31/90 15:34:16
+If ^exists(listid 'MAILLIST' diskmode)  then  return 28                 00723590
+'EXECIO * DISKR' listid 'MAILLIST' diskmode '(FINIS STEM MAILLIST.'     00724180
+./ R 00882000          $ 882490 490                   12/31/90 15:34:16
+WriteDistList:  procedure expose diskmode listid maillist.              00882490
+./ R 00884000 00885000 $ 884390 390                   12/31/90 15:34:16
+If exists(listid 'MAILLIST' diskmode)  then                             00884390
+   'ERASE' listid 'MAILLIST' diskmode                                   00884780
+'EXECIO' maillist.0 'DISKW' listid 'MAILLIST' diskmode '(FINIS STEM' ,  00885170
+   'MAILLIST.'                                                          00885560

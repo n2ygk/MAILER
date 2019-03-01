@@ -1,0 +1,556 @@
+/* ****************************************************************** */00001000
+/*  FORWARD - Implement the FORWARD command                           */00002000
+/* ****************************************************************** */00003000
+/*                                                                    */00004000
+/*  Command syntax:                                                   */00005000
+/*                                                                    */00006000
+/*     FORWARD  < FOR userid >  ADD      destid                       */00007000
+/*                              DELETE   destid                       */00008000
+/*                                        ALL                         */00009000
+/*                              LIST                                  */00010000
+/*                                                                    */00011000
+/*                                                                    */00012000
+/*  This EXEC provides the code to maintain the user forwarding files.*/00013000
+/*  It adds or deletes lines in a file identified as 'userid FORWARD'.*/00014000
+/*  These files are always kept on MAILER's 191 disk.                 */00015000
+/*                                                                    */00016000
+/*  To allow a user to forward mail to other ids and still have the   */00017000
+/*  mail delivered locally a kludge has been implemented.  If the     */00018000
+/*  'destid' is '*' a special address will be placed in the forwarding*/00019000
+/*  file ('<*>') to indicate that local delivery should also occur.   */00020000
+/*                                                                    */00021000
+/*  This code expects that the 'destid' will be in standard RFC822    */00022000
+/*  format OR specified as 'userid AT node'.  All other formats       */00023000
+/*  should be rejected.                                               */00024000
+/*                                                                    */00025000
+/* ****************************************************************** */00026000
+                                                                        00027000
+address COMMAND                              /* Set environment       */00028000
+                                                                        00029000
+signal on halt                               /* Set traps             */00030000
+signal on syntax                                                        00031000
+signal on novalue                                                       00032000
+                                                                        00033000
+parse arg '(' requestorid '@' requestornode ')'  maintainer ,           00034000
+          cmdstring                          /*                       */00035000
+cmdstring = strip(cmdstring)                 /*                       */00036000
+if translate(word(cmdstring,1)) = 'FORWARD'  then                       00037000
+   cmdstring = subword(cmdstring,2)          /*                       */00038000
+                                                                        00039000
+/*  Set some defaults  */                                               00040000
+                                                                        00041000
+console = 0                                  /* Not from console      */00042000
+exitrc  = 0                                  /*                       */00043000
+foruser = ''                                 /*                       */00044000
+msgcmd  = 'MSGNOH'                           /*                       */00045000
+operations = 'ADD DELETE LIST'               /*                       */00046000
+requestor = '*CONSOLE*'                      /*                       */00047000
+                                                                        00048000
+'IDENTIFY (LIFO'                             /*                       */00049000
+parse upper pull . . localnode .             /*                       */00050000
+                                                                        00051000
+/*  Determine source of request */                                      00052000
+                                                                        00053000
+select                                                                  00054000
+   when  requestorid = '*' & ,               /*                       */00055000
+         requestornode = ''  then            /*                       */00056000
+      console = 1                            /*                       */00057000
+   when  requestornode = ''  then  do        /*                       */00058000
+      requestornode = localnode              /*                       */00059000
+      requestor = strip(requestorid)         /*                       */00060000
+      foruser = requestor                    /*                       */00061000
+      end                                                               00062000
+   when  requestornode <> ''  then           /*                       */00063000
+      requestor = space(requestorid'@'requestornode,0)                  00064000
+   otherwise  do                             /*                       */00065000
+      say 'Forward:  Invalid combination'    /*                       */00066000
+      say '       :  Requestorid   = "'requestorid'"                    00067000
+      say '       :  Requestornode = "'requestornode'"                  00068000
+      say ' '                                                           00069000
+      exit 8                                                            00070000
+      end                                                               00071000
+   end                                                                  00072000
+                                                                        00073000
+/* A little debugging code */                                           00074000
+                                                                        00075000
+parse arg original                           /*                       */00076000
+if maintainer  then  mflag = '(maintainer)'  /*                       */00077000
+else  mflag = ''                             /*                       */00078000
+say 'Forward:  Cmd       = "'strip(original)'"'                         00079000
+say '       :  Requestor = "'requestor'"' mflag                         00080000
+say '       :  Cmdline   = "'cmdstring'"'                               00081000
+                                                                        00082000
+                                                                        00083000
+/* Do some command checking */                                          00084000
+                                                                        00085000
+if cmdstring = ''  then  do                  /*                       */00086000
+   call msg 'No action (ADD, DELETE or LIST) has been specified'        00087000
+   exitrc = 8                                /*                       */00088000
+   signal exit                               /*                       */00089000
+   end                                                                  00090000
+                                                                        00091000
+if chkfor(cmdstring)  then  do               /*                       */00092000
+   if ^maintainer & ^console  then  do       /*                       */00093000
+      call msg 'You are not authorized to use "FOR"'                    00094000
+      exitrc = 8                             /*                       */00095000
+      signal exit                            /*                       */00096000
+      end                                                               00097000
+   else  do                                  /*                       */00098000
+      parse var cmdstring . foruser cmdstring                           00099000
+      upper foruser                          /*                       */00100000
+      end                                                               00101000
+   end                                                                  00102000
+else  do                                     /*                       */00103000
+   select                                    /*                       */00104000
+      when console  then  do                 /*                       */00105000
+         call msg 'You must specify a local userid using "FOR"'         00106000
+         exitrc = 8                          /*                       */00107000
+         signal exit                         /*                       */00108000
+         end                                                            00109000
+      when requestornode <> localnode  then  do /*                    */00110000
+         call msg 'Remote users may not establish forwards'             00111000
+         exitrc = 8                          /*                       */00112000
+         signal exit                         /*                       */00113000
+         end                                                            00114000
+      otherwise                              /*                       */00115000
+         foruser = requestorid               /*                       */00116000
+      end                                                               00117000
+   end                                                                  00118000
+                                                                        00119000
+if foruser = ''  then  do                    /*                       */00120000
+   call msg 'No user local to' localnode 'has been specified'           00121000
+   exitrc = 8                                /*                       */00122000
+   signal exit                               /*                       */00123000
+   end                                                                  00124000
+                                                                        00125000
+parse upper var cmdstring operation .                                   00126000
+if find(operations,operation) = 0  then  do  /*                       */00127000
+   call msg 'The "'operation'" request is not supported'                00128000
+   exitrc = 8                                /*                       */00129000
+   signal exit                               /*                       */00130000
+   end                                                                  00131000
+                                                                        00132000
+interpret  'call' operation                  /*                       */00133000
+exitrc = result                              /*                       */00134000
+                                                                        00135000
+exit:  exit exitrc                           /*                       */00136000
+                                                                        00137000
+/* ******************* */                                               00138000
+/*  Internal routines  */                                               00139000
+/* ******************* */                                               00140000
+                                                                        00141000
+/* *****************************************************************  */00142000
+/*                                                                    */00143000
+/*  Add will add a new userid to the forwarding file                  */00144000
+/*                                                                    */00145000
+/*  The address is assumed to be in valid RFC821 format (i.e. just    */00146000
+/*  a machine address, no comments or names).  If the address passes  */00147000
+/*  validation (which may also modify it to standardize the format    */00148000
+/*  of addresses in the table) it will then be verfied for uniqueness.*/00149000
+/*  If this address is (apparently) new then it will be added to the  */00150000
+/*  forwarding file.                                                  */00151000
+/*                                                                    */00152000
+/*  An address of '*' will be taken to mean the local user.  This     */00153000
+/*  allows forwarded files to still be delivered to the local user.   */00154000
+/*                                                                    */00155000
+/* *****************************************************************  */00156000
+                                                                        00157000
+Add:  procedure ,  /* Do processing for an ADD operation */             00158000
+      expose cmdstring console foruser msgcmd requestor                 00159000
+                                                                        00160000
+parse var cmdstring . destination            /*                       */00161000
+                                                                        00162000
+if validdest()  then  do                     /*                       */00163000
+   exitrc = 0                                /*                       */00164000
+   end                                                                  00165000
+else  do                                     /*                       */00166000
+   call msg '"'destination'" is not valid: ' failure                    00167000
+   exitrc = 8                                /*                       */00168000
+   end                                                                  00169000
+                                                                        00170000
+if exists(foruser 'FORWARD A')  then  do     /*                       */00171000
+   'EXECIO * DISKR' foruser 'FORWARD A (FINIS STEM FORWARD.'            00172000
+   matches = addresscan(destination)         /*                       */00173000
+   if matches = 0  then                      /*                       */00174000
+      exitrc = addone(destination)                                      00175000
+   else  do                                  /*                       */00176000
+      call msg '"'destination'" is a duplicate address'                 00177000
+      exitrc = 4                             /*                       */00178000
+      end                                                               00179000
+   end                                                                  00180000
+else                                         /*                       */00181000
+   exitrc = addone(destination)              /*                       */00182000
+                                                                        00183000
+if exitrc = 0  then                          /*                       */00184000
+   call msg 'Forward:  Added' destination    /*                       */00185000
+                                                                        00186000
+return exitrc                                                           00187000
+                                                                        00188000
+                                                                        00189000
+Addone:  procedure ,  /* Write a line to end of FORWARD file */         00190000
+         expose console foruser requestor                               00191000
+                                                                        00192000
+parse arg destination                        /*                       */00193000
+'EXECIO 1 DISKW' foruser 'FORWARD A (FINIS VAR DESTINATION'             00194000
+exitrc = rc                                  /*                       */00195000
+if rc = 0  then                              /*                       */00196000
+   'EXECDROP' foruser 'FORWARD'              /*                       */00197000
+                                                                        00198000
+return exitrc                                                           00199000
+                                                                        00200000
+                                                                        00201000
+/* *****************************************************************  */00202000
+/*                                                                    */00203000
+/*  AddresScan will scan the forward file looking for matching        */00204000
+/*     addresses                                                      */00205000
+/*                                                                    */00206000
+/*  The address to be scanned for is passed as the argument to        */00207000
+/*  AddresScan.  The addresses to be scanned must be placed in the    */00208000
+/*  REXX stem 'forward.' before calling AddresScan.                   */00209000
+/*                                                                    */00210000
+/*  Lines that match are flagged in the REXX stem 'matching.'         */00211000
+/*                                                                    */00212000
+/* *****************************************************************  */00213000
+                                                                        00214000
+AddresScan:  procedure , /* Scan FORWARD file for matching addresses */ 00215000
+             expose matching. forward.                                  00216000
+                                                                        00217000
+parse upper arg destination .                /*                       */00218000
+matches = 0                                  /*                       */00219000
+                                                                        00220000
+do i=1 for forward.0                         /*                       */00221000
+   if translate(forward.i) = destination  then  do                      00222000
+      matches = matches + 1                  /*                       */00223000
+      matching.i = 1                         /*                       */00224000
+      end                                                               00225000
+   else                                      /*                       */00226000
+      matching.i = 0                         /*                       */00227000
+   end                                                                  00228000
+                                                                        00229000
+return matches                                                          00230000
+                                                                        00231000
+                                                                        00232000
+ChkFOR:  procedure  /* Check string for FOR parameter */                00233000
+parse upper arg word1 .                      /*                       */00234000
+if word1 = 'FOR'  then  return 1             /*                       */00235000
+return 0                                                                00236000
+                                                                        00237000
+                                                                        00238000
+/* *****************************************************************  */00239000
+/*                                                                    */00240000
+/*  Delete will delete one or more addresses from the forwarding file */00241000
+/*                                                                    */00242000
+/*  The address is assumed to be in valid RFC821 format (i.e. just    */00243000
+/*  a machine address, no comments or names).  If the address passes  */00244000
+/*  validation (which may also modify it to standardize the format    */00245000
+/*  of addresses in the table) it will then be verified for existence.*/00246000
+/*  All matching addresses in the file will be deleted.               */00247000
+/*                                                                    */00248000
+/*  An address of '*' will be taken to mean the local user.           */00249000
+/*                                                                    */00250000
+/*  An address of 'ALL' will mean to delete all entries (ALL is a     */00251000
+/*  restricted userid under VM since it would affect the WNG and      */00252000
+/*  MSG commands operation).                                          */00253000
+/*                                                                    */00254000
+/* *****************************************************************  */00255000
+                                                                        00256000
+Delete:  procedure ,  /* Do processing for a DELETE operation */        00257000
+         expose cmdstring console foruser msgcmd requestor              00258000
+                                                                        00259000
+parse var cmdstring . destination            /*                       */00260000
+                                                                        00261000
+if translate(destination) = 'ALL'  then      /*                       */00262000
+   return deleteall()                        /*                       */00263000
+                                                                        00264000
+if validdest()  then  do                     /*                       */00265000
+   exitrc = 0                                /*                       */00266000
+   end                                                                  00267000
+else  do                                     /*                       */00268000
+   call msg '"'destination'" is not valid: ' failure                    00269000
+   exitrc = 8                                /*                       */00270000
+   end                                                                  00271000
+                                                                        00272000
+if exists(foruser 'FORWARD A')  then  do     /*                       */00273000
+   'EXECIO * DISKR' foruser 'FORWARD A (FINIS STEM FORWARD.'            00274000
+   if rc <> 0  then  do                      /*                       */00275000
+      exitrc = rc                            /*                       */00276000
+      call msg '"'destination'" not found in forwarding file'           00277000
+      end                                                               00278000
+   else  do                                  /*                       */00279000
+      matches = addresscan(destination)      /*                       */00280000
+      if matches > 0  then  do               /*                       */00281000
+         'ERASE' foruser 'FORWARD A'         /* Erase old file        */00282000
+         call msg 'Forward: ' matches 'forwarding id(s) deleted'        00283000
+         do i=1 to forward.0                 /*                       */00284000
+            if matching.i  then              /*                       */00285000
+               call msg '    ' forward.i     /*                       */00286000
+            else                             /*                       */00287000
+               'EXECIO 1 DISKW' foruser 'FORWARD A (FINIS' ,            00288000
+                  'VAR FORWARD.'i            /* Rewrite file line     */00289000
+            end                                                         00290000
+         'EXECDROP' foruser 'FORWARD'        /*                       */00291000
+         end                                                            00292000
+      else                                   /*                       */00293000
+         call msg 'Forward:  No destinations match address requested'   00294000
+      end                                                               00295000
+   end                                                                  00296000
+else  do                                     /*                       */00297000
+   call msg 'No forwarding in effect for' foruser                       00298000
+   exitrc = 4                                /*                       */00299000
+   end                                                                  00300000
+                                                                        00301000
+return exitrc                                /*                       */00302000
+                                                                        00303000
+                                                                        00304000
+DeleteAll:  procedure ,  /* Do processing for a DELETE * operation */   00305000
+            expose cmdstring console foruser msgcmd requestor           00306000
+                                                                        00307000
+if exists(foruser 'FORWARD A')  then  do     /*                       */00308000
+   'EXECIO * DISKR' foruser 'FORWARD A (FINIS STEM FORWARD.'            00309000
+   'ERASE' foruser 'FORWARD A'               /* Erase old file        */00310000
+   call msg 'Forward: ' forward.0 'forwarding id(s) deleted'            00311000
+   do i=1 to forward.0                       /*                       */00312000
+      call msg '    ' forward.i              /*                       */00313000
+      end                                                               00314000
+   'EXECDROP' foruser 'FORWARD'              /*                       */00315000
+   exitrc = 0                                /*                       */00316000
+   end                                                                  00317000
+else  do                                     /*                       */00318000
+   call msg 'No forwarding in effect for' foruser                       00319000
+   exitrc = 4                                /*                       */00320000
+   end                                                                  00321000
+                                                                        00322000
+return exitrc                                /*                       */00323000
+                                                                        00324000
+                                                                        00325000
+Exists:  procedure  /* Check for existance of a file */                 00326000
+                                                                        00327000
+parse upper arg fn ft fm .                   /*                       */00328000
+                                                                        00329000
+if fn = ''  then  exit 0                     /*                       */00330000
+if ft = ''  then  exit 0                     /*                       */00331000
+if fm = ''  then  fm = '*'                   /*                       */00332000
+                                                                        00333000
+'ESTATE' fn ft fm                            /*                       */00334000
+if rc = 0  then  return 1                    /*                       */00335000
+return 0                                                                00336000
+                                                                        00337000
+                                                                        00338000
+/* *****************************************************************  */00339000
+/*                                                                    */00340000
+/*  List will list the forwarding file                                */00341000
+/*                                                                    */00342000
+/*  If the file is more than 2 lines long and the request is not from */00343000
+/*  the console a copy of the file will be sent to the user (using    */00344000
+/*  the CMS SENDFILE command).  All requests from the console are     */00345000
+/*  displayed using the CMS TYPE command.                             */00346000
+/*                                                                    */00347000
+/* *****************************************************************  */00348000
+                                                                        00349000
+List:  procedure ,  /* Do processing for a LIST operation */            00350000
+       expose cmdstring console foruser msgcmd requestor                00351000
+                                                                        00352000
+parse var cmdstring . extra                  /*                       */00353000
+                                                                        00354000
+if extra <> ''  then  do                     /*                       */00355000
+   call msg 'Too many operands on LIST command'                         00356000
+   return 8                                                             00357000
+   end                                                                  00358000
+                                                                        00359000
+if ^exists(foruser 'FORWARD A')  then  do    /*                       */00360000
+   call msg 'No forwarding in effect for' foruser                       00361000
+   exitrc = 4                                /*                       */00362000
+   end                                       /*                       */00363000
+else  do                                     /*                       */00364000
+   if console  then  do                      /*                       */00365000
+      say 'Forward:  Forwarding file for' foruser                       00366000
+      'TYPE' foruser 'FORWARD A'             /*                       */00367000
+      say 'Forward:  End of forwarding file for' foruser                00368000
+      end                                                               00369000
+   else  do                                  /*                       */00370000
+      'MAKEBUF'                              /*                       */00371000
+      'LISTFILE' foruser 'FORWARD A (DATE STACK' /*                   */00372000
+      parse upper pull . . . . . records .   /*                       */00373000
+      'DROPBUF'                              /*                       */00374000
+      if records > 2  then  do               /*                       */00375000
+         call msg 'Sending a copy of forwarding file to  you'           00376000
+         parse var requestor userid '@' node /*                       */00377000
+         if node = ''  then                  /*                       */00378000
+            'EXEC SENDFILE' foruser 'FORWARD A TO' requestor            00379000
+         else                                /*                       */00380000
+            'EXEC SENDFILE' foruser 'FORWARD A TO' requestor 'AT' node  00381000
+         end                                                            00382000
+      else  do                               /*                       */00383000
+         'EXECIO * DISKR' foruser 'FORWARD A (FINIS STEM FORWARDS.'     00384000
+         call msg 'Forward:  Forwarding file for' foruser               00385000
+         do i=1 to forwards.0                /*                       */00386000
+            call msg forwards.i              /*                       */00387000
+            end                                                         00388000
+         call msg 'Forward:  End of forwarding file for' foruser        00389000
+         end                                                            00390000
+      end                                                               00391000
+   exitrc = 0                                /*                       */00392000
+   end                                                                  00393000
+                                                                        00394000
+return exitrc                                /*                       */00395000
+                                                                        00396000
+                                                                        00397000
+/* *****************************************************************  */00398000
+/*                                                                    */00399000
+/*  MSG sends a msg to the requestor                                  */00400000
+/*                                                                    */00401000
+/*  Operation is effected by the location of the request;  on the     */00402000
+/*  console, a local user or a network user.                          */00403000
+/*                                                                    */00404000
+/* *****************************************************************  */00405000
+                                                                        00406000
+Msg:  procedure , /* Send reply to requestor */                         00407000
+      expose console msgcmd requestor                                   00408000
+                                                                        00409000
+parse arg msgstring                          /*                       */00410000
+                                                                        00411000
+if console  then                             /*                       */00412000
+   say msgstring                             /*                       */00413000
+else  do                                     /*                       */00414000
+   parse var requestor userid '@' node       /*                       */00415000
+   if node = ''  then  do                    /*                       */00416000
+      'CP' msgcmd userid msgstring           /*                       */00417000
+      if rc <> 0 & ,                         /* Behave like msg code  */00418000
+         msgcmd = 'MSGNOH'  then             /*    in MAILER          */00419000
+         'CP MSG' userid msgstring           /*                       */00420000
+      end                                                               00421000
+   else                                      /*                       */00422000
+      'EXEC TELL' userid 'AT' node msgstring /*                       */00423000
+   end                                                                  00424000
+                                                                        00425000
+return                                                                  00426000
+                                                                        00427000
+/* *****************************************************************  */00428000
+/*                                                                    */00429000
+/*  ValidDest will validate an address against RFC822 (I hope).       */00430000
+/*                                                                    */00431000
+/*  The address to be check is passed in the REXX variable            */00432000
+/*  'destination'.  This value may be changed during the validation   */00433000
+/*  process so that all addresses will be in a standard form.         */00434000
+/*                                                                    */00435000
+/*  If there is a problem with the address, the reason for the        */00436000
+/*  failure will be returned in the exposed variable 'failure'        */00437000
+/*                                                                    */00438000
+/* *****************************************************************  */00439000
+                                                                        00440000
+ValidDest:  procedure , /* Validate a destination address */            00441000
+            expose destination failure                                  00442000
+                                                                        00443000
+workdest = strip(destination)                /*                       */00444000
+                                                                        00445000
+if workdest = '*'  then  do                  /* To user?              */00446000
+   destination = '<*>'                       /* Yes, kludge address   */00447000
+   return 1                                  /*                       */00448000
+   end                                                                  00449000
+                                                                        00450000
+failure = ''                                 /*                       */00451000
+routeaddr = ''                               /*                       */00452000
+userid = ''                                  /*                       */00453000
+domain = ''                                  /*                       */00454000
+quoted.0 = 0                                 /*                       */00455000
+                                                                        00456000
+do while left(workdest,1) = '<'              /* Strip any hairpins    */00457000
+   if right(workdest,1) <> '>'  then  do     /*                       */00458000
+      failure = '"<" missing matching ">"'   /*                       */00459000
+      return 0                               /*                       */00460000
+      end                                                               00461000
+   else                                      /*                       */00462000
+      workdest = substr(workdest,2,length(workdest)-2)                  00463000
+   end                                                                  00464000
+                                                                        00465000
+do i=1                                       /* Remove quoted strings */00466000
+   first = pos('"',workdest)                 /*                       */00467000
+   if first = 0  then  leave                 /*                       */00468000
+   second = pos('"',workdest,first+1)        /*                       */00469000
+   if second = 0  then  do                   /* Not matched           */00470000
+      failure = 'Missing ending quote on quoted string'                 00471000
+      return 0                               /*                       */00472000
+      end                                                               00473000
+   quoted.0 = i                              /*                       */00474000
+   quoted.i = substr(workdest,first+1,second-first-1)                   00475000
+   workdest = delstr(workdest,first,second-first+1) /* Delete quote   */00476000
+   workdest = insert(d2c(i),workdest,first-1)/* Insert flag           */00477000
+   end                                                                  00478000
+                                                                        00479000
+/* May have an RFC733 address at this point.  The only problem is the */00480000
+/* use of ' AT ' for '@' in 733.  See if this is the case and convert */00481000
+/* to valid RFC822 form.                                              */00482000
+                                                                        00483000
+if words(workdest) = 3  then  do             /* Possible RFC733 format*/00484000
+   if translate(word(workdest,2)) = 'AT'  then  /* It is 733 format   */00485000
+      workdest = word(workdest,1)'@'word(workdest,3)                    00486000
+   end                                                                  00487000
+                                                                        00488000
+/* Have <routeaddr:>userid<@node> at this point with quoted strings   */00489000
+/* hidden as unprintable values.                                      */00490000
+                                                                        00491000
+if pos(':',workdest) > 0  then               /*                       */00492000
+   parse var workdest routeaddr ':' userid '@' domain                   00493000
+else                                         /*                       */00494000
+   parse var workdest userid '@' domain                                 00495000
+                                                                        00496000
+if routeaddr <> '' & domain = ''  then  do   /*                       */00497000
+   routeaddr = reverse(routeaddr)            /*                       */00498000
+   parse var routeaddr domain '@' routeaddr                             00499000
+   domain = reverse(domain)                  /*                       */00500000
+   if left(routeaddr,1) = ','  then                                     00501000
+      routeaddr = substr(routeaddr,2)                                   00502000
+   routeaddr = reverse(routeaddr)            /*                       */00503000
+   end                                                                  00504000
+                                                                        00505000
+select                                       /*                       */00506000
+   when routeaddr = '' & domain = ''  then  do  /*                    */00507000
+      destination = '<'userid'>'             /*                       */00508000
+      end                                                               00509000
+   when routeaddr = '' & domain <> '' then  do  /*                    */00510000
+      upper domain                           /*                       */00511000
+      destination = '<'userid'@'domain'>'    /*                       */00512000
+      end                                                               00513000
+   otherwise  do                             /*                       */00514000
+      upper routeaddr domain                 /*                       */00515000
+      destination = '<'routeaddr':'userid'@'domain'>'                   00516000
+      end                                                               00517000
+   end                                       /*                       */00518000
+                                                                        00519000
+do i=1 to quoted.0                           /*                       */00520000
+   spot = pos(d2c(i),destination)            /*                       */00521000
+   destination = delstr(destination,spot,1)  /*                       */00522000
+   destination = insert('"'quoted.i'"',destination,spot-1)              00523000
+   end                                                                  00524000
+                                                                        00525000
+return 1                                                                00526000
+                                                                        00527000
+/* **************** */                                                  00528000
+/*  Error handlers  */                                                  00529000
+/* **************** */                                                  00530000
+                                                                        00531000
+HALT:                                                                   00532000
+parse source . . myname .                                               00533000
+say "Halt in" myname "line" sigl":"                                     00534000
+say sourceline(sigl)                                                    00535000
+exitrc = 16                                                             00536000
+signal errexit                                                          00537000
+                                                                        00538000
+NOVALUE:                                                                00539000
+parse source . . myname .                                               00540000
+say "NOVALUE error in" myname "line" sigl":"                            00541000
+say sourceline(sigl)                                                    00542000
+exitrc = 16                                                             00543000
+signal errexit                                                          00544000
+                                                                        00545000
+SYNTAX:                                                                 00546000
+parse source . . myname .                                               00547000
+say "SYNTAX error in" myname "line" sigl": " errortext(rc)              00548000
+say sourceline(sigl)                                                    00549000
+exitrc = 16                                                             00550000
+signal errexit                                                          00551000
+                                                                        00552000
+ERREXIT:                                                                00553000
+trace ?r                                                                00554000
+nop                                                                     00555000
+exit exitrc                                                             00556000

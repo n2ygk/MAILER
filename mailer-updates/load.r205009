@@ -1,0 +1,94 @@
+./ R 00009000 00013000 $ 9990 990                     02/22/90 10:49:53
+*  Loads the named TEXT deck or TXTLIB member with the OS LOAD          00009990
+*  SVC.  The routine is loaded in the free storage returned at          00010980
+*  initialization.  This can fail if the virtual machine size is        00011970
+*  too small.                                                           00012960
+./ R 00015000          $ 15490 490                    02/22/90 10:49:53
+         SPACE 1                                                        00015490
+./ R 00017000 00019000 $ 17490 490                    02/22/90 10:49:53
+*  Invoked via: CALL LOAD,(name)                                        00017490
+*                                                                       00017980
+*        name  - CL8, name of exit to load                              00018470
+*                                                                       00018960
+         SPACE 1                                                        00019450
+./ R 00022000 00026000 $ 22490 490                    02/22/90 10:49:53
+         SPACE 1                                                        00022490
+*                                                                       00022980
+*  Returns:                                                             00023470
+*        R1  - Address of loaded routine                                00023960
+*        R15 - CMS loader return code                                   00024450
+*                                                                       00024940
+*  Calls the loader via the LOAD SVC                                    00025430
+*                                                                       00025920
+./ R 00038000 00039000 $ 38590 590                    02/22/90 10:49:53
+R9  EQU  9 -                                                            00038590
+R10 EQU 10 -                                                            00039180
+./ I 00044000          $ 45000 1000                   02/22/90 10:49:53
+         SPACE 1                                                        00045000
+         PRINT NOGEN                                                    00046000
+./ I 00047000          $ 47200 200                    02/22/90 10:49:53
+         FSCBD ,                                                        00047200
+         DMSABW ,                  Abend work area mapping              00047400
+         PRINT GEN                                                      00047600
+./ R 00051000 00052000 $ 51590 590                    02/22/90 10:49:53
+         LR    R12,R15                 GET ADDRESSABILITY               00051590
+         USING LOAD,R12                                                 00052180
+./ I 00061000          $ 61500 500                    02/22/90 10:49:53
+         SPACE 1                                                        00061500
+./ R 00063000          $ 63490 490                    02/22/90 10:49:53
+*        Set up abend recovery environment (in case LOAD fails)         00063490
+./ R 00065000 00066000 $ 65590 590                    02/22/90 10:49:53
+         SPACE ,                                                        00065590
+         ABNEXIT SET,EXIT=LOADFAIL,UWORD=(R12)                          00066180
+./ D 00068000 00083000                                02/22/90 10:49:53
+./ R 00085000          $ 85490 490                    02/22/90 10:49:53
+*        Load TEXT file                                                 00085490
+./ R 00087000 00108000 $ 87390 390                    02/22/90 10:49:53
+         SPACE ,                                                        00087490
+         L     R1,@NAME            Point to name                        00087980
+         LOAD  EPLOC=(1)           Load TEXT file                       00088470
+         LR    R2,R0               Get entry address in R2              00088960
+*                                  (R1 will be destroyed below)
+         SPACE 1                                                        00089450
+*--------------------------------------------------------------------   00089940
+*        Clear abend recovery environment                               00090430
+*--------------------------------------------------------------------   00090920
+         SPACE ,                                                        00091410
+         ABNEXIT CLR,EXIT=LOADFAIL                                      00091900
+         SPACE ,                                                        00092390
+         LR    R1,R2               Get entry address in R1              00088960
+         SR    R15,R15             Set return code                      00092880
+         B     RET                 Go return                            00093370
+         SPACE 1                                                        00093860
+         DROP  R12                                                      00094350
+         SPACE 2                                                        00094840
+*--------------------------------------------------------------------   00095330
+*        Abend recovery routine                                         00095820
+*--------------------------------------------------------------------   00096310
+         SPACE 1                                                        00096800
+LOADFAIL DS    0D                                                       00097290
+         USING LOADFAIL,R15                                             00097780
+         STM   R14,R12,12(R13)     Save registers                       00098270
+         L     R12,=A(LOAD)        Get a better base                    00098760
+         DROP  R15                                                      00099250
+         USING LOAD,R12                                                 00099740
+         LR    R2,R1               Copy ABWSECT address                 00100230
+         USING ABWSECT,R2                                               00100720
+         L     R1,=A(RET16)        Where we want to restart             00101210
+         STCM  R1,B'0111',ABNPSW+5 Fix up PSW                           00101700
+         ABNEXIT RESET             Reset exit taken flag                00102190
+         LA    R13,SAVE            Restore R13                          00102680
+         LPSW  ABNPSW              Continue on                          00103170
+         SPACE 2                                                        00103660
+*--------------------------------------------------------------------   00104150
+*        Return                                                         00104640
+*--------------------------------------------------------------------   00105130
+         SPACE ,                                                        00105620
+RET16    EQU   *                                                        00106110
+         WAITT ,                   Let error message get displayed      00106600
+         SR    R1,R1               Return 0 for load address            00107090
+         LA    R15,16              Dummy up return code                 00107580
+         SPACE 1                                                        00108070
+./ D 00115000 00125000                                02/22/90 10:49:53
+./ R 00129000 00134000 $ 131990 2990                  02/22/90 10:49:53
+         SPACE 1                                                        00131990

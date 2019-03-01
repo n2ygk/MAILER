@@ -1,0 +1,110 @@
+./ R 00008000          $ 8490 490                     04/05/89 14:42:21
+LOCAL  TITLE 'VM Network Mailer Version 2 - local distribution exit'    00008490
+./ I 00022000          $ 22100 100                    04/05/89 14:42:21
+*                                                                       00022100
+*  This routine is also responsible for supporting the '%' kludge       00022200
+*  for rerouting mail.                                                  00022300
+*                                                                       00022400
+*  Example:  Given 'someuser%somewhere@localnode' the address will      00022500
+*            be changed to 'someuser@somewhere' and the mail            00022600
+*            resent.                                                    00022700
+./ I 00045000          $ 45600 600                    04/05/89 14:42:21
+         SPACE 3                                                        00045600
+         FBLOCK ,                                                       00046200
+./ I 00072880          $ 72890 10                     04/05/89 14:42:21
+         SPACE 1                                                        00072890
+         LR    R15,R4            Copy length value                      00072900
+         BCTR  R15,0             Decrement for EX                       00072910
+         EX    R15,PCTTRT        Any '%'s?                              00072920
+         BC    B'0100',DOPCT     ---> Found '%' in address              00072930
+         B     NOPCT             ---> No '%' in address or              00072940
+*                                    '%' is last character              00072950
+         SPACE 1                                                        00072960
+PCTTRT   TRT   0(1,R3),PCTTRTTB    Executed                             00072970
+         SPACE 1                                                        00072980
+         EJECT ,                                                        00072990
+*--------------------------------------------------------------------   00073000
+*    Process address containing a '%'                                   00073010
+*--------------------------------------------------------------------   00073020
+         SPACE 1                                                        00073030
+DOPCT    DS    0H                                                       00073040
+         LA    R3,0(R4,R3)       End character + 1                      00073050
+PCTLOOP  EQU   *                                                        00073060
+         BCTR  R3,0              Back up 1 char                         00073070
+         CLI   0(R3),C'%'        This the '%'?                          00073080
+         BE    PCTFOUND          ---> Yes                               00073090
+         BCT   R4,PCTLOOP        ---> Keep trying                       00073100
+         WRTERM '*** Logic error in LOCAL exit'                         00073110
+         DC    H'0'              Not nice, but effective                00073120
+         SPACE 1                                                        00073130
+PCTFOUND DS    0H                                                       00073140
+         MVI   0(R3),C'@'        Change to '@'                          00073150
+         L     R2,LSTRL          Length of string                       00073160
+         LA    R2,FBLLENL+16(,R2)  + parameter list (8)                 00073170
+*                                  + fileblock length (FBLLENL)         00073180
+*                                  + pointer list (8)                   00073190
+         SALOC (R2),RET          Allocate stack space                   00073200
+         LR    R2,R1             Remember storage address               00073210
+         SPACE 1                                                        00073220
+*--------------------------------------------------------------------   00073230
+*  Building the following:                                              00073240
+*                                                                       00073250
+*        DC    A(MAILBLOK)              <--  R2                         00073260
+*        DC    A(FBLOCK)                                                00073270
+*                                                                       00073280
+*FBLOCK  DC    CL18' '                  <--  R3                         00073290
+*        DC    XL2'0'                                                   00073300
+*FBLDLS  DC    A(PTRLIST)                                               00073310
+*FBLDLE  DC    A(PTREND-PTRLIST)                                        00073320
+*        DC    CL8' '                                                   00073330
+*                                                                       00073340
+*PTRLIST DC    A(LINE1),A(LENGTH1)      <--  R4                         00073350
+*PTREND  EQU   *                                                        00073360
+*LINE1   DC    C'string'                                                00073370
+*--------------------------------------------------------------------   00073380
+         SPACE 1                                                        00073390
+*  Set up base pointers                                                 00073400
+         SPACE 1                                                        00073410
+         LA    R3,8(,R2)         Address of FBLOCK                      00073420
+         USING FBLOCK,R3                                                00073430
+         LA    R4,FBLLENL(,R3)   Ptrlist address                        00073440
+         SPACE 1                                                        00073450
+*  Build parameter list                                                 00073460
+         SPACE 1                                                        00073470
+         ST    R11,0(,R2)        MAILBLOK base                          00073480
+         ST    R3,4(,R2)           into plist                           00073490
+         SPACE 1                                                        00073500
+*  Construct fileblock                                                  00073510
+         SPACE 1                                                        00073520
+         XC    FBLOCK(FBLLENL),FBLOCK Zero it                           00073530
+         ST    R4,FBLDLS         Ptr list start address into FBLOCK     00073540
+         MVC   FBLDLE,=F'8'      Ptr list length into FBLOCK            00073550
+         SPACE 1                                                        00073560
+*  Construct pointer/length pair                                        00073570
+         SPACE 1                                                        00073580
+         LA    R2,8(R4)          Line1 string goes here                 00073590
+         ST    R2,0(R4)          Address into ptr pair                  00073600
+         MVC   4(4,R4),LSTRL     Length into ptr pair                   00073610
+         SPACE 1                                                        00073620
+*  Move in string                                                       00073630
+         SPACE 1                                                        00073640
+         L     R3,LSTRA          String comes from here                 00073650
+         L     R15,LSTRL         Length of string                       00073660
+         BCTR  R15,0             Decrement for EX                       00073670
+         EX    R15,COPY          Move string to parm list               00073680
+         L     R15,=V(DISTSUB)   Subroutine address                     00073690
+         CALL  (15)              Call it                                00073700
+         B     RET                                                      00073710
+         EJECT ,                                                        00073720
+*--------------------------------------------------------------------   00073730
+*    Process address containing a '%'                                   00073740
+*--------------------------------------------------------------------   00073750
+         SPACE 1                                                        00073760
+NOPCT    EQU   *                                                        00073770
+./ I 00331310          $ 331390 80                    04/05/89 14:42:21
+         SPACE 1                                                        00331390
+PCTTRTTB DC    256X'00'            Translate table for '%' search       00331470
+         ORG   PCTTRTTB+C'%'       Back to percent                      00331550
+         DC    C'%'                                                     00331630
+         ORG   ,                                                        00331710
+         SPACE 3                                                        00331790

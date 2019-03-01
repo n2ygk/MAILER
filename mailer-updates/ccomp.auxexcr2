@@ -1,0 +1,5 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R203003    Support for options to C compiler
+R202014    Make MAILBLOK globally available to all code
+*          This will remove dependence on Waterloo AUX file usage for
+*          increased portability of C code

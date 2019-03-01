@@ -1,0 +1,142 @@
+*5/18/87 Merge in somebody's "MSGTODOT" mod (forget who - sorry) [1.24] 00001190
+*9/16/86 Put '*' in front of message                             [1.24] 00001380
+*[1.20]Don't need MAILSFLD is user is local                             00001570
+SNDRMSG TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - SEND MESSAGE TO FILE*00002000
+               SENDER'                                                  00003000
+*---------------------------------------------------------------------* 00004000
+*      MAILER -- Copyright (c) 1982,1987 Columbia University.         * 00005490
+*    Program Property of the Trustees of Columbia University in the   * 00006000
+*    City of New York.                                                * 00007000
+*---------------------------------------------------------------------* 00008000
+SNDRMSG  CSECT ,                                                        00009000
+* SNDRMSG -                                                             00010000
+*  SENDS A MESSAGE VIA RSCS TO THE FILE SENDER.                         00011000
+*                                                                       00012000
+*                                                                       00013000
+*  LAST EDIT:  10/26/82 BY ALAN CROSSWELL                               00014000
+*                                                                       00015000
+* ENTRY   R1 - MESSAGE ADDRESS   R0 - MESSAGE LENGTH                    00016000
+* REGISTER USAGE -                                                      00017000
+R0  EQU  0 -                                                            00018000
+R1  EQU  1 -                                                            00019000
+R2  EQU  2 -                                                            00020000
+R3  EQU  3 -                                                            00021000
+R4  EQU  4 -                                                            00022000
+R5  EQU  5 - MESSAGE ADDRESS                                            00023000
+R6  EQU  6 - MESSAGE LENGTH                                             00024000
+R7  EQU  7 -                                                            00025000
+R8  EQU  8 -                                                            00026000
+R9  EQU  9 -                                                            00027000
+R10 EQU 10 -                                                            00028000
+R11 EQU 11 - MAILBLOK BASE                                              00029000
+R12 EQU 12 - PROGRAM BASE                                               00030000
+R13 EQU 13 - SAVE AREA                                                  00031000
+R14 EQU 14 - SUBROUTINE LINKAGE                                         00032000
+R15 EQU 15 - SUBROUTINE LINKAGE                                         00033000
+         PRINT NOGEN                                                    00034000
+         BLOCKS ,                                                       00035000
+         MAILBLOK ,                                                     00036000
+         EJECT                                                          00037000
+SNDRMSG  CSECT ,                                                        00038000
+         USING SNDRMSG,R15   TEMP ADDRESSABILITY                        00039000
+         B     EYESKIP                                                  00040000
+MYNAME   DC    CL8'SNDRMSG',CL8'&SYSDATE'                               00041000
+EYESKIP  DS    0H                                                       00042000
+         STM   R14,R12,12(R13)                                          00043000
+         LR    R12,R15       GET PERM ADDRESSABILITY                    00044000
+         DROP  R15                                                      00045000
+         USING SNDRMSG,R12                                              00046000
+         LA    R15,SAVE                                                 00047000
+         ST    R13,4(R15)                                               00048000
+         ST    R15,8(R13)                                               00049000
+         LR    R13,R15                                                  00050000
+         LR    R5,R1         COPY MESSAGE ADDRESS                       00051000
+         LR    R6,R0         AND MESSAGE LENGTH                         00052000
+         L     R11,=V(MAILBLOK)                                         00053000
+         USING MAILBLOK,R11                                             00054000
+         ICM   R10,B'1111',MAILSFLD  GET FIELDD FOR SENDER          EAC 00055000
+         BZ    TRYLOCAL      [1.20]if a local user,  use MAILUSER       00056000
+         USING FIELDD,R10    ADDRESS IT                                 00057000
+         ICM   R10,B'1111',FIPARS   GET MBOX POINTER              EAC   00058490
+         BZ    RET                                                  EAC 00059000
+         USING MBOX,R10    ADDRESS IT                                   00060590
+         ICM   R9,B'1111',MBXLCL Get user node pointer                  00062160
+         BZ    RET               ---> Quit if none there                00062750
+         USING NODE,R9     ADDRESS IT                                   00063590
+         L     R9,NODDOWN    GET POINTER TO USER NAME TOKEN             00064180
+         USING TOKEND,R9     ADDRESS IT                                 00065000
+         SR    R1,R1         GET A ZERO                                 00066000
+         L     R1,TOKLEN     GET LENGTH OF USER NAME                    00067490
+         MVC   SENDER,=CL8' ' BLANK OUT SENDER                          00068000
+         C     R1,=F'8'      12 OR LESS                                 00069000
+         BL    SEND1         OK                                         00070000
+         LA    R1,8          TRUNC IT                                   00071000
+SEND1    EQU   *                                                        00072000
+         BCTR  R1,0          -1 FOR EXECUTE                             00073000
+         LA    R2,SENDER     DEST OF COPY                               00074000
+         L     R3,TOKPTR          SOURCE                                00075680
+         EX    R1,COPY       COPY IT IN                                 00076000
+         EX    R1,UPIT       UPPER CASE                                 00077000
+         ICM   R9,B'1111',MBXDML Get host node pointer                  00079360
+         BZ    RET               ---> None there                        00079950
+         USING NODE,R9     ADDRESS IT                                   00080590
+         L     R9,NODDOWN    GET POINTER TO HOST NAME TOKEN             00081180
+         USING TOKEND,R9     ADDRESS IT                                 00082000
+         L     R1,TOKLEN     GET LENGTH OF USER NAME                    00084490
+         MVC   HOSTNODE,=CL8' '  BLANK OUT HOST                         00085490
+         C     R1,=F'8'      8 OR LESS                                  00086000
+         BL    SEND2         OK                                         00087000
+         LA    R1,8          TRUNC IT                                   00088000
+SEND2    EQU   *                                                        00089000
+         LA    R2,HOSTNODE   DEST OF COPY                               00091690
+         L     R3,TOKPTR          SOURCE                                00092780
+MVCNL    DS    0H                                              MSGTODOT 00093190
+         CLI   0(R3),C'.'     Start of domain ?                MSGTODOT 00093380
+         BE    MVCNLD         Yes - we're done                 MSGTODOT 00093570
+         MVC   0(1,R2),0(R3)  Move characater                  MSGTODOT 00093760
+         TR    0(1,R2),UPCASE Uppercase the character          MSGTODOT 00093950
+         LA    R2,1(,R2)      Point to next character          MSGTODOT 00094140
+         LA    R3,1(,R3)      ...                              MSGTODOT 00094330
+         BCT   R1,MVCNL       Try all characters               MSGTODOT 00094520
+MVCNLD   DS    0H                                              MSGTODOT 00094710
+*-- COPY MESSAGE NOW                                                    00095000
+LOCSEND  EQU   *             [1.20]                                     00096000
+         C     R6,=A(L'BUFFER) LONGER THAN BUFFER?                      00097000
+         BNH   LENOK                                                    00098000
+         LA    R6,L'BUFFER   TRUNC IT                                   00099000
+LENOK    EQU   *                                                        00100000
+         BCTR  R6,0          -1 FOR EXECUTE                             00101000
+         LA    R2,BUFFER                                                00102000
+         LR    R3,R5                                                    00103000
+         EX    R6,COPY       COPY MESSAGE INTO BUFFER                   00104000
+         MVC   XRSCS,RSCSNAME   NAME OF LOCAL RSCS MACHINE              00105000
+         LA    R1,MSG        ADDRESS OF MESSAGE                         00106000
+         LA    R0,LPREFIX+1(R6) LENGTH OF IT                            00107000
+         DC    X'83100008'   DO IT                                      00108000
+         LR    R15,R0        GET RC                                     00109000
+RET      EQU   *                                                        00110000
+         L     R13,4(R13)                                               00111000
+         L     R14,12(R13)                                              00112000
+         LM    R0,R12,20(R13)                                           00113000
+         BR    R14                                                      00114000
+         SPACE ,             [1.20]                                     00115000
+TRYLOCAL EQU   *             [1.20]                                     00116000
+         TM    MAILFLG1,MFLG1LCL [1.20] local file?                     00117000
+         BNO   RET           [1.20]no,  forget it...                    00118000
+         MVC   HOSTNODE,CPUSTR   [1.20]my node name                     00119490
+         MVC   SENDER,MAILUSER [1.20]userid                             00120000
+         B     LOCSEND       [1.20]and send it                          00121000
+COPY     MVC   0(0,R2),0(R3)                                            00122000
+UPIT     TR    0(0,R2),UPCASE                                           00123000
+         LTORG ,                                                        00124000
+SAVE     DS    18F                                                      00125000
+MSG      DC    C'SMSG '                                                 00126000
+XRSCS    DS    CL8           RSCS NAME                                  00127000
+         DC    C' MSG '                                                 00128000
+HOSTNODE DS    CL8           HOST NAME                                  00129490
+         DC    C' '                                                     00130000
+SENDER   DS    CL8                                                      00131000
+         DC    C' *'                                             [1.24] 00132490
+LPREFIX  EQU   *-MSG                                                    00133000
+BUFFER   DS    CL130                                                    00134000
+         END   SNDRMSG                                                  00135000

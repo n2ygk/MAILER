@@ -1,0 +1,313 @@
+./ R 00245402 00245646 $ 245403 1                     05/06/91 13:38:22
+This process is controlled by a set of tables created by the MG         00245402
+profile generator.                                                      00245403
+.sp 1                                                                   00245404
+The file forwarding agent looks at spool files in the user's reader     00245405
+and based on a set of criteria defined by the user either transfers     00245406
+them to a different userid or leave them in place.                      00245407
+One of the userids to which the files could be transferred is the       00245408
+.us \MAILER\.                                                           00245409
+This will occur when mail is delivered to the user by use of the CP TAG 00245410
+and SPOOL commands (or their equivalents for non-VM systems).           00245411
+.in -.33i                                                               00245412
+.subhead 2.1 Overview of MAILER Operation                               00245413
+.sr c0201 = &sysppage                                                   00245414
+.in +.33i                                                               00245415
+.us \This is a brief description of what \MAILER\ does.                 00245416
+When first started,                                                     00245417
+.us \\MAILER\ reads the profile, allocates various tables, and          00245418
+loads any user exits that are not built in.                             00245419
+It establishes an IUCV path and issues 'SET MSG IUCV' and 'SET SMSG     00245420
+IUCV' commands to allow messages to be trapped.                         00245421
+It then goes into a wait state, waiting for the arrival of a reader     00245422
+file, an IUCV interrupt, or a console interrupt.                        00245423
+.sp                                                                     00245424
+.sp                                                                     00245425
+If the interrupt was an IUCV or from console typein, the command        00245426
+parser is invoked to process the user command.                          00245427
+For reader interrupts, each file in the reader is read and processed,   00245428
+usually resulting in the generation of outgoing punch spool files.      00245429
+.sp                                                                     00245430
+A valid reader file can be one of:                                      00245431
+.in +.33i                                                               00245432
+.sp                                                                     00245433
+1. An RFC822 mail file.                                                 00245434
+.in +.33i                                                               00245435
+.sp                                                                     00245436
+A mail file is a PUNCH spool file containing a header separated by a    00245437
+blank record from the text of the message.                              00245438
+The syntax specification for the header format is derived from the      00245439
+.us \\Standard for the Format of ARPA Internet Text Messages,           00245440
+DARPA Request for Comments                                              00245441
+.footnote                                                               00245442
+The various Internet RFC's are available as                             00245443
+.bd \\"RFCxxx STANDARD"\ from LISTSERV@BITNIC.                          00245444
+.footend                                                                00245445
+.in -.33i                                                               00245446
+.sp                                                                     00245447
+.hi 3                                                                   00245448
+2.^A Batch Simple Mail Transfer Protocol (BSMTP) request.               00245449
+.hi 0                                                                   00245450
+.in +.33i                                                               00245451
+.sp                                                                     00245452
+A BSMTP request is differentiated from an RFC822 mail file by having the00245453
+first record start with the text "HELO ".                               00245454
+This is the first command of an SMTP dialog and looks sufficiently      00245455
+different from a mail file to be easily identified.                     00245456
+.sp 1                                                                   00245457
+SMTP is defined by RFC821.                                              00245458
+Batch SMTP extensions to SMTP are defined by CUVMB BSMTP available from 00245459
+LISTSERV@BITNIC.                                                        00245460
+.in -.33i                                                               00245461
+.sp                                                                     00245462
+3. A reply to a BSMTP request previously generated.                     00245463
+.in +.33i                                                               00245464
+.sp                                                                     00245465
+A BSMTP reply is identified by having the first record start with 3     00245466
+digits (e.g. "220").                                                    00245467
+.in -.33i                                                               00245468
+.sp                                                                     00245469
+.in -.33i                                                               00245470
+.sp                                                                     00245471
+For  both mail files and BSMTP requests,                                00245472
+.us \\MAILER\ does essentially the same thing.                          00245473
+The first step is to look for the origin userid in the ORIGINS table.   00245474
+The origin userid is the id that appears under the 'ORIGINID' heading   00245475
+when you issue a 'CP QUERY RDR ALL' command.                            00245476
+It is the local system id that put this file into the system spool.     00245477
+If an entry is found that matches the origin userid, the exit           00245478
+for that entry is run.                                                  00245479
+This exit may do anything it likes to the mail file (including purging  00245480
+it).                                                                    00245481
+This allows you to implement some control over who can actually use     00245482
+.us \\MAILER\.                                                          00245483
+.sp 1                                                                   00245484
+.us \Next, \MAILER\                                                     00245485
+parses the mail or BSMTP request to obtain the userid of the sender and 00245486
+a list of recipients.                                                   00245487
+In the case of BSMTP, this is simple -- the sender is given in the      00245488
+MAIL FROM command and each recipient is identified by                   00245489
+a RCPT TO command.                                                      00245490
+For RFC822 mail, it is a little more difficult to determine             00245491
+.us \\which\ addresses should be acted upon.                            00245492
+.us \This is one reason that BSMTP support was added to \MAILER\.       00245493
+Another reason is that BSMTP has become the de-facto standard for       00245494
+interoperation of various mail systems on BITNET.                       00245495
+.sp 1                                                                   00245496
+.us \\MAILER\ now looks up the NJE origin in the INCOMING table         00245497
+(see section 8.3 for a description of the entries in this table).       00245498
+The NJE origin is the originating userid and node from which the file   00245499
+was sent.                                                               00245500
+You can see the NJE origin by issuing a CP TAG QUERY FILE command for   00245501
+a file placed in your reader by RSCS.                                   00245502
+.sp 1                                                                   00245503
+The INCOMING table lists which other mailers your                       00245504
+.us \\MAILER\ knows about and will trust.                               00245505
+Anyone not listed in the INCOMING table must send a mail file with a    00245506
+Sender: or From: field that is consistent with the file's RSCS origin   00245507
+node and userid.                                                        00245508
+.sp 1                                                                   00245509
+.us \\MAILER\ first looks for NJEuserid@NJEnode in the INCOMING table.  00245510
+.us \If that is not found, \MAILER\ searches for NJEuser@*DEFAULT*.     00245511
+.us \If that is not found (and the \Allow-Unknown-Nodes\ variable is    00245512
+set true) an entry of *DEFAULT*@*DEFAULT* is searched for.              00245513
+For mail with an RFC822 header (i.e not BSMTP), if no matching entry is 00245514
+found, the mail is rejected.                                            00245515
+.sp 1                                                                   00245516
+For mail delivered with a BSMTP envelope, if no matching entry is       00245517
+.us \found and \Allow-Charlatans\ is true, a message indicating that    00245518
+the sender is a charlatan will be added to the headers delivered to     00245519
+the final destination.                                                  00245520
+.us \If \Allow-Charlatans\ is false the mail will be rejected.          00245521
+.sp 1                                                                   00245522
+The OUTGOING and DOMAINS tables describe where to send mail that has    00245523
+been processed.                                                         00245524
+The mail may be sent locally (i.e. to a local recipient), to a local    00245525
+server, or to a remote recipient or server on BITNET.                   00245526
+.sp 1                                                                   00245527
+To determine how the mail for an individual recipient will be handled   00245528
+a table lookup is done for every addressee who has not yet received the 00245529
+mail.                                                                   00245530
+The key for the table lookup is the destination hostid.                 00245531
+This is the string to the right of the '@' in a user address (i.e.      00245532
+"hostid" in "userid@hostid") or the first host in the route address     00245533
+(i.e., "a" in "<@a,@b:userid@hostid>").                                 00245534
+.sp 1                                                                   00245535
+The table lookup is done in the following order until a match is found  00245536
+or the lookup process fails:                                            00245537
+.in +.33i                                                               00245538
+.sp 1                                                                   00245539
+.hi .33i                                                                00245540
+1.^Look up the full hostid in the OUTGOING table                        00245541
+.hi .33i                                                                00245542
+.sp 1                                                                   00245543
+2.^Compare each of the RSCS-Domain# strings against the right end       00245544
+(a right hand match)                                                    00245545
+of the host id and remove that value if a match is found.               00245546
+.hi .33i                                                                00245547
+.sp 1                                                                   00245548
+3.^Look for the resulting value in the OUTGOING table                   00245549
+.hi .33i                                                                00245550
+.sp 1                                                                   00245551
+4.^Look for the full host value (the one used in step 1) in the DOMAINS 00245552
+table.                                                                  00245553
+Searches in the domains table are done as a right hand match.           00245554
+.hi .33i                                                                00245555
+.sp 1                                                                   00245556
+5.^If Allow-Unknown-Nodes is 'true' then look for *DEFAULT*             00245557
+.in +.33i                                                               00245558
+.hi .4i                                                                 00245559
+.sp 1                                                                   00245560
+5A.^If the original hostid (the one used for the lookup in step 1)      00245561
+has no dot ('.') in it (i.e. the hostid is not expressed in domain      00245562
+name format) then look for the *DEFAULT* entry in the OUTGOING table.   00245563
+.hi .4i                                                                 00245564
+.sp 1                                                                   00245565
+5B.^If the original hostid has a dot in it (i.e. in domain name format) 00245566
+then:                                                                   00245567
+.in +.4i                                                                00245568
+.hi .6i                                                                 00245569
+.sp 1                                                                   00245570
+5B.1.^If an RSCS-Domain match was found (in step 2) look for            00245571
+*DEFAULT*ROUTE*.RSCS-Domain in the DOMAINS table (otherwise skip to     00245572
+step 5B.2).                                                             00245573
+.sp 1                                                                   00245574
+If the address was SOMENODE.BITNET (and BITNET is in the                00245575
+RSCS-Domain# strings) and SOMENODE was not found in the outgoing table, 00245576
+the DOMAINS table would be searched for *DEFAULT*ROUTE*.BITNET.         00245577
+This allows you to set default routings for domain names (such          00245578
+as .BITNET) which are on the NJE network.                               00245579
+.hi .6i                                                                 00245580
+.sp 1                                                                   00245581
+5B.2.^Look for *DEFAULT* in the DOMAINS table.                          00245582
+.in -.4i                                                                00245583
+.in -.33i                                                               00245584
+.hi 0                                                                   00245585
+.in -.33i                                                               00245586
+.sp                                                                     00245587
+.us \The function of \MAILER\ is described in further detail in the     00245588
+.us \\MAILER Program Logic Manual\, "PLM LISTING."                      00245589
+.in -.33i                                                               00245590
+.subhead 2.2 Overview of the file forwarding operation                  00245591
+.sr c0202 = &sysppage                                                   00245592
+.in +.33i                                                               00245593
+.sp 2                                                                   00245594
+The file forwarding process is broken in two pieces; maintenance of     00245595
+control information (where to forward what) and the actual forwarding   00245596
+operation.                                                              00245597
+The control information is processed by the Mailer's FORWARD command.   00245598
+The user interface to this is the FWD command (try HELP FWD for more    00245599
+information).                                                           00245600
+The Mailer FORWARD command (FORWARD MAILER) creates a file              00245601
+.us \(\userid\ FORWARD) on the Mailer DVM's 191 disk for each user      00245602
+requesting forwarding of mail or files.                                 00245603
+The Mailer does not use any of the file forwarding information stored   00245604
+in this file.                                                           00245605
+It simply acts as a middleman for processing and storing of the         00245606
+information.                                                            00245607
+.sp 1                                                                   00245608
+The file forwarding server runs in a disconnected virtual machine that  00245609
+can be autologged when your system is ipled (just like the              00245610
+.us Mailer\ DVM) or can be periodically autologged by some other        00245611
+time driven server (such as SMART).                                     00245612
+The installation instructions tell you how to modify the server for     00245613
+either mode of operation.                                               00245614
+.sp 1                                                                   00245615
+The file forwarding code is found in the FORWARDX EXEC.                 00245616
+This code divides the world into two classes of files; mail and         00245617
+everything else.                                                        00245618
+The classification is controlled in a subroutine (ismail) so you can    00245619
+modify it to meet your site's needs.                                    00245620
+.sp 1                                                                   00245621
+Any files classified as mail are processed by transferring them to the  00245622
+mailer for further processing.                                          00245623
+The Mailer knows about any mail forwardings established by the user     00245624
+and FORWARDX does not need to be involved.                              00245625
+The only mail files that are not transferred are those with an          00245626
+origination userid found in the serverids list (in particular, those    00245627
+from the Mailer DVM).                                                   00245628
+.sp 1                                                                   00245629
+Forwarding of non-mail files is controlled by class.                    00245630
+It is not necessary to forward all files to the same userid.            00245631
+File in classes 'A', 'B' and 'C' can be forwarded to one userid, files  00245632
+in class 'T' can be forwarded to a different userid, and the remaining  00245633
+files can be left untouched.                                            00245634
+.sp 1                                                                   00245635
+Since it is disconcerting to some users to see files arrive in the      00245636
+reader and then not be able to find them later in a session, the file   00245637
+forwarding code can be told to only remove the file when the user       00245638
+is logged off.                                                          00245639
+For those users who don't mind, it is possible to say the files may be  00245640
+removed at any time.                                                    00245641
+.sp 1                                                                   00245642
+There is one limitation on file forwarding that does not exist for      00245643
+mail forwarding.                                                        00245644
+Files may only be forwarded to destinations with NJE addresses.         00245645
+.in -.33i                                                               00245646
+./ R 00532970          $ 532972 2                     05/06/91 13:38:22
+7.8.                                                                    00532970
+./ R 00536930          $ 536940 10                    05/06/91 13:38:22
+'Nodename' must match the name given to the MTPLATE file associated     00536930
+./ R 00965680          $ 965770 90                    05/06/91 13:38:22
+This builtin type 2 exit is used for destinations that can't handle     00965680
+mail.
+./ R 01161530 01161588 $ 1161531 1                    05/06/91 13:38:22
+This is also the default if no CLASS operand is given.                  01161530
+It is possible to have different subsets of the possible class values   01161531
+forwarded to different userids.                                         01161532
+The command verifies that there is no overlap between any of the        01161533
+forwardings (errors messages are produced and the command is ignored if 01161534
+this rule would be violated).                                           01161535
+.sp 1                                                                   01161536
+.in +.3i                                                                01161537
+.bd \\TELL\ mailerid \FORWARD  FILES\ userid1 \CLASS ABCDEF\            01161538
+.sp 1                                                                   01161539
+.bd \\TELL\ mailerid \FORWARD  FILES\ userid2 \CLASS GHIJKLMN\          01161540
+.in -.3i                                                                01161541
+will forward classes ABCDEF to userid1 and classes GHIJKLMN to userid 2 01161542
+but leave all other classes in the reader.                              01161543
+.sp 1                                                                   01161544
+DELETE indicates a request to delete forwarding of files.               01161545
+It can be used in conjunction with the CLASS operand to delete only a   01161546
+subset of the files being forwarded to some userid.                     01161547
+.cc 6                                                                   01161548
+.sp 1                                                                   01161549
+.in +.3i                                                                01161550
+.bd \\TELL\ mailerid \FORWARD  FILES\ userid1 \CLASS ABCDEF\            01161551
+.br                                                                     01161552
+.bd \\TELL\ mailerid \FORWARD  FILES\ userid1 \DELETE CLASS ABC\        01161553
+.sp 1                                                                   01161554
+.in -.3i                                                                01161555
+will forward classes DEF to userid1 and                                 01161556
+leave all other classes in the reader.                                  01161557
+.sp 1                                                                   01161558
+.in +.3i                                                                01161559
+.bd \\TELL\ mailerid \FORWARD  FILES\ userid1 \CLASS *\                 01161560
+.br                                                                     01161561
+.bd \\TELL\ mailerid \FORWARD  FILES\ userid1 \DELETE CLASS ABC\        01161562
+.sp 1                                                                   01161563
+.in -.3i                                                                01161564
+will forward all classes except ABC to userid1.                         01161565
+.sp 1                                                                   01161566
+LOGGEDON and ANYTIME indicate that files may be removed from the reader 01161567
+at any time (even if the user id logged on to the system).              01161568
+LOGGEDOFF indicates that files should be transferred only if the user   01161569
+is not logged onto the system.                                          01161570
+The default (if nothing is specified) is LOGGEDOFF.                     01161571
+.sp 1                                                                   01161572
+.cc 6                                                                   01161573
+The privileged command syntax is:                                       01161574
+.in +.33i                                                               01161575
+.sp 1                                                                   01161576
+.fo off                                                                 01161577
+FORWARD   FOR  userid   <MAIL>    ADD     ...                           01161578
+                        <MAIL>    DELETE  ...                           01161579
+                        FILES     destid  ...                           01161580
+                        LIST                                            01161581
+.fo on                                                                  01161582
+.in -.33i                                                               01161583
+.sp 1                                                                   01161584
+The additional operand of 'FOR userid' allows a privileged user         01161585
+(someone listed in the MAINTUSER#@MAINTNODE# list) to make changes      01161586
+to the forwarding list of another user.                                 01161587
+.in -.33i                                                               01161588

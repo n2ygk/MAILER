@@ -1,0 +1,78 @@
+./ I 00040174          $ 40176 2                      04/09/91 17:51:02
+'ERASE SAMPPROF EXEC'                        /* Must be user modified */00040176
+'ERASE FORWARDX EXEC'                        /* Must be user modified */00040178
+./ D 00040860 00040890                                04/09/91 17:51:02
+./ R 00041000          $ 41020 20                     04/09/91 17:51:02
+                                                                        00041020
+                                                                        00041040
+/*  Copy CNTRL files required for object code distribution use  */      00041060
+                                                                        00041080
+say ' '                                                                 00041100
+say 'Copying CNTRL files'                                               00041120
+                                                                        00041140
+'MAKEBUF'                                                               00041160
+buffer = rc                                                             00041180
+'LISTFILE MAILEXEC CNTRL * (FIFO'                                       00041200
+parse upper pull . . fm .                                               00041220
+'DROPBUF' buffer                                                        00041240
+'COPYFILE MAILEXEC CNTRL' fm '= = A (OLDDATE TYPE'                      00041260
+                                                                        00041280
+'MAKEBUF'                                                               00041300
+buffer = rc                                                             00041320
+'LISTFILE MAILER   CNTRL * (FIFO'                                       00041340
+parse upper pull . . fm .                                               00041360
+'DROPBUF' buffer                                                        00041380
+'COPYFILE MAILER   CNTRL' fm '= = A (OLDDATE TYPE'                      00041400
+                                                                        00041420
+'MAKEBUF'                                                               00041440
+buffer = rc                                                             00041460
+'LISTFILE MAILHELP CNTRL * (FIFO'                                       00041480
+parse upper pull . . fm .                                               00041500
+'DROPBUF' buffer                                                        00041520
+'COPYFILE MAILHELP CNTRL' fm '= = A (OLDDATE TYPE'                      00041540
+                                                                        00041560
+                                                                        00041580
+./ I 00053000          $ 53500 500                    04/09/91 17:51:02
+                                                                        00053500
+./ I 00057000          $ 57500 500                    04/09/91 17:51:02
+                                                                        00057500
+./ I 00061000          $ 61500 500                    04/09/91 17:51:02
+                                                                        00061500
+./ I 00075020          $ 75030 10                     04/09/91 17:51:02
+                                                                        00075030
+./ R 00075400 00075420 $ 75401 1                      04/09/91 17:51:02
+                                                                        00075401
+                                                                        00075402
+/*  Create initial configuration AUX files  */                          00075403
+                                                                        00075404
+line.0 = 2                                                              00075405
+line.1 = copies('* ',16) 'AUXLCL' copies('* ',16)                       00075406
+line.2 = 'CONFIG0  - Initial configuration changes'                     00075407
+say ' '                                                                 00075408
+say 'Creating AUX files'                                                00075409
+                                                                        00075410
+/*  For the $EXEC files  */                                             00075411
+'EXECIO' line.0 'DISKW FORWARDX AUXEXCLC A 1 F 80 (STEM LINE.'          00075412
+'EXECIO' line.0 'DISKW FWD      AUXEXCLC A 1 F 80 (STEM LINE.'          00075413
+'EXECIO' line.0 'DISKW MABNXIT  AUXEXCLC A 1 F 80 (STEM LINE.'          00075414
+'EXECIO' line.0 'DISKW SAMPPROF AUXEXCLC A 1 F 80 (STEM LINE.'          00075415
+                                                                        00075416
+/*  For the $HELPCMS files  */                                          00075417
+'EXECIO' line.0 'DISKW FWD      AUXHLPLC A 1 F 80 (STEM LINE.'          00075418
+'EXECIO' line.0 'DISKW MAILER   AUXHLPLC A 1 F 80 (STEM LINE.'          00075419
+'EXECIO' line.0 'DISKW MAILERP  AUXHLPLC A 1 F 80 (STEM LINE.'          00075420
+                                                                        00075421
+/*  For the $MAILER files  */                                           00075422
+'EXECIO' line.0 'DISKW FORWARD  AUXEXCLC A 1 F 80 (STEM LINE.'          00075423
+'EXECIO' line.0 'DISKW MAILLIST AUXEXCLC A 1 F 80 (STEM LINE.'          00075424
+                                                                        00075425
+/*  SAMPLE $MTPLATE */                                                  00075426
+'EXECIO' line.0 'DISKW SAMPLE   AUXLCL   A 1 F 80 (STEM LINE.'          00075427
+                                                                        00075428
+                                                                        00075429
+/*  Rebuild printable copies of installation manual  */                 00075430
+./ I 00075760          $ 75800 40                     04/09/91 17:51:02
+
+/*  Place a copy of the current CHANGE MEMO file on the object disk */
+
+'COPYFILE CHANGE MEMO C = = A (OLDD REP'

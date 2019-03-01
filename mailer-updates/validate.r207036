@@ -1,0 +1,160 @@
+./ I 00133000          $ 133200 200                   03/14/91 18:06:56
+         TM    DBGFLG7,DBGVALID    Debugging?                           00133200
+         BNO   DBG00001            ---> No                              00133400
+         WRTERM DBGMSG01,L'DBGMSG01                                     00133600
+DBG00001 EQU   *                                                        00133800
+./ I 00135000          $ 135020 20                    03/14/91 18:06:56
+         TM    DBGFLG7,DBGVALID    Debugging?                           00135020
+         BNO   DBG00002            ---> No                              00135040
+         WRTERM DBGMSG02,L'DBGMSG02                                     00135060
+DBG00002 EQU   *                                                        00135080
+./ I 00139340          $ 139440 100                   03/14/91 18:06:56
+         TM    DBGFLG7,DBGVALID    Debugging?                           00139440
+         BNO   DBG00003            ---> No                              00139540
+         WRTERM DBGMSG03,L'DBGMSG03                                     00139640
+DBG00003 EQU   *                                                        00139740
+./ I 00247440          $ 247450 10                    03/14/91 18:06:56
+         TM    DBGFLG7,DBGVALID       Debugging?                        00247450
+         BNO   DBG00004               ---> No                           00247460
+         WRTERM DBGMSG04,L'DBGMSG04                                     00247470
+DBG00004 EQU   *                                                        00247480
+./ D 00247710                                         03/14/91 18:06:56
+./ I 00247800          $ 247820 20                    03/14/91 18:06:56
+         L     R1,=A(DBGMSG30)        Point to start of msg
+         MVC   39(8,R1),VAPROG        Copy exit name into msg           00247830
+         DROP  R8                     done w/vald                [1.23] 00247860
+./ I 00248880          $ 249280 400                   03/14/91 18:06:56
+         TM    DBGFLG7,DBGVALID       Debugging?                        00249280
+         BNO   DBG00005               ---> No                           00249680
+         WRTERM DBGMSG05,L'DBGMSG05                                     00250080
+DBG00005 EQU   *                                                        00250480
+./ R 00263000 00265000 $ 263290 290                   03/14/91 18:06:56
+         BE    LOCUSR00               ---> Just this one                00263290
+         TM    DBGFLG7,DBGVALID       Debugging?                        00263580
+         BNO   DBG00006               ---> No                           00263870
+         WRTERM DBGMSG06,L'DBGMSG06                                     00264160
+DBG00006 EQU   *                                                        00264450
+         B     BADLOC                                                   00264740
+         SPACE 1                                                        00265030
+LOCUSR00 EQU   *                                                        00265320
+         CLC   MBXLCNT,=F'1'          ONLY 1 TOKEN FOR USER NAME?       00265610
+         BE    LOCUSR02               ---> Yes                          00265900
+         TM    DBGFLG7,DBGVALID       Debugging?                        00266190
+         BNO   DBG00007               ---> No                           00266480
+         WRTERM DBGMSG07,L'DBGMSG07                                     00266770
+DBG00007 EQU   *                                                        00267060
+         B     BADLOC        NO, NOT A VM USERID...                     00267350
+         SPACE 1                                                        00267640
+LOCUSR02 EQU   *                                                        00267930
+./ R 00278000          $ 278090 90                    03/14/91 18:06:56
+         BNH   LOCUSR04               ---> No                           00278090
+         TM    DBGFLG7,DBGVALID       Debugging?                        00278180
+         BNO   DBG00008               ---> No                           00278270
+         WRTERM DBGMSG08,L'DBGMSG08                                     00278360
+DBG00008 EQU   *                                                        00278450
+         B     BADLOC                 --> More than 8                   00278540
+         SPACE 1                                                        00278630
+LOCUSR04 EQU   *                                                        00278720
+./ R 00285000          $ 285090 90                    03/14/91 18:06:56
+         BE    LOCUSR06               ---> Matches                      00285090
+         TM    DBGFLG7,DBGVALID       Debugging?                        00285180
+         BNO   DBG00009               ---> No                           00285270
+         L     R1,=A(DBGMSG09)        Point to start of msg
+         MVC   12(8,R1),CLCBUF        Copy failing compare into msg     00285360
+         MVC   38(8,R1),MAILUSER                                        00285450
+         WRTERM DBGMSG09,L'DBGMSG09                                     00285540
+DBG00009 EQU   *                                                        00285630
+         B     BADLOC                 ---> NAUGHTY USER!                00285720
+         SPACE 1                                                        00285810
+LOCUSR06 EQU   *                                                        00285900
+./ I 00290890          $ 290990 100                   03/14/91 18:06:56
+         TM    DBGFLG7,DBGVALID       Debugging?                        00290990
+         BNO   DBG00010               ---> No                           00291090
+         WRTERM DBGMSG10,L'DBGMSG10                                     00291190
+DBG00010 EQU   *                                                        00291290
+./ R 00324140          $ 324180 40                    03/14/91 18:06:56
+         BZ    HOSTOK02            ---> Yes                             00324180
+         TM    DBGFLG7,DBGVALID       Debugging?                        00324220
+         BNO   DBG00011               ---> No                           00324260
+         WRTERM DBGMSG11,L'DBGMSG11                                     00324300
+DBG00011 EQU   *                                                        00324340
+         B     BADLOC              ---> Didn't work, fail the message.  00324380
+         SPACE 1                                                        00324420
+HOSTOK02 EQU   *                                                        00324460
+         TM    DBGFLG7,DBGVALID       Debugging?                        00324500
+         BNO   DBG00012               ---> No                           00324540
+         WRTERM DBGMSG12,L'DBGMSG12                                     00324580
+DBG00012 EQU   *                                                        00324620
+./ I 00327870          $ 327880 10                    03/14/91 18:06:56
+         TM    DBGFLG7,DBGVALID       Debugging?                        00327880
+         BNO   DBG00013               ---> No                           00327890
+         WRTERM DBGMSG13,L'DBGMSG13                                     00327900
+DBG00013 EQU   *                                                        00327910
+./ I 00327940          $ 327950 10                    03/14/91 18:06:56
+         TM    DBGFLG7,DBGVALID       Debugging?                        00327950
+         BNO   DBG00014               ---> No                           00327960
+         WRTERM DBGMSG14,L'DBGMSG14                                     00327970
+DBG00014 EQU   *                                                        00327980
+./ R 00331490          $ 331530 40                    03/14/91 18:06:56
+         BZ    DOMDONE2               ---> Found an entry for this host 00331530
+         TM    DBGFLG7,DBGVALID       Debugging?                        00331570
+         BNO   DBG00015               ---> No                           00331610
+         WRTERM DBGMSG15,L'DBGMSG15                                     00331650
+DBG00015 EQU   *                                                        00331690
+         B     TRYLDOM             No  : Try LocalDomain.               00331730
+         SPACE 1                                                        00331770
+DOMDONE2 EQU   *                                                        00331810
+./ I 00335490          $ 335590 100                   03/14/91 18:06:56
+         TM    DBGFLG7,DBGVALID       Debugging?                        00335590
+         BNO   DBG00016               ---> No                           00335690
+         WRTERM DBGMSG16,L'DBGMSG16                                     00335790
+DBG00016 EQU   *                                                        00335890
+./ I 00337120          $ 337130 10                    03/14/91 18:06:56
+         TM    DBGFLG7,DBGVALID       Debugging?                        00337130
+         BNO   DBG00017               ---> No                           00337140
+         WRTERM DBGMSG17,L'DBGMSG17                                     00337150
+DBG00017 EQU   *                                                        00337160
+./ R 00337220 00337240 $ 337230 10                    03/14/91 18:06:56
+         ICM   R3,B'1111',0(R15)   Is there a LocalDomain?              00337230
+         BZ    TLDBAD                 ---> No  : Bad address.           00337240
+./ R 00337700          $ 337701 1                     03/14/91 18:06:56
+TLDBAD   DS    0H                                                       00337701
+         TM    DBGFLG7,DBGVALID       Debugging?                        00337702
+         BNO   DBG00018               ---> No                           00337703
+         WRTERM DBGMSG18,L'DBGMSG18                                     00337704
+DBG00018 EQU   *                                                        00337705
+         B     BADLOC                 ---> Bad address.                 00337706
+         SPACE 1                                                        00337707
+./ I 00353950          $ 354950 1000                  03/14/91 18:06:56
+         TM    DBGFLG7,DBGVALID       Debugging?                        00354950
+         BNO   DBG00020               ---> No                           00355950
+         WRTERM DBGMSG20,L'DBGMSG20                                     00356950
+DBG00020 EQU   *                                                        00357950
+./ I 00415000          $ 415200 200                   03/14/91 18:06:56
+         TM    DBGFLG7,DBGVALID       Debugging?                        00415200
+         BNO   DBG00030               ---> No                           00415400
+         WRTERM DBGMSG30,L'DBGMSG30                                     00415600
+DBG00030 EQU   *                                                        00415800
+./ I 00501600          $ 501610 10                    03/14/91 18:06:56
+         SPACE 1                                                        00501610
+DBGMSG01 DC    C'VALIDATE:  Mail from local user'                       00501620
+DBGMSG02 DC    C'VALIDATE:  Local user was mailer'                      00501630
+DBGMSG03 DC    C'VALIDATE:  Mail rejected by RSCS'                      00501640
+DBGMSG04 DC    C'VALIDATE:  Found sender in INCOMING table'             00501650
+DBGMSG05 DC    C'VALIDATE:  Sender not in INCOMING table'               00501660
+DBGMSG06 DC    C'VALIDATE:  More than 1 sender (either FROM: or SENDER:X00501670
+               )'                                                       00501680
+DBGMSG07 DC    C'VALIDATE:  Multiple tokens in sender local part'       00501690
+DBGMSG08 DC    C'VALIDATE:  Userid longer than 8 characters'            00501700
+DBGMSG09 DC    C'VALIDATE:  "        " does not match "        "'       00501710
+DBGMSG10 DC    C'VALIDATE:  Supplying missing node'                     00501720
+DBGMSG11 DC    C'VALIDATE:  GENLIST unable to build host string'        00501730
+DBGMSG12 DC    C'VALIDATE:  Checking RSCS-Domain list'                  00501740
+DBGMSG13 DC    C'VALIDATE:  Not found in RSCS-Domain list'              00501750
+DBGMSG14 DC    C'VALIDATE:  Checking for alias in OUTGOING table'       00501760
+DBGMSG15 DC    C'VALIDATE:  Not found in OUTGOING table'                00501770
+DBGMSG16 DC    C'VALIDATE:  Found in OUTGOING table'                    00501780
+DBGMSG17 DC    C'VALIDATE:  Checking Local-Host list'                   00501790
+DBGMSG18 DC    C'VALIDATE:  Not found in Local-Host list'               00501800
+DBGMSG20 DC    C'VALIDATE:  Sender is trusted'                          00501810
+DBGMSG30 DC    C'VALIDATE:  Sender is not trusted (from ........ exit)' 00501820

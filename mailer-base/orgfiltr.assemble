@@ -1,0 +1,114 @@
+ORGFILTR TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - FILTER FILES FROM  *00001000
+               LOCAL USERS'                                             00002000
+*---------------------------------------------------------------------* 00003000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00004000
+*    Program Property of the Trustees of Columbia University in the   * 00005000
+*    City of New York.                                                * 00006000
+*---------------------------------------------------------------------* 00007000
+ORGFILTR CSECT ,                                                        00008000
+* ORGFILTR -                                                            00009000
+* This routine is a new addition to mailer as of version 1.20.          00010000
+* It adds the capability to perform arbitrary processing of             00011000
+* reader files based on the origin userid.  The main immediate          00012000
+* use of this feature is to maintain a list of vmids not allowed        00013000
+* to send mail (CMSBATCH machines for example).                         00014000
+*                                                                       00015000
+* 1) Lookup MAILUSER in MAILOTAB.  If not found,  return RC=0           00016000
+* 2) If found and RTPROG was specified,  call it and pass along         00017000
+*    it's RC. Call sequence is  CALL PROG,(MAILBLOK,ROUTD).             00018000
+* 3) If found and RTPROG was not specified,  "reject" the file          00019000
+*    by writing a message and returning w/RC=4.                         00020000
+*                                                                       00021000
+* Alan Crosswell,  2/85                                                 00022000
+*                                                                       00023000
+*  CALLED VIA -                                                         00024000
+*  CALL ORGFILTR,(MAILBLOK)                                             00025000
+         SPACE ,                                                        00026000
+PAB      DSECT ,                                                        00027000
+@MBLOK   DS    A             ADDRESS OF MAILBLOK                        00028000
+         SPACE ,                                                        00029000
+* REGISTER USAGE -                                                      00030000
+R0  EQU  0 -                                                            00031000
+R1  EQU  1 -                                                            00032000
+R2  EQU  2 -                                                            00033000
+R3  EQU  3 -                                                            00034000
+R4  EQU  4 -                                                            00035000
+R5  EQU  5 -                                                            00036000
+R6  EQU  6 -                                                            00037000
+R7  EQU  7 -                                                            00038000
+R8  EQU  8 -                                                            00039000
+R9  EQU  9 -                                                            00040000
+R10 EQU 10 -                                                            00041000
+R11 EQU 11 - MAILBLOK BASE                                              00042000
+R12 EQU 12 - PROGRAM BASE                                               00043000
+R13 EQU 13 - SAVE AREA                                                  00044000
+R14 EQU 14 - SUBROUTINE LINKAGE                                         00045000
+R15 EQU 15 - SUBROUTINE LINKAGE                                         00046000
+         SPACE                                                          00047000
+         PRINT NOGEN                                                    00048000
+         BLOCKS ,                                                       00049000
+         MAILBLOK ,                                                     00050000
+         EJECT                                                          00051000
+ORGFILTR CSECT ,                                                        00052000
+         USING ORGFILTR,R15  TEMPORARY ADDRESSABILITY                   00053000
+         B     EYESKIP       BRANCH OVER EYESKIP                        00054000
+MYNAME   DC    CL8'ORGFILTR',CL8'&SYSDATE'                              00055000
+EYESKIP  DS    0H                                                       00056000
+         DROP  R15                                                      00057000
+         STM   R14,R12,12(R13) SAVE CALLER'S REGS                       00058000
+         LR    R12,R15       PERMANENT ADDRESSABILITY                   00059000
+         USING ORGFILTR,R12                                             00060000
+         LA    R14,SAVE      MY SAVE AREA                               00061000
+         ST    R13,4(R14)    SAVE CALLER'S PTR                          00062000
+         ST    R14,8(R13)    CHAIN MINE BACK                            00063000
+         LR    R13,R14       SET MY SAVE PTR                            00064000
+         USING PAB,R1        ADDRESS PARM                               00065000
+         L     R11,@MBLOK    GET MAILBLOK BASE                          00066000
+         DROP  R1                                                       00067000
+         USING MAILBLOK,R11  ADDRESSABILITY                             00068000
+         SPACE ,                                                        00069000
+         LA    R1,MAILUSER+7 point to end of userid                     00070000
+         LA    R4,8          max length of userid                       00071000
+TRIMLOOP EQU   *                                                        00072000
+         CLI   0(R1),C' '    trim trailing blanks                       00073000
+         BNE   TRIMOUT       done                                       00074000
+         BCTR  R1,0          decrement data pointer                     00075000
+         BCT   R4,TRIMLOOP   decrement length and try again             00076000
+TRIMOUT  EQU   *             here when have length in r4                00077000
+         L     R5,MAILOTAB   point to Origins table                     00078000
+         LA    R3,MAILUSER   address of userid                          00079000
+         CALL  TBLUK,((R5),(R3),(R4),TWORK) look for userid             00080000
+         LTR   R15,R15       find it?                                   00081000
+         BNZ   NOTFOUND      no, just return then                       00082000
+         LR    R8,R1         get a handle on the routd                  00083000
+         USING ROUTD,R8      address it                                 00084000
+         ICM   R15,B'1111',RTADDR address of exit routine               00085000
+         BZ    REJECT        no exit implies simply reject.             00086000
+         DROP  R8                                                       00087000
+         CALL  (15),((R11),(R8)) call user exit                         00088000
+RET      EQU   *                                                        00089000
+         L     R13,4(R13)              GET CALLER'S SAVE PTR            00090000
+         L     R14,12(R13)             GET R14                          00091000
+         LM    R0,R12,20(R13)          GET R0-R12                       00092000
+         BR    R14                     RETURN                           00093000
+         SPACE ,                                                        00094000
+*--------------------------------------------------------------------   00095000
+*  ERROR RETURNS                                                        00096000
+*--------------------------------------------------------------------   00097000
+NOTFOUND EQU   *             userid not in table                        00098000
+         SR    R15,R15       just return normally                       00099000
+         B     RET                                                      00100000
+         SPACE ,                                                        00101000
+REJECT   EQU   *             reject the file                            00102000
+         LA    R4,MAILUSER                                              00103000
+         LA    R5,MAILFTXT                                              00104000
+         WTR   ORG049,(CA,(R4),CA,(R5))                                 00105000
+         LA    R15,4         set rc=4                                   00106000
+         B     RET                                                      00107000
+*--------------------------------------------------------------------   00108000
+*  READ-ONLY DATA                                                       00109000
+*--------------------------------------------------------------------   00110000
+         LTORG ,                                                        00111000
+SAVE     DS    18F                     SAVE AREA                        00112000
+TWORK    DS    64F                                                      00113000
+         END   ORGFILTR                                                 00114000

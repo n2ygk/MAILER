@@ -1,0 +1,4 @@
+./ R 00092540          $ 92550 10                     08/18/88 13:26:38
+         BE    EXTZONE       Yes, extend zone
+         MVC   0(2,R9),=C'  ' Fill in with blanks
+         B     EXTZONEE      Join common code                           00092540

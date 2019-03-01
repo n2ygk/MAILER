@@ -1,0 +1,164 @@
+UNIXSCAN TITLE     'UNIXSCAN - UNIX STYLE PARAMETER SCANNER'            00001000
+*---------------------------------------------------------------------* 00002000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00003000
+*    Program Property of the Trustees of Columbia University in the   * 00004000
+*    City of New York.                                                * 00005000
+*---------------------------------------------------------------------* 00006000
+UNIXSCAN CSECT                                                          00007000
+* UNIXSCAN -  SCAN THE CMNDLINE AND RETURN AN ARGC (ARGUMENT COUNT)     00008000
+* AND ARGV (ARGUMENT VECTOR).  EACH WORD IN THE ARGV HAS THE LENGTH     00009000
+* OF THE ARGUMENT IN THE FIRST BYTE AND THE ADDRESS OF THE ARGUMENT     00010000
+* IN THE REMAINING 3 BYTES.                                             00011000
+*                                                                       00012000
+*                                      ALAN CROSSWELL 8/81              00013000
+*                                                                       00014000
+* LAST EDIT: 2/8/82 BY ALAN CROSSWELL                                   00015000
+*                                                                       00016000
+* ACCEPTS A PARM LIST ADDRESS IN R1 -                                   00017000
+*        0: ADDRESS OF ARGV IN CALLING PROGRAM                          00018000
+*        4: MAXIMUM LENGTH OF ARGV IN BYTES                             00019000
+*        8: ADDRESS OF BUFFER TO SCAN OR ZERO                           00020000
+*       12: LENGTH OF ABOVE BUFFER OR ZERO                              00021000
+*                                                                       00022000
+* IF THE ADDRESS OF THE BUFFER IS ZERO, THEN THE ADDRESS OF THE         00023000
+* STANDARD CMS COMMAND LINE IS USED, OTHERWISE THE ADDRESSED BUFFER     00024000
+* IS USED                                                               00025000
+*                                                                       00026000
+* RETURNS IN R1 -                                                       00027000
+*        NUMBER OF ENTRIES IN ARGV                                      00028000
+* RETURNS IN R15 -                                                      00029000
+*        RETURN CODE 0 IF NO ERRORS; THE NUMBER IN R1 IS CORRECT        00030000
+*        RETURN CODE 4 IF THE ARGV IS TOO SMALL; THE NUMBER IN R1       00031000
+*           IS THE NUMBER OF ARGS THAT WERE SUCCESFULY SCANNED          00032000
+*                                                                       00033000
+* REGISTER USAGE -                                                      00034000
+R0  EQU  0 -                                                            00035000
+R1  EQU  1 - WORK REG. AND, AT RETURN, THE VALUE OF ARGC                00036000
+R2  EQU  2 -                                                            00037000
+R3  EQU  3 -                                                            00038000
+R4  EQU  4 -                                                            00039000
+R5  EQU  5 -                                                            00040000
+R6  EQU  6 -                                                            00041000
+R7  EQU  7 - ADDRESS OF END OF CMDLINE                                  00042000
+R8  EQU  8 - CURRENT ADDRESS IN CMDLINE                                 00043000
+R9  EQU  9 - ARGC COUNTER IN BYTES (INDEX INTO ARGV)                    00044000
+R10 EQU 10 - ADDRESS OF ARGV                                            00045000
+R11 EQU 11 - ARGV MAXIMUM LENGTH                                        00046000
+R12 EQU 12 - PROGRAM BASE                                               00047000
+R13 EQU 13 - SAVE AREA                                                  00048000
+R14 EQU 14 - SUBROUTINE LINKAGE                                         00049000
+R15 EQU 15 - SUBROUTINE LINKAGE                                         00050000
+*                                                                       00051000
+* EXTERNAL MACROS/MODULES CALLED -                                      00052000
+         PRINT     NOGEN                                                00053000
+         NUCON     DSECT                                                00054000
+         SPACE                                                          00055000
+ARGV     DSECT     ,                   SET UP A SYMBOL                  00056000
+         EJECT                                                          00057000
+UNIXSCAN CSECT                                                          00058000
+         STM       R14,R12,12(R13)                                      00059000
+         BALR      R12,0                                                00060000
+         USING     *,R12                                                00061000
+         LA        R14,SAVE                                             00062000
+         ST        R13,4(R14)                                           00063000
+         ST        R14,8(R13)                                           00064000
+         LR        R13,R14                                              00065000
+*                                                                       00066000
+         L         R10,0(R1)           ADDRESS OF ARGV                  00067000
+         USING     ARGV,R10            ADDRESS IT AS A SYMBOL           00068000
+         L         R11,4(R1)           MAX. SIZE OF ARGV                00069000
+         ICM       R8,B'1111',8(R1)    GET ADDRESS OF BUFFER            00070000
+         BZ        USECMS              IF ZERO, USE CMS CMNDLINE        00071000
+         L         R7,12(R1)           GET LENGTH OF USER BUFFER        00072000
+         AR        R7,R8               ADDRESS OF END OF USER BUFFER    00073000
+         B         USEHIS              SKIP OVER NUCON STUFF            00074000
+USECMS   EQU       *                                                    00075000
+         USING     NUCON,R0            ADDRESS NUCLEUS                  00076000
+         LA        R8,CMNDLINE         ADDRESS OF UNTOKENIZED COMMAND   00077000
+         LA        R7,L'CMNDLINE(R8)   ADDRESS OF END OF IT.            00078000
+USEHIS   EQU       *                                                    00079000
+         SR        R9,R9               INITIALLY THERE ARE NO ARGS      00080000
+         SR        R15,R15             INIT NO ERRORS                   00081000
+* TRIM OFF ANY LEADING BLANKS -                                         00082000
+         LR        R1,R8               IN CASE THERE ARE NONE....       00083000
+         LR        R6,R7               LENGTH OF STRING                 00084000
+         SR        R6,R8               LENGTH TO TRT                    00085000
+         LTR       R6,R6               ALL DONE                         00086000
+         BNH       DONE                YES, GO CLEAN UP                 00087000
+         BCTR      R6,0                -1 FOR EXECUTE                   00088000
+         EX        R6,SKIPBLK          SKIP LEADING BLANKS              00089000
+         LR        R8,R1               NEW STRING START                 00090000
+LOOP     EQU       *                                                    00091000
+         LR        R6,R7               LET'S GET THE TRT LENGTH         00092000
+         SR        R6,R8               LENGTH TO TRT                    00093000
+         LTR       R6,R6               ALL DONE                         00094000
+         BNH       DONE                YES, GO CLEAN UP                 00095000
+         BCTR      R6,0                MINUS 1 FOR EXECUTE              00096000
+         LR        R1,R7               ADDRESS OF END IN CASE OF CC 0   00097000
+         SR        R2,R2               CLEAN IT OUT FOR THE INSERT      00098000
+         ST        R8,ARGV(R9)         SAVE ADDRESS OF CURRENT STRING   00099000
+         EX        R6,GETBLK           LOOK FOR THE NEXT BLANK OR ()    00100000
+         LR        R6,R1               COPY THE STRING END POINTER      00101000
+         SR        R1,R8               LENGTH OF STRING                 00102000
+         STC       R1,ARGV(R9)         INTO 1ST BYTE OF POINTER         00103000
+         LR        R8,R6               UPDATED STRING POINTER           00104000
+         CH        R2,=H'2'            WAS IT A PAREN?                  00105000
+         BNE       NOPE                NOPE, KEEP GOING                 00106000
+         C         R8,ARGV(R9)         WAS END OF LAST AND BEGINNING    00107000
+         BE        THESAME             THE SAME?                        00108000
+         LA        R9,4(R9)            BUMP ARGV COUNTER                00109000
+         CR        R9,R11              PAST END OF ARGV BUFFER?         00110000
+         BNL       TOOMUCH                                              00111000
+THESAME  EQU       *                                                    00112000
+         ST        R8,ARGV(R9)         SAVE ADDRESS                     00113000
+         LA        R1,1                GET A 1                          00114000
+         STC       R1,ARGV(R9)                                          00115000
+         LA        R8,1(R8)            POINT PAST PAREN                 00116000
+NOPE     EQU       *                                                    00117000
+* NOW SKIP THE NEXT BUNCH OF BLANKS                                     00118000
+         LR        R6,R7               LLENGTH TO TRT                   00119000
+         SR        R6,R8               LENGTH TO TRT                    00120000
+         LTR       R6,R6               ALL DONE                         00121000
+         BNH       DONE                YES, GO CLEAN UP                 00122000
+         BCTR      R6,0                -1 FOR EXECUTE                   00123000
+         LR        R1,R8                                                00124000
+         EX        R6,SKIPBLK          SKIP BLANKS                      00125000
+         BZ        DONE                ALL BLANKS, DONE                 00126000
+         LR        R8,R1               NEW POINTER                      00127000
+         LA        R9,4(R9)            POINT AT NEXT ONE                00128000
+         CR        R9,R11              PAST END OF ARGV BUFFER?         00129000
+         BNL       TOOMUCH                PAST END, ALL TOOMUCH.        00130000
+         B         LOOP                LOOP BACK                        00131000
+TOOMUCH  EQU       *                                                    00132000
+         SH        R9,=H'4'                                             00133000
+         LA        R15,4                                                00134000
+DONE     EQU       *                                                    00135000
+         SRA       R9,2                DIVIDE INDEX BY 4                00136000
+         LA        R9,1(R9)            + 1 FOR 0TH ARGUMENT             00137000
+         LR        R1,R9               RETURN ARGC AS FUNCTION VALUE    00138000
+RET      EQU       *                                                    00139000
+         L         R13,4(R13)                                           00140000
+         L         R14,12(R13)                                          00141000
+         L         R0,20(R13)                                           00142000
+         LM        R2,R12,28(R13)                                       00143000
+         BR        R14                                                  00144000
+*                                                                       00145000
+GETBLK   TRT       0(0,R8),BLKTAB                                       00146000
+SKIPBLK  TRT       0(0,R8),CHARTAB                                      00147000
+SAVE     DS        18F                                                  00148000
+BLKTAB   DC        256X'00'            IGNORE ALL CHARACTERS            00149000
+         ORG       BLKTAB+C' '          EXCEPT BLANKS                   00150000
+         DC        X'01'                                                00151000
+         ORG       BLKTAB+C'('          AND PARENS                      00152000
+         DC        X'02'                                                00153000
+         ORG       BLKTAB+C')'                                          00154000
+         DC        X'02'                                                00155000
+         ORG   BLKTAB+C'='             AND EQUAL SIGN                   00156000
+         DC    X'02'                                                    00157000
+         ORG                                                            00158000
+CHARTAB  DC        X'00',255X'FF'      TRAP ALL CHARACTERS              00159000
+         ORG       CHARTAB+C' '        EXCEPT BLANKS AND NULLS          00160000
+         DC        X'00'                                                00161000
+         ORG                                                            00162000
+         LTORG                                                          00163000
+         END       UNIXSCAN                                             00164000

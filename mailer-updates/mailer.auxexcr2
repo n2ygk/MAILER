@@ -1,0 +1,6 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+* R207044    Pass the value of ThisNode to FORWARD/MAILLIST MAILER.
+*            Removed 5/23/91 by JFW.  This should never have been here.
+R207017    Automatically rebuild module/maclib lists before doing
+*          processing.  This guarantees that the current file will
+*          always be used.

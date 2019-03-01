@@ -1,0 +1,12 @@
+./ R 00005000 00006000 $ 5590 590                     11/10/89 11:11:13
+/*  command format:   SENDMAIL   userid                               */00005000
+/*                               userid@node                          */00006000
+./ R 00015000 00016000 $ 15590 590                    11/10/89 11:11:13
+if dest = '?' | dest = ''  then  do          /*                       */00015000
+   'VMFCLEAR'                                /*                       */00016000
+./ R 00023000 00027000 $ 23990 990                    11/10/89 11:11:13
+parse var dest userid '@' node .             /*                       */00025000
+if node <> ''  then  userid = userid 'AT' node                          00026000
+end                                                                     00027000
+./ I 00038000          $ 38500 500                    11/10/89 11:11:13
+'EXEC SENDFILE FORWARD MAILER TO' userid                                00038000

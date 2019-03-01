@@ -1,0 +1,89 @@
+/*-------------------------------------------------------------------*  00001000
+ *    MAILER -- Copyright (c) 1982,1985 Columbia University.         *  00002000
+ *  Program Property of the Trustees of Columbia University in the   *  00003000
+ *  City of New York.                                                *  00004000
+ *-------------------------------------------------------------------*/ 00005000
+/*                                                                      00006000
+ * CMS control block definitions.                                       00007000
+ */                                                                     00008000
+#ifndef _CMSBLOKS                                                       00009000
+#define _CMSBLOKS 1                                                     00010000
+#ifndef _TYPES                                                          00011000
+#include "types.h"                                                      00012000
+#endif _TYPES                                                           00013000
+                                                                        00014000
+struct sfblok {                                                         00015000
+    struct sfblok *sfbpnt;                                              00016000
+    unsigned sfbstart;                                                  00017000
+    char sfbuser[8];                                                    00018000
+    char sfborig[8];                                                    00019000
+    unsigned sfbrecno;                                                  00020000
+    u_short sfbrecsz;                                                   00021000
+    u_short sfbfilid;                                                   00022000
+    u_char sfbflag;                                                     00023000
+#define SFBINUSE 0x80                                                   00024000
+#define SFBRECOK 0x40                                                   00025000
+#define SFBUHOLD 0x20                                                   00026000
+#define SFBDUMP  0x10                                                   00027000
+#define SFBOPEN  0x08                                                   00028000
+#define SFBSHOLD 0x04                                                   00029000
+#define SFBEOF   0x02                                                   00030000
+#define SFBRECER 0x01                                                   00031000
+    u_char sfbtype;                                                     00032000
+    u_short sfbmisc1;                                                   00033000
+    unsigned sfbrecs;                                                   00034000
+    char sfbfname[12];                                                  00035000
+    char sfbftype[12];                                                  00036000
+    char sfbdate[8];                                                    00037000
+    char sfbtime[8];                                                    00038000
+    unsigned sfblast;                                                   00039000
+    u_short sfbcopy;                                                    00040000
+    u_char sfbclas;                                                     00041000
+    u_char sfbflag2;                                                    00042000
+#define SFBHOLD  0x80                                                   00043000
+#define SFBNOHLD 0x40                                                   00044000
+#define SFBFLNMT 0x20                                                   00045000
+#define SFBREQUE 0x20                                                   00046000
+#define SFBRSTRT 0x10                                                   00047000
+#define SFBTICER 0x08                                                   00048000
+#define SFBPURGE 0x04                                                   00049000
+#define SFBFIRST 0x02                                                   00050000
+#define SFBMON   0x01                                                   00051000
+    char sfbdist[8];                                                    00052000
+    char sfbflash[4];                                                   00053000
+    u_char sfbstcpy;                                                    00054000
+    u_char sfbflag3;                                                    00055000
+#define SFBLDBEG 0x80                                                   00056000
+#define SFBLDMID 0x40                                                   00057000
+#define SFBFCB   0x20                                                   00058000
+#define SFBSEEN  0x02                                                   00059000
+#define SFBXFER  0x01                                                   00060000
+    u_char sfbckpmp;                                                    00061000
+    u_char sfbrsvd2;                                                    00062000
+};                                                                      00063000
+                                                                        00064000
+struct fscb {                                                           00065000
+    union {                                                             00066000
+        double aligned;                                                 00067000
+        char fscb_comm[8];                                              00068000
+    } fscb_u;                                                           00069000
+#define fscbcomm fscb_u.fscb_comm                                       00070000
+    char fscbfn[8];                                                     00071000
+    char fscbft[8];                                                     00072000
+    char fscbfm[2];                                                     00073000
+    u_short fscbitno;                                                   00074000
+    char *fscbbuf;                                                      00075000
+    unsigned fscbsize;                                                  00076000
+    char fscbfv;                                                        00077000
+    char fscbflg;                                                       00078000
+#define FSCBITAV 0x40                                                   00079000
+#define FSCBEPL  0x20                                                   00080000
+#define FSCBRCAV 0x01                                                   00081000
+    u_short fscbnoit;                                                   00082000
+    unsigned fscbnord;                                                  00083000
+    unsigned fscbaitn;                                                  00084000
+    unsigned fscbanit;                                                  00085000
+    int fscbwptr;                                                       00086590
+    int fscbrptr;                                                       00087180
+};                                                                      00088000
+#endif _CMSBLOKS                                                        00089000

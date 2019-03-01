@@ -1,0 +1,4 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R207036    Add debug tracing to VALIDATE
+R207019    Don't send BSMTP files into black hole if missing '.'
+R207006    Add SET command

@@ -1,0 +1,6 @@
+* * * * * * * * * * * * * * * AUXEXCR2 * * * * * * * * * * * * * * * *
+R207026    Centralize support for mail and file forwarding in the * FORWARD
+*          files.
+R204004    Support for DISTLIST command
+R204001    MAILGEN should generate filetype MAILER execs also
+R203033    Rebuild SAMPPROF EXEC and SAMPLE MTPLATE during MAILGEN

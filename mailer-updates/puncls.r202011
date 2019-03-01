@@ -1,0 +1,10 @@
+./ I 00080670          $ 81670 1000                   02/14/89 11:21:32
+         EX    R1,FILLIT     Change blanks to underscores
+./ I 00115000          $ 115500 500                   02/14/89 11:21:32
+FILLIT   TR    0(0,R2),BLANKTBL
+./ I 00124800          $ 124830 30                    02/14/89 11:21:32
+         SPACE 1
+BLANKTBL DC    256AL1(*-BLANKTBL)
+         ORG   BLANKTBL+C' '       Back to blank
+         DC    C'_'                Make blank an underscore
+         ORG   ,

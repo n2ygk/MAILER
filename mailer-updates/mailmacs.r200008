@@ -1,0 +1,14 @@
+./ R 00533180          $ 533210 30                    10/04/88 11:46:18
+OLDLDOM  DC    A(0)                Spare (was -> Local-Domain)
+./ R 00545920          $ 545926 6                     10/04/88 11:46:18
+LCLHOST1 DC    A(0)                Local host name #1.
+LCLHOST2 DC    A(0)                Local host name #2.
+LCLHOST3 DC    A(0)                Local host name #3.
+LCLHOST4 DC    A(0)                Local host name #4.
+LCLHOST5 DC    A(0)                Local host name #5.
+LCLHOST6 DC    A(0)                Local host name #6.
+LCLHOST7 DC    A(0)                Local host name #7.
+LCLHOST8 DC    A(0)                Local host name #8.
+LCLHOST9 DC    A(0)                Local host name #9.
+LCLHOST  EQU   LCLHOST1,*-LCLHOST1 The whole array.
+         DS    0D            Just for pretty

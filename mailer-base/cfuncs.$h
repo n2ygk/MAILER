@@ -1,0 +1,20 @@
+/*-------------------------------------------------------------------*  00001000
+ *    MAILER -- Copyright (c) 1982,1985 Columbia University.         *  00002000
+ *  Program Property of the Trustees of Columbia University in the   *  00003000
+ *  City of New York.                                                *  00004000
+ *-------------------------------------------------------------------*/ 00005000
+/*                                                                      00006000
+ * declarations of miscellaneous C functions.                           00007000
+ */                                                                     00008000
+#include <stdlib.h>                                                     00009490
+extern int xcmp();                                                      00010000
+extern int rdcard(), punchc();                                          00011000
+extern int wrterm();                                                    00012000
+extern int cpcmd();                                                     00013000
+extern int svc202();                                                    00014000
+extern int salloc();                                                    00015000
+extern int acall();                                                     00016000
+extern int wtr();                                                       00017000
+extern int ctbluk(), ctbadd();                                          00018990
+extern int fsinit(), fserase(), fsread(), fswrite(), fsclose(),         00019980
+           fspoint();                                                   00020970

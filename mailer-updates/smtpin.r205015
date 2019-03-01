@@ -1,0 +1,56 @@
+./ I 00201000          $ 201500 500                   12/21/89 17:16:15
+    "FILE",  s_oseq , s_mail , s_oseq , s_errr ,                        00201500
+./ I 00453000          $ 453080 80                    12/21/89 17:16:15
+    if (xcmp("FILE ", &s[0], 5) == 0) {                                 00453100
+        if (!(mailblok.mailopts & MOPTFIOK))                            00453200
+            return s_syntax(st, s, l);                                  00453300
+        else {                                                          00453400
+            if (mailblok.dbgflg[0] & TRACE_S_MAIL)                      00451380
+               wrterm("s_mail:  Processing FILE FROM:");                00451570
+            mailblok.mailflg2 |= MFLG2N82;    /* Don't look at 822 */   00453500
+        }
+    } else                                                              00453600
+        mailblok.mailflg2 &= ~MFLG2N82;       /* Look for 822      */   00453700
+                                                                        00453800
+./ R 00952254 00952290 $ 952255 1                     12/21/89 17:16:15
+    if ((mailblok.mailopts & MOPTNO82)  | /* BSMTP-No-RFC822 set      */00952254
+        (mailblok.mailflg2 & MFLG2N82)) { /* FILE FROM: found         */00952254
+                                         /* Don't process 822 headers */00952254
+       if (mailblok.dbgflg[1] & TRACE_PARSE_DATA_HEADER) {              00952255
+          if (mailblok.mailopts & MOPTNO82)                             00952255
+             wrterm("parse_data_header:  BSMTP-No-RFC822 = TRUE");      00952256
+          if (mailblok.mailflg2 & MFLG2N82)                             00952255
+             wrterm("parse_data_header:  FILE FROM: found");            00952256
+          wrterm("parse_data_header:  Building dummy header string");   00952262
+       }
+                                                                        00952257
+       /* Since headers are not scanned, build dummy (null) headers for 00952258
+          scanning */                                                   00952259
+                                                                        00952260
+       if ((mailblok.mailhbuf[0] =                                      00952263
+                    (int)salloc(mailblok.mailhbuf[1] = 21)) <= 0) {     00952264
+          if (mailblok.dbgflg[1] & TRACE_PARSE_DATA_HEADER)             00952265
+             wrterm("parse_data_header:  Storage allocation failure");  00952266
+         return s_nosp(st, s, l);                                       00952267
+       }                                                                00952268
+                                                                        00952269
+       bp = (char *)mailblok.mailhbuf[0];                               00952270
+       bcopy("Dummy: Dummy header", bp, 19);                            00952271
+       bp += 19;                                                        00952272
+       *bp++ = 0x15;                                     /* newline */  00952273
+       *bp = 0x15;                          /* final newline for EOH */ 00952274
+                                                                        00952275
+    } else {                                                            00952276
+                                                                        00952277
+       if ((mailblok.mailhbuf[0] =                                      00952278
+                    (int)salloc(mailblok.mailhbuf[1] = resid)) <= 0) {  00952279
+          if (mailblok.dbgflg[1] & TRACE_PARSE_DATA_HEADER)             00952280
+             wrterm("parse_data_header:  Storage allocation failure");  00952281
+         return s_nosp(st, s, l);                                       00952282
+       }                                                                00952283
+       if (mailblok.dbgflg[1] & TRACE_PARSE_DATA_HEADER)                00952284
+          wrterm("parse_data_header:  Reading headers onto stack");     00952285
+       for (i = 0, bp = (char *)mailblok.mailhbuf[0];                   00952286
+             i < mailblok.mailhrec; i++) {                              00952287
+           int rc;                                                      00952288
+                                                                        00952290

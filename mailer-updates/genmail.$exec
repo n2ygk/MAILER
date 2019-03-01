@@ -1,0 +1,53 @@
+/* ****************************************************************** */00001000
+/*  GENMAIL - Build mailer from TXTLIB files                          */00002000
+/* ****************************************************************** */00003000
+/*                                                                    */00004000
+/*  command format:   GENMAIL  < userid >                             */00005000
+/*                             < userid@node >                        */00006000
+/*                                                                    */00007000
+/*  GENMAIL will build a new MAILER module from the TXTLIB files.     */00008000
+/*  If a userid or userid@node is provided it will then ship the      */00009000
+/*  new mailer files to that userid.                                  */00010000
+/*                                                                    */00011000
+/* ****************************************************************** */00012000
+                                                                        00013000
+address COMMAND                                                         00014000
+parse upper arg dest .                       /*                       */00015000
+if dest = '?'  then  do                      /*                       */00016000
+   'EXEC CLEAR'                              /*                       */00017000
+   do i=1 while sourceline(i) <> ''          /*                       */00018000
+      say sourceline(i)                      /*                       */00019000
+      end                                                               00020000
+   exit                                                                 00021000
+   end                                                                  00022000
+                                             /*                       */00023000
+if dest = ''  then  userid = ''              /*                       */00024000
+else  do                                     /*                       */00025000
+   parse var dest userid '@' node .          /*                       */00026000
+   if node <> ''  then  userid = userid 'AT' node                       00027000
+   end                                                                  00028000
+                                                                        00029000
+trace "Commands"                                                        00030000
+                                                                        00031000
+'GLOBAL TXTLIB MAILLCL MAILGEN CLIB'                                    00032000
+                                                                        00033000
+signal off error                                                        00034000
+'LOAD MAILER MAILPAL MAILLEX MAILLRP MAILDBG( CLEAR'                    00035000
+if rc > 4 then exit rc                                                  00036000
+signal on error                                                         00037000
+'GEN MAILER'                                                            00038000
+'CP CLOSE PRT NAME MAILER' version                                      00039000
+'CP SP PRT CLOSE NOCONT'                                                00040000
+                                                                        00041000
+signal off error                                                        00042000
+address COMMAND 'ESTATEW MAILER MAP A'                                  00043000
+if rc = 0  then  address COMMAND 'ERASE MAILER MAP A'                   00044000
+signal on error                                                         00045000
+'RENAME LOAD MAP A MAILER MAP A'                                        00046000
+                                                                        00047000
+if userid <> ''  then  do                                               00048000
+   'EXEC SENDFILE MAILER  MODULE TO' userid                             00049000
+   'EXEC SENDFILE MAILER  TXTLIB TO' userid                             00050000
+   'EXEC SENDFILE MABNXIT EXEC   TO' userid                             00051000
+   end                                                                  00052000
+error: exit rc                                                          00053000

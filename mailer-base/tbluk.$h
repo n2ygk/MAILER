@@ -1,0 +1,35 @@
+/* C interface to assembler TBLUK routines */                           00001000
+                                                                        00002000
+struct tbtab {               /* a TBLUK table header */                 00003000
+    unsigned tbt_flg;        /* flags */                                00004000
+    unsigned tbt_len;        /* current # of entries in table */        00005000
+    unsigned tbt_max;        /* max # there is room for */              00006000
+    struct tbentry *tbt_adr; /* address of actual table */              00007000
+};                                                                      00008000
+                                                                        00009000
+struct tbentry {             /* a table entry */                        00010000
+    struct tbs *tbe_str;     /* the string */                           00011000
+    unsigned tbe_dsp;        /* dispatch value */                       00012000
+};                                                                      00013000
+                                                                        00014000
+struct tbs {                 /* a string descriptor */                  00015000
+    char tbs_flg;            /* flags */                                00016000
+    u_char tbs_siz;          /* length of string */                     00017000
+    char tbs_str;            /* start of string */                      00018000
+};                                                                      00019000
+                                                                        00020000
+/* flags defined in tbs_flg: */                                         00021000
+#define TBSNOM 0x80          /* return a no match when matched */       00022000
+#define TBSAMB 0x40          /* return an ambig. match when matched */  00023000
+#define TBSRSV1 0x20         /* reserved for future use */              00024000
+#define TBSUSR1 0x10         /* available to the user */                00025000
+#define TBSUSR2 0x08                                                    00026000
+#define TBSUSR3 0x04                                                    00027000
+#define TBSUSR4 0x02                                                    00028000
+#define TBSUSR5 0x01                                                    00029000
+                                                                        00030000
+/* tbluk return codes */                                                00031000
+#define TBMATCH 0                                                       00032000
+#define TBSUBST 4                                                       00033000
+#define TBAMB   8                                                       00034000
+#define TBNOT  12                                                       00035000

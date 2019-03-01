@@ -1,0 +1,4 @@
+./ I 00099490          $ 99590 100                    10/19/88 14:57:50
+         XC    0(TOKSIZ,R9),0(R9)  Zero new TOKEND
+./ I 00130180          $ 130380 200                   10/19/88 14:57:50
+         XC    0(TOKSIZ,R1),0(R1)  Zero new TOKEND

@@ -1,0 +1,44 @@
++--------------------------------------------------------------------+  00001000
+|  MAILER General Commands:                                          |  00002000
+|                                                                    |  00003000
+|  CHECK - Check if another user has mail (not yet implemented).     |  00004000
+|                                                                    |  00005000
+|  FORWARD - Deliver mail to a userid other than the one specified   |  00006000
+|            in the headers.  It is legal to forward mail to more    |  00007000
+|            than 1 address.  If you want to continue to receive     |  00008000
+|            a copy of the mail at your userid, add a forward with   |  00009000
+|            an address of '<*>'.                                    |  00010000
+|                                                                    |  00011000
+|      FORWARD ADD    destaddr                                       |  00012000
+|              DELETE destaddr | ALL                                 |  00013000
+|              LIST                                                  |  00014000
+|                                                                    |  00015000
+|  HELP | ? - Get list of commands.                                  |  00016000
+|                                                                    |  00017000
+|  SHOW <show-options>  - Display assorted counters, etc.            |  00018000
+|                                                                    |  00019000
+|  show-options:                                                     |  00020000
+|                                                                    |  00021000
+|    STATUS                                                          |  00022000
+|     Various Mailer status variables are returned.  These are:      |  00023000
+|     Since: <date time> - time of last Mailer restart.              |  00024000
+|     Msgs in/out: Number of messages (mail) received and sent.      |  00025000
+|     Max Multi:  Maximum number of recipients for a single message. |  00026000
+|     Stack Max:  Percentage Mailer internal storage utilization.    |  00027000
+|                                                                    |  00028000
+|    DOMAINS <domain-name>                                           |  00029000
+|     Statistics on outgoing files to other domain Mailers.          |  00030000
+|                                                                    |  00031000
+|    INCOMING <nodename> <userid>                                    |  00032000
+|     Statistics on files received from other network Mailers.       |  00033000
+|                                                                    |  00034000
+|    OUTGOING <hostname>                                             |  00035000
+|     Statistics on outgoing files to other network Mailers.         |  00036000
+|                                                                    |  00037000
+|    SPECIAL <userid>                                                |  00038000
+|     Statistics on mail to special userids (i.e. SYSTEM).           |  00039000
+|                                                                    |  00040000
+|  SMSG - Used as a prefix to other commands causes the reply to     |  00041000
+|  be sent as a machine-readable SMSG.                               |  00042000
+|                                                                    |  00043000
++--------------------------------------------------------------------+  00044000

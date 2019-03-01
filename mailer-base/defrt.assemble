@@ -1,0 +1,142 @@
+*[1.21] Add EXTWTR (W=userid) to TAG for TSO/E.                         00001000
+*[1.20] Take Jim Owen's changes virtually as is; renamed to DEFRT!      00002000
+*02/01/85 - Get TAGNODE from ROUTD instead of NODE; allows aliases.     00003490
+*01/25/85 - Exit renamed RSCS; this was originally the DEFRT exit.      00004000
+*11/23/83 - Put a real error msg in at FAIL.                            00005000
+*12/14/83 - Add TRUNCATE parm to allow >8 char usernames for VMS.       00006000
+DEFRT    TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - RSCS ROUTING EXIT'  00007000
+*---------------------------------------------------------------------* 00008000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00009000
+*    Program Property of the Trustees of Columbia University in the   * 00010000
+*    City of New York.                                                * 00011000
+*---------------------------------------------------------------------* 00012000
+DEFRT    CSECT ,                                                        00013000
+* DEFRT  -                                                              00014000
+*  This routine punches individual files to RSCS sites that are         00015000
+*  either not running this Mailer or are running a different            00016000
+*  mailer that doesn't know how to handle the same message for          00017000
+*  several recipients as one file.                                      00018000
+*                                                                       00019000
+*  LAST EDIT: 4/19/82 BY ALAN CROSSWELL (AS DEFRT ASSEMBLE)             00020000
+*                                                                       00021000
+* CALLED VIA -                                                          00022000
+*   CALL DEFRT,(MAILBLOK,ACTADR)                                        00023000
+PAB      DSECT ,                                                        00024000
+@MBLOK   DS    F             ADDRESS OF MAILBLOK                        00025000
+@ACT     DS    F             ADDRESS OF ACTADR BLOCK                    00026000
+* REGISTER USAGE -                                                      00027000
+R0  EQU  0 -                                                            00028000
+R1  EQU  1 -                                                            00029000
+R2  EQU  2 -                                                            00030000
+R3  EQU  3 -                                                            00031000
+R4  EQU  4 -                                                            00032000
+R5  EQU  5 -                                                            00033000
+R6  EQU  6 -                                                            00034000
+R7  EQU  7 -                                                            00035000
+R8  EQU  8 -                                                            00036000
+R9  EQU  9 -                                                            00037000
+R10 EQU 10 - ACTADR BASE                                                00038000
+R11 EQU 11 - MAILBLOK BASE                                              00039000
+R12 EQU 12 - PROGRAM BASE                                               00040000
+R13 EQU 13 - SAVE AREA                                                  00041000
+R14 EQU 14 - SUBROUTINE LINKAGE                                         00042000
+R15 EQU 15 - SUBROUTINE LINKAGE                                         00043000
+         BLOCKS ,                                                       00044000
+         MAILBLOK ,                                                     00045000
+         EJECT ,                                                        00046000
+DEFRT    CSECT ,                                                        00047000
+         USING DEFRT,R15      TEMP ADDR                                 00048000
+         B     EYESKIP       SKIP EYE-CATCHER                           00049000
+MYNAME   DC    CL8'DEFRT',CL8'&SYSDATE'                                 00050000
+EYESKIP  DS    0H                                                       00051000
+         STM   R14,R12,12(R13)                                          00052000
+         LR    R12,R15       GET A BETTER BASE                          00053000
+         DROP  R15                                                      00054000
+         USING DEFRT,R12                                                00055000
+         LA    R15,SAVE                                                 00056000
+         ST    R13,4(R15)                                               00057000
+         ST    R15,8(R13)                                               00058000
+         USING PAB,R1        PARMS                                      00059000
+         LR    R13,R15                                                  00060000
+         L     R11,@MBLOK    GET MAILBLOK BASE                          00061000
+         L     R10,@ACT      GET ACTADR BASE                            00062000
+         USING MAILBLOK,R11                                             00063000
+         USING ACTADR,R10                                               00064000
+         L     R1,ACTRT      get routd pointer                          00065000
+         USING ROUTD,R1      address it                                 00066000
+         MVC   TAGNODE,RTROUTE    put NODE NAME in TAG                  00067000
+         MVI   TRUNC,0       clear truncation flag                      00068000
+         MVI   TRUNCD,0      ditto for this flag                        00069000
+         CLC   RTPARM,=CL8'TRUNCATE' OK to truncate userids?            00070000
+         BNE   NOTRUNC       nope                                       00071000
+         MVI   TRUNC,1       set the flag that says so                  00072000
+NOTRUNC  EQU   *             here if not truncating                     00073000
+         DROP  R1            done with ROUTD                            00074000
+         L     R7,ACTMBOX    GET MBOX BLOCK                             00075980
+         USING MBOX,R7                                                  00076380
+         L     R7,MBXLCL         GET USER LIST                          00077070
+         USING NODE,R7     ADDRESS IT                                   00078590
+         L     R7,NODDOWN    GET DOWN POINTER                           00079180
+         USING TOKEND,R7     ADDRESS THE USER NAME TOKEN                00080000
+         SR    R4,R4         GET ZERO                                   00081000
+         L     R4,TOKLEN     LENGTH OF USERID STRING                    00082490
+         C     R4,=F'8'      8 OR LESS?                                 00083000
+         BNH   OK1           it's ok                                    00084000
+         MVI   TRUNCD,1      set flag saying it was done                00085000
+         LA    R4,8          trunc it to 8                              00086000
+OK1      EQU   *                                                        00087000
+         BCTR  R4,0          -1 FOR EX                                  00088000
+         L     R3,TOKPTR               GET STRING                       00089680
+         MVC   TAGUSER,=CL8' ' BLANK THE FIELD                          00090000
+         LA    R2,TAGUSER                                               00091000
+         EX    R4,COPY       MVC TAGUSER(0),4(R3)                       00092000
+         EX    R4,UPIT                                                  00093000
+         MVC   TAGWTR,TAGUSER [1.21]copy it for TSO/E compat.           00094000
+         CLI   TRUNCD,1      did we truncate the name?                  00095000
+         BNE   NOTRUNC1      nope                                       00096000
+         CLI   TRUNC,1       is truncation allowed?                     00097000
+         BNE   FAIL          no,  then fail.                            00098000
+NOTRUNC1 EQU   *             here when name is short enuf               00099000
+         MVC   RSCSID,RSCSNAME  GET RSCS NAME                           00100000
+         LA    R1,TAGCMD     GET THE TAG COMMAND NOW                    00101000
+         LA    R0,LTAGCMD                                               00102000
+         DC    X'83100008'   AND EXECUTE                                00103000
+         L     R15,APUNHDR                                              00104000
+         CALL  (15),((R11))  PUNCH THE HEADER                           00105000
+         LTR   R15,R15       ANY SCREW UPS?                             00106000
+         BNZ   RET                                                      00107000
+         L     R15,APUNTXT                                              00108000
+         CALL  (15),((R11))  PUNCH THE REST                             00109000
+         LTR    R15,R15      ANY ERRORS?                                00110000
+         BNZ   RET           OH WEEELLL....                             00111000
+         L     R15,APUNCLS   ROUTINE TO CLOSE PUNCH                     00112000
+         CALL  (15),((R11))  CALL IT                                    00113000
+         LTR   R15,R15       ERRORS?                                    00114000
+         BNZ   RET                                                      00115000
+         LOG   DRT034,(CA,TAGUSER,CA,TAGNODE)                           00116000
+RET      EQU       *                                                    00117000
+         L         R13,4(R13)                                           00118000
+         L         R14,12(R13)                                          00119000
+         LM        R0,R12,20(R13)                                       00120000
+         BR        R14                                                  00121000
+FAIL     EQU       *                                                    00122000
+         LOG   DRT031,(CA,TAGUSER)                                      00123000
+         LA        R15,8                                                00124000
+         B         RET                                                  00125000
+*                                                                       00126000
+COPY     MVC   0(0,R2),0(R3)                                            00127000
+UPIT     TR    0(0,R2),UPCASE                                           00128000
+         LTORG                                                          00129000
+SAVE     DS        18F                                                  00130000
+TRUNC    DS    X             flag saying trucating username is OK       00131000
+TRUNCD   DS    X             flag indicating truncation was done        00132000
+TAGCMD   DC    C'TAG DEV PUN '                                          00133000
+TAGNODE  DS    CL8                                                      00134000
+         DC    C' '                                                     00135000
+TAGUSER  DS    CL8                                                      00136000
+         DC    C' 50 W='     [1.21]                                     00137000
+TAGWTR   DS    CL8           [1.21]                                     00138000
+         DC    X'15',C'SP PUN CLASS M TO '                              00139000
+RSCSID   DS    CL8                                                      00140000
+LTAGCMD  EQU   *-TAGCMD                                                 00141000
+         END   DEFRT                                                    00142000

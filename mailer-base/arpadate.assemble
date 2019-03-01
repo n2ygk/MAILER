@@ -1,0 +1,123 @@
+*[1.14] New RFC822 form                                                 00001000
+ARPADATE TITLE 'BUILD AN ARPA RFC733 FORMAT DATE STRING'                00002000
+*---------------------------------------------------------------------* 00003000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00004000
+*    Program Property of the Trustees of Columbia University in the   * 00005000
+*    City of New York.                                                * 00006000
+*---------------------------------------------------------------------* 00007000
+ARPADATE CSECT ,                                                        00008000
+* ARPADATE -                                                            00009000
+* Builds a date and time string in a format compatible with             00010000
+* the definition of <date-time> in ARPA RFC733 III.D.                   00011000
+* The day of week and time are culled from a CP QUERY TIME              00012000
+* command.                                                              00013000
+* sample reply: "TIME IS 14:57:25 EST THURSDAY 04/29/82"                00014000
+* This is returned as: "Thu, 29 Apr 82 14:57:25 EST"                    00015000
+*                                                                       00016000
+* ENTRY -                                                               00017000
+*  r1 - address of buffer for result                                    00018000
+*                                                                       00019000
+* EXIT -                                                                00020000
+*  r1 - incremented to point to next character in buffer                00021000
+*                                                                       00022000
+* LAST EDIT: 4/39/82 by ALAN CROSSWELL                                  00023000
+*                                                                       00024000
+*                                                                       00025000
+         SPACE                                                          00026000
+* REGISTER USAGE -                                                      00027000
+R0  EQU  0 -                                                            00028000
+R1  EQU  1 -                                                            00029000
+R2  EQU  2 -                                                            00030000
+R3  EQU  3 -                                                            00031000
+R4  EQU  4 -                                                            00032000
+R5  EQU  5 -                                                            00033000
+R6  EQU  6 -                                                            00034000
+R7  EQU  7 -                                                            00035000
+R8  EQU  8 -                                                            00036000
+R9  EQU  9 -                                                            00037000
+R10 EQU 10 -                                                            00038000
+R11 EQU 11 -                                                            00039000
+R12 EQU 12 - PROGRAM BASE                                               00040000
+R13 EQU 13 - SAVE AREA                                                  00041000
+R14 EQU 14 - SUBROUTINE LINKAGE                                         00042000
+R15 EQU 15 - SUBROUTINE LINKAGE                                         00043000
+         SPACE                                                          00044000
+         PRINT NOGEN                                                    00045000
+         EJECT                                                          00046000
+ARPADATE CSECT ,                                                        00047000
+         USING ARPADATE,R15  TEMPORARY ADDRESSABILITY                   00048000
+         B     EYESKIP       BRANCH OVER EYESKIP                        00049000
+MYNAME   DC    CL8'ARPADATE',CL8'&SYSDATE'                              00050000
+EYESKIP  DS    0H                                                       00051000
+         DROP  R15                                                      00052000
+         STM   R14,R12,12(R13) SAVE CALLER'S REGS                       00053000
+         LR    R12,R15       PERMANENT ADDRESSABILITY                   00054000
+         USING ARPADATE,R12                                             00055000
+         LA    R14,SAVE      MY SAVE AREA                               00056000
+         ST    R13,4(R14)    SAVE CALLER'S PTR                          00057000
+         ST    R14,8(R13)    CHAIN MINE BACK                            00058000
+         LR    R13,R14       SET MY SAVE PTR                            00059000
+         LR    R9,R1         GET A BETTER COPY OF BUFFER PTR            00060000
+         LR    R8,R1         COPY HERE TOO                              00061000
+*--- ASK CP WHAT TIME IT IS ---*                                        00062000
+         LA    R4,=C'QUERY TIME'                                        00063000
+         L     R6,=X'4000000A'   LENGTH + REPLY-IN-BUFFER FLAG          00064000
+         LA    R5,CPTIME     ADDRESS FOR REPLY                          00065000
+         LA    R7,LCPTIME    LENGTH OF THIS BUFFER                      00066000
+         DC    X'83460008'                                              00067000
+*--- MOVE THE DAY IN ---*                                               00068000
+         MVC   0(3,R9),DAY   only first 3 characters are needed         00069000
+         NI    1(R9),X'FF'-C' ' lower case 2nd letter                   00070000
+         NI    2(R9),X'FF'-C' ' lower case 3rd letter                   00071000
+         LA    R9,3(R9)      bump pointer                               00072000
+         LA    R2,DAY+6      end of shortest day name                   00073000
+DAYLOOP  EQU   *                                                        00074000
+         CLI   0(R2),C' '    AT END OF DAY NAME?                        00075000
+         BE    DAYO          OUT OF DAYLOOP                             00076000
+         LA    R2,1(R2)      bump ptr                                   00077000
+         B     DAYLOOP                                                  00078000
+DAYO     EQU   *                                                        00079000
+         MVC   0(2,R9),=C', '   "Thu, "                                 00080000
+         LA    R9,2(R9)      FIX THE PTR                                00081000
+*--- NOW GRAB THE DATE ---*                                             00082000
+         LA    R2,1(R2)      POINT TO 1ST DIGIT OF MONTH                00083000
+         PACK  DWORD,0(2,R2) PACK THE MONTH NUMBER                      00084000
+         MVC   0(2,R9),3(R2) COPY DAY NUMBER                            00085000
+         MVI   2(R9),C' '    "Thu, 29 "                                 00086000
+         CVB   R1,DWORD      GET MONTH OFFSET                           00087000
+         SLL   R1,2          GET INTO A MULTIPLE OF 4                   00088000
+         L     R1,MONTAB(R1) GET MONTH NAME (3 CHARS)                   00089000
+         STCM  R1,B'1111',3(R9) "Thu, 29 Apr "                          00090000
+         MVC   7(2,R9),6(R2) GET YEAR NUMBER                            00091000
+         MVC   9(L'CLOCK+L'ZONE,R9),CLOCK  MOVE IN TIMESTAMP            00092090
+         LA    R9,9+L'CLOCK+L'ZONE(,R9) UPDTE TO END OF STRING          00092180
+         CLI   ZONE,C'+'     FIRST CHARACTER OF ZONE '+'?               00092270
+         BE    EXTZONE       YES, EXTEND ZONE                           00092360
+         CLI   ZONE,C'-'     FIRST CHARACTER OF ZONE '-'?               00092450
+         BNE   EXTZONEE      NEITHER                                    00092540
+EXTZONE  DS    0H                                                       00092630
+         MVC   0(2,R9),=C'00' EXTEND ZONE WITH '00'                     00092720
+         LA    R9,2(,R9)     UPDATE TO END OF STRING                    00092810
+EXTZONEE DS    0H                                                       00092900
+         OI    0(R8),C' '    UPPER CASE 1ST LETTER OF DAY NAME          00094000
+         LR    R1,R9         GET UPDATED STRING POINTER                 00095000
+         SR    R15,R15                                                  00096000
+RET      EQU   *                                                        00097000
+         L     R13,4(R13)              GET CALLER'S SAVE PTR            00098000
+         L     R14,12(R13)             GET R14                          00099000
+         L     R0,20(R13)    RESTORE R0                                 00100000
+         LM    R2,R12,28(R13)          GET R2-R12                       00101000
+         BR    R14                     RETURN                           00102000
+         SPACE ,                                                        00103000
+MONTAB   DS    0F            MONTH NAMES TABLE                          00104000
+         DC C'??? Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec '     00105000
+         LTORG ,                                                        00106000
+SAVE     DS    18F                     SAVE AREA                        00107000
+DWORD    DS    D                                                        00108000
+CPTIME   DC    C'TIME IS'                                               00109000
+CLOCK    DC    C' 14:57:25 '                                            00110290
+ZONE     DC    C'EST'                                                   00110580
+         DC    C' '                                                     00111000
+DAY      DC    C'THURSDAY 04/28/82                           '          00112000
+LCPTIME  EQU   *-CPTIME                                                 00113000
+         END   ARPADATE                                                 00114000

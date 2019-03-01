@@ -1,0 +1,11 @@
+./ R 00193781 00193795 $ 193783 2                     11/21/89 17:39:19
+         IC    R0,0(R3)          get length of domain string            00193783
+         LA    R3,1(,R3)         Bump ptr to start of string
+         CLI   0(R3),C'.'        Start with a '.'?                      00193785
+         BNE   NODOT             ---> No                                00193787
+         LA    R3,1(,R3)         Bump ptr                               00193789
+         S     R0,=F'1'          Decrement count                        00193791
+NODOT    EQU   *                                                        00193793
+* R0 - Length of RSCS domain string                                     00193795
+./ I 00193802          $ 193805 3                     11/21/89 17:39:19
+         S     R0,=F'1'          Decrement for compare with R4          00193805

@@ -1,0 +1,5 @@
+* Exec routines that are part of mailer
+&1 &2 FORWARD  MAILER   &3 &4 &5 &6 &7 &8 &9 &10 &11 &12 &13 &14 &15
+&1 &2 MABNXIT  EXEC     &3 &4 &5 &6 &7 &8 &9 &10 &11 &12 &13 &14 &15
+&1 &2 MAILLIST MAILER   &3 &4 &5 &6 &7 &8 &9 &10 &11 &12 &13 &14 &15
+&1 &2 SAMPPROF EXEC     &3 &4 &5 &6 &7 &8 &9 &10 &11 &12 &13 &14 &15

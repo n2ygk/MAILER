@@ -1,0 +1,146 @@
+BITNET   TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - BITNET EXIT'        00001000
+*---------------------------------------------------------------------* 00002000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00003000
+*    Program Property of the Trustees of Columbia University in the   * 00004000
+*    City of New York.                                                * 00005000
+*---------------------------------------------------------------------* 00006000
+BITNET   CSECT ,                                                        00007000
+* BITNET     -                                                          00008000
+*                                                                       00009000
+* ACCEPTS A PARM LIST ADDRESS IN R1 -                                   00010000
+*        0: ADDR OF MAILBLOK                                            00011000
+*        4: ADDR OF ACTADR BLOCK                                        00012000
+*                                                                       00013000
+* REGISTER USAGE -                                                      00014000
+R0  EQU  0 -                                                            00015000
+R1  EQU  1 -                                                            00016000
+R2  EQU  2 -                                                            00017000
+R3  EQU  3 -                                                            00018000
+R4  EQU  4 -                                                            00019000
+R5  EQU  5 -                                                            00020000
+R6  EQU  6 -                                                            00021000
+R7  EQU  7 -                                                            00022000
+R8  EQU  8 -                                                            00023000
+R9  EQU  9 -                                                            00024000
+R10 EQU 10 -                                                            00025000
+R11 EQU 11 -                                                            00026000
+R12 EQU 12 - PROGRAM BASE                                               00027000
+R13 EQU 13 - SAVE AREA                                                  00028000
+R14 EQU 14 - SUBROUTINE LINKAGE                                         00029000
+R15 EQU 15 - SUBROUTINE LINKAGE                                         00030000
+         BLOCKS ,                                                       00031000
+         MAILBLOK                                                       00032000
+         EJECT                                                          00033000
+BITNET   CSECT ,                                                        00034000
+         USING BITNET,R15                                               00035000
+         B     EYESKIP                                                  00036000
+MYNAME   DC    CL8'BITNET',CL8'&SYSDATE'                                00037000
+EYESKIP  DS    0H                                                       00038000
+         DROP  R15                                                      00039000
+         STM       R14,R12,12(R13)                                      00040000
+         LR    R12,R15                                                  00041000
+         USING BITNET,R12                                               00042000
+         LA        R14,SAVE                                             00043000
+         ST        R13,4(R14)                                           00044000
+         ST        R14,8(R13)                                           00045000
+         LR        R13,R14                                              00046000
+         LR        R10,R1                                               00047000
+         L         R11,0(R10)          GET MAILBLOK                     00048000
+         USING     MAILBLOK,R11                                         00049000
+         L         R9,4(R10)           GET ACTADR                       00050000
+         USING     ACTADR,R9                                            00051000
+         L     R8,ACTRT      ADDRESS OF ROUTD CARD                      00052000
+         USING     ROUTD,R8                                             00053000
+         MVC       TAGNODE,RTROUTE     GET NODE NAME TO TAG             00054000
+         MVC       TAGUSER,RTUSER      GET MAILER NAME TO TAG           00055000
+         MVC   XFERUSER,RSCSNAME   GET NAME OF RSCS SYSTEM              00056000
+         CLC       TAGNODE,CPUSTR      same as my node?          [1.24] 00056200
+         BNE       RMTNODE             no, remote                [1.24] 00056400
+         MVC       XFERUSER,TAGUSER    just send directly        [1.24] 00056600
+RMTNODE  EQU       *                   here if remote node       [1.24] 00056800
+         LA        R1,CPCOM            ADDRESS OF COMMANDS              00057000
+         LA        R0,CPCOML           LENGTH                           00058000
+         DC        X'83100008'         DO IT UP                         00059000
+         LTR       R15,R0              GET RETURN CODE                  00060000
+         BNZ       RET                                                  00061000
+*----------------------------------------------------------------[1.22] 00061020
+*  If the "DELIVER2" parm was supplied,  then punch a            [1.22] 00061040
+*  Deliver-to: header.  This is used with Reg Quinton's          [1.22] 00061060
+*  MLNET gateway.  Most of this code copied out of INTERNET      [1.22] 00061080
+*----------------------------------------------------------------[1.22] 00061100
+         CLC   =CL8'DELIVER2',RTPARM  do they want it?           [1.22] 00061120
+         BNE   NODEL2        No sir                              [1.22] 00061140
+         L     R7,ACTMBOX        LOAD MBOX BASE REGISTER        [1.22]  00061175
+         USING MBOX,R7         PROVIDE ADDRESSABILITY           [1.22]  00061180
+         L     R7,MBXLCL         POINT TO USER LIST             [1.22]  00061190
+         USING NODE,R7         PROVIDE ADDRESSABILITY          [1.22]   00061230
+         L     R7,NODDOWN        LOAD DOWN POINTER               [1.22] 00061240
+         USING TOKEND,R7         ADDRESS THE USER NAME TOKEN     [1.22] 00061260
+         SR    R4,R4             CLEAR A WORK REGISTER           [1.22] 00061280
+         L     R4,TOKLEN         LENGTH OF TOKEN                 [1.22] 00061310
+         CL    R4,=A(L'MLADDR-1) TOO LONG?                       [1.22] 00061320
+         BH    FAIL0             YUP, ABORT                      [1.22] 00061340
+         BCTR  R4,0              LENGTH-1 FOR EXECUTE            [1.22] 00061360
+         L     R3,TOKPTR         LOAD STRING ADDRESS             [1.22] 00061395
+         LA    R2,MLADDR         POINT TO RECEIVING FIELD        [1.22] 00061400
+         MVI   0(R2),C' '        SET UP FOR BUFFER CLEAR         [1.22] 00061420
+         MVC   1(L'MLADDR-1,R2),0(R2)  propogate the blank       [1.22] 00061440
+         EX    R4,COPY           AND COPY OVER THE USER NAME     [1.22] 00061460
+         LA    R2,1(R2,R4)       POINT TO LAST CHARACTER         [1.22] 00061480
+         MVI   0(R2),C'@'        AND MOVE IN THE @               [1.22] 00061500
+         LA    R2,1(R2)          INCREMENT TO HOST AREA          [1.22] 00061520
+         LA    R3,L'MLADDR       LOAD LENGTH OF FIELD            [1.22] 00061540
+         SR    R3,R4             LOAD LENGTH OF FIELD LEFT-1     [1.22] 00061560
+         L     R7,ACTMBOX        LOAD MBOX BASE REGISTER        [1.22]  00061595
+         USING MBOX,R7         AND ESTABLISH                    [1.22]  00061600
+         L     R7,MBXDML         POINT TO HOST LIST             [1.22]  00061610
+         USING NODE,R7         AND ESTABLISH                   [1.22]   00061650
+         L     R7,NODDOWN        LOAD DOWN POINTER               [1.22] 00061660
+         USING TOKEND,R7         ADDRESS OF HOST NAME TOKEN      [1.22] 00061680
+         SR    R4,R4             CLEAR A WORKING REGISTER        [1.22] 00061700
+         L     R4,TOKLEN         LENGTH OF HOST NAME             [1.22] 00061730
+         CR    R4,R3             TOO LONG?                       [1.22] 00061740
+         BH    FAIL0             YUP, ABORT                      [1.22] 00061760
+         BCTR  R4,0              LENGTH-1 FOR EXECUTE            [1.22] 00061780
+         L     R3,TOKPTR         LOAD STRING ADDRESS             [1.22] 00061815
+         EX    R4,COPY           AND COPY IN THE HOST NAME       [1.22] 00061820
+         PUNCHC MDELTO           PUNCH THE DELIVER-TO: LINE      [1.22] 00061840
+         B     NODEL2            around the fail code            [1.22] 00061860
+FAIL0    EQU   *                                                 [1.22] 00061880
+         LOG   BIT036,(CA,EMSG)  NET ADDRESS TOO BIG!            [1.22] 00061900
+         LA    R15,8             SET A BAD RETURN CODE           [1.22] 00061920
+         B     RET               AND RETURN TO CALLER            [1.22] 00061940
+NODEL2   EQU   *             here for no deliver-to              [1.22] 00061960
+         L     R15,APUNHDR   HEADER PUNCHING ROUTINE                    00062000
+         CALL  (15),((11))   PUNCH HEADER                               00063000
+         LTR   R15,R15       CHECK FOR ERRORS                           00064000
+         BNZ   RET                                                      00065000
+         L     R15,APUNTXT   TEXT PUNCHING ROUTINE                      00066000
+         CALL  (15),((11))   PUNCH TEXT                                 00067000
+         LTR   R15,R15                                                  00068000
+         BNZ   RET                                                      00069000
+         L     R15,APUNCLS   PUNCH CLOSER                               00070000
+         CALL  (15),((11))                                              00071000
+         LTR   R15,R15                                                  00072000
+         BNZ   RET                                                      00073000
+         LOG   BIT034,(CA,TAGUSER,CA,TAGNODE)                    [1.24] 00074490
+RET      EQU       *                                                    00075000
+         L         R13,4(R13)                                           00076000
+         L         R14,12(R13)                                          00077000
+         LM        R0,R12,20(R13)                                       00078000
+         BR        R14                                                  00079000
+*                                                                       00080000
+COPY     MVC   0(*-*,R2),0(R3)         COPY USER NAME TOKEN      [1.22] 00080500
+         LTORG                                                          00081000
+SAVE     DS        18F                                                  00082000
+CPCOM    DC        C'TAG DEV PUN '                                      00083000
+TAGNODE  DS        CL8                                                  00084000
+         DC        C' '                                                 00085000
+TAGUSER  DS        CL8                                                  00086000
+         DC        X'15',C'SP PUN CLASS M TO '                   [1.22] 00087490
+XFERUSER DS        CL8                                                  00088000
+CPCOML   EQU       *-CPCOM                                              00089000
+MDELTO   DC    C'Deliver-to: '                                   [1.22] 00089200
+MLADDR   DS    CL68                                              [1.22] 00089400
+EMSG     DC    CL19'Address too long'                            [1.22] 00089600
+         END   BITNET                                                   00090000

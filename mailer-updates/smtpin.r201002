@@ -1,0 +1,66 @@
+./ I 00376000          $ 376020 20                    10/26/88 17:35:20
+                                                                        00376020
+/*                                                                      00376040
+ * check if a domain name matches the local domain                      00376060
+ *  Do the following tests until one succeeds:                          00376080
+ *  1) Compare the domain to MAILNODE.                                  00376100
+ *  2) Compare the domain to MAILNODE concatenated w/ RSCS-Domains.     00376120
+ *  3) See if domain matches a Local-Host (LCLHOST*).                   00376140
+ */                                                                     00376160
+static                                                                  00376180
+check_local(s,l)                                                        00376200
+char *s;                                                                00376220
+int l;                                                                  00376240
+{                                                                       00376260
+    int ri;                                                             00376280
+    struct tbentry *te;                                                 00376300
+                                                                        00376320
+    /* (1) Compare domain to mailnode */                                00376340
+    if (mailnlen == l && xcmp(mailnode,s,l) == 0)                       00376360
+        return 1;                                                       00376380
+                                                                        00376400
+    /* (2) Compare domain concatenated w/RSCS-domains to mailnode */    00376420
+    if (rscsdom[0] != 0) {                                              00376440
+        for (ri= 0; rscsdom[ri] != 0 && ri < MAXRSCSDOM; ri++) {        00376460
+           int rl = rscsdom[ri][0];                                     00376480
+           char *rp = &rscsdom[ri][1];                                  00376500
+           int i;                                                       00376520
+                                                                        00376540
+           if (rl < l && xcmp(rp, &s[i = l-rl], rl) == 0)               00376560
+               if (mailnlen == i && xcmp(s, mailnode, i) == 0)          00376580
+                   return 1;                                            00376600
+        }                                                               00376620
+    }                                                                   00376640
+                                                                        00376660
+    /* (3) See if Local-Domain matches */                               00376680
+    if (lclhost[0] != 0)                                                00376700
+        for (ri = 0; lclhost[ri] != 0 && ri < MAXLCLHOST; ri++)         00376720
+        if (*lclhost[ri] == l && xcmp(&lclhost[ri][1], s, l) == 0)      00376740
+            return 1;                                                   00376760
+                                                                        00376780
+    /* time to give up */                                               00376800
+    return 0;                                                           00376820
+}                                                                       00376840
+./ I 00620000          $ 620040 40                    10/26/88 17:35:20
+    /* Check for routeaddr and if it is us, drop it before any other    00620040
+     * processing occurs.                                            */ 00620080
+                                                                        00620120
+    if (a->mbxrtl != 0) {                                               00620160
+       n = MBOXRTL(a)->noddown;                                         00620200
+       plist.node = &n;                                                 00620240
+       plist.hs = &hs;                                                  00620280
+       plist.hl = &hl;                                                  00620320
+       for (i=0; i < sizeof(hoststring); hoststring[i] = ' ',i++);      00620360
+       hoststringptr = &hoststring[0];                                  00620400
+       plist.hoststringptr = &hoststringptr;                            00620440
+       hostlen = sizeof(hoststring);                                    00620480
+       plist.hostlen = &hostlen;                                        00620520
+       acall(genlist, 0, &plist);                                       00620560
+       if (check_local(hs,hl)) {                                        00620600
+          plist2.delmbox = &a;                                          00620640
+          acall(delroute, 0, &plist2);        /* Remove route addr */   00620680
+          f->fiflg1 |= FIEDIFLG;              /* Remember changed  */   00620720
+       }                                                                00620760
+    }                                                                   00620800
+                                                                        00620840
+./ D 00638100 00638500                                10/26/88 17:35:20

@@ -1,0 +1,4 @@
+./ R 00079570          $ 79575 5                      01/10/90 14:12:46
+                             /*    Used for mail producing exits     */ 00079570
+#define DBGNOOUT          0x80  /* List actions, but don't produce   */
+                                /*     a mail file as output         */

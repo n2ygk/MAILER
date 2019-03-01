@@ -1,0 +1,51 @@
+/* ****************************************************************** */
+/*  MAILTXTS - Drive TXTLIB rebuild process                           */
+/* ****************************************************************** */
+
+address command
+
+txtlibs.0 = 2                                /* TXTLIB list           */
+txtlibs.1 = 'MAILGEN'
+txtlibs.2 = 'MAILER'
+
+loadlist.0 = 2                               /* Loadlist names        */
+loadlist.1 = 'MAILMOD1 MAILCS'
+loadlist.2 = 'MAILMOD2'
+
+exitrc = 0
+
+do i=1 to txtlibs.0
+
+   'ERASE' txtlibs.i 'TXTLIB A'              /* Start from scratch    */
+
+   'MAKEBUF'                                 /* Start a new stack     */
+   onstack = queued()                        /* Remember current count*/
+
+   do j=1 for words(loadlist.i)
+      loadlist = word(loadlist.i,j)
+      'EXEC' loadlist '&STACK'               /* Get loadlist names    */
+      end
+
+   name.0 = queued()-onstack                 /* Number on stack       */
+   do j=1 for name.0                         /* Read into array       */
+      parse upper pull name.j .
+      end
+
+   if name.0 = 0  then  do
+      say 'No members defined for' txtlibs.i 'in' loadlist.i 'EXEC'
+      exitrc = 8
+      iterate
+      end
+
+   say ' '
+   say 'Rebuilding' txtlibs.i 'TXTLIB'
+   'TXTLIB GEN' txtlibs.i name.1
+   if rc > exitrc  then  exitrc = rc
+   do j=2 to name.0
+      'TXTLIB ADD' txtlibs.i name.j
+      if rc > exitrc  then  exitrc = rc
+      end
+
+   end
+
+exit exitrc

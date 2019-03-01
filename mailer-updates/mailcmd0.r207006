@@ -1,0 +1,16 @@
+./ I 00220000          $ 220500 500                   11/26/90 16:08:53
+         T 'SET'                   Set and unset values                 00220500
+./ I 00409000          $ 409070 70                    11/26/90 16:08:53
+         EJECT ,                                                        00409060
+*--------------------------------------------------------------------   00409120
+*                            S E T                                      00409180
+*                                                                       00409240
+*  An authorized user may issue SET commands.  The SET command is       00409300
+*  processed by MAILCMD3.                                               00409360
+*--------------------------------------------------------------------   00409420
+         SPACE 1                                                        00409480
+$SET     DS    0H                                                       00409540
+         BAL   R14,CHKAUTH         Check authority                      00409600
+         B     BOGUS               ---> Not authorized                  00409660
+         CALL  MAILCMD3,((R11),(R9))                                    00409840
+         B     TRYNEXT                                                  00409900

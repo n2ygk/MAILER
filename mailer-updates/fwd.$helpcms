@@ -1,0 +1,154 @@
+.cm ********************************************************************00001000
+.cm ********************************************************************00002000
+.cm ***                                                              ***00003000
+.cm ***           (c) Copyright Princeton University 1990            ***00004000
+.cm ***                                                              ***00005000
+.cm ********************************************************************00006000
+.cm ********************************************************************00007000
+.cs 1 on                                                                00008000
+FWD                                        (A PU written command)       00009000
+                                                                        00010000
+The FWD command is used to establish and change mail and file           00011000
+forwarding for a CMS userid.  Mail may be forwarded independently       00012000
+of any file forwarding that is done.  Different file classes may        00013000
+be forwarded to different userids or all files can be forwarded to      00014000
+only 1 userid.                                                          00015000
+                                                                        00016000
+The command syntax is:                                                  00017000
+.cs 1 off                                                               00018000
+.cs 2 on                                                                00019000
++----------+-----------------------------------------------------------+00020000
+|          |                                                           |00021000
+|   FWD    |    < parameters>  < ( options >                           |00022000
+|          |                                                           |00023000
+|          |                                                           |00024000
+|          | Parameters:                                               |00025000
+|          |                                                           |00026000
+|          |   DELeteall                                               |00027000
+|          |                                                           |00028000
+|          |   DELETEFileforward   NJEaddress                          |00029000
+|          |                                                           |00030000
+|          |   DELFILEforward      NJEaddress                          |00031000
+|          |                                                           |00032000
+|          |   DELETEMailforward   address                             |00033000
+|          |                                                           |00034000
+|          |   DELMailforward      address                             |00035000
+|          |                                                           |00036000
+|          |   FILEforward         NJEaddress   classes   ANYTIME      |00037000
+|          |                                              LOGGEDOFF    |00038000
+|          |                                                           |00039000
+|          |   LIst                                                    |00040000
+|          |                                                           |00041000
+|          |   MAILforward         address                             |00042000
+|          |                                                           |00043000
+|          |                                                           |00044000
+|          | Options:                                                  |00045000
+|          |                                                           |00046000
+|          |   FOR userid                                              |00047000
+|          |                                                           |00048000
+|          |   FORCE                                                   |00049000
+|          |                                                           |00050000
+|          |   MAILERid  userid                                        |00051000
+|          |                                                           |00052000
+|          |   TRACE                                                   |00053000
+|          |                                                           |00054000
+|          |                                                           |00055000
++----------+-----------------------------------------------------------+00056000
+.cs 2 off                                                               00057000
+.cs 3 on                                                                00058000
+Parameters:                                                             00059000
+                                                                        00060000
+DELeteall                                                               00061000
+                                                                        00062000
+    DeleteAll will delete all forwardings (both mail and files)         00063000
+                                                                        00064000
+DELETEFileforward   NJEaddress                                          00065000
+DELFILEforward      NJEaddress                                          00066000
+                                                                        00067000
+    DeleteFileForward will stop the file forwarding being done to userid00068000
+    'NJEaddress'.  See "Address Formats" below for a description of how 00069000
+    to code an NJEaddress.                                              00070000
+                                                                        00071000
+    DelFileForward is a synonym for DeleteFileForward.                  00072000
+                                                                        00073000
+DELETEMailforward   address                                             00074000
+DELMailforward      address                                             00075000
+                                                                        00076000
+    DeleteMailForward will stop the mail forwarding being done to userid00077000
+    'address' (a valid domain or NJE address).  If mail forwarding is be00078000
+    done to more than 1 destination, then only the forwarding to 'addres00079000
+    will be stopped.  If this is the only address to which mail is being00080000
+    forwarded, then all mail (and file) forwarding will be stopped.     00081000
+                                                                        00082000
+    DelMailForward is a synonym for DeleteMailForward.                  00083000
+                                                                        00084000
+FILEforward         NJEaddress   classes   ANYTIME                      00085000
+                                           LOGGEDOFF                    00086000
+                                                                        00087000
+    FileForward will start forwarding files to the userid in 'NJEaddress00088000
+    The only files that will be forwarded to this id are those found in 00089000
+    the RDR in spool classes 'classes'.  A 'classes' value of '*' indica00090000
+    all classes are to be forwarded.  A check is made so that no class  00091000
+    will be forwarded to more than 1 NJE destination.                   00092000
+                                                                        00093000
+    'ANYTIME' and 'LOGGEDOFF' indicate when files may be extracted from 00094000
+    the user's RDR.  'LOGGEDOFF' indicates that files may be extracted  00095000
+    only when the user is not logged on.  'ANYTIME' indicates that file 00096000
+    may be extracted at any time.                                       00097000
+                                                                        00098000
+LIst                                                                    00099000
+                                                                        00100000
+    List provides a listing of the current forwarding options in effect.00101000
+                                                                        00102000
+MAILforward         address                                             00103000
+                                                                        00104000
+    MailForward will start forwarding mail to the userid in 'address'   00105000
+    (a valid domain or NJE address).  Mail files may be forwarded to    00106000
+    multiple destinations.  Once a forwarding address is established    00107000
+    mail delivery to the userid being forwarded stops.  The special     00108000
+    address '<*>' will cause a copy of the mail file to be delivered    00109000
+    to the destination userid as if forwarding was not being done       00110000
+    (this is in addition to any other userids receiving the forwarded   00111000
+    mail).                                                              00112000
+                                                                        00113000
+                                                                        00114000
+Options:                                                                00115000
+                                                                        00116000
+FOR userid                                                              00117000
+                                                                        00118000
+    Make the forwarding changes to the specified userid.  Normally FWD  00119000
+    makes changes to the userid of the user.  This option can only be   00120000
+    used by authorized users.                                           00121000
+                                                                        00122000
+FORCE                                                                   00123000
+                                                                        00124000
+    When using the FOR option, FWD verifies that the userid exists.  It 00125000
+    is occasionally necessary to set up forwards for ids that do not    00126000
+    exist.  FORCE tells FWD to allow forwardings to be created for ids  00127000
+    that don't exist.                                                   00128000
+                                                                        00129000
+MAILERid  userid                                                        00130000
+                                                                        00131000
+    MailerId supplies the userid of an alternate mailer (on the local   00132000
+    system). This option is primarily meant for testing changes in the  00133000
+    forwarding code.                                                    00134000
+                                                                        00135000
+TRACE                                                                   00136000
+                                                                        00137000
+    Trace the operation of FWD.  This option is for debugging.          00138000
+                                                                        00139000
+                                                                        00140000
+Address Formats:                                                        00141000
+                                                                        00142000
+The FWD command works with addresses in two formats, NJE and RFC822.  An00143000
+NJE address corresponds to a destination (a machine id and a userid) on 00144000
+the RSCS network.  This address could be within Princeton or on BITNET. 00145000
+An NJE address must be coded wherever 'NJEaddress' is specified in the  00146000
+command description.  The format for an NJE address is either 'userid'  00147000
+or 'userid@node'.                                                       00148000
+                                                                        00149000
+An RFC822 address is coded as 'userid@host.domain'.  It is normally used00150000
+to specify an internet destination.  An RFC822 address or an NJE address00151000
+may be coded wherever 'address' is specified in the command description.00152000
+                                                                        00153000
+.cs 3 off                                                               00154000

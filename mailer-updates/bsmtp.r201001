@@ -1,0 +1,31 @@
+./ R 00234300 00234720 $ 234310 10                    10/25/88 14:28:31
+*---------------------------------------------------------------------- 00234310
+*  The '%' kludge is handled as follows:                                00234320
+*---------------------------------------------------------------------- 00234330
+*                                                                       00234340
+*  The last '@' in the address will be replaced with a '%' and the      00234350
+*  new domain (supplied as the value of the parm) is placed behind      00234360
+*  the string created by GENMBOX.                                       00234370
+*                                                                       00234380
+         L     R5,PARMSTR         get ptr back from above        [1.24] 00234390
+         L     R1,PARMLEN         and length of it               [1.24] 00234400
+         LA    R0,1(R1,R2)        where end of string would be   [1.24] 00234410
+         C     R0,=A(RCPTTO+L'RCPTTO)  compare to end of buffer         00234420
+         BNL   OVERFLOW           not enough room                [1.24] 00234430
+         BCTR  R2,0               Back up over '>'                      00234440
+         LR    R15,R2             Copy pointer                          00234450
+KLUDGE01 EQU   *                                                        00234460
+         BCTR  R15,0              Backup 1 character                    00234470
+         C     R15,=A(RCPTTO)     At start of string                    00234480
+         BE    KLUDGE99           ---> Yes, all done                    00234490
+         CLI   0(R15),C'@'        This last '@'?                        00234500
+         BNE   KLUDGE01           ---> No                               00234510
+         MVI   0(R15),C'%'        Replace with '%'                      00234520
+KLUDGE99 EQU   *                                                        00234530
+         BCTR  R1,0               -1 for executed move           [1.24] 00234540
+         EX    R1,MOVER2          MVC 0(0,R2),0(R5)              [1.24] 00234550
+         LA    R2,1(R1,R2)        update the pointer             [1.24] 00234560
+         MVI   0(R2),C'>'         Put closing '>' back in               00234570
+         LA    R2,1(,R2)          Update the pointer                    00234580
+*---------------------------------------------------------------------- 00234590
+         SPACE 1                                                        00234600

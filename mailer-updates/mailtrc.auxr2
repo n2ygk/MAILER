@@ -1,0 +1,4 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R207021    Don't update trace table if table not defined
+R205023    More tracing controls.  This adds keywords for:
+R205022    Dump trace table to console for some exit conditions

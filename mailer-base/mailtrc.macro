@@ -1,0 +1,167 @@
+         MACRO                                                          MAI00010
+&NAME    MAILTRC &TYPE,&ARG1,&ARG2                                      MAI00020
+.********************************************************************** MAI00030
+.*                                                                      MAI00040
+.*       Generate a trace table entry for the mailer                    MAI00050
+.*       Also generates code to initialize trace table pointers         MAI00060
+.*                                                                      MAI00070
+.*       Uses registers 14 and 15                                       MAI00080
+.*                                                                      MAI00090
+.*       The following TYPE codes are recognized:                       MAI00100
+.*                                                                      MAI00110
+.*             CALL     - Call of a routine to be done immediately      MAI00120
+.*                        following this trace entry                    MAI00130
+.*             CREATE   - Creation of some control block or other       MAI00140
+.*                        entity                                        MAI00150
+.*             ENTER    - Record entry into a routine                   MAI00160
+.*             EXIT     - Record exit from a routine                    MAI00170
+.*             INIT     - Initialize trace table                        MAI00180
+.*             RETURN   - Return from a routine done immediately        MAI00190
+.*                        preceeding this trace entry                   MAI00200
+.*                                                                      MAI00210
+.*       Use of any other TYPE values will cause generation of a        MAI00220
+.*       default trace table entry containing the type code and         MAI00230
+.*       address at which the trace request was coded.  This is         MAI00240
+.*       done to allow easy creation of state tracing info.             MAI00250
+.*                                                                      MAI00260
+.********************************************************************** MAI00270
+.*                                                                      MAI00280
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   MAI00290
+.*       Code common to all entry types                                 MAI00300
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   MAI00310
+.*                                                                      MAI00320
+$&SYSNDX.A EQU *                   Label for trace entry address        MAI00330
+         AIF   ('&TYPE' EQ 'INIT').INIT                                 MAI00340
+.*                                                                      MAI00350
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   MAI00360
+.*       Code common to remaining entry types                           MAI00370
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   MAI00380
+.*                                                                      MAI00390
+         L     R14,TRTBLCUR        Get current entry pointer            MAI00400
+         A     R14,=A(TRCENTL)     Bump to next entry                   MAI00410
+         C     R14,TRTBLEND        Past end?                            MAI00420
+         BNH   $&SYSNDX.B          ---> No                              MAI00430
+         L     R14,TRTBLST         Back to start                        MAI00440
+$&SYSNDX.B EQU *                                                        MAI00450
+         ST    R14,TRTBLCUR        Update current pointer               MAI00460
+         USING TRCENT,R14                                               MAI00470
+         MVC   TRCTYPE,=CL8'&TYPE'      Move in type code               MAI00480
+         MVC   TRCROUTN,=CL8'&SYSECT'   Move in CSECT name              MAI00490
+         MVC   TRCADDR,=A($&SYSNDX.A)   Move in trace macro address     MAI00500
+         XC    TRCDATA,TRCDATA          Clear rest of entry             MAI00510
+.*                                                                      MAI00520
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   MAI00530
+.*       End of common code                                             MAI00540
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   MAI00550
+.*                                                                      MAI00560
+         AIF   ('&TYPE' EQ 'CALL').CALL                                 MAI00570
+         AIF   ('&TYPE' EQ 'CREATE').CREATE                             MAI00580
+         AIF   ('&TYPE' EQ 'ENTER').ENTER                               MAI00590
+         AIF   ('&TYPE' EQ 'EXIT').EXIT                                 MAI00600
+         AIF   ('&TYPE' EQ 'RETURN').RETURN                             MAI00610
+         MNOTE 4,'TYPE value of &TYPE not recognized'                   MAI00620
+         MNOTE ,'Default entry type generated'                          MAI00630
+         MEXIT                                                          MAI00640
+.*                                                                      MAI00650
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   MAI00660
+.*       Generate code for CALL trace                                   MAI00670
+.*                                                                      MAI00680
+.*       &ARG1 = Name of routine being called                           MAI00690
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   MAI00700
+.*                                                                      MAI00710
+.CALL    ANOP                                                           MAI00720
+.*                                                                      MAI00730
+         MVC   TRCDATA(8),=CL8'&ARG1'   Move in entity type             MAI00740
+         DROP  R14                                                      MAI00750
+         MEXIT                                                          MAI00760
+.*                                                                      MAI00770
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   MAI00780
+.*       Generate code for CREATE trace table entry                     MAI00790
+.*                                                                      MAI00800
+.*       &ARG1 = Created entity name (i.e. NODE, TOK, etc)              MAI00810
+.*       &ARG2 = Created entity address (either ADCON or Register)      MAI00820
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   MAI00830
+.*                                                                      MAI00840
+.CREATE  ANOP                                                           MAI00850
+.*                                                                      MAI00860
+         MVC   TRCDATA(8),=CL8'&ARG1'   Move in entity type             MAI00870
+         AIF   ('&ARG2'(1,1) NE '(').CREA010                            MAI00880
+         ST    &ARG2,TRCDATA+8          Save entity address             MAI00890
+         AGO   .CREA020                                                 MAI00900
+.CREA010 ANOP                                                           MAI00910
+         MVC   TRCDATA+8(4),=A(&ARG2)   Save entity address             MAI00920
+.CREA020 ANOP                                                           MAI00930
+         DROP  R14                                                      MAI00940
+         MEXIT                                                          MAI00950
+.*                                                                      MAI00960
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   MAI00970
+.*       Generate code to initialize trace table pointers               MAI00980
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   MAI00990
+.*                                                                      MAI01000
+.INIT    ANOP                                                           MAI01010
+.*                                                                      MAI01020
+         LM    R14,R15,STACK       Pick up stack pointers               MAI01030
+         L     R0,=A(1024*TRCENTL) Length for 1024 entres               MAI01040
+         CR    R0,R15              Will 1K worth of entries fit?        MAI01050
+         BNP   $&SYSNDX.B          ---> Yes                             MAI01060
+         L     R0,=A(100*TRCENTL)  Length for 100 entres                MAI01070
+$&SYSNDX.B EQU *                                                        MAI01080
+         ST    R14,TRTBLST         Set trace table start address        MAI01090
+         ST    R14,TRTBLCUR        Set trace table current address      MAI01100
+         USING TRCENT,R14                                               MAI01110
+         MVC   TRCTYPE,=CL8'INIT'       Move in type code               MAI01120
+         MVC   TRCROUTN,=CL8'&SYSECT'   Move in CSECT name              MAI01130
+         MVC   TRCADDR,=A($&SYSNDX.A)   Move in trace macro address     MAI01140
+         XC    TRCDATA,TRCDATA          Clear rest of entry             MAI01150
+         DROP  R14                                                      MAI01160
+         SR    R15,R0              Reduce stack size                    MAI01170
+         AR    R14,R0              Increment stack pointer              MAI01180
+         STM   R14,R15,STACK       Update stack pointers                MAI01190
+         S     R14,=A(TRCENTL)     Back up by 1 entry                   MAI01200
+         ST    R14,TRTBLEND        Remember end of trace address        MAI01210
+         MEXIT                                                          MAI01220
+.*                                                                      MAI01230
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   MAI01240
+.*       Generate code for ENTER trace                                  MAI01250
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   MAI01260
+.*                                                                      MAI01270
+.ENTER   ANOP                                                           MAI01280
+.*                                                                      MAI01290
+         DROP  R14                                                      MAI01300
+         MEXIT                                                          MAI01310
+.*                                                                      MAI01320
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   MAI01330
+.*       Generate code for EXIT trace                                   MAI01340
+.*       &ARG1 = Return code (Decimal value or Register)                MAI01350
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   MAI01360
+.*                                                                      MAI01370
+.EXIT    ANOP                                                           MAI01380
+.*                                                                      MAI01390
+         AIF   ('&ARG1' EQ '').EXIT020                                  MAI01400
+         AIF   ('&ARG1'(1,1) NE '(').EXIT010                            MAI01410
+         ST    &ARG1,TRCDATA            Save return code                MAI01420
+         AGO   .EXIT020                                                 MAI01430
+.EXIT010 ANOP                                                           MAI01440
+         MVC   TRCDATA(4),=A(&ARG1)     Save return code                MAI01450
+.EXIT020 ANOP                                                           MAI01460
+         DROP  R14                                                      MAI01470
+         MEXIT                                                          MAI01480
+.*                                                                      MAI01490
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   MAI01500
+.*       Generate code for RETURN trace                                 MAI01510
+.*       &ARG1 = Return code (Register)                                 MAI01520
+.*       &ARG2 = Return code (Register)                                 MAI01530
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   MAI01540
+.*                                                                      MAI01550
+.RETURN  ANOP                                                           MAI01560
+.*                                                                      MAI01570
+         MVC   TRCDATA(8),=CL8'&ARG1'   Move in routine name            MAI01580
+         AIF   ('&ARG2'(1,1) NE '(').RETU010                            MAI01590
+         ST    &ARG2,TRCDATA+8          Save return code                MAI01600
+         AGO   .RETU020                                                 MAI01610
+.RETU010 ANOP                                                           MAI01620
+         MNOTE 8,'Return code value must be in register'                MAI01630
+.RETU020 ANOP                                                           MAI01640
+         DROP  R14                                                      MAI01650
+.*                                                                      MAI01660
+         MEND                                                           MAI01670

@@ -1,0 +1,157 @@
+./ I 00001580          $ 1600 20                      06/19/89 09:41:42
+         MACRO                                                          00001600
+&NAME    DBGMSG &TEXT,&SUB=                                             00001620
+         LCLC  &N                                                       00001640
+&N       SETC  '&SYSNDX'(1,4)                                           00001660
+         PUSH  USING                                                    00001680
+&NAME    STM   R0,R15,SAVEAREA                                          00001700
+         L     R1,=V(MAILBLOK)                                          00001720
+         USING MAILBLOK,R1                                              00001740
+         TM    MAILOPTS,MOPTTBD   Is debugging wanted?                  00001760
+         BZ    DBG&N.N            No  : skip                            00001780
+         LINEDIT TEXT=&TEXT,SUB=&SUB,RENT=NO                            00001800
+DBG&N.N  LM    R0,R15,SAVEAREA                                          00001820
+         POP   USING                                                    00001840
+         MEND                                                           00001860
+./ R 00031000          $ 31290 290                    06/19/89 09:41:42
+*        IN R0 - Address of matching entry if R15=RETMATCH or RETSUBST  00031290
+*              - Address of failing entry if R15=RETAMB or RETNOT       00031580
+./ I 00049000          $ 49300 300                    06/19/89 09:41:42
+         MAILBLOK                                                       00049300
+         EJECT                                                          00049600
+./ R 00082000 00083000 $ 82590 590                    06/19/89 09:41:42
+R3  EQU  3 - Lower bound of current table range.                        00082590
+R4  EQU  4 - Upper bound of current table range.                        00083180
+./ R 00087000          $ 87490 490                    06/19/89 09:41:42
+R8  EQU  8 - Current table entry pointer                                00087490
+./ R 00110000          $ 110490 490                   06/19/89 09:41:42
+         L     R3,TB$ADR           Set lower-bound to first entry.      00110490
+./ R 00119000          $ 119490 490                   06/19/89 09:41:42
+         LR    R0,R3               Pass out table start address.        00119490
+./ I 00123000          $ 123500 500                   06/19/89 09:41:42
+         BCTR  R4,0                Back it down to last entry.          00123500
+./ R 00125000          $ 125490 490                   06/19/89 09:41:42
+         AR    R4,R3               Get address of end of table.         00125490
+./ I 00128000          $ 128200 200                   06/19/89 09:41:42
+         LA    R0,1(,TL)                                                00128200
+         DBGMSG 'TBLUK: Key is ''....................''',              X00128400
+               SUB=(CHARA,((R11),(R0)))                                 00128600
+./ R 00133000          $ 133090 90                    06/19/89 09:41:42
+         LR    R0,R4               Get                                  00133090
+         SR    R0,R3                 the                                00133180
+         SRDA  R0,32                    center                          00133270
+         D     R0,=A(TBE$LEN)              table                        00133360
+         SRA   R1,1                           entry                     00133450
+         M     R0,=A(TBE$LEN)                    address                00133540
+         LA    R8,0(R3,R1)                          in R8.              00133630
+         DBGMSG 'TBLUK: Low= ......, High= ......, Center= ......',    X00133720
+               SUB=(HEX,(R3),HEX,(R4),HEX,(R8))                         00133810
+./ I 00141000          $ 141200 200                   06/19/89 09:41:42
+         LA    R0,1(,BL)                                                00141200
+         DBGMSG 'TBLUK: Target is ''....................''',           X00141400
+               SUB=(CHARA,((R14),(R0)))                                 00141600
+./ R 00143000 00155000 $ 143890 890                   06/19/89 09:41:42
+         BNH   BLONGER             TL <= BL : Can match, so check 'em.  00143890
+*                                  Can't match; need to switch ranges.  00144780
+         DBGMSG 'TBLUK: Target is too long, match fails.'               00145670
+         EX    BL,COMPARE          Compare the strings.                 00146560
+         BL    TRYLOW              TEST <  BASE : Try the lower range.  00147450
+         BNL   TRYHIGH             TEST >= BASE : Try the higher range. 00148340
+         DC    H'0'                Can't happen.                        00149230
+         SPACE 1                                                        00150120
+BLONGER  DS    0H                                                       00151010
+         EX    TL,COMPARE          Compare the strings.                 00151900
+         BL    TRYLOW              TEST < BASE : Try the lower range.   00152790
+         BH    TRYHIGH             TEST > BASE : Try the higher range.  00153680
+*                                  TEST = BASE : Possible match.        00154570
+./ R 00157000 00161000 $ 157490 490                   06/19/89 09:41:42
+         BE    EXACT               Yes : We have a match.               00157490
+         SPACE 1                                                        00157980
+         DBGMSG 'TBLUK: Key and Target match, possibly ambiguously.'    00158470
+         LR    R0,R8               Save match address for later.        00158960
+AMBLP1   DS    0H                                                       00159450
+         S     R8,=A(TBE$LEN)      Try the one below this first.        00159940
+         CR    R8,R3               Unless it's too low,                 00160430
+         BL    AMBLP1X                in which case we skip out.        00160920
+./ D 00168000 00169000                                06/19/89 09:41:42
+./ R 00171000 00208000 $ 171590 590                   06/19/89 09:41:42
+         BNE   AMBLP1X             ^= : Try next one up.                00171590
+         CR    TL,BL               Compare lengths.                     00172180
+         BL    AMBLP1              Test short : Keep going back.        00172770
+         B     EXACT               This is an exact match.              00173360
+AMBLP1X  DS    0H                                                       00173950
+         A     R8,=A(TBE$LEN)      Go forward to last matching entry.   00174540
+         CR    R0,R8               Same as the one we matched?          00175130
+         BNE   AMBIG               No  : We've got an ambiguous match.  00175720
+         SPACE 1                                                        00176310
+         A     R8,=A(TBE$LEN)      Try the one above the match.         00176900
+         CR    R8,R4               Unless it's too high,                00177490
+         BH    NOTAMB                 in which case we're ok.           00178080
+         L     R7,TBE$STR          Get the base string address.         00178670
+         SR    BL,BL               Get the base                         00179260
+         IC    BL,TBS$SIZ             string length                     00179850
+         BCTR  BL,0                      -1 for EXecute.                00180440
+         CR    TL,BL               Is the test longer than this base?   00181030
+         BH    NOTAMB              Yes : Then it can't match.           00181620
+         EX    BL,COPY2            Copy and upcase                      00182210
+         EX    BL,TRANS2              it for comparison.                00182800
+         EX    TL,COMPARE          Compare test to base.                00183390
+         BNE   NOTAMB              ^= : We've got a good match.         00183980
+         LR    R8,R0               Return the match address to caller.  00184570
+         B     AMBIG               We've got an ambiguous match.        00185160
+NOTAMB   DS    0H                                                       00185750
+         LR    R8,R0               Restore match pointer.               00186340
+         DBGMSG 'TBLUK: Key matches substring of Target, returning addrX00186930
+               =......',SUB=(HEX,(R8))                                  00187520
+         LA    R15,RETSUBST        RC = Matched Substring               00188110
+         B     FOUND                                                    00188700
+EXACT    DS    0H                                                       00189290
+         DBGMSG 'TBLUK: Key and Target match exactly, returning addr=..X00189880
+               ....',SUB=(HEX,(R8))                                     00190470
+         LA    R15,RETMATCH        RC = Exact Match                     00191060
+FOUND    DS    0H                                                       00191650
+         TM    TBS$FLG,TB#NOM      Can this one be a match?             00192240
+         BO    NOTFOUND            No  : Simulate "Not Found".          00192830
+         TM    TBS$FLG,TB#AMB      Should we report "Ambiguous Match"?  00193420
+         BO    AMBIG               Yes : Do it.                         00194010
+         LR    R0,R8               Return entry address to caller.      00194600
+         L     R1,TBE$DSP          Return the Dispatch Value            00195190
+         B     RET                    to our caller.                    00195780
+         SPACE ,                                                        00196370
+NOTFOUND DS    0H                                                       00196960
+         DBGMSG 'TBLUK: No match, returning addr=.......',             X00197550
+               SUB=(HEX,(R8))                                           00198140
+         LA    R15,RETNOT          RC = Not Found.                      00198730
+         LR    R0,R8               Entry = last lower value.            00199320
+         SR    R1,R1               No dispatch value.                   00199910
+         B     RET                                                      00200500
+         SPACE ,                                                        00201090
+AMBIG    DS    0H                                                       00201680
+         DBGMSG 'TBLUK: Match is ambiguous, returning addr=......',    X00202270
+               SUB=(HEX,(R8))                                           00202860
+         LA    R15,RETAMB          RC = Ambiguous Match.                00203450
+         LR    R0,R8               Address of lowest matching entry.    00204040
+         SR    R1,R1               No dispatch value                    00204630
+         B     RET                                                      00205220
+./ R 00210000 00217000 $ 210390 390                   06/19/89 09:41:42
+TRYLOW   DS    0H                                                       00210390
+         DBGMSG 'TBLUK: Match fails, target is too high. Switching downX00210780
+               .'                                                       00211170
+         LR    R4,R8               Set upper bound to                   00211560
+         S     R4,=A(TBE$LEN)         current center - 1.               00211950
+         CR    R3,R4               Lower <= upper?                      00212340
+         BNH   SEARCH              Yes : Check lower range.             00212730
+         LR    R8,R3               Entry that was higher than key.      00213120
+         B     NOTFOUND            Return "NOT FOUND".                  00213510
+         SPACE ,                                                        00213900
+TRYHIGH  DS    0H                                                       00214290
+         DBGMSG 'TBLUK: Match fails, target is too low. Switching up.'  00214680
+         LR    R3,R8               Set lower bound to                   00215070
+         A     R3,=A(TBE$LEN)         current center + 1.               00215460
+         CR    R3,R4               Lower <= upper?                      00215850
+         BNH   SEARCH              Yes : Check higher range.            00216240
+         LR    R8,R3               Entry that was higher than key.      00216630
+         B     NOTFOUND            Return "NOT FOUND".                  00217020
+         SPACE ,                                                        00217410
+./ I 00230000          $ 230500 500                   06/19/89 09:41:42
+SAVEAREA DS    16F                                                      00230500

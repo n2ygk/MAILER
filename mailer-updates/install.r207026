@@ -1,0 +1,348 @@
+./ R 00062060          $ 62350 290                    01/16/91 11:55:35
+.ce Copyright (C) 1989, 1991 Princeton University                       00062350
+./ R 00078510          $ 78590 80                     01/16/91 11:55:35
+6.1.^^Create the required userids!&c0601                                00078590
+./ D 00081930 00082200                                01/16/91 11:55:35
+./ R 00082580          $ 82620 40                     01/16/91 11:55:35
+6.12.^Modify SAMPPROF!&c0612                                            00082620
+./ R 00083060          $ 83080 20                     01/16/91 11:55:35
+6.12.1^^Extract the Mailer DVM PROFILE EXEC!&c061201                    00083080
+.br                                                                     00083100
+6.12.2^^Extract the Mailer driver exec!&c061202                         00083120
+.br                                                                     00083140
+6.12.2.1^^Modify the 'errids' value!&c06120201                          00083160
+./ R 00083530 00083910 $ 83540 10                     01/16/91 11:55:35
+6.12.2.2^^Modify the 'smartnodes' value!&c06120202                      00083540
+.br                                                                     00083550
+6.12.3^^Extract the file scavenger PROFILE EXEC!&c061203                00083560
+.in -.6i                                                                00083570
+.br                                                                     00083580
+6.13.^Modify the FORWARDX EXEC (optional)!&c0613                        00083590
+.br                                                                     00083600
+.in +.6i                                                                00083610
+6.13.1^^Remove "configuration not done" message!&c061301                00083620
+.br                                                                     00083630
+6.13.2^^Set the spooled console destination!&c061302                    00083640
+.br                                                                     00083650
+6.13.3^^Change the mailer userid!&c061303                               00083660
+.br                                                                     00083670
+6.13.4^^Set the MAILER 191 disk link address!&c061304                   00083680
+.br                                                                     00083690
+6.13.5^^Change the server exclusion list!&c061305                       00083700
+.br                                                                     00083710
+6.13.6^^Change the source exclusion list!&c061306                       00083720
+.br                                                                     00083730
+6.13.7^^Change for Single System Image sites!&c061307                   00083740
+.in -.6i                                                                00083750
+.br                                                                     00083760
+.us \6.14.^Copy files to \MAILER\ DVM 193 disk!&c0614                   00083770
+./ R 00084300          $ 84310 10                     01/16/91 11:55:35
+6.15.^Copy files to the mailer DVM's 191 disk!&c0615                    00084310
+.br                                                                     00084320
+6.16.^Copy files to the MAILFWD 191 disk (optional)!&c0616              00084330
+./ I 00108990          $ 109020 30                    01/16/91 11:55:35
+.sp                                                                     00109020
+Appendix^G.^Standard File Forwarding Scavenger ID Definition!&appg      00109050
+./ R 00109370          $ 109410 40                    01/16/91 11:55:35
+Appendix^H.^Inventory of Files on VMM2xx disk!&apph                     00109410
+./ R 00109750          $ 109790 40                    01/16/91 11:55:35
+Appendix^I.^Inventory of Files on V2-MNT disk!&appi                     00109790
+./ R 00110130          $ 110170 40                    01/16/91 11:55:35
+Appendix^J.^Inventory of Files on V2-SRC disk!&appj                     00110170
+./ R 00110510          $ 110550 40                    01/16/91 11:55:35
+Appendix^K.^Inventory of Files on V2-DST disk!&appk                     00110550
+./ R 00508090          $ 508120 30                    01/16/91 11:55:35
+The standard installation process uses two (2) userids for mail only    00508120
+installations or three (3) userids if you install the file forwarding   00508150
+facility.                                                               00508180
+./ I 00508470          $ 508500 30                    01/16/91 11:55:35
+The third (optional) userid is where the mail/file forwarding scavenger 00508500
+program is run.                                                         00508530
+.in +.33i                                                               00508560
+.sp                                                                     00508590
+./ I 00508660          $ 508700 40                    01/16/91 11:55:35
+A skeleton directory entry for the standard maintenance userid is       00508700
+defined in Appendix E.                                                  00508740
+.sp                                                                     00508780
+./ R 00509040          $ 509050 10                    01/16/91 11:55:35
+A skeleton directory entry for the standard                             00509050
+.us \\MAILER\ userid is defined in Appendix F.                          00509060
+.sp                                                                     00509070
+The userid used for the mail/file scavenger                             00509080
+in this document will be MAILFWD.                                       00509090
+A skeleton directory entry for the forwarding scavenger is defined in   00509100
+Appendix G.                                                             00509110
+.in -.33i                                                               00509120
+.sp                                                                     00509130
+It is not necessary for you to follow these conventions, but these are  00509140
+./ D 00509420 00509990                                01/16/91 11:55:35
+./ R 00512920          $ 513310 390                   01/16/91 11:55:35
+.subhead 6.1. Create the required userids                               00513310
+./ I 00516480          $ 516500 20                    01/16/91 11:55:35
+Define the required userids in your system directory (using whatever    00516500
+local directory maintenance system your site uses).                     00516520
+You must always define the MAILMNT and MAILER userids.                  00516540
+If you want to install the mail/file forwarding facility you must       00516560
+also define the MAILFWD userid.                                         00516580
+.sp                                                                     00516600
+./ R 00539248 00542060 $ 540138 890                   01/16/91 11:55:35
+.subhead 6.12. Modify SAMPPROF                                          00540138
+.sr c0612 = &sysppage                                                   00541028
+./ R 00542800          $ 542808 8                     01/16/91 11:55:35
+.sp                                                                     00542808
+.bd \The \SAMPPROF EXEC\ also contains a sample \PROFILE EXEC\ for      00542816
+the file scavenger server.                                              00542824
+You do not need to do anything with this code unless you want to        00542832
+implement the file forwarding function.                                 00542840
+.in -.33i                                                               00542848
+.subhead 6.12.1.  Extract the Mailer DVM PROFILE EXEC                   00542856
+.sr c061201 = &sysppage                                                 00542864
+.in +.33i                                                               00542872
+./ R 00543440          $ 543450 10                    01/16/91 11:55:35
+.in -.33i                                                               00543450
+.subhead 6.12.2.  Extract the Mailer driver exec                        00543460
+.sr c061202 = &sysppage                                                 00543470
+.in +.33i                                                               00543480
+./ R 00544040 00544080 $ 544070 30                    01/16/91 11:55:35
+.subhead 6.12.2.1.  Modify the 'errids' value                           00544070
+.sr c06120201 = &sysppage                                               00544100
+./ R 00544790 00544860 $ 544830 40                    01/16/91 11:55:35
+.subhead 6.12.2.2.  Modify the 'smartnodes' value                       00544830
+.sr c06120202 = &sysppage                                               00544870
+./ R 00546640 00546860 $ 546641 1                     01/16/91 11:55:35
+.in -.33i                                                               00546561
+.subhead 6.12.3.  Extract the file scavenger PROFILE EXEC               00546562
+.sr c061203 = &sysppage                                                 00546563
+.in +.33i                                                               00546564
+Using the editor, extract a copy of the file scavenger "PROFILE EXEC"   00546565
+from "SAMPPROF EXEC" and save on the A disk as "PROFILE MAILFWD".       00546566
+.sp 1                                                                   00546567
+.ce .bd Do not save the file as PROFILE EXEC or PROFILE MAILER          00546568
+.sp 1                                                                   00546569
+Saving the file as PROFILE EXEC will wipe out the PROFILE EXEC you      00546570
+created earlier (in section 6.2).                                       00546571
+Saving the file as PROFILE MAILER will wipe out the PROFILE MAILER you  00546572
+created earlier (in section 6.12.1).                                    00546573
+.in -.33i                                                               00546574
+.subhead 6.13. Modifying the FORWARDX EXEC (optional)                   00546575
+.sr c0613 = &sysppage                                                   00546576
+.in +.33i                                                               00546577
+FORWARDX EXEC is used only if you install the file forwarding           00546578
+support.                                                                00546579
+If you do not want to support file forwarding skip to the next section. 00546580
+.sp 1                                                                   00546581
+The FORWARDX EXEC contains the code the implements the file forwarding  00546582
+.us \function of \MAILER\.                                              00546583
+It is maintained using the EXECUPDT command.                            00546584
+To edit the file issue the following command:                           00546585
+.in +.33i                                                               00546586
+.sp 1                                                                   00546587
+.bd XEDIT FORWARDX $EXEC (CTL MAILEXEC                                  00546588
+.in -.33i                                                               00546589
+This will cause 1 update to be applied (LCLMODS).                       00546590
+All your local changes will be made in this update.                     00546591
+Make the following changes:                                             00546592
+.in -.33i                                                               00546593
+.subhead 6.13.1 Remove "configuration not done" message                 00546594
+.sr c061301 = &sysppage                                                 00546595
+.in +.33i                                                               00546596
+Issue the following commands:
+.in +.33i
+/*** Note ***/
+.br
+DELETE 4
+.in -.33i
+This will delete 4 lines, the last of which is an 'exit 8' REXX
+statement
+.in -.33i                                                               00546597
+.subhead 6.13.2 Set the spooled console destination                     00546598
+.sr c061302 = &sysppage                                                 00546599
+.in +.33i                                                               00546600
+If you want the console spooled (to retain a report of the actions
+performed by the file forwarder) you must set the 'consoleto' variable.
+Change the line to read:
+.in +.33i
+consoleto = 'userid'
+.in -.33i
+where 'userid' is the local destination for the console log.
+.in -.33i                                                               00546601
+.subhead 6.13.3 Change the mailer userid                                00546602
+.sr c061303 = &sysppage                                                 00546603
+.in +.33i                                                               00546604
+If the userid of the Mailer DVM is not 'MAILER' you will need to
+change the 'mailerid' variable to be set correctly.
+.in -.33i                                                               00546605
+.subhead 6.13.4 Set the MAILER 191 disk link address                    00546606
+.sr c061304 = &sysppage                                                 00546607
+.in +.33i                                                               00546608
+.in -.33i                                                               00546609
+.subhead 6.13.5 Change the server exclusion list                        00546610
+.sr c061305 = &sysppage                                                 00546611
+.in +.33i                                                               00546612
+.in -.33i                                                               00546613
+.subhead 6.13.6 Change the source exclusion list                        00546614
+.sr c061306 = &sysppage                                                 00546615
+.in +.33i                                                               00546616
+.in -.33i                                                               00546617
+.subhead 6.13.7 Changes for Single System Image sites                   00546618
+.sr c061307 = &sysppage                                                 00546619
+.in +.33i                                                               00546620
+.in -.33i                                                               00546621
+.subhead 6.13.8 Save the updates on disk                                00546622
+.sr c061308 = &sysppage                                                 00546623
+.in +.33i                                                               00546624
+To save the changes you have made issue the following command:          00546625
+.in +.33i                                                               00546626
+.sp 1                                                                   00546627
+.bd FILE = = A                                                          00546628
+.in -.33i                                                               00546629
+.in -.33i                                                               00546630
+.subhead 6.13.9 Create a new FORWARDX EXEC file                         00546631
+.sr c061309 = &sysppage                                                 00546632
+.in +.33i                                                               00546633
+To apply the update you have created and create a new FORWARDX EXEC file00546634
+issue the following command:                                            00546635
+.in +.33i                                                               00546636
+.sp 1                                                                   00546637
+.bd EXECUPDT FORWARDX EXEC (CTL MAILEXEC                                00546638
+.in -.33i                                                               00546639
+.in -.33i                                                               00546640
+.subhead 6.14. Copy files to MAILER DVM 193 disk                        00546792
+.sr c0614 = &sysppage                                                   00546794
+.in +.33i                                                               00546796
+Copy the following files from the A and C disks to the mailer DVM       00546798
+193 disk:                                                               00546800
+.sp 1                                                                   00546802
+.in +.33i                                                               00546804
+MAILER   EXEC                                                           00546806
+.br                                                                     00546808
+MAILER   MODULE                                                         00546810
+.br                                                                     00546812
+MAILER   TXTLIB                                                         00546814
+.br                                                                     00546816
+nodename PROFILE                                                        00546818
+.br                                                                     00546820
+MABNXIT  EXEC                                                           00546822
+.in -.33i                                                               00546824
+.sp 1                                                                   00546826
+If you want to support the FORWARD and/or  MAILLIST commands (you do not00546828
+have to do this), you will need to copy the following files.            00546830
+.us \If these files are not copied \MAILER\ will issue a message saying 00546832
+the commands are not implemented.                                       00546834
+.in +.33i                                                               00546836
+.sp 1                                                                   00546838
+FORWARD  MAILER                                                         00546840
+.br                                                                     00546842
+MAILLIST MAILER                                                         00546844
+.in -.33i                                                               00546846
+.sp 1                                                                   00546848
+If you want to implement file forwarding (you do not have to do this),  00546850
+you will need to copy the following files.                              00546852
+.in +.33i                                                               00546854
+.sp 1                                                                   00546856
+FORWARDX EXEC                                                           00546858
+.in -.33i                                                               00546860
+.sp 1                                                                   00546862
+To copy the files issue the following commands:                         00546864
+.in +.33i                                                               00546866
+.sp 1                                                                   00546868
+.bd \\CP LINK MAILER 193 111 W\ writepw                                 00546870
+.br                                                                     00546872
+.bd ACCESS 111 Z                                                        00546874
+.br                                                                     00546876
+.bd COPYFILE MAILER EXEC A = = Z (OLDD                                  00546878
+.br                                                                     00546880
+.bd COPYFILE MAILER MODULE C = = Z (OLDD                                00546882
+.br                                                                     00546884
+.bd COPYFILE MAILER TXTLIB C = = Z (OLDD                                00546886
+.br                                                                     00546888
+.bd \\COPYFILE\ nodename \PROFILE A = = Z (OLDD\                        00546890
+.br                                                                     00546892
+.bd COPYFILE MABNXIT EXEC C = = Z (OLDD                                 00546894
+.in -.33i                                                               00546896
+.sp 1                                                                   00546898
+If you are supporting the FORWARD and/or MAILLIST commands issue the    00546900
+following commands:                                                     00546902
+.in +.33i                                                               00546904
+.sp 1                                                                   00546906
+.bd COPYFILE FORWARD MAILER C = = Z (OLDD                               00546908
+.br                                                                     00546910
+.bd COPYFILE MAILLIST MAILER C = = Z (OLDD                              00546912
+.in -.33i                                                               00546914
+.sp 1                                                                   00546916
+If you are supporting file forwarding issue the following commands:     00546918
+.in +.33i                                                               00546920
+.sp 1                                                                   00546922
+.bd COPYFILE FORWARDX EXEC A = = Z (OLDD                                00546924
+.in -.33i                                                               00546926
+.sp 1                                                                   00546928
+Using the OLDD(ate) option allows you to verify that the file you have  00546930
+on the mailer DVM's disk is the same as the file you have on your       00546932
+maintenance disks (because the date and time will match).               00546934
+Release the mailer DVM's 193 disk.                                      00546936
+.in +.33i                                                               00546938
+.sp 1                                                                   00546940
+.bd RELEASE Z (DET                                                      00546942
+.in -.33i                                                               00546944
+.sp 1                                                                   00546946
+You should always free up the disk after you are done.                  00546948
+.in -.33i                                                               00546950
+.subhead 6.15. Copy files to the mailer DVM's 191 disk                  00546952
+.sr c0615 = &sysppage                                                   00546954
+./ D 00547760 00547840                                01/16/91 11:55:35
+./ R 00548080          $ 548110 30                    01/16/91 11:55:35
+.bd \Now log on to the mailer DVM and \RECEIVE\ the file you just       00548110
+./ R 00548240          $ 548270 30                    01/16/91 11:55:35
+Issue the following command:                                            00548270
+./ I 00560900          $ 560940 40                    01/16/91 11:55:35
+.subhead 6.16. Copy files to the MAILFWD 191 disk (optional)            00560940
+.sr c0616 = &sysppage                                                   00560980
+.in +.33i                                                               00561020
+./ R 01174830          $ 1174920 90                   01/16/91 11:55:35
+Appendix H and I can be used to determine where to load the files you   01174920
+./ R 02000000          $ 2000490 490                  01/16/91 11:55:35
+A list of these files can be found in Appendix H.                       02000490
+./ R 02005000          $ 2005490 490                  01/16/91 11:55:35
+A list of these files can be found in Appendix K.                       02005490
+./ R 02037000          $ 2037490 490                  01/16/91 11:55:35
+and their contents are described in Appendix H and K, respectively.     02037490
+./ I 02374000          $ 2374030 30                   01/16/91 11:55:35
+.pa                                                                     02374030
+.heading .ce Appendix G                                                 02374060
+.sr appg = &syspage                                                     02374090
+.sp                                                                     02374120
+.ce Standard File Forwarding Scavenger ID Definition                    02374150
+.sp 3                                                                   02374180
+.fo off                                                                 02374210
+USER MAILFWD  password 02304K 04096K ABCDEG                             02374240
+  ACCOUNT  ...                                                          02374270
+  OPTION MIH                                                            02374300
+     IPL CMS                                                            02374330
+     CONSOLE 009 3215                                                   02374360
+     SPOOL 00C 2540 READER A                                            02374390
+     SPOOL 00D 2540 PUNCH A                                             02374420
+     SPOOL 00E 1403 A                                                   02374450
+     LINK userid   190 190 RR                                           02374480
+     LINK userid   19D 19D RR                                           02374510
+     LINK userid   19E 19E RR                                           02374540
+*                                                                       02374570
+* Production mailer files                                               02374600
+*                                                                       02374630
+     LINK MAILER   193 193 RR                                           02374660
+*                                                                       02374690
+* Profile                                                               02374720
+*                                                                       02374750
+    MDISK 191 3380   cylno  000002 volser MR                            02374780
+.fo on                                                                  02374810
+./ R 02376490 02377000 $ 2376980 490                  01/16/91 11:55:35
+.heading .ce Appendix H                                                 02376980
+.sr apph = &sysppage                                                    02377470
+./ R 02462490 02463000 $ 2462980 490                  01/16/91 11:55:35
+.heading .ce Appendix I                                                 02462980
+.sr appi = &sysppage                                                    02463470
+./ R 02774490 02775000 $ 2774980 490                  01/16/91 11:55:35
+.heading .ce Appendix J                                                 02774980
+.sr appj = &sysppage                                                    02775470
+./ R 02872490 02873000 $ 2872980 490                  01/16/91 11:55:35
+.heading .ce Appendix K                                                 02872980
+.sr appk = &sysppage                                                    02873470

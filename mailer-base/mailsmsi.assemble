@@ -1,0 +1,93 @@
+MAILSMSI TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - SMSG INIT.'         00001000
+*---------------------------------------------------------------------* 00002000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00003000
+*    Program Property of the Trustees of Columbia University in the   * 00004000
+*    City of New York.                                                * 00005000
+*---------------------------------------------------------------------* 00006000
+MAILSMSI CSECT                                                          00007000
+* MAILSMSI -                                                            00008000
+*  This routine enables to receive smsgs.  It sets up the external      00009000
+*  interrupt handler (MAILSMSG) and the external interrupt header       00010000
+*  data area.                                                           00011000
+*                                                                       00012000
+* LAST EDIT: 5/14/82 by Alan Crosswell                                  00013000
+*                                                                       00014000
+         SPACE                                                          00015000
+* REGISTER USAGE -                                                      00016000
+R0  EQU  0 -                                                            00017000
+R1  EQU  1 -                                                            00018000
+R2  EQU  2 -                                                            00019000
+R3  EQU  3 -                                                            00020000
+R4  EQU  4 -                                                            00021000
+R5  EQU  5 -                                                            00022000
+R6  EQU  6 -                                                            00023000
+R7  EQU  7 -                                                            00024000
+R8  EQU  8 -                                                            00025000
+R9  EQU  9 -                                                            00026000
+R10 EQU 10 - VMCPARM BASE                                               00027000
+R11 EQU 11 - mailblok base                                              00028000
+R12 EQU 12 - PROGRAM BASE                                               00029000
+R13 EQU 13 - SAVE AREA                                                  00030000
+R14 EQU 14 - SUBROUTINE LINKAGE                                         00031000
+R15 EQU 15 - SUBROUTINE LINKAGE                                         00032000
+         SPACE                                                          00033000
+         PRINT NOGEN                                                    00034000
+         BLOCKS ,                                                       00035000
+         MAILBLOK ,                                                     00036000
+         COPY IPARML                                                    00037990
+         EJECT                                                          00040000
+MAILSMSI CSECT ,                                                        00041000
+         USING MAILSMSI,R15  TEMPORARY ADDRESSABILITY                   00042000
+         B     EYESKIP       BRANCH OVER EYESKIP                        00043000
+MYNAME   DC    CL8'MAILSMSI',CL8'&SYSDATE'                              00044000
+EYESKIP  DS    0H                                                       00045000
+         DROP  R15                                                      00046000
+         STM   R14,R12,12(R13) SAVE CALLER'S REGS                       00047000
+         LR    R12,R15       PERMANENT ADDRESSABILITY                   00048000
+         USING MAILSMSI,R12                                             00049000
+         LA    R14,SAVE      MY SAVE AREA                               00050000
+         ST    R13,4(R14)    SAVE CALLER'S PTR                          00051000
+         ST    R14,8(R13)    CHAIN MINE BACK                            00052000
+         LR    R13,R14       SET MY SAVE PTR                            00053000
+         L     R11,=V(MAILBLOK)                                         00054000
+         USING MAILBLOK,R11                                             00055000
+         EXTRN MAILSMSG                                                 00056000
+         HNDEXT SET,MAILSMSG SET EXTERNAL HANDLER                       00057000
+         LA    R10,IUCVP                                                00058590
+         USING IPARML,R10                                               00059180
+         STCTL 0,0,CR0             Enable                               00059770
+         OI    CR0+3,X'02'            IUCV                              00060360
+         LCTL  0,0,CR0                   usage.                         00060950
+         IUCV  DCLBFR,PRMLIST=(R10),BUFFER=MAILIUCB Declare buffer.     00061540
+         BNZ   ERR1                Error: Exit.                         00062130
+         XC    0(8*IPSIZE,R10),0(R10) Clear parmlist.                   00062720
+         IUCV  CONNECT,PRMLIST=(R10),USERID==CL8'*MSG' Connect.         00063310
+         BNZ   ERR2                Error: Exit.                         00063900
+         MVC   MAILIUCP,IPPATHID   Save the pathid.                     00064490
+         LA    R0,CPSET            Set up                               00065080
+         LA    R1,CPSETL             message                            00065670
+         DIAG  R0,R1,X'0008'            trapping.                       00066260
+         BNZ   ERR3                Error: Exit.                         00066850
+         LTR   R1,R1                                                    00067440
+         BNZ   ERR3                Error: Exit.                         00068030
+         DROP  R10                                                      00070000
+RET      EQU   *                                                        00071000
+         SR    R15,R15                                                  00071500
+         L     R13,4(R13)              GET CALLER'S SAVE PTR            00072000
+         L     R14,12(R13)             GET R14                          00073000
+         LM    R0,R12,20(R13)          GET R0-R12                       00074000
+         BR    R14                     RETURN                           00075000
+ERR1     WRTERM 'MAILSMSI: Error from IUCV DCLBFR'                      00075100
+         B     RET                                                      00075200
+ERR2     WRTERM 'MAILSMSI: Error from IUCV CONNECT'                     00075300
+         B     RET                                                      00075400
+ERR3     WRTERM 'MAILSMSI: Error from SET ... IUCV'                     00075500
+         B     RET                                                      00075600
+         SPACE ,                                                        00076000
+         LTORG ,                                                        00077000
+SAVE     DS    18F                     SAVE AREA                        00078000
+CR0      DS    F                                                        00079000
+CPSET    DC    C'SET MSG IUCV',X'15',C'SET SMSG IUCV'                   00080190
+CPSETL   EQU   *-CPSET                                                  00080380
+IUCVP    DC    (IPSIZE)D'0'                                             00080570
+         END   MAILSMSI                                                 00081000

@@ -1,0 +1,3 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R203017    Support for *default* in DOMAIN table.
+R203004    ISSPACE subroutine white space values incorrect

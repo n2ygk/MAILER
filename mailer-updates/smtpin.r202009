@@ -1,0 +1,24 @@
+./ I 00100000          $ 100060 60                    02/10/89 13:46:25
+
+    /* 'mailuser@mailnode' not found. Check for generic id specified */
+    /* 'mailuser@*default*'.                                         */
+
+    bcopy("*DEFAULT*",key,8);                                           00091000
+    bcopy(mailuser,&key[8],8);                                          00092000
+    if (ctbluk(&te, mailvtab, key, 16) == TBMATCH) {                    00093000
+        struct vald *v = (struct vald *)te->tbe_dsp;                    00094000
+        if (v->vaaddr == 0)         /* no user-supplied exit */         00095000
+            return 1;               /* so trust him now */              00096000
+        val_plist.mb = &mailblok;                                       00097000
+        if (acall(v->vaaddr, 0, &val_plist) == 0)                       00098000
+            return 1;               /* user exit trusts him */          00099000
+    }                                                                   00100000
+./ R 01392000          $ 1392290 290                  02/10/89 13:46:25
+ *  5. If not that, use '*DEFAULT*' and user to check MAILVTAB.
+ *  6. If not that, then return false:  not a mailer.                   01392000
+./ R 01434000          $ 1434090 90                   02/10/89 13:46:25
+    /* 5. look in mailvtab for '*default* userid' */                    01431000
+    bcopy("*DEFAULT*",key.part.node,8);
+    if (ctbluk(&te, mailvtab, &key, 16) == TBMATCH)                     01432000
+      return 1;                                                         01433000
+    /* 6. must not be a mailer! */                                      01434000

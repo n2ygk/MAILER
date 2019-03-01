@@ -1,0 +1,158 @@
+./ R 00018000 00074000 $ 18290 290                    02/21/89 14:49:58
+                                                                        00018290
+static struct mailblok {                                                00018580
+    int mailhbuf[2];         /* addr, len of header buffer           */ 00018870
+    int stackorg[2];         /* free storage stack origin            */ 00019160
+    int stack[2];            /* variable stack start                 */ 00019450
+    int stackp[2];           /* current stack pointer                */ 00019740
+    struct tbtab *mailrtab;  /* Addr of routing table                */ 00020030
+    struct tbtab *mailstab;  /* SPECIAL table anchor                 */ 00020320
+    struct tbtab *mailktab;  /* Msg header keyword table             */ 00020610
+    struct tbtab *mailvtab;  /* Verification table                   */ 00020900
+    struct tbtab *mailptab;  /* User parms table                     */ 00021190
+    int mailhrec;            /* Number of physical records in header */ 00021480
+    int mailhlin;            /* Number of logical records in header  */ 00021770
+    int mailrcnt;            /* Number of recipients processed       */ 00022060
+    int mailrcnb;            /* Number of recipinet blocks procesed  */ 00022350
+    int mailrmax;            /* Maximum number of recipients seen    */ 00022640
+    int mailrtot;            /* Total number of recipients seen      */ 00022930
+    int mailicnt;            /* Incoming file count                  */ 00023220
+    int mailstmx;            /* Maximum used stack address           */ 00023510
+    struct actadr *mailchn;  /* Action address list                  */ 00023800
+    struct fieldd *mailfld;  /* FIELDD anchro                        */ 00024090
+    struct fieldd *mailsfld; /* File sender FIELDD                   */ 00024380
+    int mailcmdl;            /* Stacked MAILCMD2 commands            */ 00024670
+    int mailfile;            /* Binary spool file number             */ 00024960
+    char mailftxt[4];        /* Character spool file number          */ 00025250
+    char mailopts;           /* Mailer runtime options               */ 00025540
+#define MOPTDEF 0x80         /* Supply defaults for omitted fields   */ 00025830
+#define MOPTAUN 0x40         /* Allow unknown nodes to send me mail  */ 00026120
+#define MOPTAC  0x20         /* Allow charlatans                     */ 00026410
+#define MOPTVL  0x10         /* Verbose console logging              */ 00026700
+    char mailflg1;           /* Current mail file flags              */ 00026990
+#define MFLGDEST 0x80        /* A '*DESTINATION:' card is present    */ 00027280
+#define MFLG1LCL 0x40        /* Mail source is local user            */ 00027570
+#define MFLG1GTW 0x20        /* Mail source is gateway               */ 00027860
+#define MFLG1EDI 0x10        /* Header has been edited               */ 00028150
+#define MFLG1REJ 0x08        /* Rejected by RSCS                     */ 00028440
+#define MFLG1HDS 0x04        /* Header has been scanned OK           */ 00028730
+#define MFLG1DOT 0x02        /* Quote lone dots when punching        */ 00029020
+#define MFLG1RES 0x01        /* File has been resent                 */ 00029310
+    char mailcmd;            /* Command flags                        */ 00029600
+#define MCMDRELD 0x80        /* RELOAD command was issued            */ 00029890
+#define MCMDHALT 0x40        /* HALT command was issued              */ 00030180
+#define MCMDCMD2 0x20        /* MAILCMD2 has been called             */ 00030470
+    char mailstat;           /* MAILER status flag byte              */ 00030760
+#define MSTINWT  0x80        /* In WAIT state                        */ 00031050
+#define MSTQSC   0x40        /* QUIESCENT                            */ 00031340
+    char cpustr[8];          /* RSCS node name */                       00031630
+    char rscsname[8];        /* rscs vmid */                            00031920
+    char mailvmid[8];        /* mail vmid */                            00032210
+    char mailtime[16];       /* time of last start/reload */            00032500
+    char mailvers[28];       /* mailer version, assembly date */        00032790
+                             /*  0 -  7 Version id                   */ 00033080
+                             /*  8 - 15 Assembly date                */ 00033370
+                             /* 16 - 16 Blank                        */ 00033660
+                             /* 17 - 24 HH:MM:00                     */ 00033950
+                             /* 25 - 27 Blank                        */ 00034240
+    int haltrc;              /* Return code from STOP command        */ 00034530
+    char mailnode[8];        /* Origin node name                     */ 00034820
+    char mailuser[8];        /* Origin userid                        */ 00035110
+    char mailrtfn[18];       /* Profile fileid                       */ 00035400
+                             /*  0 -  7 'MAILER  '                   */ 00035690
+                             /*  8 - 15 'PROFILE '                   */ 00035980
+                             /* 16 - 17 '* '                         */ 00036270
+    char mailulfn[18];       /* Log fileid                           */ 00036560
+                             /*  0 -  7 'MAILER  '                   */ 00036850
+                             /*  8 - 15 'LOG     '                   */ 00037140
+                             /* 16 - 17 '* '                         */ 00037430
+    char align1[2];          /* For alignment with ASM               */ 00037720
+    struct sfblok mailsfb;   /* SFBLOK for current reader file       */ 00038010
+    char align2[12];         /* For alignment with ASM               */ 00038300
+    char mailtag[130];       /* Tag text                             */ 00038590
+                                                                        00038880
+    double mailiucb[5];      /* IUCV external interrupt buffer       */ 00039170
+    int mailiucp;            /* IUCV *MSG pathid                     */ 00039460
+                                                                        00039750
+    int cmdecb;              /* Incoming command ECB                 */ 00040040
+    int stopecb;             /* Stop command ECB                     */ 00040330
+                                                                        00040620
+    char spare1[204];        /* Spare                                */ 00040910
+                                                                        00041200
+    /* Commonly used constants */                                       00041490
+                                                                        00041780
+    char revtab[256];        /* Reverse string translate table       */ 00042070
+    char skipblks[256];      /* Skip blanks translate table          */ 00042360
+    char traptab[256];       /* General 1 or 2 character trap table  */ 00042650
+    char upcase[256];        /* Upper-case translate table           */ 00042940
+                                                                        00043230
+    /* Common routine declarations */                                   00043520
+                                                                        00043810
+    int apunhdr;             /* Routine to punch headers             */ 00044100
+    int apuntxt;             /* Routine to punch text                */ 00044390
+    int apuncls;             /* Routine to close punch               */ 00044680
+    int atbluk;              /* Table lookup                         */ 00044970
+    int amonwtr;             /* Log writer                           */ 00045260
+    int aarpadat;            /* Current date in RFC822 format        */ 00045550
+    int aunixsca;            /* Unix-style argument scanner          */ 00045840
+    int ardhdr;              /* Get next header record               */ 00046130
+    int ardtxt;              /* Get next text record                 */ 00046420
+    int patch1[34];          /* Patch space                          */ 00046710
+    int maxrcvd;             /* Max. number of Received: headers     */ 00047000
+    int mailulen;            /* Length of MAILUSER                   */ 00047290
+    int mailnlen;            /* Length of MAILNODE                   */ 00047580
+    struct fscb *mailulfs;   /* error log fscb pointer               */ 00047870
+    char *oldldom;           /* Spare (was -> Local-Domain           */ 00048160
+    int cpuslen;             /* Length of CPUSTR                     */ 00048450
+    char *oldrdom;           /* Spare (was -> Rscs-Domain            */ 00048740
+    struct tbtab *maildtab;  /* Domains table pointer                */ 00049030
+    struct tbtab *mailotab;  /* Origins table pointer                */ 00049320
+    struct fieldd *maildfld; /* File date FIELDD                     */ 00049610
+    char rscsalt[8];         /* Alternat RSCS id                     */ 00049900
+    char siteopts;           /* Site-specific options                */ 00050190
+#define SMAINE  0x80         /* U. Maine "FORM MAIL"                 */ 00050480
+#define SNXFER  0x40         /* Don't use SFBLOK SFBXFER flag        */ 00050770
+    char rescnt;             /* Count of Resent- field groups        */ 00051060
+    char mailflg2;           /* More flags                           */ 00051350
+#define MFLG2SMT 0x80        /* Current mail file is BSMTP-generated */ 00051640
+#define MFLG2VLF 0x40        /* Validate failed                      */ 00051930
+#define MFLG2NOR 0x20        /* No Received: stamp wanted            */ 00052220
+#define MFLG2NLF 0x10        /* MAIL FROM:<>                         */ 00052510
+#define MFLG2NOH 0x08        /* MAIL FROM:<userid> (i.e. no host)    */ 00052800
+#define MFLG2BLD 0x04        /* BUILDLST incomplete (some mail to    */ 00053090
+                             /*     send but some destiantions not   */ 00053380
+                             /*     found)                           */ 00053670
+    char reserved;           /* Reserved                             */ 00053960
+    struct fscb ulfscb;      /* MAILER USERLOG fscb                  */ 00054250
+    struct trcent *trtblst;  /* Start of trace table                 */ 00054830
+    struct trcent *trtblcur; /* Current trace table entry            */ 00055120
+    struct trcent *trtblend; /* End of trace table                   */ 00055410
+    int align4;              /* For alignment with ASM               */ 00055700
+    char maintid[8];         /* maintainer's userid                  */ 00055990
+    char maintnod[8];        /* maintainer's node name               */ 00056280
+    char maintid2[8];        /* maintainer's userid                  */ 00056570
+    char maintno2[8];        /* maintainer's node name               */ 00056860
+    char maintid3[8];        /* maintainer's userid                  */ 00057150
+    char maintno3[8];        /* maintainer's node name               */ 00057440
+    char maintid4[8];        /* maintainer's userid                  */ 00057730
+    char maintno4[8];        /* maintainer's node name               */ 00058020
+    char maintid5[8];        /* maintainer's userid                  */ 00058310
+    char maintno5[8];        /* maintainer's node name               */ 00058600
+    char maintid6[8];        /* maintainer's userid                  */ 00058890
+    char maintno6[8];        /* maintainer's node name               */ 00059180
+    char maintid7[8];        /* maintainer's userid                  */ 00059470
+    char maintno7[8];        /* maintainer's node name               */ 00059760
+    char maintid8[8];        /* maintainer's userid                  */ 00060050
+    char maintno8[8];        /* maintainer's node name               */ 00060340
+    char maintid9[8];        /* maintainer's userid                  */ 00060630
+    char maintno9[8];        /* maintainer's node name               */ 00060920
+    char endlist[16];        /* End of list flag                     */ 00061210
+./ R 00076000          $ 76490 490                    02/21/89 14:49:58
+    char *lclhost[MAXLCLHOST]; /* local-domain strings */               00076490
+./ R 00078000          $ 78990 990                    02/21/89 14:49:58
+    char *rscsdom[MAXRSCSDOM]; /* rscs-domain strings */                00078990
+} ;                                                                     00079980
+                                                                        00080970
+/* MAILBLOK is created by MAILBLOK ASSEMBLE file during MAILER gen   */ 00081960
+                                                                        00082950
+extern struct mailblok mailblok;                                        00083940

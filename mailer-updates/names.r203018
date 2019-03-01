@@ -1,0 +1,3 @@
+./ I 00025000          $ 25100 100                    01/03/89 14:57:35
+ /* use case-insensitve compare instead: */
+#define strcmp(A,B) Xstrcmp(A,B)

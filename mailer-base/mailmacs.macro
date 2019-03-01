@@ -1,0 +1,632 @@
+*---------------------------------------------------------------------* 00001000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00002000
+*    Program Property of the Trustees of Columbia University in the   * 00003000
+*    City of New York.                                                * 00004000
+*---------------------------------------------------------------------* 00005000
+         MACRO                                                          00006000
+&LABEL   WTR       &CODE,&SUBS                                          00007000
+.* &CODE - MESSAGE CODE OF THE FORM XXXNNN WHERE XXX IS MODULE ID       00008000
+.* AND NNN IS MESSAGE NUMBER.                                           00009000
+.* &SUBS - SUBSTITUTION LIST OF THE FORM (X,VAR,X,VAR,...,X,VAR)        00010000
+.* X IS ONE OF:                                                         00011000
+.*       D,DA - DECIMAL FULLWORD                                        00012000
+.*       X,XA - HEXADECIMAL STRING (LENGTH DETERMINED BY MSG PATTERN    00013000
+.*       C,CA - CHARACTER STRING (LENGTH DETERMINED BY MSG PATTERN)     00014000
+.*       B,BA - BIT STRING (LENGTH DETERMINED BY MESSAGE PATTERN)       00015000
+.*                                                                      00016000
+.* VAR IS EITHER VALUE OR ADDRESS OF VARIABLE DEPENDING ON 'A' BIT.     00017000
+.*                                                                      00018000
+.* EXAMPLE -                                                            00019000
+.*       WTR       FOO003,(CA,MODNAME,D,12)                             00020000
+.* MODNAME  DC     CL8'MODULE'                                          00021000
+.*                                                                      00022000
+         LCLC      &XXX,&DATA(100)                                      00023000
+         LCLB      &A,&B,&C,&D,&X                                       00024000
+         LCLA      &FLAG,&I,&CNTR                                       00025000
+         AIF       (K'&CODE EQ 6).GOOD1                                 00026000
+         MNOTE     4,'CODE FORMAT IS XXXNNN'                            00027000
+         MEXIT                                                          00028000
+.GOOD1   ANOP                                                           00029000
+&FLAG    SETA      4                   IMMEDIATE CHARACTER DATA         00030000
+&DATA(1) SETC      '&FLAG'             IMMEDIATE CHARACTER DATA         00031000
+&DATA(2) SETC      '&CODE'(1,3)        3 CHARACTER MODULE ID            00032000
+&DATA(2) SETC      'CL3''&DATA(2)'''     MAKE IT CL3'XXX'               00033000
+&CNTR    SETA      N'&SUBS             NUMBER OF LIST ENTRIES           00034000
+&I       SETA      1                   INDEX INTO &DATA ARRAY           00035000
+.LOOP    AIF       (&CNTR LE 0).LOOPEND                                 00036000
+&A       SETB      0                                                    00037000
+&C       SETB      ('&SUBS(&I)'(1,1) EQ 'C')                            00038000
+&D       SETB      ('&SUBS(&I)'(1,1) EQ 'D')                            00039000
+&B       SETB      ('&SUBS(&I)'(1,1) EQ 'B')                            00040000
+&X       SETB      ('&SUBS(&I)'(1,1) EQ 'X')                            00041000
+         AIF       (K'&SUBS(&I) LT 2).NOTA                              00042000
+&A       SETB      ('&SUBS(&I)'(2,1) EQ 'A')                            00043000
+         AIF       (&A).NOTA           OK, IT WAS AN 'A'                00044000
+         MNOTE     4,'OPTION MUST BE ''A'' OR NULL'                     00045000
+         MEXIT                                                          00046000
+.NOTA    ANOP                                                           00047000
+&FLAG    SETA      X'08'*&B+X'04'*&C+X'02'*&D+X'01'*&X                  00048000
+         AIF       (&FLAG).GOOD2       WAS IT ONE OF THEM?              00049000
+         MNOTE     4,'CODE MUST BE ONE OF C,B,D,X'                      00050000
+         MEXIT                                                          00051000
+.GOOD2   ANOP                                                           00052000
+&FLAG    SETA      &FLAG+X'10'*&A      ADD THE 'A' BIT IN               00053000
+&DATA(&I+2) SETC     '&FLAG'                                            00054000
+         AIF       ('&SUBS(&I+1)'(1,1) EQ '(').REGS   IT'S IN REG       00055000
+&DATA(&I+3) SETC   'AL3(&SUBS(&I+1))'       NO, JUST DATA               00056000
+         AGO       .SKREGS                                              00057000
+.REGS    ANOP                                                           00058000
+&DATA(&I+3)  SETC  'AL3(0)'                                             00059000
+         STCM      &SUBS(&I+1),B'0111',WTRP&SYSNDX+5+(2*(&I+1))         00060000
+.SKREGS  ANOP                                                           00061000
+&I         SETA      &I+2                                               00062000
+&CNTR    SETA      &CNTR-2                                              00063000
+         AGO       .LOOP                                                00064000
+.LOOPEND ANOP                                                           00065000
+&FLAG    SETA      &FLAG+X'80'         LIST END INDICATOR               00066000
+&DATA(&I)  SETC    '&FLAG'             SET NEW FLAG                     00067000
+         CNOP      0,4                 FULLWORD ALIGNED                 00068000
+&LABEL   BAL       1,WTRX&SYSNDX        BRANCH OVER PARM LIST           00069000
+&XXX     SETC      '&CODE'(4,3)                                         00070000
+WTRP&SYSNDX DC        A(&XXX)             MESSAGE NUMBER                00071000
+.* NOW DROP OF THE &DATA ARRAY                                          00072000
+&I       SETA      1                                                    00073000
+&CNTR    SETA      N'&SUBS+2                                            00074000
+.LOOP2   AIF       (&CNTR LE 0).L2END                                   00075000
+         DC        AL1(&DATA(&I)),&DATA(&I+1)    FLAGS, DATA            00076000
+&I       SETA      &I+2                                                 00077000
+&CNTR    SETA      &CNTR-2                                              00078000
+         AGO       .LOOP2                                               00079000
+.L2END   ANOP                                                           00080000
+WTRX&SYSNDX DS      0H                                                  00081000
+         L         15,=V(MONWTR)       MESSAGE WRITER MODULE            00082000
+         BALR      14,15               CALL IT                          00083000
+         MEND                                                           00084000
+         MACRO                                                          00085000
+         RSCSTAG                                                        00086000
+RSCSTAG  DSECT                                                          00087000
+         DC    C'FILE ('                                                00088000
+RSCSIF   DC    C'0000'                                                  00089000
+         DC    C') ORIGIN '                                             00090000
+RSCSNODE DC    CL8' ',C' '                                              00091000
+RSCSUSER DC    CL8' '                                                   00092000
+         MEND                                                           00093000
+       MACRO                                                            00094000
+&LABEL LOWUP                                                            00095000
+       LCLA      &COUNT                                                 00096000
+&COUNT SETA     0                                                       00097000
+&LABEL DS   0C                                                          00098000
+         PUSH  PRINT                                                    00099000
+         PRINT OFF,NOGEN                                                00100000
+.LOOP  ANOP                                                             00101000
+       AIF ('&COUNT' EQ '256').EXIT                                     00102000
+       DC       AL1(&COUNT)                                             00103000
+&COUNT SETA     &COUNT+1                                                00104000
+       AGO      .LOOP                                                   00105000
+.EXIT  ANOP                                                             00106000
+       ORG       &LABEL+X'81'        LOWERCASE 'A'                      00107000
+       DC        C'ABCDEFGHI'        MAKE THEM UPPERCASE                00108000
+       ORG       &LABEL+X'91'        LOWERCASE 'J'                      00109000
+       DC        C'JKLMNOPQR'                                           00110000
+       ORG       &LABEL+X'A2'                                           00111000
+       DC        C'STUVWXYZ'                                            00112000
+       ORG       &LABEL+256                                             00113000
+         POP   PRINT                                                    00114000
+       MEND                                                             00115000
+         MACRO                                                          00116000
+&LABEL   REVTAB    &LEN=80                                              00117000
+         LCLA      &N                                                   00118000
+&N       SETA      &LEN                                                 00119000
+&LABEL   EQU       *                                                    00120000
+         PUSH  PRINT                                                    00121000
+         PRINT OFF,NOGEN                                                00122000
+.LOOP    ANOP                                                           00123000
+&N       SETA      &N-1                                                 00124000
+         DC        AL1(&N)                                              00125000
+         AIF ('&N' EQ '0').L                                            00126000
+         AGO       .LOOP                                                00127000
+.L       ANOP                                                           00128000
+         POP   PRINT                                                    00129000
+         MEND                                                           00130000
+         MACRO                                                          00131000
+&LABEL   LOG       &CODE,&SUBS                                          00132000
+.* &CODE - MESSAGE CODE OF THE FORM XXXNNN WHERE XXX IS MODULE ID       00133000
+.* AND NNN IS MESSAGE NUMBER.                                           00134000
+.* &SUBS - SUBSTITUTION LIST OF THE FORM (X,VAR,X,VAR,...,X,VAR)        00135000
+.* X IS ONE OF:                                                         00136000
+.*       D,DA - DECIMAL FULLWORD                                        00137000
+.*       X,XA - HEXADECIMAL STRING (LENGTH DETERMINED BY MSG PATTERN    00138000
+.*       C,CA - CHARACTER STRING (LENGTH DETERMINED BY MSG PATTERN)     00139000
+.*       B,BA - BIT STRING (LENGTH DETERMINED BY MESSAGE PATTERN)       00140000
+.*                                                                      00141000
+.* VAR IS EITHER VALUE OR ADDRESS OF VARIABLE DEPENDING ON 'A' BIT.     00142000
+.*                                                                      00143000
+.* EXAMPLE -                                                            00144000
+.*       WTR       FOO003,(CA,MODNAME,D,12)                             00145000
+.* MODNAME  DC     CL8'MODULE'                                          00146000
+.*                                                                      00147000
+         LCLC      &XXX,&DATA(100)                                      00148000
+         LCLB      &A,&B,&C,&D,&X                                       00149000
+         LCLA      &FLAG,&I,&CNTR                                       00150000
+         AIF       (K'&CODE EQ 6).GOOD1                                 00151000
+         MNOTE     4,'CODE FORMAT IS XXXNNN'                            00152000
+         MEXIT                                                          00153000
+.GOOD1   ANOP                                                           00154000
+&FLAG    SETA      4                   IMMEDIATE CHARACTER DATA         00155000
+&DATA(1) SETC      '&FLAG'             IMMEDIATE CHARACTER DATA         00156000
+&DATA(2) SETC      '&CODE'(1,3)        3 CHARACTER MODULE ID            00157000
+&DATA(2) SETC      'CL3''&DATA(2)'''     MAKE IT CL3'XXX'               00158000
+&CNTR    SETA      N'&SUBS             NUMBER OF LIST ENTRIES           00159000
+&I       SETA      1                   INDEX INTO &DATA ARRAY           00160000
+.LOOP    AIF       (&CNTR LE 0).LOOPEND                                 00161000
+&A       SETB      0                                                    00162000
+&C       SETB      ('&SUBS(&I)'(1,1) EQ 'C')                            00163000
+&D       SETB      ('&SUBS(&I)'(1,1) EQ 'D')                            00164000
+&B       SETB      ('&SUBS(&I)'(1,1) EQ 'B')                            00165000
+&X       SETB      ('&SUBS(&I)'(1,1) EQ 'X')                            00166000
+         AIF       (K'&SUBS(&I) LT 2).NOTA                              00167000
+&A       SETB      ('&SUBS(&I)'(2,1) EQ 'A')                            00168000
+         AIF       (&A).NOTA           OK, IT WAS AN 'A'                00169000
+         MNOTE     4,'OPTION MUST BE ''A'' OR NULL'                     00170000
+         MEXIT                                                          00171000
+.NOTA    ANOP                                                           00172000
+&FLAG    SETA      X'08'*&B+X'04'*&C+X'02'*&D+X'01'*&X                  00173000
+         AIF       (&FLAG).GOOD2       WAS IT ONE OF THEM?              00174000
+         MNOTE     4,'CODE MUST BE ONE OF C,B,D,X'                      00175000
+         MEXIT                                                          00176000
+.GOOD2   ANOP                                                           00177000
+&FLAG    SETA      &FLAG+X'10'*&A      ADD THE 'A' BIT IN               00178000
+&DATA(&I+2) SETC     '&FLAG'                                            00179000
+         AIF       ('&SUBS(&I+1)'(1,1) EQ '(').REGS   IT'S IN REG       00180000
+&DATA(&I+3) SETC   'AL3(&SUBS(&I+1))'       NO, JUST DATA               00181000
+         AGO       .SKREGS                                              00182000
+.REGS    ANOP                                                           00183000
+&DATA(&I+3)  SETC  'AL3(0)'                                             00184000
+         STCM      &SUBS(&I+1),B'0111',WTRP&SYSNDX+5+(2*(&I+1))         00185000
+.SKREGS  ANOP                                                           00186000
+&I         SETA      &I+2                                               00187000
+&CNTR    SETA      &CNTR-2                                              00188000
+         AGO       .LOOP                                                00189000
+.LOOPEND ANOP                                                           00190000
+&FLAG    SETA      &FLAG+X'80'         LIST END INDICATOR               00191000
+&DATA(&I)  SETC    '&FLAG'             SET NEW FLAG                     00192000
+         CNOP      0,4                 FULLWORD ALIGNED                 00193000
+&LABEL   BAL       1,WTRX&SYSNDX        BRANCH OVER PARM LIST           00194000
+&XXX     SETC      '&CODE'(4,3)                                         00195000
+WTRP&SYSNDX DC        A(&XXX)             MESSAGE NUMBER                00196000
+.* NOW DROP OF THE &DATA ARRAY                                          00197000
+&I       SETA      1                                                    00198000
+&CNTR    SETA      N'&SUBS+2                                            00199000
+.LOOP2   AIF       (&CNTR LE 0).L2END                                   00200000
+         DC        AL1(&DATA(&I)),&DATA(&I+1)    FLAGS, DATA            00201000
+&I       SETA      &I+2                                                 00202000
+&CNTR    SETA      &CNTR-2                                              00203000
+         AGO       .LOOP2                                               00204000
+.L2END   ANOP                                                           00205000
+WTRX&SYSNDX DS      0H                                                  00206000
+         L         15,AMONWTR          MESSAGE WRITER MODULE            00207000
+         BALR      14,15               CALL IT                          00208000
+         MEND                                                           00209000
+         MACRO                                                          00210000
+         BLOCKS                                                         00211000
+         PUSH  PRINT                                                    00212000
+         AIF ('&SYSECT' EQ 'MAILER').PRINT                              00213000
+         PRINT OFF,NOGEN                                                00214000
+.PRINT   ANOP                                                           00215000
+         EJECT                                                          00216000
+**=================================================================**   00217000
+**        CUCCA VM NETWORK MAILER - VERSION 1                      **   00218000
+**                                                                 **   00219000
+** THE FOLLOWING DSECTS DESCRIBE CONTROL BLOCKS USED BY THE MAILER **   00220000
+**                                                                 **   00221000
+**  LAST EDIT: 5/23/82 BY ALAN CROSSWELL                           **   00222000
+**                                                                 **   00223000
+**=================================================================**   00224000
+         SPACE 3                                                        00225000
+*--------------------------------------------------------------------   00226000
+*  VALD - VALIDATION TABLE ENTRY DSECT                                  00227000
+*  A VALD entry is defined in the INCOMING entry of the Mailer          00228000
+*  Profile.  The format of an entry is:                                 00229000
+*                                                                       00230000
+*  Node-name Mailer-name Exit-name Exit-parm                            00231000
+*                                                                       00232000
+*  The pair Node-name, Mailer-name is used as the key in searching      00233000
+*  the MAILVTAB table and the returned value is the VALD.               00234000
+*--------------------------------------------------------------------   00235000
+VALD     DSECT ,                                                        00236000
+VAUSER   DS    CL8           VM USERID OF NODE'S MAILER                 00237000
+VAPROG   DS    CL8           NAME OF EXIT ROUTINE                       00238000
+VAPARM   DS    CL8           PARAMETER SUPPLIED TO THE EXIT             00239000
+VAADDR   DS    A             ADDRESS OF LOADED USER EXIT                00240000
+VAMSGCNT DS    F             MESSAGE COUNT                              00241000
+VAMSGFAI DS    F             NUMBER THAT FAILED TO VALIDATE             00242000
+VAMSGLEN DS    F             MESSAGE LENGTH TOTAL                       00243000
+VAMSGMAX DS    F             MAX MESSAGE LENGTH                         00244000
+VALEN    EQU   *-VALD        LENGTH IN BYTES                            00245000
+         SPACE 3                                                        00246000
+*--------------------------------------------------------------------   00247000
+*  ROUTD - ROUTING TABLE ENTRY DSECT                                    00248000
+*  A ROUTD is defined by an entry in the OUTGOING table in the          00249000
+*  Mailer Profile.  The format of the record is:                        00250000
+*                                                                       00251000
+*  Alias-name Server-node Server-user Exit-name Exit-type Exit-parm     00252000
+*                                                                       00253000
+*  Alias-name is set as the key for finding entries.  The entry found   00254000
+*  via looking up the name in MAILRTAB is the ROUTD.                    00255000
+*--------------------------------------------------------------------   00256000
+ROUTD    DSECT                                                          00257000
+RTROUTE  DS    CL8           ROUTED TO NODE NAME                        00258000
+RTUSER   DS    CL8           ROUTED TO USER NAME                        00259000
+RTPROG   DS    CL8           USER EXIT NAME                             00260000
+RTPARM   DS    CL8           PARM SUPPLIED TO THE EXIT                  00261000
+RTTYPE   DS    CL2           EXIT TYPE (CHARACTER)                      00262000
+RTFLAGS  DS    X             FLAGS                                      00263000
+* BITS DEFINED IN RTFLAGS -                                             00264000
+RTP1     EQU   X'80'                                                    00265000
+RTP2     EQU   X'40'                                                    00266000
+RTP3     EQU   X'20'                                             [1.22] 00266500
+RTRSVD   DS    X             UNUSED                                     00267000
+RTADDR   DS    A             ADDRESS OF LOADED RTPROG                   00268000
+RTMSGCNT DS    F             MESSAGE COUNT                              00269000
+RTMSGFAI DS    F             NUMBER THAT FAILED TO BE SENT              00270000
+RTMSGLEN DS    F             MESSAGE LENGTH TOTAL                       00271000
+RTMSGMAX DS    F             MAXIMUM MESSAGE LENGTH                     00272000
+RTLEN    EQU   *-ROUTD       LENGTH IN BYTES                            00273000
+         SPACE 3                                                        00274000
+*--------------------------------------------------------------------   00275000
+*  DSECTS USED IN DESCRIPTION OF AN ADDRESS:                            00276000
+*                                                                       00277000
+*           +---> ...                                                   00278490
+*           |                                                           00278980
+* +----------+----------+----------+----------+                         00279470
+* |  MBXNEXT |  MBXRTL  |  MBXLCL  |  MBXDMLT |                         00279960
+* +----------+----------+----------+----------+                         00280450
+*                      /               \                                00281000
+*                     /                 \                               00282000
+*                    /                   \                              00283000
+* +---------+---------+                  +---------+--------+           00284000
+* | NODDOWN | NODNEXT |---> ...          | NODDOWN | ADNEXT |---> ...   00285490
+* +---------+---------+                  +---------+--------+           00286000
+*     |                                       |                         00287000
+*     |                                       |                         00288000
+*     |                                       |                         00289000
+* +----------+----------+------+     +----------+----------+------+     00290790
+* | TOKNEXT  |  TOKPTR  |      |     | TOKNEXT  |  TOKPTR  |      |     00291580
+* +----------+----------+------+     +----------+----------+------+     00292370
+*                 |                                  |                  00293160
+*                 |                                  |                  00293950
+*                 |                                  |                  00294740
+*              'USERID'               'AT'       'HOSTNAME'             00295530
+*                                                                       00297000
+*--------------------------------------------------------------------   00298000
+         SPACE ,                                                        00299000
+NODE     DSECT ,             Parse tree node                            00300490
+NODNEXT  DS    A             Next pointer                               00300980
+NODPREV  DS    A             Previous pointer                           00301470
+NODDOWN  DS    A             Down pointer                               00301960
+NODSIZ   EQU   *-NODE        Size of this structure                     00302450
+         SPACE ,                                                        00303000
+MBOX     DSECT ,             Mailbox descriptor                         00304490
+MBXNEXT  DS    A             Nest pointer                               00304980
+MBXPREV  DS    A             Previous pointer                           00305470
+MBXRTL   DS    A             Reserved for routelist pointer             00305960
+MBXRCNT  DS    F             Reserved for count of routelist tokens     00306450
+MBXLCL   DS    A             Userid list token anchor                   00306940
+MBXLCNT  DS    F             Count of userid tokens                     00307430
+MBXDML   DS    A             Host list token anchor                     00307920
+MBXDCNT  DS    F             Count of host tokens                       00308410
+MBXSIZ   EQU   *-MBOX        Size of this structure                     00308900
+         SPACE ,                                                        00310000
+TOKEND   DSECT ,             Mapping of a token                         00311690
+TOKNEXT  DS    A             Pointer to next TOKEND                     00312380
+TOKPREV  DS    A             Pointer to previous TOKEND                 00313070
+TOKPTR   DS    A             Address of string                          00314050
+TOKLEN   DS    F             Length of token string                     00314450
+TOKTYPE  DS    X             Token code                                 00315530
+* Codes defined in TOKTYPE-                                             00315920
+TOKATM   EQU   C'A'          Atom                                       00316520
+TOKQSTR  EQU   C'"'          Quoted string                              00317210
+TOKCMA   EQU   C','          Comma                                      00317900
+TOKLTP   EQU   C'('          Left parenthesis                           00318590
+TOKRTP   EQU   C')'          Right parenthesis                          00319280
+TOKLTB   EQU   C'<'          Left angle bracket                         00319970
+TOKRTB   EQU   C'>'          Right angle bracket                        00320660
+TOKAT    EQU   C'@'          At sign                                    00321350
+         DS    0F            Align to even fullword                     00322040
+TOKSIZ   EQU   *-TOKEND      Size of structure                          00322730
+         SPACE 3                                                        00325000
+*--------------------------------------------------------------------   00326000
+*  ACTADR blocks constitute the chain used to represent the addresses   00327000
+*  that require action.  They point to the address descriptor and       00328000
+*  the routing table entry for the recipient node.                      00329000
+*--------------------------------------------------------------------   00330000
+ACTADR   DSECT ,                                                        00331000
+ACTNEXT  DS    A             NEXT IN CHAIN                              00332000
+ACTMBOX  DS    A             Pointer to MBOX                            00333490
+ACTRT    DS    A             POINTER TO ROUTD                           00334000
+ACTCHN   DS    A             exit type 3 chain of ACTADR's       [1.22] 00335490
+ACTLEN   EQU   *-ACTADR                                                 00336000
+         SPACE 3                                                        00337000
+*--------------------------------------------------------------------   00338000
+*  DSECT AND TABLE  USED IN DESCRIPTION OF A MESSAGE HEADER:            00339000
+*                                                                       00340000
+*  +---------+   +--------------------------------------------------+   00341000
+*  | TBENTRY |-->| FINEXT | FIEXTN | FITOK | FIPARS | FISTR | FIEND |   00342000
+*  +---------+   +--------------------------------------------------+   00343000
+*        |                            |                 |       |       00344000
+*        |                            |                 |       |       00345000
+*        |                        +-------+             |       |       00346000
+*        |                        | TOKEND|             |       |       00347000
+*        |                        +-------+             |       |       00348000
+*        |                            |                 |       |       00349000
+*        |                            |                /         \      00350000
+*        +----------------------->"SUBJECT:"         "HELLO, THERE."    00351000
+*                                                                       00352000
+*  Calling TBLUK with "subject" as the test string will return          00353000
+*  the address of the field descriptor (FIELDD).  to find the           00354000
+*  next field descriptor in order of occurence, chain via               00355000
+*  FINEXT.  To find the actual string supplied in the header,           00356000
+*  use FITOK to get to a token descriptor (TOKEND) which points         00357000
+*  to the actual string (case intact as supplied by user). If           00358000
+*  the user supplied the same field multiple times, then the            00359000
+*  FIEXTN pointer points to "extents" of the first FIELDD.              00360000
+*  FIPARS is set by the field parsing routine for the field             00361000
+*  type. The token list generated by the tokenizing routine for         00362000
+*  the given field type should be appended to the field name            00363000
+*  token(s) pointed to by FITOK (use the TOKNEXT pointer).              00364000
+*  FISTR and FIEND are used by the tokenizing routines to get the       00365000
+*  actual input data.  This is the address of the untokenized string    00366000
+*  (FISTR) and the address of the string end (FIEND).                   00367000
+*                                                                       00368000
+*--------------------------------------------------------------------   00369000
+         SPACE ,                                                        00370000
+FIELDD   DSECT ,             MESSAGE FIELD DESCRIPTOR                   00371000
+FINEXT   DS    A             NEXT FIELD POINTER                         00372000
+FIFLG1   DS    X             FLAGS                                      00373000
+* BITS DEFINED IN FIFLG1:                                               00374000
+FIEXTFLG EQU   X'80'         THIS FIELDD IS AN EXTENT                   00375000
+FIINVFLG EQU   X'40'         THIS FIELDD IS 'INVISIBLE'                 00376000
+FIEDIFLG EQU   X'20'         THIS FIELD WAS EDITED                      00377000
+FIEXTN   DS    AL3           EXTENT PTR (MULT OCCUR OF SAME FIELD)      00378000
+FITOK    DS    A             TOKEN LIST ADDRESS FOR THIS FIELD          00379000
+         ORG   FITOK         [1.16]overlay FITOK                        00380000
+FIECNT   DS   X              [1.16]Hi byte is # of this extension       00381000
+         ORG   ,             [1.16]back to where we were.               00382000
+FIPARS   DS    A             PARSE LIST ADDRESS FOR THIS FIELD          00383000
+FISTR    DS    A             ADDRESS OF STRING START ADDRESS            00384000
+FIEND    DS    A             ADDRESS OF STRING END ADDRESS              00385000
+FIELDDL  EQU   *-FIELDD      LENGTH OF THIS DSECT                       00386000
+         SPACE 3                                                        00387000
+*********************************************************************   00388000
+**                                                                 **   00389000
+**  THIS DSECT IS USED TO DESCRIBE COMMANDS PARSED BY MAILCMD1     **   00390000
+**  AND STACKED FOR LATER PROCESSING BY MAILCMD2.                  **   00391000
+**                                                                 **   00392000
+*********************************************************************   00393000
+COMMAND  DSECT ,                                                        00394000
+CMDNEXT  DS    F             NEXT COMMAND                               00395000
+CMDLEN   DS    F             LENGTH OF THIS BLOCK IN DWORDS             00396000
+CMDDLEN  DS    F             DATA LENGTH                                00397000
+CMDCODE  DS    F             COMMAND CODE                               00398000
+CMDMSG   DC    CL18'MSGNOH ' CP command to deliver results.             00399290
+CMDNODE  DS    CL8           Sending nodename or blanks.                00399580
+CMDSNDR  DS    CL8           SENDER USERID                              00400000
+CMDDATA  DS    0C            DATA                                       00401000
+CMDSIZE  EQU   (*-COMMAND)/8+1                                          00402000
+* COMMAND CODES:                                                        00403000
+CMD202   EQU   0             ISSUE AN SVC 202 WITH THE DATA.            00404000
+         SPACE 3                                                        00405000
+         COPY  SPOOL         CP SFBLOKS                                 00406000
+         POP    PRINT                                                   00407000
+         MEND                                                           00408000
+*EDIT HISTORY:                                                          00409000
+*[1.18]Added S#NXFER SITEOPT (SFB transfer flag use)                    00410000
+*[1.16]Added MFLG1RES flag for RESENT processing.                       00411000
+*        and RESCNT for count of resent field groups                    00412000
+*        and MAILDFLD for address of date fieldd.                       00413000
+*[1.13a] Added an optional second RSCS name (RSCSALT).                  00414000
+*[1.13] Add UNIXSCAN VCON.                                              00415000
+*[1.12] Add SITEOPTS flags for site-specific mods.                      00416000
+*[2] X1.9 - ADD VCON FOR ARPADATE ROUTINE AND PATCH SPACE TO ENABLE     00417000
+*    FUTURE ADDITIONS WITHOUT RECOMPILE.                                00418000
+*                                                                       00419000
+*[1] X1.5 - REPLACES SBFSIZE WITH MSFBSIZE WHICH IS SET TO X'0E',       00420000
+*    THE LENGTH RETURNED BY DIAG 14 SUBCODE FFF RATHER THAN THE         00421000
+*    LENGTH OF THE SFBLOK WHICH CHANGES FROM X'0E' FOR BSEPP TO         00422000
+*    X'0F' FOR SP. (THANKS TO J. WAGNER AT PUCC)                        00423000
+         MACRO                                                          00424000
+&LABEL   MAILBLOK  &DSECT=YES,         DSECT OR DATA EXPANSION         *00425000
+               &RSCS=RSCS,             NAME OF RSCS/NETWORKING USERID  *00426000
+               &NODE=*,                RSCS NODE NAME OF MY HOST       *00427000
+               &ROUTEFN=MAILER,        ROUTING FILE NAME               *00428000
+               &ROUTEFT=PROFILE,       ROUTING FILE TYPE               *00429000
+               &ROUTEFM=*,             ROUTING FILE MODE               *00430000
+               &MAINT=(X,X)         MAILER MAINTAINER            [1.22] 00431290
+         GBLC  &VERSION                                          [1.22] 00431580
+         AIF   ('&VERSION' NE '').OK                             [1.22] 00431870
+&VERSION SETC  ' '                                               [1.22] 00432160
+.OK      ANOP                                                    [1.22] 00432450
+         PUSH  PRINT                                                    00433000
+         AIF ('&SYSECT' EQ 'MAILER').PRINT                              00434000
+         PRINT OFF,NOGEN                                                00435000
+.PRINT   ANOP                                                           00436000
+         EJECT ,                                                        00437000
+*--------------------------------------------------------------------   00438000
+*        CUCCA VM NETWORK MAILER VERSION 1   1/28/82                    00439000
+*                                                                       00440000
+*  MAILBLOK - MAILER COMMON DATA AREA                                   00441000
+*                                                                       00442000
+*  LAST EDIT: 8/6/82  BY ALAN CROSSWELL                                 00443000
+*                                                                       00444000
+*--------------------------------------------------------------------   00445000
+         AIF ('&DSECT' EQ 'NO').DC                                      00446000
+MAILBLOK DSECT                                                          00447000
+         AGO .DSECT                                                     00448000
+.DC      ANOP                                                           00449000
+&LABEL   DS    0D                                                       00450000
+.DSECT   ANOP                                                           00451000
+MAILXXXX EQU   *                                                        00452000
+MAILHBUF DC    D'0'          ADDR,LEN OF HEADER BUFFER                  00453000
+STACKORG DC    D'0'          FREE STORAGE STACK ORIGIN                  00454000
+STACK    DC    D'0'          VARIABLE STACK START                       00455000
+STACKP   DC    D'0'          CURRENT STACK POINTER                      00456000
+MAILRTAB DC    A(0)          ADDR OF ROUTING TABLE                      00457000
+MAILSTAB DC    A(0)          SPECIAL MAILBOX TABLE                      00458000
+MAILKTAB DC    A(0)          MSG HEADER KEYWORD TABLE                   00459000
+MAILVTAB DC    A(0)          ADDR OF VERIFICATION TABLE                 00460000
+MAILPTAB DC    A(0)          ADDR OF USER PARMS TABLE                   00461000
+MAILHREC DC    F'0'          NUMBER OF PHYSICAL RECORDS IN HEADER       00462000
+MAILHLIN DS    F'0'          NUMBER OF LOGICAL LINES IN HEADER          00463000
+MAILRCNT DC    F'0'          NUMBER OF RECIPIENTS PROCESSED FOR FILE    00464000
+MAILRCNB DC    F'0'          NUMBER OF RECIPIENT BLOCKS PROCESSED       00465000
+MAILRMAX DC    F'0'          MAXIMUM NUMBER OF RECIPIENTS SEEN          00466000
+MAILRTOT DC    F'0'          TOTAL NUMBER OF RECIPIENTS SENT TO         00467000
+MAILICNT DC    F'0'          INCOMING FILE COUNT                        00468000
+MAILSTMX DC    F'0'          MAXIMUM USED STACK ADDRESS                 00469000
+MAILCHN  DC    A(0)          CHAIN OF ACTADR BLOCKS                     00470000
+MAILFLD  DC    A(0)          CHAIN OF FIELD DESCRIPTORS ANCHOR          00471000
+MAILSFLD DC    A(0)          FILE SENDER FIELDD                         00472000
+MAILCMDL DC    A(0)          STACKED MAILCMD2 COMMANDS                  00473000
+MAILFILE DC    F'0'          BINARY SPOOL FILE NUMBER                   00474000
+MAILFTXT DC    CL4' '        CHARACTER VERSION OF SAME                  00475000
+MAILOPTS DC    X'00'         MAILER RUNTIME OPTIONS                     00476000
+* BITS DEFINED IN MAILOPTS:                                             00477000
+MOPTDEF  EQU   X'80'         SUPPLY DEFAULTS FOR OMITTED FIELDS         00478000
+MOPTAUN  EQU   X'40'         ALLOW UNKNOWN NODES TO SEND ME MAIL        00479000
+MOPTAC   EQU   X'20'         Allow charlatans                    [1.24] 00479300
+MOPTVL   EQU   X'10'         Verbose console logging             [1.24] 00479600
+MAILFLG1 DC    X'00'         CURRENT MAIL FILE FLAGS                    00480000
+* BITS DEFINED IN MAILFLG1:                                             00481000
+MFLGDEST EQU   X'80'         A '*DESTINATION:' CARD IS PRESENT          00482000
+MFLG1LCL EQU   X'40'         MAIL SOURCE IS LOCAL USER                  00483000
+MFLG1GTW EQU   X'20'         MAIL SOURCE IS GATEWAY                     00484000
+MFLG1EDI EQU   X'10'         HEADER HAS BEEN EDITED                     00485000
+MFLG1REJ EQU   X'08'         REJECTED BY RSCS                           00486000
+MFLG1HDS EQU   X'04'         HEADER HAS BEEN SCANNED OK                 00487000
+MFLG1DOT EQU   X'02'         quote lone dots when punching       [1.22] 00487500
+MFLG1RES EQU   X'01'         [1.16]file has been RESENT.                00488000
+MAILCMD  DC    X'00'         COMMAND FLAGS                              00489000
+MCMDRELD EQU   X'80'         RELOAD COMMAND WAS ISSUED                  00490000
+MCMDHALT EQU   X'40'         HALT COMMAND WAS ISSUED                    00491000
+MCMDCMD2 EQU   X'20'         MAILCMD2 HAS TO BE CALLED                  00492000
+MAILSTAT DC    X'00'         MAILER STATUS FLAG BYTE                    00493000
+MSTINWT  EQU   X'80'         MAILER IS IN WAIT STATE                    00494000
+MSTQSC   EQU   X'40'         MAILER QUIESCENT                           00495000
+CPUSTR   DC    CL8'&NODE'    LOCAL RSCS NODE NAME                       00496000
+RSCSNAME DC    CL8'&RSCS'    RSCS MACHINE NAME                          00497000
+MAILVMID DC    CL8' '        MAILER MACHINE VM USERID                   00498000
+MAILTIME DC    CL16'00/00/0000:00:00'  TIME OF LAST START/RELOAD        00499000
+MAILVERS DC    0CL16' ',CL8'&VERSION',CL8'&SYSDATE'                     00500000
+         DC    CL16' '             Unused                               00501990
+MAILNODE DC    CL8' '        MAIL ORIGIN NODE NAME                      00503000
+MAILUSER DC    CL8' '        MAIL ORIGIN USERID                         00504000
+MAILRTFN DC    CL8'&ROUTEFN',CL8'&ROUTEFT',CL2'&ROUTEFM'                00505000
+MAILULFN DC    CL8'MAILER',CL8'USERLOG',CL2'A'                          00506000
+MSFBSIZE EQU   X'0D'         [1]SIZE OF SFB RETURNED BY DIAG 14 SUB FFF 00507000
+MAILSFB  DC    (MSFBSIZE)D'0'  [1]SPOOL FILE BLOCK BUFFER FOR DIAG 14   00508000
+         ORG MAILSFB+MSFBSIZE*8+12     [1]ADDRESS OF TAG TEXT           00509000
+MAILTAG  DC    CL130' '      TAG TEXT                                   00510000
+         ORG   ,                                                        00511000
+MAILIUCB DC    5D'0'               IUCV external interrput buffer.      00512490
+MAILIUCP DC    F'0'                IUCV *MSG pathid.                    00512980
+         DC    212X'00'            Spare (used to be MAILVMCM)          00513470
+         SPACE ,                                                        00514000
+* COMMONLY USED CONSTANTS -                                             00515000
+REVTAB   REVTAB LEN=256                                                 00516000
+LREVTAB  EQU   *-REVTAB                                                 00517000
+SKIPBLKS DC    256X'FF'      SKIP BLANKS                                00518000
+         ORG   SKIPBLKS+C' '                                            00519000
+         DC    X'00'                                                    00520000
+         ORG                                                            00521000
+TRAPTAB  DC    256X'00'      GENERAL 1 OR 2 CHAR TRAP TABLE             00522000
+UPCASE   LOWUP ,             UPPER CASE TABLE                           00523000
+         SPACE ,                                                        00524000
+*----  COMMON ROUTINE DECLARATIONS:                                     00525000
+APUNHDR  DC    V(PUNHDR)     ROUTINE TO PUNCH HEADERS                   00526000
+APUNTXT  DC    V(PUNTXT)     ROUTINE TO PUNCH TEXT                      00527000
+APUNCLS  DC    V(PUNCLS)     ROUTINE TO CLOSE READER                    00528000
+ATBLUK   DC    V(TBLUK)      TABLE LOOKUP                               00529000
+AMONWTR  DC    V(MONWTR)     LOG WRITER                                 00530000
+AARPADAT DC    V(ARPADATE)   [2] CURRENT DATE IN RFC822 FORMAT          00531000
+AUNIXSCA DC    V(UNIXSCAN)   [1.13]Unix-style argument scanner          00532000
+ARDHDR   DC    V(RDHDR)      get next header record              [1.24] 00533112
+ARDTXT   DC    V(RDTXT)      get next text record                [1.24] 00533114
+         DC    34F'0'        patch space                         [1.24] 00533116
+MAXRCVD  DC    F'50'         max. number of Received: headers.   [1.24] 00533118
+MAILULEN DC    F'0'          length of MAILUSER                  [1.24] 00533120
+MAILNLEN DC    F'0'          lenght of MAILNODE                  [1.24] 00533122
+MAILULFS DC    A(ULFSCB)     ptr to userlog file FSCB            [1.23] 00533130
+LCLDOM   DC    A(0)          local domain name for this host     [1.22] 00533180
+CPUSLEN  DC    F'0'          length of cpustr for convenience    [1.22] 00533270
+RSCSDOM  DC    A(0)          default domain for the RSCS network [1.22] 00533360
+MAILDTAB DC    A(0)          domains table pointer               [1.22] 00533450
+MAILOTAB DC    A(0)         [1.20]Origins table pointer                 00534000
+MAILDFLD DC    A(0)          [1.16]File date fieldd                     00535000
+RSCSALT  DC    CL8' '        [1.13a]Scotch tape works fine              00536000
+         AIF ('&DSECT' NE 'NO').DC2 [1.12]                              00537000
+         ENTRY SITEOPTS      [1.12]                                     00538000
+.DC2     ANOP                [1.12]                                     00539000
+SITEOPTS DC    X'00'         [1.12]Site-specific options.               00540000
+* bits defined in SITEOPTS:  [1.12]                                     00541000
+S#MAINE  EQU   X'80'         [1.12]U.MAINE "FORM MAIL"                  00542000
+S#NXFER  EQU   X'40'         [1.18]Don't use SFBLOK SFBXFER flag        00543000
+RESCNT   DC    X'00'         [1.16]count of Resent- field groups        00544000
+MAILFLG2 DC    X'00'         more flags                          [1.22] 00545190
+MFLG2SMT EQU   X'80'         current mail file is BSMTP-generated[1.22] 00545380
+MFLG2VLF EQU   X'40'         Validate failed                     [1.23] 00545470
+MFLG2NOR EQU   X'20'         no Received: stamp wanted.          [1.24] 00545520
+MFLG2NLF EQU   X'10'         MAIL FROM:<>                               00545530
+MFLG2NOH EQU   X'08'         MAIL FROM:<userid>  (i.e. no host)         00545540
+         DC    X'00'         reserved                            [1.22] 00545570
+ULFSCB   FSCB  'MAILER USERLOG A',RECFM=F,BSIZE=80,FORM=E        [1.23] 00545770
+MAILTRAC DS    0D            Trace table pointers                       00545800
+TRTBLST  DC    A(0)          Start of table                             00545830
+TRTBLCUR DC    A(0)          Current entry pointer                      00545860
+TRTBLEND DC    A(0)          Last entry address                         00545890
+         DS    0D            Align the following                        00545891
+MAINTID  DC    CL8'&MAINT(2)' Mailer maintainer userid                  00545892
+MAINTNOD DC    CL8'&MAINT(1)'     & node                                00545893
+MAINTID2 DC    8X'00'         Alternate priviliged userid               00545894
+MAINTNO2 DC    8X'00'             & node                                00545895
+MAINTID3 DC    8X'00'         Alternate priviliged userid               00545896
+MAINTNO3 DC    8X'00'             & node                                00545897
+MAINTID4 DC    8X'00'         Alternate priviliged userid               00545898
+MAINTNO4 DC    8X'00'             & node                                00545899
+MAINTID5 DC    8X'00'         Alternate priviliged userid               00545900
+MAINTNO5 DC    8X'00'             & node                                00545901
+MAINTID6 DC    8X'00'         Alternate priviliged userid               00545902
+MAINTNO6 DC    8X'00'             & node                                00545903
+MAINTID7 DC    8X'00'         Alternate priviliged userid               00545904
+MAINTNO7 DC    8X'00'             & node                                00545905
+MAINTID8 DC    8X'00'         Alternate priviliged userid               00545906
+MAINTNO8 DC    8X'00'             & node                                00545907
+MAINTID9 DC    8X'00'         Alternate priviliged userid               00545908
+MAINTNO9 DC    8X'00'             & node                                00545909
+         DC    16X'FF'        Absolute end of list                      00545910
+         DS    0D            Just for pretty                            00545920
+MAILBLEN EQU   *-MAILXXXX    LENGTH IN BYTES                            00546000
+         POP   PRINT                                                    00547000
+         MEND                                                           00548000
+         MACRO                                                          00549000
+         TRACETBL                                                       00550000
+TRCENT   DSECT                                                          00551000
+TRCTYPE  DS    CL8                 Entry type                           00552000
+TRCROUTN DS    CL8                 Name of routine making entry         00553000
+TRCADDR  DS    A                   Address at which entry made          00554000
+TRCDATA  DS    CL44                Use defined by entry type            00555000
+TRCENTL  EQU   *-TRCENT                                                 00556000
+         SPACE 1                                                        00557000
+*  TRCDATA field usage for CALL type entry                              00558000
+         SPACE 1                                                        00559000
+*+0      DS    CL8                 Name of routine being called         00560000
+         SPACE 1                                                        00561000
+*  TRCDATA field usage for CREATE type entry                            00562000
+         SPACE 1                                                        00563000
+*+0      DS    CL8                 Type of entity created               00564000
+*+8      DS    A                   Address of entity created            00565000
+         SPACE 1                                                        00566000
+*  TRCDATA field usage for RETURN type entry                            00567000
+         SPACE 1                                                        00568000
+*+0      DS    CL8                 Name of routine called               00569000
+*+8      DS    F                   Return code                          00570000
+         MEND  ,                                                        00571000

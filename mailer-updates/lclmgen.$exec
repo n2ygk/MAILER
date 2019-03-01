@@ -1,0 +1,99 @@
+/* ****************************************************************** */00001000
+/*  LCLMGEN - Build MAILER and MG with local changes                  */00002000
+/* ****************************************************************** */00003000
+/*  Command format:  LCLMGEN                                          */00004000
+/*                                                                    */00005000
+/*  LCLMGEN will apply changes to local created mailer code (such as  */00006000
+/*  exits) or modifications to the standard mailer code.  After       */00007000
+/*  all changes have been applied the MAILER and MG commands are      */00008000
+/*  regenerated.                                                      */00009000
+/*                                                                    */00010000
+/* ****************************************************************** */00011000
+                                                                        00012000
+/* get mailer version number */                                         00013000
+                                                                        00014000
+'EXECIO * DISKR VERSION COPY * (FINIS FIND /&VERSION SETC/'             00015000
+if rc ^=0 then version = "UNKNOWN"                                      00016000
+else do                                                                 00017000
+    pull   /* junk */                                                   00018000
+    parse pull . . "'" version "'" .    /* &VERSION SETC 'Vnum' ... */  00019000
+end                                                                     00020000
+say "Building MAILER version" version"..."                              00021000
+                                                                        00022000
+signal on error                                                         00023000
+trace "Commands"                                                        00024000
+                                                                        00025000
+/* Build local mailer maclib:  To change the files in the local       */00026000
+/*                             mailer maclib the file MAILLCL EXEC    */00027000
+/*                             must be changed.                       */00028000
+                                                                        00029000
+'EXEC VMFMAC MAILLCL MAILER'                                            00030000
+signal off error                                                        00031000
+address command 'ERASE MAILLCL COPY'                                    00032000
+signal on error                                                         00033000
+                                                                        00034000
+/* Assemble local mailer code:  To change the list of assemble files  */00035000
+/*                              the file LMAILMOD EXEC must be changed*/00036000
+                                                                        00037000
+'EXEC LMAILMOD EXEC VMFASM MAILER'                                      00038000
+                                                                        00039000
+/* Build local C header files:  To change the list of header files the*/00040000
+/*                              file LMAILHS EXEC must be changed     */00041000
+                                                                        00042000
+'EXEC LMAILHS EXEC GET H (CLOBBER CONT PRINT'                           00043000
+'EXEC GET CAUX AUX (CLOBBER CONT PRINT'                                 00044000
+                                                                        00045000
+/* Compile local C code:  To change the list of C files the file      */00046000
+/*                        LMAILCS EXEC must be changed.               */00047000
+                                                                        00048000
+'EXEC LMAILCS EXEC CCOMP C (PRINT'                                      00049000
+                                                                        00050000
+/* Place local text files in local txtlib:                            */00051000
+                                                                        00052000
+'EXEC LMAILTXT'                                                         00053000
+                                                                        00054000
+/* Update local mail execs: To change the list of execs the file      */00055000
+/*                          LMAILEXC EXEC must be changed.            */00056000
+                                                                        00057000
+'EXEC LMAILEXC EXEC EXECUPDT EXEC ( CTL MAILEXEC'                       00058000
+                                                                        00059000
+/* Do a little cleanup */                                               00060000
+                                                                        00061000
+trace 'Off'                                                             00062000
+signal off error                                                        00063000
+address command 'ERASE * ERRS'                                          00064000
+address command 'ERASE * TEXT'                                          00065000
+address command 'ERASE * H'                                             00066000
+address command 'ERASE MAILER MAP'                                      00067000
+address command 'ERASE MG     MAP'                                      00068000
+signal on error                                                         00069000
+trace 'Commands'                                                        00070000
+                                                                        00071000
+/* Make sure C library disk is accessed */                              00072000
+                                                                        00073000
+'EXEC CDISK'                                                            00074000
+                                                                        00075000
+/* Global the appropriate TXTLIBS */                                    00076000
+                                                                        00077000
+'GLOBAL TXTLIB MAILLCL MAILGEN CLIB'                                    00078000
+                                                                        00079000
+/* Attempt to create new MAILER MODULE */                               00080000
+                                                                        00081000
+signal off error                                                        00082000
+'LOAD MAILER MAILPAL MAILLEX MAILLRP (CLEAR'                            00083000
+if rc > 4 then exit rc                                                  00084000
+signal on error                                                         00085000
+'GEN MAILER'                                                            00086000
+'RENAME LOAD MAP A MAILER MAP A'                                        00087000
+                                                                        00088000
+/* Attempt to create new MG MODULE */                                   00089000
+                                                                        00090000
+signal off error                                                        00091000
+'LOAD @MG (CLEAR'                                                       00092000
+if rc > 4  then  exit rc                                                00093000
+signal on error                                                         00094000
+'GEN MG'                                                                00095000
+'RENAME LOAD MAP A MG MAP A'                                            00096000
+                                                                        00097000
+error: exitrc = rc                                                      00098000
+exit exitrc                                                             00099000

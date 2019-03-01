@@ -1,0 +1,7 @@
+         MACRO                                                          00001000
+&LABEL   LDARR &RESULT,&ARRAY,&INDEX                                    00002000
+.* R = ARRAY(INDEX)                                                     00003000
+&LABEL   LR    T1,&INDEX     get the index into temporary               00004000
+         SLL   T1,2          array is words                             00005000
+         L     &RESULT,&ARRAY.(T1) index into array                     00006000
+         MEND  ,                                                        00007000

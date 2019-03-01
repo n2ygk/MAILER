@@ -1,0 +1,12 @@
+./ I 00064000          $ 64100 100                    03/16/90 17:09:46
+         SPACE 1                                                        00064100
+         TM    DBGFLG6,DBGNOOUT    Sending mail?                        00064200
+         BZ    SKIP001             ---> Yes                             00064300
+         WRTERM 'DEFRT:  Trace-send-no-mail set'                        00064400
+SKIP001  EQU   *                                                        00064500
+         SPACE 1                                                        00064600
+./ I 00103000          $ 103030 30                    03/16/90 17:09:46
+         TM    DBGFLG6,DBGNOOUT    Sending mail?                        00103001
+         BO    SENDNONE            ---> No                              00103002
+./ I 00115000          $ 115500 500                   03/16/90 17:09:46
+SENDNONE EQU   *                                                        00115500

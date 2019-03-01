@@ -1,0 +1,5 @@
+./ I 00049000          $ 49200 200                    01/10/90 14:54:06
+         TM    DBGFLG6,DBGNOOUT    Sending mail?
+         BZ    SKIP001             ---> Yes
+         WRTERM 'NOMAIL:  Trace-send-no-mail set'
+SKIP001  EQU   *

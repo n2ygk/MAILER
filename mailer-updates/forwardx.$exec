@@ -1,0 +1,572 @@
+/* ****************************************************************** */00001000
+/*  FORWARDX - File transfer process driver                           */00002000
+/* ****************************************************************** */00003000
+/*                                                                    */00004000
+/*  Command format:   FORWARDX < ( options >                          */00005000
+/*                                                                    */00006000
+/*  Options:                                                          */00007000
+/*                                                                    */00008000
+/*     LIstall  - List all userids being processed even if there      */00009000
+/*                are no files in their reader.                       */00010000
+/*     TEst     - Just lists what action would be taken, but does     */00011000
+/*                not actually do anything.                           */00012000
+/*     TRace    - Trace execution                                     */00013000
+/*                                                                    */00014000
+/*                                                                    */00015000
+/*  FORWARDX, a part of the VM Network MAILER's forwarding system,    */00016000
+/*  will look for files in user's readers that should be forwarded    */00017000
+/*  but were not forwarded because they arrived via direct delivery   */00018000
+/*  and not via MAILER.                                               */00019000
+/*                                                                    */00020000
+/* ****************************************************************** */00021000
+                                                                        00022000
+address COMMAND                              /* Set environment       */00023000
+signal on halt                                                          00024000
+signal on syntax                                                        00025000
+signal on novalue                                                       00026000
+                                                                        00027000
+parse upper arg . '(' options ')'            /* Get command arguments */00028000
+                                                                        00029000
+/* ************************************************************* */     00030000
+/*  The following code will not allow FORWARDX to execute        */     00031000
+/*  unless the local configuration process has been done.        */     00032000
+/*  Remove this code when you set the local configuration        */     00033000
+/*  values.                                                      */     00034000
+/* ************************************************************* */     00035000
+                                                                        00036000
+say '*** Note *** Local configuration not done *** Note ***'            00037000
+say '*** Note *** Exiting without doing any    *** Note ***'            00038000
+say '*** Note *** forwarding.                  *** Note ***'            00039000
+exit 8                                                                  00040000
+                                                                        00041000
+                                                                        00042000
+/* ************************ */                                          00043000
+/*  Static initializations  */                                          00044000
+/* ************************ */                                          00045000
+                                                                        00046000
+consoleto = ''                               /* Console dest          */00047000
+                                                                        00048000
+listall = 0                                  /* Don't list all        */00049000
+                                                                        00050000
+mailerid = 'MAILER'                          /* Mailer userid         */00051000
+                                                                        00052000
+mailer191 = xxx                              /* Address at which      */00053000
+                                             /* MAILER's 191 disk is  */00054000
+                                             /* attached.             */00055000
+                                                                        00056000
+serverids = 'MAILER'                         /* Don't forward files   */00057000
+                                             /* from these servers    */00058000
+                                                                        00059000
+sources = '*'                                /* Only transfer if from */00060000
+                                             /*   this source         */00061000
+                                             /* '*' allows any source */00062000
+                                                                        00063000
+test = 0                                     /* Default to production */00064000
+                                                                        00065000
+trace = 0                                    /* Default to no trace   */00066000
+                                                                        00067000
+transferid. = mailerid                       /* Default transfer dest.*/00068000
+                                                                        00069000
+/* ******************************* */                                   00070000
+/*  End of static initializations  */                                   00071000
+/* ******************************* */                                   00072000
+                                                                        00073000
+/* ********************************************* */                     00074000
+/*  Special initialization values for SSI sites  */                     00075000
+/* ********************************************* */                     00076000
+                                                                        00077000
+cpu.0 = 0                                    /* Number of cpus        */00078000
+cpu.1 = ''                                   /* CPU 1 name            */00079000
+cpu.2 = ''                                   /* CPU 2 name            */00080000
+                                                                        00081000
+cpuid.1 = ''                                 /* CPU 1 identifier      */00082000
+cpuid.2 = ''                                 /* CPU 2 identifier      */00083000
+                                                                        00084000
+/* ******************* */                                               00085000
+/*  End of SSI values  */                                               00086000
+/* ******************* */                                               00087000
+                                                                        00088000
+do i=1 to words(options)                     /* Process options       */00089000
+   option = word(options,i)                                             00090000
+   select                                                               00091000
+      when abbrev('LISTALL',option,2)  then  /* List all userids      */00092000
+         listall = 1                                                    00093000
+      when abbrev('TEST',option,2)  then     /* Run in test mode      */00094000
+         test = 1                                                       00095000
+      when abbrev('TRACE',option,2)  then    /* Run with tracing      */00096000
+         trace = 1                                                      00097000
+      otherwise                              /* Unkown option         */00098000
+         say 'Unrecognized option, "'option'", ignored'                 00099000
+      end                                                               00100000
+   end                                                                  00101000
+                                                                        00102000
+                                                                        00103000
+/* ************************* */                                         00104000
+/*  Dynamic initializations  */                                         00105000
+/* ************************* */                                         00106000
+                                                                        00107000
+if trace  then                               /* Tracing wanted        */00108000
+   if test  then  trace ?r                   /* In test mode          */00109000
+   else  trace r                             /* Not test mode         */00110000
+                                                                        00111000
+if test  then  consoleto = ''                /* No console log when   */00112000
+                                             /*   testing             */00113000
+                                                                        00114000
+parse value diag(8,'QUERY CPLEVEL') with ,   /* Get CP level          */00115000
+   . . cplevel cpsystem .                                               00116000
+                                                                        00117000
+'IDENTIFY (LIFO'                             /* Get local node and    */00118000
+parse upper pull . . localnode . rscsid .    /*    RSCS user id       */00119000
+                                                                        00120000
+/* ******************************** */                                  00121000
+/*  End of dynamic initializations  */                                  00122000
+/* ******************************** */                                  00123000
+                                                                        00124000
+                                                                        00125000
+parse value diag(8,'QUERY' userid()) with ,  /* Check if running on   */00126000
+   . '-' . ssicpuid . '15'x .                /* SSI system            */00127000
+if ssicpuid <> ''  then  ssi = 1                                        00128000
+else ssi = 0                                                            00129000
+                                                                        00130000
+                                                                        00131000
+if ssi & cpu.0 = 0  then  do                 /* Sanity check          */00132000
+   say '*** WARNING ***'                                                00133000
+   say '*** WARNING *** Running on an SSI system, but number of SSI' ,  00134000
+      'CPUs is 0'                                                       00135000
+   say '*** WARNING *** Processing for only' localnode                  00136000
+   say '*** WARNING ***'                                                00137000
+   say ' '                                                              00138000
+   ssi = 0                                   /* Turn off SSI flag     */00139000
+   end                                                                  00140000
+                                                                        00141000
+if consoleto <> ''  then                     /* Start console spooling*/00142000
+   'CP SPOOL CONS START TO' consoleto                                   00143000
+                                                                        00144000
+call getforwards(mailer191)                  /* Get list of ids       */00145000
+                                                                        00146000
+if ssi  then  do                             /* Running SSI?          */00147000
+   do i=1 to cpu.0                           /* Do all SSI systems    */00148000
+      cpuname = cpu.i                        /*                       */00149000
+      'CP SWITCH' cpuname                    /* Switch to next CPU    */00150000
+      if rc <> 0  then  iterate              /* Skip on error         */00151000
+      didwork = 0                            /* Nothing done yet      */00152000
+      say ' '                                                           00153000
+      say 'Processing for' cpuname 'begins'  /* Show where we are     */00154000
+      say ' '                                                           00155000
+      call heading                           /* Output heading        */00156000
+      do j=1 to forwardids.0                                            00157000
+         call forwardfor forwardids.j ,      /* Do forwarding transfer*/00158000
+            cplevel cpsystem cpuid.i         /* Do forwarding transfer*/00159000
+         end                                                            00160000
+      if consoleto <> '' then  do            /* Stop console spooling */00161000
+                                                                        00162000
+         /* The following gyrations are needed so that the msg        */00163000
+         /*    "CON FILE xxxx  TO  spoolid COPY 001   NOHOLD"         */00164000
+         /* doesn't show up as a 1 record console file when the SSI   */00165000
+         /* SWITCH command closes the console to switch cpus.         */00166000
+                                                                        00167000
+         'CP SPOOL CONS STOP'                /* Stop spooling         */00168000
+         if didwork  then                    /* Did something         */00169000
+            'CP SPOOL CONS CLOSE'            /* Save console          */00170000
+         else                                /* Nothing to do         */00171000
+            'CP SPOOL CONS PURGE'            /* Don't save console    */00172000
+         'CP SPOOL CONS START TO' consoleto  /* Restart spooling      */00173000
+         end                                                            00174000
+      end                                                               00175000
+   if consoleto <> ''  then                  /* Stop console spooling */00176000
+      'CP SPOOL CONSOLE STOP'                                           00177000
+   end                                                                  00178000
+else  do                                     /* Not an SSI system     */00179000
+   didwork = 0                               /* Nothing done yet      */00180000
+   call heading                              /* Output heading        */00181000
+   do j=1 to forwardids.0                                               00182000
+      call forwardfor forwardids.j cplevel , /* Do the forwarding     */00183000
+         cpsystem cpuid.i                                               00184000
+      end                                                               00185000
+   if consoleto <> ''  then  do              /* Stop console spooling */00186000
+      if didwork  then                       /* Did something         */00187000
+         'CP SPOOL CONSOLE STOP CLOSE'       /* Save the console log  */00188000
+      else                                   /* Nothing to do         */00189000
+         'CP SPOOL CONS STOP PURGE'          /* Don't save console    */00190000
+      end                                                               00191000
+   end                                                                  00192000
+                                                                        00193000
+'RELEASE' mailer191                          /* Release MAILER 191    */00194000
+                                             /*    disk               */00195000
+                                                                        00196000
+if disc()  then  'CP LOGOFF'                 /* LOGOFF if running     */00197000
+                                             /*    disconnected       */00198000
+exit                                                                    00199000
+                                                                        00200000
+/* ********************** */                                            00201000
+/*  Internal subroutines  */                                            00202000
+/* ********************** */                                            00203000
+                                                                        00204000
+                                                                        00205000
+Disc:  procedure /* Determine if running disconnected */                00206000
+parse value diag(8,'QUERY V CONS') with . . status .                    00207000
+if status = 'DISCONNECTED'  then                                        00208000
+   disc = 1                                                             00209000
+else                                                                    00210000
+   disc = 0                                                             00211000
+return disc                                                             00212000
+                                                                        00213000
+                                                                        00214000
+ForwardFor: procedure , /* Forwarding central control */                00215000
+         expose didwork listall localnode mailerid rscsid serverids ,   00216000
+                sources ssi test                                        00217000
+parse upper arg userid cplevel cpsystem ssicpuid .                      00218000
+                                                                        00219000
+class.  = ''                                 /* Default values        */00220000
+date.   = ''                                                            00221000
+name.   = ''                                                            00222000
+origin. = ''                                                            00223000
+reason. = ''                                                            00224000
+type.   = ''                                                            00225000
+                                                                        00226000
+transferclass.0 = 0                          /* File defaults         */00227000
+transferdest.0  = 0                                                     00228000
+transferlogon.0 = 0                                                     00229000
+                                                                        00230000
+if ssi  then                                                            00231000
+   spoolids = qrdrssi(userid ssicpuid)                                  00232000
+else                                                                    00233000
+   spoolids = qrdr(userid)                                              00234000
+                                                                        00235000
+if spoolids = ''  then  do                   /* Nothing to forward    */00236000
+   if listall  then                          /* List all userids?     */00237000
+      call listone userid, ' ', ' ', ' ', ' ', ' ', ,                   00238000
+         'No files in reader'                                           00239000
+   end                                                                  00240000
+else  do                                     /* Something to forward  */00241000
+   call getfileforwards(userid)              /*                       */00242000
+   if ^loggedon(userid)  then                                           00243000
+      spoolids = forwardmail()                                          00244000
+   spoolids = forwardfiles()                                            00245000
+   end                                                                  00246000
+                                                                        00247000
+if spoolids <> ''  then  call inreader                                  00248000
+                                             /*                       */00249000
+return                                                                  00250000
+                                                                        00251000
+                                                                        00252000
+ForwardFiles: /* Do the actual forwarding */                            00253000
+notprocessed = ''                                                       00254000
+do i=1 for words(spoolids)                                              00255000
+   parse var spoolids spoolid spoolids                                  00256000
+   if find(serverids,origin.spoolid) > 0  then do                       00257000
+      reason.spoolid = 'origin of' origin.spoolid                       00258000
+      notprocessed = notprocessed spoolid                               00259000
+      iterate                                                           00260000
+      end                                                               00261000
+   if sources <> '*' & ,                                                00262000
+      find(sources,origin.spoolid) = 0  then  do                        00263000
+      reason.spoolid = 'source of' origin.spoolid                       00264000
+      notprocessed = notprocessed spoolid                               00265000
+      iterate                                                           00266000
+      end                                                               00267000
+   if ismail()  then  do                                                00268000
+      reason.spoolid = 'Mail to transfer'                               00269000
+      notprocessed = notprocessed spoolid                               00270000
+      end                                                               00271000
+   else  do                                                             00272000
+      parse value getfiledest(class.spoolid) with logonok destaddress   00273000
+      parse var destaddress '<'destuserid'@'destnode'>'                 00274000
+      select                                                            00275000
+         when  destuserid = ''  then  do          /* No destination   */00276000
+            notprocessed = notprocessed spoolid                         00277000
+            reason.spoolid = 'No transfer destination'                  00278000
+            end                                                         00279000
+         when ^logonok & loggedon(userid) then do /* When logged off  */00280000
+            notprocessed = notprocessed spoolid                         00281000
+            reason.spoolid = 'User logged on'                           00282000
+            end                                                         00283000
+         when  destnode = localnode  then  do     /* Local destination*/00284000
+            if test  then                                               00285000
+               call listone userid, spoolid, date.spoolid, ,            00286000
+                  class.spoolid, name.spoolid, type.spoolid, ,          00287000
+                  'File to transfer to' destuserid                      00288000
+            else do                                                     00289000
+               call transfer userid, spoolid, destuserid                00290000
+               call listone userid, spoolid, date.spoolid, ,            00291000
+                  class.spoolid, name.spoolid, type.spoolid, ,          00292000
+                  'Transferred to' destuserid                           00293000
+               didwork = 1                                              00294000
+               end                                                      00295000
+            end                                                         00296000
+         otherwise  do                       /* Network destination   */00297000
+            if test  then                                               00298000
+               call listone userid, spoolid, date.spoolid, ,            00299000
+                  class.spoolid, name.spoolid, type.spoolid, ,          00300000
+                  'File to transfer to' destaddress                     00301000
+            else do                                                     00302000
+               newspoolid = ,                                           00303000
+                  transfer(userid,spoolid,'*',cplevel cpsystem)         00304000
+               'CP TAG FILE' newspoolid destnode destuserid             00305000
+               call transfer '*', newspoolid, rscsid                    00306000
+               call listone userid, spoolid, date.spoolid, ,            00307000
+                  class.spoolid, name.spoolid, type.spoolid, ,          00308000
+                  'Transferred to' destuserid                           00309000
+               didwork = 1                                              00310000
+               end                                                      00311000
+            end                                                         00312000
+         end                                                            00313000
+      end                                                               00314000
+   end                                                                  00315000
+return notprocessed                                                     00316000
+                                                                        00317000
+                                                                        00318000
+ForwardMail: /* Do the mail file processing */                          00319000
+notmail = ''                                                            00320000
+do i=1 for words(spoolids)                                              00321000
+   parse var spoolids spoolid spoolids                                  00322000
+   if find(serverids,origin.spoolid) > 0  then do                       00323000
+      reason.spoolid = 'origin of' origin.spoolid                       00324000
+      notmail = notmail spoolid                                         00325000
+      iterate                                                           00326000
+      end                                                               00327000
+   if sources <> '*' & ,                                                00328000
+      find(sources,origin.spoolid) = 0  then  do                        00329000
+      reason.spoolid = 'source of' origin.spoolid                       00330000
+      notmail = notmail spoolid                                         00331000
+      iterate                                                           00332000
+      end                                                               00333000
+   if ismail()  then                                                    00334000
+      if test  then                                                     00335000
+         call listone userid, spoolid, date.spoolid, class.spoolid, ,   00336000
+            name.spoolid, type.spoolid, 'Mail to transfer'              00337000
+      else do                                                           00338000
+         'CP TRANSFER' userid 'RDR' spoolid mailerid 'RDR'              00339000
+         call listone userid, spoolid, date.spoolid, class.spoolid, ,   00340000
+            name.spoolid, type.spoolid, 'Transferred to mailer'         00341000
+         didwork = 1                                                    00342000
+         end                                                            00343000
+   else  do                                                             00344000
+      reason.spoolid = 'not mail'                                       00345000
+      notmail = notmail spoolid                                         00346000
+      end                                                               00347000
+   end                                                                  00348000
+return notmail                                                          00349000
+                                                                        00350000
+                                                                        00351000
+GetFileDest: procedure ,/* Get forearding destination given class */    00352000
+             expose transferclass. transferdest. transferlogon.         00353000
+parse upper arg fileclass .                  /*                       */00354000
+destid = ''                                  /* Set default           */00355000
+logon  = 0                                   /*                       */00356000
+do i=1 to transferclass.0                    /* Scanning classes      */00357000
+   if transferclass.i = '*' | ,                   /* All classes or   */00358000
+      pos(fileclass,transferclass.i) > 0  then do /* Specific class   */00359000
+      destid = transferdest.i                /* Send file here        */00360000
+      if transferlogon.i = 'YES'  then  logon = 1 /* Set logon        */00361000
+      else                              logon = 0 /*   stealing flag  */00362000
+      leave                                                             00363000
+      end                                                               00364000
+   end                                                                  00365000
+return logon destid                                                     00366000
+                                                                        00367000
+                                                                        00368000
+GetFileForwards: procedure ,/* Get forwarding info for non-mail files */00369000
+                 expose transferclass. transferdest. transferlogon.     00370000
+parse upper arg userid .                                                00371000
+'EXECIO * DISKR' userid 'FORWARD * (FINIS STEM LINE.'                   00372000
+if rc <> 0  then  return                                                00373000
+                                                                        00374000
+j=0                                          /*                       */00375000
+do i=1 for line.0                            /* Scan all the lines    */00376000
+   if left(word(line.i,1),1) = '*'  then  do                            00377000
+      parse upper var line.i '*' type':' .                              00378000
+      if type = 'FILES'  then  do                                       00379000
+         j = j + 1                                                      00380000
+         parse upper var line.i '*' . 'FILES:' transferdest.j . ,       00381000
+            'CLASSES:' transferclass.j . 'LOGGEDON:' transferlogon.j .  00382000
+         end                                                            00383000
+      end                                                               00384000
+   end                                                                  00385000
+transferclass.0 = j                                                     00386000
+transferdest.0 = j                                                      00387000
+transferlogon.0 = j                                                     00388000
+return                                                                  00389000
+                                                                        00390000
+                                                                        00391000
+GetForwards: procedure , /* Get list of ids to forward mail for */      00392000
+         expose forwardids.                                             00393000
+parse upper arg diskaddr .                                              00394000
+                                                                        00395000
+'ACCESS' diskaddr 'Z'                        /* Access disk with      */00396000
+                                             /*   FORWARD files       */00397000
+if rc <> 0  then  do                         /* Have an error         */00398000
+   say ' '                                   /* Write an error msg    */00399000
+   say '*** Error' rc 'from "ACCESS' diskaddr 'Z" ***'                  00400000
+   say ' '                                                              00401000
+   forwardids.0 = 0                          /* Nothing to process    */00402000
+   return                                                               00403000
+   end                                                                  00404000
+                                                                        00405000
+'MAKEBUF'                                    /* A little protective   */00406000
+onstack = queued()                           /*   code                */00407000
+                                                                        00408000
+'LISTFILE * FORWARD Z (FIFO'                 /* List the forward files*/00409000
+                                                                        00410000
+forwardids.0 = queued()-onstack              /* Number to process     */00411000
+                                                                        00412000
+do i=1 to forwardids.0                       /* Get userids           */00413000
+   parse upper pull forwardids.i .           /* Userid = filename     */00414000
+   end                                                                  00415000
+                                                                        00416000
+return                                                                  00417000
+                                                                        00418000
+                                                                        00419000
+Heading: /* Generate output heading */                                  00420000
+say left('Userid',8) left('Spoolid',8) center('Date',8) 'Class' ,       00421000
+   left('Fileid',17) ,                                                  00422000
+   'Comment'                                                            00423000
+say '========' '========' '========' '=====' '=================' ,      00424000
+   '===================='                                               00425000
+return                                                                  00426000
+                                                                        00427000
+                                                                        00428000
+InReader: /* Handle the stuff left in the reader */                     00429000
+if test  then  do                                                       00430000
+   do i=1 for words(spoolids)                                           00431000
+      parse var spoolids spoolid spoolids                               00432000
+      call listone userid, spoolid, date.spoolid, class.spoolid, ,      00433000
+         name.spoolid, type.spoolid, 'In reader,' reason.spoolid        00434000
+      end                                                               00435000
+   end                                                                  00436000
+else                                                                    00437000
+   NOP                                       /* for now               */00438000
+return                                                                  00439000
+                                                                        00440000
+                                                                        00441000
+IsMail: /*  Determine if a file is a mail file */                       00442000
+if (class.spoolid = 'M' & type.spoolid = 'MAIL')  then                  00443000
+   return 1                                  /* Mail                  */00444000
+else  return 0                               /* Not mail              */00445000
+                                                                        00446000
+ListOne:  procedure  /* Produce output line for 1 rdr file */           00447000
+parse arg userid, spoolid, date, class, name, type, comment             00448000
+say left(userid,8) center(spoolid,8) center(date,8) center(class,5) ,   00449000
+   left(name,8) left(type,8) comment                                    00450000
+return                                                                  00451000
+                                                                        00452000
+                                                                        00453000
+LoggedOn:  procedure  /* Function to determine if user is on system  */ 00454000
+parse upper arg userid .                                                00455000
+parse value diagrc(8,'QUERY' userid) with diagrc .                      00456000
+if diagrc = 0  then  exitrc = 1              /* User logged on        */00457000
+else exitrc = 0                              /* User not logged on    */00458000
+return exitrc                                                           00459000
+                                                                        00460000
+                                                                        00461000
+QRDR:  procedure , /* Function to query number of files in rdr class */ 00462000
+       expose class. date. name. origin. type.                          00463000
+parse arg userid .                                                      00464000
+spoollist = ''                                                          00465000
+'EXECIO * CP ( STEM QRDRLINE. STRING QUERY RDR ALL' userid              00466000
+if qrdrline.1 <> 'NO RDR FILES'  then  do                               00467000
+   do i = 2 to qrdrline.0                                               00468000
+      parse upper var qrdrline.i originid spoolid class dev . . . date ,00469000
+         . 54 name +8 . +2 type +8 . +1 dist .                          00470000
+      if space(originid spoolid class) = 'NO RDR FILES'  then iterate   00471000
+      spoollist = spoollist spoolid                                     00472000
+      origin.spoolid = originid                                         00473000
+      class.spoolid = class                                             00474000
+      date.spoolid = date                                               00475000
+      if class = 'T' & name = '' & type = ''  then  do                  00476000
+         name = 'CONSOLE'                                               00477000
+         type = 'LOG'                                                   00478000
+         end                                                            00479000
+      name.spoolid = left(name,8)                                       00480000
+      type.spoolid = left(type,8)                                       00481000
+      end                                                               00482000
+   end                                                                  00483000
+return strip(spoollist)                                                 00484000
+                                                                        00485000
+                                                                        00486000
+QRDRSSI:  procedure , /* Get list of files in RDR on this cpu */        00487000
+          expose class. date. name. origin. type.                       00488000
+parse arg userid ssicpuid .                                             00489000
+spoollist = ''                                                          00490000
+   'EXECIO * CP ( STEM QRDRLINE. STRING SSI QUERY RDR ALL' userid       00491000
+   do i=1 to qrdrline.0                                                 00492000
+      parse upper var qrdrline.i cpuid ':' originid spoolid class dev , 00493000
+         . . . date . 57 name +8 . +2 type +8 . +1 dist .               00494000
+      if space(originid spoolid) = 'ORIGINID FILE'  then  iterate       00495000
+      if cpuid <> ssicpuid  then  iterate                               00496000
+      if space(originid spoolid class) = 'NO RDR FILES'  then iterate   00497000
+      spoollist = spoollist spoolid                                     00498000
+      origin.spoolid = originid                                         00499000
+      class.spoolid = class                                             00500000
+      date.spoolid = date                                               00501000
+      if class = 'T' & name = '' & type = ''  then  do                  00502000
+         name = 'CONSOLE'                                               00503000
+         type = 'LOG'                                                   00504000
+         end                                                            00505000
+      name.spoolid = left(name,8)                                       00506000
+      type.spoolid = left(type,8)                                       00507000
+      end                                                               00508000
+return strip(spoollist)                                                 00509000
+                                                                        00510000
+                                                                        00511000
+/* ****************************************************************** */00512000
+/*  Transfer will issue the CP TRANSFER command to transfer a file    */00513000
+/*  between users virtual readers.  If the CP system level and type   */00514000
+/*  are given, it will decode the reponse and return the spoolid      */00515000
+/*  number assigned by CP to the file after it was transferred.       */00516000
+/*  This is only a problem with HPO release 5 and 6 (and maybe XA)    */00517000
+/*  where each user has their own set of spool slots and the spool    */00518000
+/*  file identifier changes everytime the file is passed between      */00519000
+/*  users.                                                            */00520000
+/* ****************************************************************** */00521000
+                                                                        00522000
+Transfer:  procedure  /* Transfer a spoolfile, returning new spoolid  */00523000
+parse arg fromid . , fromspoolid . , toid . , cplevel cpsystem .        00524000
+                                                                        00525000
+cmd = 'CP TRANSFER' fromid 'RDR' fromspoolid 'TO' toid 'RDR'            00526000
+ans = space(diagrc(8,cmd),1)                                            00527000
+                                                                        00528000
+if cplevel <> ''  then  do                                              00529000
+   select                                                               00530000
+      when (cplevel > 4) & (cpsystem = 'HPO')  then  do                 00531000
+         parse var ans retcode . 'RDR FILE' tospoolid . tofrom . ,      00532000
+            'FILE' spoolid2 '15'x                                       00533000
+         if spoolid2 <> ''  then  tospoolid = spoolid2                  00534000
+         end                                                            00535000
+      otherwise /* CP level release 4 or earlier */                     00536000
+         parse var ans retcode . 'RDR FILE' tospoolid . tofrom . '15'x  00537000
+      end                                                               00538000
+   end                                                                  00539000
+else  tospoolid = ''                                                    00540000
+                                                                        00541000
+return tospoolid                                                        00542000
+                                                                        00543000
+/* **************** */                                                  00544000
+/*  Error handlers  */                                                  00545000
+/* **************** */                                                  00546000
+                                                                        00547000
+HALT:                                                                   00548000
+parse source . . myname .                                               00549000
+say "Halt in" myname "line" sigl":"                                     00550000
+say sourceline(sigl)                                                    00551000
+exitrc = 16                                                             00552000
+signal errexit                                                          00553000
+                                                                        00554000
+NOVALUE:                                                                00555000
+parse source . . myname .                                               00556000
+say "NOVALUE error in" myname "line" sigl":"                            00557000
+say sourceline(sigl)                                                    00558000
+exitrc = 16                                                             00559000
+signal errexit                                                          00560000
+                                                                        00561000
+SYNTAX:                                                                 00562000
+parse source . . myname .                                               00563000
+say "SYNTAX error in" myname "line" sigl": " errortext(rc)              00564000
+say sourceline(sigl)                                                    00565000
+exitrc = 16                                                             00566000
+signal errexit                                                          00567000
+                                                                        00568000
+ERREXIT:                                                                00569000
+trace ?r                                                                00570000
+nop                                                                     00571000
+exit exitrc                                                             00572000

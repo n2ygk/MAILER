@@ -1,0 +1,174 @@
+MAILSMSG TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - SMSG PROCESSOR'     00001000
+*---------------------------------------------------------------------* 00002000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00003000
+*    Program Property of the Trustees of Columbia University in the   * 00004000
+*    City of New York.                                                * 00005000
+*---------------------------------------------------------------------* 00006000
+MAILSMSG CSECT                                                          00007000
+* MAILSMSG -                                                            00008000
+*  Commands sent to the mailer via the CP SMSG command are handled      00009000
+*  in this routine.  This routine runs as the External interrupt        00010000
+*  handler declared to CMS via the HNDEXT macro.  Since this routine    00011000
+*  runs disabled,  it does not issue any I/O.  The reentrant            00012000
+*  command parser MAILCMD1 is called for command processing.            00013000
+*  Trivial commands (i.e. can be done disabled) are performed           00014000
+*  in MAILCMD1.  More complex commands are remembered in DMSFREE        00015000
+*  storage and are processed at a later time by MAILCMD2.               00016000
+*                                                                       00017000
+* LAST EDIT: 5/12/82 by Alan Crosswell                                  00018000
+*                                                                       00019000
+         SPACE                                                          00020000
+* REGISTER USAGE -                                                      00021000
+R0  EQU  0 -                                                            00022000
+R1  EQU  1 -                                                            00023000
+R2  EQU  2 -                                                            00024000
+R3  EQU  3 -                                                            00025000
+R4  EQU  4 -                                                            00026000
+R5  EQU  5 -                                                            00027000
+R6  EQU  6 -                                                            00028000
+R7  EQU  7 -                                                            00029000
+R8  EQU  8 -                                                            00030000
+R9  EQU  9 - VMCPARM BASE                                               00031000
+R10 EQU 10 - EXTERNAL INTERRUPT SAVE AREA                               00032000
+R11 EQU 11 - mailblok base                                              00033000
+R12 EQU 12 - PROGRAM BASE                                               00034000
+R13 EQU 13 - SAVE AREA                                                  00035000
+R14 EQU 14 - SUBROUTINE LINKAGE                                         00036000
+R15 EQU 15 - SUBROUTINE LINKAGE                                         00037000
+         SPACE                                                          00038000
+         BLOCKS ,                                                       00040000
+         MAILBLOK ,                                                     00041000
+         NUCON DSECT                                                    00042000
+         COPY  IPARML                                                   00043990
+         COPY  MAILEQU                                                  00044980
+         EJECT                                                          00046000
+MAILSMSG CSECT ,                                                        00047000
+         USING MAILSMSG,R15  TEMPORARY ADDRESSABILITY                   00048000
+         B     EYESKIP       BRANCH OVER EYESKIP                        00049000
+MYNAME   DC    CL8'MAILSMSG',CL8'&SYSDATE'                              00050000
+EYESKIP  DS    0H                                                       00051000
+         DROP  R15                                                      00052000
+         STM   R14,R12,12(R13) SAVE CALLER'S REGS                       00053000
+         LR    R12,R15       PERMANENT ADDRESSABILITY                   00054000
+         USING MAILSMSG,R12                                             00055000
+         LA    R14,SAVE      MY SAVE AREA                               00056000
+         ST    R13,4(R14)    SAVE CALLER'S PTR                          00057000
+         ST    R14,8(R13)    CHAIN MINE BACK                            00058000
+         LR    R13,R14       SET MY SAVE PTR                            00059000
+         L     R11,=V(MAILBLOK)                                         00060000
+         USING MAILBLOK,R11                                             00061000
+         LR    R10,R1        COPY PLIST POINTER                         00062000
+         USING EXTSAVE,R10   ADDRESS THE PARMS                          00063000
+         CLC   EXTPSW+2(2),=X'4000' IUCV interrupt?                     00064490
+         BNE   DONE          NOPE, IGNORE IT                            00065000
+         LA    R9,MAILIUCB         Get IUCV external-parms.             00066090
+         USING IPARML,R9                                                00066180
+         CLC   IPPATHID,MAILIUCP   Is it our *MSG path?                 00066270
+         BNE   SEVER               No  : SEVER the path.                00066360
+         SPACE 3                                                        00066450
+RCVLOOP  DS    0H                                                       00066540
+         LA    R9,IUCVP            Now user out IPARML.                 00066630
+         XC    0(IPSIZE*8,R9),0(R9) Clear it out.                       00066720
+         LA    R2,L'MESSAGE                                             00066810
+         IUCV  RECEIVE,BUFFER=MESSAGE,BUFLEN=(R2),PRMLIST=(R9),        X00066900
+               PATHID=MAILIUCP                                          00066990
+         BNZ   DONE                Error: Exit.                         00067080
+         L     R1,IPTRGCLS         Get message type                     00067170
+         SLL   R1,2                   *4 for index.                     00067260
+         B     *+4(R1)             Process the message                  00067350
+         B     RCVLOOP             0: Undefined.                        00067440
+         B     MSG                 1: MESSAGE/MSGNOHs.                  00067530
+         B     RCVLOOP             2: WARNINGs.                         00067620
+         B     RCVLOOP             3: Asynchronous CP output.           00067710
+         B     SMSG                4: SMSGs.                            00067800
+         B     RCVLOOP             5: VM output.                        00067890
+         B     RCVLOOP             6: CP error messages.                00067980
+         B     RCVLOOP             7: CP information messages.          00068070
+         B     RCVLOOP             8: SCIF                              00068160
+         SPACE 3                                                        00068250
+SMSG     DS    0H                                                       00068340
+         MVC   USER,MESSAGE        Accept userid from IUCV.             00068430
+         MVC   NODENAME,=CL8' '    No node.                             00068520
+         LA    R5,MESSAGE+8        -> Command.                          00068610
+         LA    R8,L'MESSAGE        Get                                  00068700
+         SH    R8,IPBFLN1             command                           00068790
+         SH    R8,=H'8'                  length.                        00068880
+         LA    R2,CMDSMSG          Type = SMSG.                         00068970
+         B     EXECUTE                                                  00069060
+MSG      DS    0H                                                       00069150
+         CLC   RSCSNAME,MESSAGE    Is it from RSCS?                     00069240
+         BE    MSG1                Yes : Special processing.            00069330
+         CLC   RSCSALT,MESSAGE     What about the other RSCS?           00069420
+         BNE   SMSG                No  : Treat it like an SMSG.         00069510
+MSG1     DS    0H                                                       00069600
+         LA    R8,L'MESSAGE        Get                                  00069690
+         SH    R8,IPBFLN1             command                           00069780
+         SH    R8,=H'8'                  length.                        00069870
+         CALL  UNIXSCAN,(PTRS,L'PTRS,MESSAGE+8,(R8))                    00069960
+         CH    R1,=H'6'            At least "FROM node(user):"?         00070050
+         BL    RCVLOOP             No  : Ignore it.                     00070140
+         LA    R1,PTRS             Assume no message number.            00070230
+         CLI   0(R1),4             Can it be "FROM"?                    00070320
+         BE    MSG2                Yes : Skip.                          00070410
+         LA    R1,PTRS+4           Skip the DMTCMXnnnI.                 00070500
+         CLI   0(R1),4             Might this one be "FROM"?            00070590
+         BNE   RCVLOOP             No  : Ignore it.                     00070680
+MSG2     DS    0H                                                       00070770
+         L     R2,0(,R1)           Is it                                00070860
+         CLC   =C'FROM',0(R2)         "FROM"?                           00070950
+         BNE   RCVLOOP             No  : Exit.                          00071040
+         L     R2,8(,R1)           Is it                                00071060
+         CLI   0(R2),C'('             from a user?                      00071080
+         BNE   RCVLOOP             No  : Message from RSCS itself.      00071100
+         MVC   NODENAME,=CL8' '    Blank it out.                        00071130
+         IC    R2,4(,R1)           Length of nodename.                  00071220
+         L     R3,4(,R1)           Address of nodename.                 00071310
+         LA    R4,NODENAME                                              00071400
+         BCTR  R2,0                                                     00071490
+         EX    R2,MOVEIT           "MVC 0(*-*,R4),0(R3)".               00071580
+         MVC   USER,=CL8' '        Blank it out.                        00071670
+         IC    R2,12(,R1)          Length of userid.                    00071760
+         L     R3,12(,R1)          Address of userid.                   00071850
+         LA    R4,USER                                                  00071940
+         BCTR  R2,0                                                     00072030
+         EX    R2,MOVEIT           "MVC 0(*-*,R4),0(R3)".               00072120
+         L     R5,24(,R1)          Address of command.                  00072210
+         LA    R5,0(,R5)           Purify address.                      00072300
+         LA    R8,MESSAGE+L'MESSAGE Get                                 00072390
+         SH    R8,IPBFLN1             command                           00072480
+         SR    R8,R5                     length.                        00072570
+         LA    R2,CMDNET           Type = Network.                      00072660
+         B     EXECUTE                                                  00072750
+MOVEIT   MVC   0(*-*,R4),0(R3)     *** Executed ***                     00072840
+EXECUTE  DS    0H                                                       00072930
+         CALL  MAILCMD1,((R11),(R5),(R8),USER,NODENAME,(R2))            00073020
+         B     RCVLOOP             Go check for more.                   00073110
+         SPACE 3                                                        00073200
+SEVER    DS    0H                                                       00073290
+         IUCV  SEVER,PRMLIST=(R9)  Kill any paths except *MSG.          00073380
+         SPACE 3                                                        00073470
+DONE     EQU   *                                                        00073560
+         SR    R15,R15                                                  00078000
+         TM    MAILSTAT,MSTINWT   IN WAITD?                             00079000
+         BNO   RET                                                      00080000
+         LA    R1,=C'READY C'                                           00081000
+         LA    R0,7                                                     00082000
+         DC    X'83100008'   WAKE UP THE SLEEPING MAILER                00083000
+RET      EQU   *                                                        00084000
+         L     R13,4(R13)              GET CALLER'S SAVE PTR            00085000
+         L     R14,12(R13)             GET R14                          00086000
+         LM    R0,R12,20(R13)          GET R0-R12                       00087000
+         BR    R14                     RETURN                           00088000
+         LTORG ,                                                        00089000
+SAVE     DS    18F                     SAVE AREA                        00090000
+NODENAME DS    CL8                 Name of sending node.                00090100
+USER     DS    CL8                 Name of sending user.                00090200
+MESSAGE  DS    CL256               IUCV RECEIVE buffer.                 00090300
+IUCVP    DS    (IPSIZE)D                                                00090400
+PTRS     DS    CL(10*4)                                                 00090500
+         SPACE ,                                                        00091000
+EXTSAVE  DSECT ,                                                        00092000
+EXTGRS   DS        16F                                                  00093000
+EXTFRS   DS        8F                                                   00094000
+EXTPSW   DS        D                                                    00095000
+         END   MAILSMSG                                                 00096000

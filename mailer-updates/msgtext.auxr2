@@ -1,0 +1,18 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R207999    Change version id to 2.08 Beta
+R207037    Validate node entries in maintainers list (MAINTNODEn values)
+*          Validate THISNODE value
+R207035    Report on holes in Local-Hostn list and stop if any exist
+R207020    Stop if THISNODE not defined.
+R207011    Correct error in NOMAIL 041 msg (service not listed)
+R205025    Display duplicate entry when MAIRDI064W msg issued
+R205012    Fixes for routeaddr processing
+R205007    Report existence of multiple From or Senders correctly
+R204008    Produce mail being forwarded message if FORWARD file found
+R203035    Fix Copyright notice
+R203032    Fix up Copyright displayed at initialization.
+R203030    Verify existence of Local-Host# values in OUTGOING table.
+R203028    Support MAINTUSER1@MAINTNODE1 as synonym for MAINTUSER@MAINTNODE
+*          Issue warning when variables multiply defined
+R203014    Support for FORWARD command
+R200010    Improve version indentification.

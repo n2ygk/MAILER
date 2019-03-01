@@ -1,0 +1,8 @@
+./ I 00060000          $ 60200 200                    10/18/89 17:35:53
+         SPACE 1
+*  Lines beginning with an asterisk ('*') are ignored as comments.  The
+*  asterisk does not have to be in the first column, but must be the
+*  first non-blank character on the line.
+./ I 00177000          $ 177300 300                   10/18/89 17:35:53
+         CLI   0(R3),C'*'         Comment record?
+         BE    RCPTLO60           ---> Yes

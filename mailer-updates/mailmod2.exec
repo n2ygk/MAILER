@@ -1,0 +1,7 @@
+* Assembler routines that are part of MAILER TXTLIB
+&ERROR &EXIT &RETCODE
+&1 &2 INTERNET &3 &4 &5 &6 &7 &8 &9 &10 &11 &12 &13 &14 &15
+&1 &2 MUSIC    &3 &4 &5 &6 &7 &8 &9 &10 &11 &12 &13 &14 &15
+&1 &2 PROFS    &3 &4 &5 &6 &7 &8 &9 &10 &11 &12 &13 &14 &15
+&1 &2 UTSMAIL  &3 &4 &5 &6 &7 &8 &9 &10 &11 &12 &13 &14 &15
+&1 &2 VMMLOG   &3 &4 &5 &6 &7 &8 &9 &10 &11 &12 &13 &14 &15

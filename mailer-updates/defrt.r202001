@@ -1,0 +1,14 @@
+./ R 00077070 00082490 $ 77760 690                    01/19/89 10:22:39
+         L     R1,MBXLCL         pointer to list of user adnodes        00077760
+         ST    R1,NODEA          Save for GENLIST call                  00078450
+         LA    R14,STACKP        Stack pointer address ptr              00079140
+         LA    R15,STACKP+4      Stack size address ptr                 00079830
+         CALL  GENLIST,(NODEA,LSTRA,LSTRL,(14),(15))                    00080520
+         L     R3,LSTRA      Address of user name token                 00081210
+         L     R4,LSTRL      Length of it                               00081900
+./ D 00089680                                         01/19/89 10:22:39
+./ I 00141000          $ 141200 200                   01/19/89 10:22:39
+         SPACE 1                                                        00141200
+NODEA    DC    A(0)                Address of node for GENLIST          00141400
+LSTRA    DC    A(0)                Address of local part                00141600
+LSTRL    DC    A(0)                Length of local part                 00141800

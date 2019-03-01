@@ -1,0 +1,6 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R207029    Add WTR= parameter to BITNET exit tag for use by MVS systems
+R207007    Use VM30091 RSCS support to suppress transit messages
+R205018    Add flag to only trace a mail creating exit.
+*          When this flag is set, the exit should list the actions
+*          it would have performed, but *NOT* create the output file.

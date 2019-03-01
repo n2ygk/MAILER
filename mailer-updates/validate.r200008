@@ -1,0 +1,16 @@
+./ R 00335000          $ 335490 490                   10/11/88 15:06:05
+         BNE   TRYLDOM       Nope                                       00335000
+./ R 00337180          $ 337190 10                    10/11/88 15:06:05
+         LA    R15,LCLHOST         Address of LocalDomain array.        00337190
+         LA    R14,L'LCLHOST/4     Number of entries in LCLHOST.        00337200
+TLDLOOP  DS    0H                                                       00337210
+         ICM   R3,B'1111',0(R15)   Is there a LocalDomain?              00337220
+./ R 00337480          $ 337500 20                    10/11/88 15:06:05
+         BNE   TLDNEXT             No  : Bad address.                   00337500
+./ R 00337660          $ 337668 8                     10/11/88 15:06:05
+         BE    TLDGOOD             Yes : Accept it.                     00337668
+TLDNEXT  DS    0H                                                       00337676
+         LA    R15,4(,R15)         Update pointer                       00337684
+         BCT   R14,TLDLOOP            and loop.                         00337692
+         B     BADLOC              End of list : Bad address.           00337700
+TLDGOOD  DS    0H                                                       00337708

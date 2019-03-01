@@ -1,0 +1,94 @@
+./ R 00020000          $ 20490 490                    10/16/89 16:24:45
+;** The following 2 lines identify the userids of the RSCS server(s)    00020490
+./ R 00023000 00024000 $ 23590 590                    10/16/89 16:24:45
+rscsname=RSCS                ; name of rscs/networking vm userid        00023590
+;** rscsalt=KNET             ; name of alternate rscs userid            00024180
+./ R 00026000 00029100 $ 26990 990                    10/16/89 16:24:45
+;** The following lines allow you to specify RSCS network               00026990
+./ R 00029250          $ 29260 10                     10/16/89 16:24:45
+;** domain identifier (such as .BITNET, which is a kludge)              00029260
+./ R 00029350 00029750 $ 29380 30                     10/16/89 16:24:45
+RSCS-Domain1=.BITNET         ; Accept .BITNET                           00029380
+RSCS-Domain2=.EARN           ; Accept .EARN                             00029410
+RSCS-Domain3=.NETNORTH       ; Accept .Netnorth                         00029440
+;** RSCS-Domain4=.LOCAL.EDU                                             00029470
+;** RSCS-Domain5=.LCL.EDU                                               00029500
+;** RSCS-Domain6=                                                       00029530
+;** RSCS-Domain7=                                                       00029560
+;** RSCS-Domain8=                                                       00029590
+;** RSCS-Domain9=            ; You may have up to 9 RSCS-Domains        00029620
+./ R 00031000          $ 31490 490                    10/16/89 16:24:45
+;** The node name for the node on which MAILER is running               00031490
+./ R 00035000 00037240 $ 35290 290                    10/16/89 16:24:45
+;** The following lines allow you to specify host names for your host.  00035290
+;** This is useful if your host is known by more than 1 name.           00035580
+;**                                                                     00035870
+;** If your system is known only by its NJE node name, delete these     00036160
+;** lines.                                                              00036450
+./ R 00037360 00037840 $ 37410 50                     10/16/89 16:24:45
+Local-Host1=Host.DOMAIN.EDU       ; The real host name                  00037410
+;** Local-Host2=                     ; Alternate host identifier        00037460
+;** Local-Host3=                     ; Alternate host identifier        00037510
+;** Local-Host4=                     ; Alternate host identifier        00037560
+;** Local-Host5=                     ; Alternate host identifier        00037610
+;** Local-Host6=                     ; Alternate host identifier        00037660
+;** Local-Host7=                     ; Alternate host identifier        00037710
+;** Local-Host8=                     ; Alternate host identifier        00037760
+;** Local-Host9=                     ; Alternate host identifier        00037810
+./ R 00047000 00066000 $ 47990 990                    10/16/89 16:24:45
+;** maintuser2=user2             ; Alternate privileged userid          00047990
+;** maintnode2=node2             ;                                      00048980
+;** maintuser3=user3             ; Alternate privileged userid          00049970
+;** maintnode3=node3             ;                                      00050960
+;** maintuser4=user4             ; Alternate privileged userid          00051950
+;** maintnode4=node4             ;                                      00052940
+;** maintuser5=user5             ; Alternate privileged userid          00053930
+;** maintnode5=node5             ;                                      00054920
+;** maintuser6=user6             ; Alternate privileged userid          00055910
+;** maintnode6=node6             ;                                      00056900
+;** maintuser7=user7             ; Alternate privileged userid          00057890
+;** maintnode7=node7             ;                                      00058880
+;** maintuser8=user8             ; Alternate privileged userid          00059870
+;** maintnode8=node8             ;                                      00060860
+;** maintuser9=user9             ; Alternate privileged userid          00061850
+;** maintnode9=node9             ;                                      00062840
+;**                                                                     00063830
+./ R 00068000          $ 68490 490                    10/16/89 16:24:45
+;** Change this value to TRUE if you are willing to assume that any     00068490
+./ R 00070000          $ 70490 490                    10/16/89 16:24:45
+;** node.  Leaving the value set as FALSE requires that the source      00070490
+./ R 00074000 00075000 $ 74590 590                    10/16/89 16:24:45
+allow-unknown-nodes=FALSE    ; Do not allow nodes I do not know         00074590
+                             ; about to exchange mail.                  00075180
+./ R 00097000          $ 97090 90                     10/16/89 16:24:45
+;** line to use the msgprefix value.                                    00097090
+;**                                                                     00097180
+;** *Note* It is recommended that the msgprefix value begin with an     00097270
+;** asterisk ('*') so that msgs to servers (such as listserv) will      00097360
+;** not be handled as commands.                                         00097450
+./ I 00133000          $ 133090 90                    10/16/89 16:24:45
+; The following table lists the possible sources of incoming            00133090
+; files and the name of an exit to be invoked before any processing     00133180
+; has been done on the mail file.  This allows you to do arbitrary      00133270
+; processing based on the origin userid.                                00133360
+                                                                        00133450
+ORIGINS:                                                                00133540
+;USERID  EXIT        COMMENTS                                           00133630
+;------- ---------  -------------------------------                     00133720
+END ORIGINS                                                             00133810
+                                                                        00133900
+./ I 00142000          $ 142500 500                   10/16/89 16:24:45
+; *DEFAULT* MAILER              ; Allow userid MAILER from anywhere     00142500
+./ R 00149000 00150000 $ 149590 590                   10/16/89 16:24:45
+; Host name      Node     Userid   Exit     Type Parm                   00149490
+; -------------- -------- -------- -------- ---- --------               00150000
+./ I 00151000          $ 151500 500                   10/16/89 16:24:45
+*DEFAULT*        *        *        TRYRSCS  1    ; See DOC for parm info00151500
+./ D 00171000                                         10/16/89 16:24:45
+./ D 00173000                                         10/16/89 16:24:45
+./ I 00174000          $ 174100 100                   10/16/89 16:24:45
+; POSTMAST  RSMAIL    2   POSTMAST      ; Leave this entry commented out00174100
+                                        ;   if you have a real id of    00174200
+                                        ;   POSTMAST on your system     00174300
+SYSTEM                                  ; To prevent punched decks      00174400
+*                                       ; Prevent mail to *@node        00174500

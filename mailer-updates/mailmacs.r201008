@@ -1,0 +1,3 @@
+./ I 00545540          $ 545550 10                    10/31/88 15:11:39
+MFLG2BLD EQU   X'04'         BUILDLST incomplete (some mail to send,
+*                                but some destinations not found)

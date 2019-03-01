@@ -1,0 +1,14 @@
+* * * * * * * * * * * * * * * AUXEXCR2 * * * * * * * * * * * * * * * *
+R208003    Fix FORWARD MAILER to always use the diskmode passed by
+*          Mailer
+R207045    Add Copyright statments into new code
+R207044    Pass the value of ThisNode to FORWARD/MAILLIST MAILER.
+R207026    Support for file forwarding in the * FORWARD files.
+R207025    Support specification of disk for FORWARD and MAILLIST files
+R207010    Handle userid of '*' more appropriately in FORWARD MAILER
+R207009    Correct error in FORWARD MAILER
+*          Forwarding files longer than 3 lines are not sent to remote
+*          requestors
+R207002    Corrections to FORWARD and MAILLIST for command processing rewrite
+R207001    Pass MSGCMD value to FORWARD and MAILLIST commands
+*          Correct bug in use of non-MSG command

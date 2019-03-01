@@ -1,0 +1,7 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R207004    Handle a partial match as doesn't exist when building
+*          OUTGOING tables
+R207003    Additional debugging code in TBLUK
+R205016    Add tracing code to TBLUK
+R203026    Interim speedup of TBLUK service, using binary search.
+R202018    Remove PRINT NOGENs, make DSECTs honor SYSPARM(SUP)/SYSPARM(EXP)

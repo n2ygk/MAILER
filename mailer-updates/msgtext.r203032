@@ -1,0 +1,9 @@
+./ R 00020790 00021580 $ 21180 390                    09/28/89 14:14:48
+T1       DC    AL1(LT1),C'MAILER001I VM Network MAILER          '       00020790
+         DC    C'                  '                                    00021580
+         DC    X'15'               Start a new line
+./ I 00022490          $ 22590 100                    09/28/89 14:14:48
+         DC    X'15'               Start a new line
+         DC    C'Copyright (c) 1989 Princeton University'               00022490
+./ R 00024490          $ 24680 190                    09/28/89 14:14:48
+M1       DC    A(T1),AL1(3,3,29,8,38,8,47,8,0)                          00024490

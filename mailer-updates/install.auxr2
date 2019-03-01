@@ -1,0 +1,30 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R208001    Documentation corrections
+R208000    Change version number to 2.08
+R207999    Change version number to 2.08 Beta
+*          Update disk contents in documentation
+*          Lots of other changes
+R207037    Validate node entries in maintainers list (MAINTNODEn values)
+*          Validate THISNODE value
+R207035    Report on holes in Local-Hostn list and stop if any exist
+R207027    Documentation changes
+R207026    Centralize support for mail and file forwarding in the * FORWARD
+*          files.
+R207020    Stop if THISNODE not defined.
+R207018    Update help files
+R207011    Correct error in NOMAIL 041 msg (service not listed)
+R207000    Change version number
+R206000    Change version number
+R205029    DOC changes - Fixes to documentation discovered during BETA
+*          test period
+R205025    Display duplicate entry when MAIRDI064W msg issued
+R205015    Add control to allow acceptance of BSMTP streams with
+*          FILE FROM: header.
+R205012    Fixes for routeaddr processing
+R205009    Use LOAD SVC, not LOAD command, to load external exits
+R205007    Report existence of multiple From or Senders correctly
+R205005    Support for '!' in addresses
+R205001    Incorporate MUSIC exit
+R205       Update for release 2.05
+R204       Update for release 2.04
+R200       Update for release 2

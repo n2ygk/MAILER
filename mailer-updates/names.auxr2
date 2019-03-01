@@ -1,0 +1,4 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R207032    Support .* comment form in MG input
+R203027    Support comments in MG
+R203018    Fix case sensitivity problems.

@@ -1,0 +1,7 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R205027    Change existing parse tracing code from assembly time
+*          switches to runtime switches.  This adds 'Trace-Parsing'
+*          to the debugging variables
+R202018    Remove PRINT NOGENs, make DSECTs honor SYSPARM(SUP)/SYSPARM(EXP)
+R200013    Corrections for improper zeroing of various control blocks
+*             built stack

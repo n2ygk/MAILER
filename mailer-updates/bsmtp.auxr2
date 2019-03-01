@@ -1,0 +1,21 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R207031    Correct string length calculation in BSMTP
+R207007    Use VM30091 RSCS support to suppress transit messages
+R205018    Add flag to only trace a mail creating exit.
+*          When this flag is set, the exit should list the actions
+*          it would have performed, but *NOT* create the output file.
+R205015    Add control to allow acceptance of BSMTP streams with
+*          FILE FROM: header.
+R204006    Corrections to handling of parm by BSMTP exit
+*          1. '%parm' was being used to set HELO string
+*          2. Bad address used is parm not found
+R202018    Remove PRINT NOGENs, make DSECTs honor SYSPARM(SUP)/SYSPARM(EXP)
+R202008    Fix for BSMTP exit processing of MAIL FROM: when userid
+*          has no domain portion and RSCS-domain is not coded.
+R202006    Correction for continued MAIL FROM: lines in BSMTP
+R201012    Handle long addresses in BSMTP exit correctly
+R201001    Correct BSMPT to handle '%var' parm correctly
+R200013    Corrections for improper zeroing of various control blocks
+*             built stack
+R200009    Allow multiple Rscs-Domains.
+R200008    Allow multiple Local-Hosts.

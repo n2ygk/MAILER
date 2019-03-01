@@ -1,0 +1,192 @@
+./ R 00005000          $ 5090 90                      03/19/91 18:31:05
+address COMMAND                                                         00005090
+                                                                        00005180
+/* get mailer version number (quietly) */                               00005270
+                                                                        00005360
+'SET CMSTYPE HT'                                                        00005450
+./ R 00007350          $ 7370 20                      03/19/91 18:31:05
+      'ERASE $VERSION COPY A'                                           00007370
+./ R 00014000          $ 14290 290                    03/19/91 18:31:05
+'SET CMSTYPE RT'                                                        00014290
+                                                                        00014580
+./ R 00016000 00018000 $ 16690 690                    03/19/91 18:31:05
+                                                                        00016690
+/*  Rebuild MAILER's MACLIBs  */                                        00017380
+/*  MACGEN rebuilds the MACLIB load lists */                            00018070
+./ R 00020200 00020800 $ 20590 390                    03/19/91 18:31:05
+if rc <> 0  then  signal exit                                           00020590
+./ I 00022000          $ 22500 500                    03/19/91 18:31:05
+/*  MAILMODS rebuilds the MAILMOD1 and MAILMOD2 lists */                00022500
+./ I 00024000          $ 24500 500                    03/19/91 18:31:05
+if rc > 4  then  signal exit                                            00024500
+./ I 00027000          $ 27100 100                    03/19/91 18:31:05
+say ' '                                                                 00027100
+say 'Rebuilding MAILHS EXEC'                                            00027200
+call execupdt 'MAILHS EXEC ( OUTMODE A CTL MAILEXEC'                    00027300
+                                                                        00027400
+say ' '                                                                 00027500
+say 'Rebuilding C header files'                                         00027600
+./ I 00028000          $ 28100 100                    03/19/91 18:31:05
+if rc > 4  then  signal exit                                            00028100
+                                                                        00028200
+'ERASE MAILHS   EXEC'                                                   00028300
+                                                                        00028400
+say ' '                                                                 00028500
+say 'Rebuilding MAILCS EXEC'                                            00028600
+call execupdt 'MAILCS EXEC ( OUTMODE A CTL MAILEXEC'                    00028700
+if result <> 0  then  signal exit                                       00028800
+                                                                        00028900
+say ' '                                                                 00029000
+say 'Compiling C code'                                                  00029100
+./ R 00031000          $ 31290 290                    03/19/91 18:31:05
+if rc > 4  then  signal exit                                            00031290
+                                                                        00031580
+./ I 00035000          $ 35300 300                    03/19/91 18:31:05
+say ' '                                                                 00035300
+say 'Rebuilding MAILGEN and MAILER TXTLIBs'                             00035600
+./ I 00036000          $ 36500 500                    03/19/91 18:31:05
+if rc <> 0   then  signal exit                                          00036500
+./ R 00040090          $ 40096 6                      03/19/91 18:31:05
+say ' '                                                                 00040096
+say 'Rebuilding EXEC files list'                                        00040102
+call execupdt 'MAILEXEC EXEC ( OUTMODE A CTL MAILEXEC'                  00040108
+if result <> 0  then  signal exit                                       00040114
+                                                                        00040120
+say ' '                                                                 00040126
+say 'Rebuilding EXEC merged base files'                                 00040132
+'EXEC MAILBASE MAILEXEC MAILEXEC'                                       00040138
+if rc <> 0   then  signal exit                                          00040144
+                                                                        00040150
+say ' '                                                                 00040156
+say 'Rebuilding EXEC files'                                             00040162
+'EXEC MAILEXEC EXEC EXECUPDT ( OUTMODE A NOUPDATE'                      00040168
+if rc <> 0   then  signal exit                                          00040174
+                                                                        00040180
+'ERASE MAILEXEC EXEC A'                                                 00040186
+                                                                        00040192
+./ R 00040800          $ 40810 10                     03/19/91 18:31:05
+say ' '                                                                 00040810
+say 'Rebuilding sample MTPLATE merged base'                             00040820
+call update 'SAMPLE MTPLATE MAILER ( OUTMODE A'                         00040830
+if result <> 0   then  signal exit                                      00040840
+                                                                        00040850
+say ' '                                                                 00040860
+say 'Rebuilding sample MTPLATE'                                         00040870
+call execupdt 'SAMPLE MTPLATE ( OUTMODE A NOUPDATE'                     00040880
+if result <> 0   then  signal exit                                      00040890
+
+/*  Rebuild SAMPLE MAILLCL  */
+
+'ESTATE SAMPLE MAILLCL A'
+if rc = 0  then  'ERASE SAMPLE MAILLCL A'
+'EXECIO 1 DISKW SAMPLE MAILLCL A (FINIS STRING' ,
+   'localnode   *       *       LOCAL    1 ; change nodename to match'
+./ R 00044000 00052000 $ 44890 890                    03/19/91 18:31:05
+'ERASE * C'                                                             00044890
+'ERASE * ERRS'                                                          00045780
+'ERASE * MAP'                                                           00046670
+'ERASE * TEXT'                                                          00047560
+'ERASE * UPDATES'                                                       00048450
+'ERASE * UPDLOG'                                                        00049340
+'ERASE MAILCS   EXEC'                                                   00050230
+'ERASE MAILMOD1 EXEC'                                                   00051120
+'ERASE MAILMOD2 EXEC'                                                   00052010
+./ R 00064000          $ 64290 290                    03/19/91 18:31:05
+say ' '                                                                 00064290
+say 'Creating MAILER MODULE'                                            00064580
+./ R 00066000 00067000 $ 66990 990                    03/19/91 18:31:05
+if rc > 4 then signal exit                                              00066990
+./ I 00068490          $ 68690 200                    03/19/91 18:31:05
+if rc > 0 then signal exit                                              00068690
+./ R 00070000          $ 70190 190                    03/19/91 18:31:05
+                                                                        00070190
+say ' '                                                                 00070380
+say 'Creating MG MODULE'                                                00070570
+./ R 00072000 00073000 $ 72990 990                    03/19/91 18:31:05
+if rc > 4  then  signal exit                                            00072990
+./ I 00074490          $ 74690 200                    03/19/91 18:31:05
+if rc > 0 then signal exit                                              00074690
+./ I 00075000          $ 75020 20                     03/19/91 18:31:05
+                                                                        00075020
+/*  Rebuild HELP files  */                                              00075040
+                                                                        00075060
+say ' '                                                                 00075080
+say 'Rebuilding HELP files list'                                        00075100
+call execupdt 'MAILHELP EXEC ( OUTMODE A CTL MAILEXEC'                  00075120
+if result <> 0  then  signal exit                                       00075140
+                                                                        00075160
+say ' '                                                                 00075180
+say 'Rebuilding HELP merged base files'                                 00075200
+'EXEC MAILBASE MAILHELP MAILHELP'                                       00075220
+if rc <> 0  then  signal exit                                           00075240
+                                                                        00075260
+say ' '                                                                 00075280
+say 'Rebuilding HELP files'                                             00075300
+'EXEC MAILHELP EXEC EXECUPDT ( OUTMODE A NOUPDATE'                      00075320
+if rc <> 0  then  signal exit                                           00075340
+                                                                        00075360
+'ERASE MAILHELP EXEC A'                                                 00075380
+                                                                        00075400
+/*  Rebuild printable copies of installation manual  */                 00075420
+                                                                        00075440
+'ESTATE INSTALL $SCRIPT *'                                              00075460
+if rc = 0  then  do                                                     00075480
+                                                                        00075500
+   say ' '                                                              00075520
+   say 'Rebuilding installation guide source'                           00075540
+   call execupdt 'INSTALL SCRIPT ( OUTMODE A CTL MAILER'                00075560
+   if result <> 0  then  signal exit                                    00075580
+                                                                        00075600
+   say ' '                                                              00075620
+   say 'Creating printable copies of installation guide'                00075640
+   address CMS                                                          00075660
+   'SCRIPT INSTALL (PASS 2 DISK'                                        00075680
+   'SCRIPT INSTALL (PASS 2 MKPOST'                                      00075700
+   address COMMAND                                                      00075720
+                                                                        00075740
+   end                                                                  00075760
+./ R 00077000          $ 77990 990                    03/19/91 18:31:05
+exit: exit rc                                                           00077990
+                                                                        00078980
+/* ********************** */                                            00079970
+/*  Internal Subroutines  */                                            00080960
+/* ********************** */                                            00081950
+                                                                        00082940
+ExecUpdt:  procedure  /* Drive the EXECUPDT command */                  00083930
+parse upper arg fn ft '(' options ')' .                                 00084920
+                                                                        00085910
+'EXEC EXECUPDT' fn ft '(' options                                       00086900
+updtrc = rc                                                             00087890
+                                                                        00088880
+'ESTATE' fn 'UPDATES A'                                                 00089870
+if rc = 0  then  'ERASE' fn 'UPDATES A'                                 00090860
+'ESTATE' fn 'UPDLOG A'                                                  00091850
+if rc = 0  then  'ERASE' fn 'UPDLOG A'                                  00092840
+                                                                        00093830
+return updtrc                                                           00094820
+                                                                        00095810
+                                                                        00096800
+Update:  procedure  /* Drive the UPDATE command */                      00097790
+parse upper arg fn ft cntrl '(' options ')'                             00098780
+                                                                        00099770
+'ESTATEW' fn '$'ft 'A'                                                  00100760
+if rc = 0  then  'ERASE' fn '$'ft 'A'                                   00101750
+                                                                        00102740
+exitrc = 0                                                              00103730
+'UPDATE' fn '$'ft '*' cntrl 'CNTRL * (CTL NOREP OUTMODE A'              00104720
+select                                                                  00105710
+   when  rc = 0  then  do                                               00106700
+      'RENAME $'fn '$'ft 'A' fn '= ='                                   00107690
+      say '"'fn '$'ft 'A" created'                                      00108680
+      'ERASE' fn 'UPDATES A'                                            00109670
+      'ERASE' fn 'UPDLOG  A'                                            00110660
+      end                                                               00111650
+   when  rc = 40  then  do                                              00112640
+      'COPYFILE' fn '$'ft '* = = A'                                     00113630
+      say '"'fn '$'ft 'A" created'                                      00114620
+      end                                                               00115610
+   otherwise                                                            00116600
+      if rc > exitrc  then  exitrc = rc                                 00117590
+   end                                                                  00118580
+                                                                        00119570
+return exitrc                                                           00120560

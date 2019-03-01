@@ -1,0 +1,11 @@
+./ I 00546267          $ 546272 5                     01/10/90 17:11:31
+         SPACE 1                                                        00546272
+./ I 00546277          $ 546278 1                     01/10/90 17:11:31
+DBGNOOUT EQU   X'80'               Do not produce output mail           00546278
+*        EQU   X'40'               Unused                               00546279
+*        EQU   X'20'               Unused                               00546280
+*        EQU   X'10'               Unused                               00546281
+*        EQU   X'08'               Unused                               00546282
+*        EQU   X'04'               Unused                               00546283
+*        EQU   X'02'               Unused                               00546284
+*        EQU   X'01'               Unused                               00546285

@@ -1,0 +1,356 @@
+./ I 00169000          $ 169100 100                   04/05/90 16:19:31
+.sp                                                                     00169100
+My thanks go to Alain Fontaine for all the time he has spent picking    00169200
+nits to make this installation guide accurate and usable.               00169300
+./ I 00539760          $ 539780 20                    04/05/90 16:19:31
+.br                                                                     00539780
+MAILER   TXTLIB                                                         00539800
+./ I 00540800          $ 540820 20                    04/05/90 16:19:31
+.bd COPYFILE MAILER TXTLIB C = = Z (OLDD                                00540820
+.br                                                                     00540840
+./ R 00608000 00610000 $ 608090 90                    04/05/90 16:19:31
+The first step is to look for the origin userid in the ORIGINS table.   00608090
+The origin userid is the id that appears under the 'ORIGINID' heading   00608180
+when you issue a 'CP QUERY RDR ALL' command.                            00608270
+It is the local system id that put this file into the system spool.     00608360
+If an entry is found that matches the origin userid, the exit           00608450
+for that entry is run.                                                  00608540
+This exit may do anything it likes to the mail file (including purging  00608630
+it).                                                                    00608720
+This allows you to implement some control over who can actually use     00608810
+.us \\MAILER\.                                                          00608900
+.sp 1                                                                   00608990
+.us \Next, \MAILER\                                                     00609080
+parses the mail or BSMTP request to obtain the userid of the sender and 00609170
+a list of recipients.                                                   00609260
+In the case of BSMTP, this is simple -- the sender is given in the      00609350
+MAIL FROM command and each recipient is identified by                   00609440
+a RCPT TO command.                                                      00609530
+./ R 00617590 00623000 $ 617780 190                   04/05/90 16:19:31
+.us \\MAILER\ now looks up the NJE origin in the INCOMING table         00617780
+(see section 8.3 for a description of the entries in this table).       00617970
+The NJE origin is the originating userid and node from which the file   00618160
+was sent.                                                               00618350
+You can see the NJE origin by issuing a CP TAG QUERY FILE command for   00618540
+a file placed in your reader by RSCS.                                   00618730
+.sp 1                                                                   00618920
+The INCOMING table lists which other mailers your                       00619110
+.us \\MAILER\ knows about and will trust.                               00619300
+Anyone not listed in the INCOMING table must send a mail file with a    00619490
+Sender: or From: field that is consistent with the file's RSCS origin   00619680
+node and userid.                                                        00619870
+.sp 1                                                                   00620060
+.us \\MAILER\ first looks for NJEuserid@NJEnode in the INCOMING table   00620250
+.us \If that is not found, \MAILER\ searches for NJEuser@*DEFAULT*.     00620440
+.us \If that is not found (and the \Allow-Unknown-Nodes\ variable is    00620630
+set true) and entry of *DEFAULT*@*DEFAULT* is searched for.             00620820
+For mail with an RFC822 header (i.e not BSMTP) if no matching entry is  00621010
+found, the mail is rejected.                                            00621200
+.sp 1                                                                   00621390
+For mail delivered with a BSMTP envelope, if no matching entry is       00621580
+.us \found and \Allow-Charlatans\ is true, a message indicating that    00621770
+the sender is a charlatan will be added to the headers delivered to     00621960
+the final destination.                                                  00622150
+.us \If \Allow-Charlatans\ is false the mail will be rejected.          00622340
+./ R 00623620          $ 623626 6                     04/05/90 16:19:31
+4.^Look for the full host value (the one used in step 1) in the DOMAINS 00623626
+table.                                                                  00623632
+./ R 00623980 00624000 $ 623984 4                     04/05/90 16:19:31
+5B.1.^If an RSCS-Domain match was found (in step 2) look for            00623984
+*DEFAULT*ROUTE*.RSCS-Domain in the DOMAINS table (otherwise skip to     00623988
+step 5B.2).                                                             00623992
+.sp 1                                                                   00623996
+If the address was SOMENODE.BITNET (and BITNET is in the                00624000
+RSCS-Domain# strings) and SOMENODE was not found in the outgoing table, 00624004
+the DOMAINS table would be searched for *DEFAULT*ROUTE*.BITNET.         00624008
+This allows you to set default routings for domain names (such          00624012
+as .BITNET) which are on the NJE network.                               00624016
+./ R 00720000 00722390 $ 720060 60                    04/05/90 16:19:31
+.us \\Allow-Unknown-Nodes\ controls how mail being received is          00720060
+processed and how mail being sent is handled.                           00720120
+.sp 1                                                                   00720180
+.us \For mail being received by \MAILER\:                               00720240
+.in +4                                                                  00720300
+.sp 1                                                                   00720360
+.us \If \Allow-Unknown-Nodes\ is 'False', then the NJE origin of the    00720420
+mail must be found as an entry in the INCOMING table.                   00720480
+This entry could have either the form 'node mailerid' or '*DEFAULT*     00720540
+mailerid'.                                                              00720600
+The '*DEFAULT* *DEFAULT* entry will not be used (even if it is coded).  00720660
+.sp 1                                                                   00720720
+.us \If \Allow-Unknown-Nodes\ is 'True', then the NJE origin of the     00720780
+of file does not have to appear in the INCOMING table.                  00720840
+If the '*DEFAULT* *DEFAULT*' entry is not coded the mail will always be 00720900
+accepted.                                                               00720960
+If the '*DEFAULT* *DEFAULT*' entry is coded, it will be used to validate00721020
+the arriving mail (see section 8.3, "INCOMING Table", and section 9.2,  00721080
+"INCOMING Exits", for more information).                                00721140
+.in -4                                                                  00721200
+.sp 1                                                                   00721260
+.us \For mail being delivered by \MAILER\:                              00721320
+.in +4                                                                  00721380
+.sp 1                                                                   00721440
+.us \If \Allow-Unknown-Nodes\ is 'False', then the destination hostid of00721500
+the mail must be found as an entry in the OUTGOING or DOMAINS table.    00721560
+The *DEFAULT* entry (in the OUTGOING table) and the *DEFAULT*ROUTE and  00721620
+*DEFAULT* entries (of the DOMAINS table) will not be used (even if they 00721680
+are coded).                                                             00721740
+.sp 1                                                                   00721800
+.us \If \Allow-Unknown-Nodes\ is 'True', then the destination hostid    00721860
+can also match on the *DEFAULT* entry of the OUTGOING table (if there is00721920
+no '.' in the hostid) or on the *DEFAULT*ROUTE* or *DEFAULT* entries    00721980
+of the DOMAINS table (if there is a '.' in the hostid).                 00722040
+.sp 1                                                                   00722100
+This scheme is useful when RSCS route updates get done before           00722160
+./ R 00723170          $ 723260 90                    04/05/90 16:19:31
+to be controlled from RSCS (by using *DEFAULT* in OUTGOING and          00723260
+*DEFAULT*ROUTE* in DOMAINS).                                            00723350
+./ I 00723950          $ 724040 90                    04/05/90 16:19:31
+the arriving mail (see section 8.4, "OUTGOING Table", and section 9.1,  00724040
+"OUTGOING Exits", for more information).                                00724130
+.in -4                                                                  00724220
+./ R 00763400          $ 763440 40                    04/05/90 16:19:31
+NJEnode NJEuserid < Exitname > ; comment                                00763440
+./ I 00763600          $ 763700 100                   04/05/90 16:19:31
+.us \The \Exitname\ parameter is optional.                              00763700
+Do not code '<' and '>'.                                                00763800
+.sp 1                                                                   00763900
+./ I 00766290          $ 766296 6                     04/05/90 16:19:31
+.sp 1                                                                   00766296
+.us \If \Exitname\ is not specified, MAILER understands the specified   00766302
+.us \\NJEuserid@NJEnode\ to be a "trusted" mailer that has already      00766308
+done whatever validation is necessary.                                  00766314
+.bd \The mailer ids found in the :mailer tag of the \XMAILER NAMES\     00766320
+file cause entries of this format to be generated.                      00766326
+.sp 1                                                                   00766332
+Some userids have become standard for mailers on BITNET (in particular  00766338
+"MAILER").                                                              00766344
+To decrease the size of the INCOMING table (and to speed up the table   00766350
+search) it is possible to specify generic userids to be accepted as     00766356
+trusted mailers.                                                        00766362
+A generic mailer userid is coded as:                                    00766368
+.sp 1                                                                   00766374
+.in +.4i                                                                00766380
+*DEFAULT*  NJEuserid < Exitname > ; comment                             00766386
+.in -.4i                                                                00766392
+.sp 1                                                                   00766398
+If you code a generic mailer userid, you can remove all the entries in  00766404
+.us \INCOMING that use the \NJEuserid\ you have coded.                  00766410
+Thought should be given to using this facility since it will authorize  00766416
+.us \\NJEuserid\ from any node on the network.                          00766422
+No checking is done to see if this is in fact a valid mailer.           00766428
+.sp 1                                                                   00766434
+.us \Occasionally you may receive mail from a node \MAILER\ does not    00766440
+know about (i.e. it doesn't appear in the INCOMING table).              00766446
+You may want to accept this mail for processing.                        00766452
+To do this you code a generic network entry.                            00766458
+A generic network entry looks like:                                     00766464
+.sp 1                                                                   00766470
+.in +.4i                                                                00766476
+*DEFAULT*  *DEFAULT* < Exitname > ; comment                             00766482
+.in -.4i                                                                00766488
+.sp 1                                                                   00766494
+.us \Normally \Exitname\ is coded as RSCSVER (see section 9.2.1,        00766500
+"RSCSVER", for more information).                                       00766506
+.us \Exitname\ should never be left blank.  This would cause mail       00766512
+from all unknown senders to be accepted without validation.             00766518
+.sp 1                                                                   00766524
+.us \The variable \Allow-Unknown-Nodes\ controls the use of the         00766530
+generic network entry.                                                  00766536
+.us \See section 7, \Overview of MAILER Operation\ for a complete       00766542
+description of how the INCOMING table is searched.                      00766548
+./ R 00781600 00782990 $ 781690 90                    04/05/90 16:19:31
+.sp 1                                                                   00781690
+Occasionally you may receive mail for distribution for which no         00781780
+.us \matching \Hostname\ entry exists in the table.                     00781870
+If you want to try to route these unknown destinations you can create a 00781960
+generic destination entry in the OUTGOING table by coding:              00782050
+.sp 1                                                                   00782140
+.in +.4i                                                                00782230
+*DEFAULT* NJEnode NJEuserid Exitname Exittype ; comment                 00782320
+.in -.4i                                                                00782410
+.sp 1                                                                   00782500
+You may route the mail to anywhere on the network, but usually this     00782590
+facility is used to give the mail to RSCS in an attempt to do           00782680
+deliver directly to the recipient (using the standard NJE tag of 'node  00782770
+userid').                                                               00782860
+When using your local RSCS for the default route destination the        00782950
+*DEFAULT* entry should be coded as:                                     00783040
+.sp 1                                                                   00783130
+.in +.4i                                                                00783220
+*DEFAULT* *       *         TRYRSCS  1        ; comment                 00783310
+.in -.4i                                                                00783400
+.sp 1                                                                   00783490
+.us \The variable \Allow-Unknown-Nodes\ effects this searching process. 00783580
+./ I 00795980          $ 795990 10                    04/05/90 16:19:31
+.sp                                                                     00795990
+Occasionally you may receive mail for distribution for which no         00796000
+.us \matching \DomainName\ entry exists in the table.                   00796010
+If you want to try to route these unknown destinations you can create a 00796020
+generic destination entry in the DOMAINS table by coding:               00796030
+.sp 1                                                                   00796040
+.in +.4i                                                                00796050
+*DEFAULT*ROUTE*.RSCS-Domain NJEnode NJEuserid Exitname Exittype ;       00796060
+.sp 1                                                                   00796070
+    or                                                                  00796080
+.sp 1                                                                   00796090
+*DEFAULT*  NJEnode NJEuserid Exitname Exittype ; comment                00796100
+.in -.4i                                                                00796110
+.sp 1                                                                   00796120
+The first form is used to produce default routes for mail addressed to  00796130
+domains you have described as being valid for the NJE network (by       00796140
+defining them in the RSCS-Domain# variables).                           00796150
+.sp 1                                                                   00796160
+You may route the mail to anywhere on the network, but usually this     00796170
+facility is used to give the mail to RSCS in an attempt to do           00796180
+deliver directly to the recipient (using the standard NJE tag of 'node  00796190
+userid').                                                               00796200
+When using your local RSCS for the default route destination the        00796210
+*DEFAULT*ROUTE* entry should be coded as:                               00796220
+.sp 1                                                                   00796230
+.in +.4i                                                                00796240
+*DEFAULT*ROUTE*.RSCS-Domain *       *         TRYRSCS  1  ;             00796250
+.in -.4i                                                                00796260
+.sp 1                                                                   00796270
+The second form is used to route non-NJE domains to a default           00796280
+destination.                                                            00796290
+Normally this would be coded as                                         00796300
+.sp 1                                                                   00796310
+.in +.4i                                                                00796320
+*DEFAULT*  INTERBIT SMTP   BSMTP  3  ; Send it to INTERBIT              00796330
+.in -.4i                                                                00796340
+.sp 1                                                                   00796350
+You may however point the *DEFAULT* routing to any id on the network.   00796360
+./ R 00796760          $ 796780 20                    04/05/90 16:19:31
+If you have a local internet gateway that supports MX records (if you   00796780
+don't know what this means you don't need to do this) then you may      00796800
+want to route to your local gateway rather than to INTERBIT.            00796820
+Should you do this (and assuming that the userid of your gateway is     00796840
+SMTP) the *DEFAULT* entry would look like:                              00796860
+.sp 1                                                                   00796880
+.in +.4i                                                                00796900
+*DEFAULT*  *        SMTP   BSMTP  3  ; Send to MX gateway               00796920
+.in -.4i                                                                00796940
+.sp                                                                     00796960
+.us \The variable \Allow-Unknown-Nodes\ effects this searching process. 00796980
+./ R 00961312 00961330 $ 961313 1                     04/05/90 16:19:31
+.tb set                                                                 00961313
+Bang format addresses are handled by taking everything in front of the  00961314
+leftmost '!' and placing it to the right hand end of the address        00961315
+following an '@'.                                                       00961316
+Examples of this transformation process are:                            00961317
+.in +.22i                                                               00961318
+.sp 1                                                                   00961319
+here!othernode!user -> othernode!user@here                              00961320
+.br                                                                     00961321
+othernode!user@here -> user@othernode                                   00961322
+.br                                                                     00961323
+here!node2!othernode!user -> node2!othernode!user@here                  00961324
+.br                                                                     00961325
+node2!othernode!user@here -> othernode!user@node2                       00961326
+.in -.22i                                                               00961327
+.tb set !                                                               00961328
+.sp 1                                                                   00961329
+After the address has been transformed, the mail is reprocessed for     00961330
+delivery.                                                               00961331
+./ R 01004240          $ 1004250 10                   04/05/90 16:19:31
+.us \entry of the OUTGOING table and the *DEFAULT*ROUTE*.\Rscs-Domain   01004250
+entry of the DOMAINS table.                                             01004260
+./ I 01004440          $ 1004448 8                    04/05/90 16:19:31
+.sp 1                                                                   01004448
+Searching for the *DEFAULT* entry of the OUTGOING table is controlled   01004456
+.us \by the setting of \Allow-Unknown-Nodes\.                           01004464
+See section 8.1, "Variable Declarations", for more information.         01004472
+./ R 01011000 01012000 $ 1011490 490                  04/05/90 16:19:31
+origin in the tag text.                                                 01011490
+This exit is used in the "*DEFAULT* *DEFAULT" entry of the INCOMING     01011980
+table and allows users on other systems not running                     01012470
+./ R 01782671 01782674 $ 1782673 2                    04/05/90 16:19:31
+.us \\MAILER\ could not deliver this mail because the headers are       01782673
+logically invalid (you can't have more than 1 FROM: and/or 1 SENDER:    01782675
+field).                                                                 01782677
+.in -4                                                                  01782679
+./ R 01782682 01782714 $ 1782683 1                    04/05/90 16:19:31
+MAILER079E **** MAILER PROFILE coding error ***** :  LOCAL              01782683
+.br                                                                     01782684
+           exit destination not                                         01782685
+.br                                                                     01782686
+.us \MAILER080E found in RSCS-Domains or Local-Hosts: \local-name\      01782687
+.in +4                                                                  01782688
+.sp 1                                                                   01782689
+A destination specifies use of the LOCAL exit, but is not listed in     01782690
+either the RSCS-Domains or Local-Hosts list.                            01782691
+This is more than likely a coding error.                                01782692
+.sp 1                                                                   01782693
+This message is issued by BUILDLST.                                     01782694
+BUILDLST pretends that things are coded correctly and recovers from     01782695
+this, but you should fix it up anyway.                                  01782696
+.in -4                                                                  01782697
+.sp 2                                                                   01782698
+MAILER081U Host in routeaddress does not support mail                   01782699
+.br                                                                     01782700
+           forwarding, try a different path                             01782701
+.br                                                                     01782702
+.us \MAILER082U Host to change: \host-name\                             01782703
+.in +4                                                                  01782704
+.sp 1                                                                   01782705
+MAILER's lookup for a host has found a line which specifies use of      01782706
+either the DEFRT or TRYRSCS exit.                                       01782707
+The address being used is not a user@host, but a routaddress (@host)    01782708
+which cannot be delivered by either of these exits (since there is no   01782709
+associated userid to give to NJE).                                      01782710
+.sp 1                                                                   01782711
+This message may indicate a coding problem in the profile and not       01782712
+a problem in the user's mail address.                                   01782713
+The coding problem would occur if the correct exit to be using for this 01782714
+destinaion is the BSMTP exit.                                           01782715
+.in -4                                                                  01782716
+.in -.33i                                                               01782717
+./ R 02151490 02155000 $ 2151580 90                   04/05/90 16:19:31
+;**                                                                     02151580
+;** Setting allow-unknown-nodes to TRUE will do 2 things:               02151670
+;**                                                                     02151760
+;**   1.  If the *DEFAULT* entry in the INCOMING table does not         02151850
+;**       exist, all mail received by MAILER will always be accepted.   02151940
+;**       If the *DEFAULT* entry exists, then validation will occur     02152030
+;**       just as it would for any other match in the incoming table.   02152120
+;**                                                                     02152210
+;**       Assuming that the RSCSVER exit is used:                       02152300
+;**         A. For RFC822 mail, a mismatch between the NJE origin and   02152390
+;**            the From: header will cause the mail to be rejected      02152480
+;**         B. For BSMTP mail, a mismatch between the NJE origin and    02152570
+;**            the BSMTP MAIL FROM: will cause a warning to be added    02152660
+;**            to the mail file (if allow-charlatans=TRUE).             02152750
+;**                                                                     02152840
+;**   2.  Files being sent by MAILER but for which no entry is found    02152930
+;**       in the OUTGOING or DOMAINS table will use the *DEFAULT*       02153020
+;**       (and *DEFAULT*ROUTE*) entries (if they exist).                02153110
+;**                                                                     02153200
+;** Leaving the value FALSE will cause all incoming mail that does not  02153290
+;** match an entry in the INCOMING table to be rejected (even if the    02153380
+;** *DEFAULT* entry is coded).  Outgoing mail that does not match an    02153470
+;** entry in the OUTGOING or DOMAINS table will also be returned (even  02153560
+;** if *DEFAULT* entries are coded).                                    02153650
+./ I 02167000          $ 2167070 70                   04/05/90 16:19:31
+;**
+;** When Allow-File-From is TRUE, MAILER will accept FILE FROM: commands
+;** in the BSMTP stream (a MAILER only extension to the BSMTP protocol
+;** used in BITNET).  Leave this value as TRUE if you are willing to
+;** allow files wrapped in BSMTP (RFC821) envelopes to be delivered via
+;** your mailer.
+;**
+;** If you set the value to FALSE, the BSMTP FILE FROM: command will
+;** not be recognized and the file will be returned to the sender (just
+;** as mail would have been).
+;**                                                                     02168000
+Allow-File-From=TRUE         ; Support FILE FROM: extension
+./ R 02201000          $ 2201490 490                  04/05/90 16:19:31
+;** for DEC and SPAN in the DOMAINS list and POSTMAST in                02201490
+./ D 02216000                                         04/05/90 16:19:31
+./ D 02219000                                         04/05/90 16:19:31
+./ I 02257000          $ 2257200 200                  04/05/90 16:19:31
+*DEFAULT*ROUTE*.BITNET *  *        TRYRSCS   1    ; See DOC for parm inf02257200
+*DEFAULT*ROUTE*.EARN   *  *        TRYRSCS   1    ; See DOC for parm inf02257400
+*DEFAULT*ROUTE*.NETNORTH * *       TRYRSCS   1    ; See DOC for parm inf02257600
+*DEFAULT*        INTERBIT SMTP     BSMTP     3    ;                     02257800
+./ D 02259000                                         04/05/90 16:19:31

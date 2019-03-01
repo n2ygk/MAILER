@@ -1,0 +1,47 @@
+./ R 00068490 00072000 $ 68580 90                     04/05/90 16:19:40
+;** Setting allow-unknown-nodes to TRUE will do 2 things:               00068580
+;**                                                                     00068670
+;**   1.  If the *DEFAULT* entry in the INCOMING table does not         00068760
+;**       exist, all mail received by MAILER will always be accepted.   00068850
+;**       If the *DEFAULT* entry exists, then validation will occur     00068940
+;**       just as it would for any other match in the incoming table.   00069030
+;**                                                                     00069120
+;**       Assuming that the RSCSVER exit is used:                       00069210
+;**         A. For RFC822 mail, a mismatch between the NJE origin and   00069300
+;**            the From: header will cause the mail to be rejected      00069390
+;**         B. For BSMTP mail, a mismatch between the NJE origin and    00069480
+;**            the BSMTP MAIL FROM: will cause a warning to be added    00069570
+;**            to the mail file (if allow-charlatans=TRUE).             00069660
+;**                                                                     00069750
+;**   2.  Files being sent by MAILER but for which no entry is found    00069840
+;**       in the OUTGOING or DOMAINS table will use the *DEFAULT*       00069930
+;**       (and *DEFAULT*ROUTE*) entries (if they exist).                00070020
+;**                                                                     00070110
+;** Leaving the value FALSE will cause all incoming mail that does not  00070200
+;** match an entry in the INCOMING table to be rejected (even if the    00070290
+;** *DEFAULT* entry is coded).  Outgoing mail that does not match an    00070380
+;** entry in the OUTGOING or DOMAINS table will also be returned (even  00070470
+;** if *DEFAULT* entries are coded).                                    00070560
+./ I 00084000          $ 84070 70                     04/05/90 16:19:40
+;**
+;** When Allow-File-From is TRUE, MAILER will accept FILE FROM: commands
+;** in the BSMTP stream (a MAILER only extension to the BSMTP protocol
+;** used in BITNET).  Leave this value as TRUE if you are willing to
+;** allow files wrapped in BSMTP (RFC821) envelopes to be delivered via
+;** your mailer.
+;**
+;** If you set the value to FALSE, the BSMTP FILE FROM: command will
+;** not be recognized and the file will be returned to the sender (just
+;** as mail would have been).
+;**                                                                     02168000
+Allow-File-From=TRUE         ; Support FILE FROM: extension
+./ R 00114000          $ 114490 490                   04/05/90 16:19:40
+;** for DEC and SPAN in the DOMAINS list and POSTMAST in                00114490
+./ D 00129000                                         04/05/90 16:19:40
+./ D 00132000                                         04/05/90 16:19:40
+./ I 00159000          $ 159200 200                   04/05/90 16:19:40
+*DEFAULT*ROUTE*.BITNET *  *        TRYRSCS   1    ; See DOC for parm inf00159200
+*DEFAULT*ROUTE*.EARN   *  *        TRYRSCS   1    ; See DOC for parm inf00159400
+*DEFAULT*ROUTE*.NETNORTH * *       TRYRSCS   1    ; See DOC for parm inf00159600
+*DEFAULT*        INTERBIT SMTP     BSMTP     3    ;                     00159800
+./ D 00161000                                         04/05/90 16:19:40

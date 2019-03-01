@@ -1,0 +1,15 @@
+./ I 01783217          $ 1783220 3                    03/13/91 17:06:51
+.sp 2
+MAILER084E **** MAILER PROFILE coding error ***** : One or more
+Local-Hostn values not defined
+.in +4
+.sp 1
+There is a hole in the Local-Hostn list.
+The Local-Hostn list must start with 'Local-Host1' and continue
+upward sequentially.
+.sp 1
+To find the error, look for the MAISTI075I LOCAL-HOSTn messages that
+appear earlier in the console output (or just look at your profile
+since it may be obvious there).
+Fix up the Local-Hostn numbers to be valid.
+.in -4

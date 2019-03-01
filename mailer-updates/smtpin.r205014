@@ -1,0 +1,55 @@
+./ R 00952253 00952280 $ 952254 1                     12/21/89 16:06:50
+    if (mailblok.mailopts & MOPTNO82) {  /* Don't process 822 headers */00952254
+       if (mailblok.dbgflg[1] & TRACE_PARSE_DATA_HEADER)
+          wrterm("parse_data_header:  BSMTP-No-RFC822 = TRUE");         00952256
+                                                                        00952257
+       /* Since headers are not scanned, build dummy (null) headers for 00952258
+          scanning */                                                   00952259
+                                                                        00952260
+       if (mailblok.dbgflg[1] & TRACE_PARSE_DATA_HEADER)
+          wrterm("parse_data_header:  Building dummy header string");   00952262
+       if ((mailblok.mailhbuf[0] =                                      00952263
+                    (int)salloc(mailblok.mailhbuf[1] = 21)) <= 0) {     00952264
+          if (mailblok.dbgflg[1] & TRACE_PARSE_DATA_HEADER)
+             wrterm("parse_data_header:  Storage allocation failure");  00952266
+         return s_nosp(st, s, l);                                       00952267
+       }                                                                00952268
+                                                                        00952269
+       bp = (char *)mailblok.mailhbuf[0];                               00952270
+       bcopy("Dummy: Dummy header", bp, 19);                            00952271
+       bp += 19;                                                        00952272
+       *bp++ = 0x15;                                     /* newline */  00952273
+       *bp = 0x15;                          /* final newline for EOH */ 00952274
+                                                                        00952275
+    } else {                                                            00952276
+                                                                        00952277
+       if ((mailblok.mailhbuf[0] =                                      00952278
+                    (int)salloc(mailblok.mailhbuf[1] = resid)) <= 0) {  00952279
+          if (mailblok.dbgflg[1] & TRACE_PARSE_DATA_HEADER)
+             wrterm("parse_data_header:  Storage allocation failure");  00952281
+         return s_nosp(st, s, l);                                       00952282
+       }                                                                00952283
+       if (mailblok.dbgflg[1] & TRACE_PARSE_DATA_HEADER)
+          wrterm("parse_data_header:  Reading headers onto stack");     00952285
+       for (i = 0, bp = (char *)mailblok.mailhbuf[0];                   00952286
+             i < mailblok.mailhrec; i++) {                              00952287
+           int rc;                                                      00952288
+./ R 00952300 00952410 $ 952306 6                     12/21/89 16:06:50
+           blen = resid;                                                00952306
+           if ((rc = fsread(&S.data_file,bp,&blen)) != 0) {             00952312
+               if (mailblok.dbgflg[1] & TRACE_PARSE_DATA_HEADER)
+                  wrterm("parse_data_header:  Read error");             00952324
+               wtr("SMT",50,2,"ca","fsread#2","d",rc);                  00952330
+               fsclose(&S.data_file);                                   00952336
+               return st;                   /* ignore parse failures */ 00952342
+           }                                                            00952348
+           bp += blen;                                                  00952354
+           *bp++ = 0x15;                    /* newline */               00952360
+           resid -= (blen + 1);                                         00952366
+       }                                                                00952372
+       *bp = 0x15;                          /* final newline for EOH */ 00952378
+       fsclose(&S.data_file);                                           00952384
+    }                                                                   00952390
+                                                                        00952396
+./ R 00952492          $ 952493 1                     12/21/89 16:06:50
+             wrterm("parse_data_header:  No FROM:, adding BSMTP FROM:");00952492

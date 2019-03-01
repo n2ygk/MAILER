@@ -1,0 +1,21 @@
+./ R 00099000          $ 99040 40                     04/02/91 11:07:33
+*  Get the sender's userid into the MSGSENDER field.  This field has
+*  the userid right justified so that messages sent using it will
+*  have a constant number of blanks between the end of the userid
+*  and the beginning of the msg.  If you need the userid left justified
+*  use the SRCUSER field.
+         SPACE 1
+         MVC   MSGSENDR,=CL8' '    Blank out field
+         LA    R4,SRCUSER          Get sending userid.                  00112000
+         LA    R1,8(R4)            End of string                        00113000
+         TRT   0(8,R4),TRTAB       Look for blank at end of id          00114000
+         LA    R3,8(R4)            Address of end                       00115000
+         SR    R3,R1               Minus length gives leading blanks    00116000
+         LA    R3,MSGSENDR(R3)     Start here                           00117000
+         SR    R1,R4               Length of the userid                 00118000
+         BZ    NOUSER2             No userid.                           00119000
+         BCTR  R1,0                -1 for executed move                 00120000
+         EX    R1,MOVEIT           MVC 0(0,R3),0(R4)                    00121000
+NOUSER2  DS    0H                                                       00122000
+./ R 00112000 00122000 $ 116990 4990                  04/02/91 11:07:33
+         MVC   WORKBUF+5(8),MSGSENDR  Get sending userid.               00112000

@@ -1,0 +1,5 @@
+./ R 00024000          $ 24490 490                    10/04/88 15:53:36
+extern char *oldrdom;           /* main rscs-domain string */
+./ I 00076000          $ 77000 1000                   10/04/88 15:53:36
+#define MAXRSCSDOM 9
+extern char *rscsdom[MAXRSCSDOM]; /* rscs-domain strings */

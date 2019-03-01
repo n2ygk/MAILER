@@ -1,0 +1,9 @@
+./ I 00134000          $ 134200 200                   12/20/88 18:00:26
+         MVC   CHFNUM3,MAILFTXT        [ORDER000] Fill in file #        00134200
+         LA    R1,CPORDER              [ORDER000] Point to ORDER cmd    00134400
+         LA    R0,LCPORDER             [ORDER000] Set length            00134600
+         DC    X'83100008'             [ORDER000] Do it                 00134800
+./ I 00167000          $ 167200 200                   12/20/88 18:00:26
+CPORDER  DC    C'ORDER RDR '           [ORDER000] Order the reader...   00167200
+CHFNUM3  DS    CL4                     [ORDER000]                       00167400
+LCPORDER EQU   *-CPORDER               [ORDER000]                       00167600

@@ -1,0 +1,7 @@
+         MACRO                                                          00001000
+&LABEL   STARR &VALUE,&ARRAY,&INDEX                                     00002000
+.* ARRAY(INDEX) = VALUE                                                 00003000
+&LABEL   LR    T1,&INDEX     get index into temp                        00004000
+         SLL   T1,2          array is words                             00005000
+         ST    &VALUE,&ARRAY.(T1) store into array                      00006000
+         MEND                                                           00007000

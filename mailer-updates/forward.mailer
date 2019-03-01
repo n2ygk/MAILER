@@ -1,0 +1,556 @@
+/* ****************************************************************** */
+/*  FORWARD - Implement the FORWARD command                           */
+/* ****************************************************************** */
+/*                                                                    */
+/*  Command syntax:                                                   */
+/*                                                                    */
+/*     FORWARD  < FOR userid >  ADD      destid                       */
+/*                              DELETE   destid                       */
+/*                                        ALL                         */
+/*                              LIST                                  */
+/*                                                                    */
+/*                                                                    */
+/*  This EXEC provides the code to maintain the user forwarding files.*/
+/*  It adds or deletes lines in a file identified as 'userid FORWARD'.*/
+/*  These files are always kept on MAILER's 191 disk.                 */
+/*                                                                    */
+/*  To allow a user to forward mail to other ids and still have the   */
+/*  mail delivered locally a kludge has been implemented.  If the     */
+/*  'destid' is '*' a special address will be placed in the forwarding*/
+/*  file ('<*>') to indicate that local delivery should also occur.   */
+/*                                                                    */
+/*  This code expects that the 'destid' will be in standard RFC822    */
+/*  format OR specified as 'userid AT node'.  All other formats       */
+/*  should be rejected.                                               */
+/*                                                                    */
+/* ****************************************************************** */
+
+address COMMAND                              /* Set environment       */
+
+signal on halt                               /* Set traps             */
+signal on syntax
+signal on novalue
+
+parse arg '(' requestorid '@' requestornode ')'  maintainer ,
+          cmdstring                          /*                       */
+cmdstring = strip(cmdstring)                 /*                       */
+if translate(word(cmdstring,1)) = 'FORWARD'  then
+   cmdstring = subword(cmdstring,2)          /*                       */
+
+/*  Set some defaults  */
+
+console = 0                                  /* Not from console      */
+exitrc  = 0                                  /*                       */
+foruser = ''                                 /*                       */
+msgcmd  = 'MSGNOH'                           /*                       */
+operations = 'ADD DELETE LIST'               /*                       */
+requestor = '*CONSOLE*'                      /*                       */
+
+'IDENTIFY (LIFO'                             /*                       */
+parse upper pull . . localnode .             /*                       */
+
+/*  Determine source of request */
+
+select
+   when  requestorid = '*' & ,               /*                       */
+         requestornode = ''  then            /*                       */
+      console = 1                            /*                       */
+   when  requestornode = ''  then  do        /*                       */
+      requestornode = localnode              /*                       */
+      requestor = strip(requestorid)         /*                       */
+      foruser = requestor                    /*                       */
+      end
+   when  requestornode <> ''  then           /*                       */
+      requestor = space(requestorid'@'requestornode,0)
+   otherwise  do                             /*                       */
+      say 'Forward:  Invalid combination'    /*                       */
+      say '       :  Requestorid   = "'requestorid'"
+      say '       :  Requestornode = "'requestornode'"
+      say ' '
+      exit 8
+      end
+   end
+
+/* A little debugging code */
+
+parse arg original                           /*                       */
+if maintainer  then  mflag = '(maintainer)'  /*                       */
+else  mflag = ''                             /*                       */
+say 'Forward:  Cmd       = "'strip(original)'"'
+say '       :  Requestor = "'requestor'"' mflag
+say '       :  Cmdline   = "'cmdstring'"'
+
+
+/* Do some command checking */
+
+if cmdstring = ''  then  do                  /*                       */
+   call msg 'No action (ADD, DELETE or LIST) has been specified'
+   exitrc = 8                                /*                       */
+   signal exit                               /*                       */
+   end
+
+if chkfor(cmdstring)  then  do               /*                       */
+   if ^maintainer & ^console  then  do       /*                       */
+      call msg 'You are not authorized to use "FOR"'
+      exitrc = 8                             /*                       */
+      signal exit                            /*                       */
+      end
+   else  do                                  /*                       */
+      parse var cmdstring . foruser cmdstring
+      upper foruser                          /*                       */
+      end
+   end
+else  do                                     /*                       */
+   select                                    /*                       */
+      when console  then  do                 /*                       */
+         call msg 'You must specify a local userid using "FOR"'
+         exitrc = 8                          /*                       */
+         signal exit                         /*                       */
+         end
+      when requestornode <> localnode  then  do /*                    */
+         call msg 'Remote users may not establish forwards'
+         exitrc = 8                          /*                       */
+         signal exit                         /*                       */
+         end
+      otherwise                              /*                       */
+         foruser = requestorid               /*                       */
+      end
+   end
+
+if foruser = ''  then  do                    /*                       */
+   call msg 'No user local to' localnode 'has been specified'
+   exitrc = 8                                /*                       */
+   signal exit                               /*                       */
+   end
+
+parse upper var cmdstring operation .
+if find(operations,operation) = 0  then  do  /*                       */
+   call msg 'The "'operation'" request is not supported'
+   exitrc = 8                                /*                       */
+   signal exit                               /*                       */
+   end
+
+interpret  'call' operation                  /*                       */
+exitrc = result                              /*                       */
+
+exit:  exit exitrc                           /*                       */
+
+/* ******************* */
+/*  Internal routines  */
+/* ******************* */
+
+/* *****************************************************************  */
+/*                                                                    */
+/*  Add will add a new userid to the forwarding file                  */
+/*                                                                    */
+/*  The address is assumed to be in valid RFC821 format (i.e. just    */
+/*  a machine address, no comments or names).  If the address passes  */
+/*  validation (which may also modify it to standardize the format    */
+/*  of addresses in the table) it will then be verfied for uniqueness.*/
+/*  If this address is (apparently) new then it will be added to the  */
+/*  forwarding file.                                                  */
+/*                                                                    */
+/*  An address of '*' will be taken to mean the local user.  This     */
+/*  allows forwarded files to still be delivered to the local user.   */
+/*                                                                    */
+/* *****************************************************************  */
+
+Add:  procedure ,  /* Do processing for an ADD operation */
+      expose cmdstring console foruser msgcmd requestor
+
+parse var cmdstring . destination            /*                       */
+
+if validdest()  then  do                     /*                       */
+   exitrc = 0                                /*                       */
+   end
+else  do                                     /*                       */
+   call msg '"'destination'" is not valid: ' failure
+   exitrc = 8                                /*                       */
+   end
+
+if exists(foruser 'FORWARD A')  then  do     /*                       */
+   'EXECIO * DISKR' foruser 'FORWARD A (FINIS STEM FORWARD.'
+   matches = addresscan(destination)         /*                       */
+   if matches = 0  then                      /*                       */
+      exitrc = addone(destination)
+   else  do                                  /*                       */
+      call msg '"'destination'" is a duplicate address'
+      exitrc = 4                             /*                       */
+      end
+   end
+else                                         /*                       */
+   exitrc = addone(destination)              /*                       */
+
+if exitrc = 0  then                          /*                       */
+   call msg 'Forward:  Added' destination    /*                       */
+
+return exitrc
+
+
+Addone:  procedure ,  /* Write a line to end of FORWARD file */
+         expose console foruser requestor
+
+parse arg destination                        /*                       */
+'EXECIO 1 DISKW' foruser 'FORWARD A (FINIS VAR DESTINATION'
+exitrc = rc                                  /*                       */
+if rc = 0  then                              /*                       */
+   'EXECDROP' foruser 'FORWARD'              /*                       */
+
+return exitrc
+
+
+/* *****************************************************************  */
+/*                                                                    */
+/*  AddresScan will scan the forward file looking for matching        */
+/*     addresses                                                      */
+/*                                                                    */
+/*  The address to be scanned for is passed as the argument to        */
+/*  AddresScan.  The addresses to be scanned must be placed in the    */
+/*  REXX stem 'forward.' before calling AddresScan.                   */
+/*                                                                    */
+/*  Lines that match are flagged in the REXX stem 'matching.'         */
+/*                                                                    */
+/* *****************************************************************  */
+
+AddresScan:  procedure , /* Scan FORWARD file for matching addresses */
+             expose matching. forward.
+
+parse upper arg destination .                /*                       */
+matches = 0                                  /*                       */
+
+do i=1 for forward.0                         /*                       */
+   if translate(forward.i) = destination  then  do
+      matches = matches + 1                  /*                       */
+      matching.i = 1                         /*                       */
+      end
+   else                                      /*                       */
+      matching.i = 0                         /*                       */
+   end
+
+return matches
+
+
+ChkFOR:  procedure  /* Check string for FOR parameter */
+parse upper arg word1 .                      /*                       */
+if word1 = 'FOR'  then  return 1             /*                       */
+return 0
+
+
+/* *****************************************************************  */
+/*                                                                    */
+/*  Delete will delete one or more addresses from the forwarding file */
+/*                                                                    */
+/*  The address is assumed to be in valid RFC821 format (i.e. just    */
+/*  a machine address, no comments or names).  If the address passes  */
+/*  validation (which may also modify it to standardize the format    */
+/*  of addresses in the table) it will then be verified for existence.*/
+/*  All matching addresses in the file will be deleted.               */
+/*                                                                    */
+/*  An address of '*' will be taken to mean the local user.           */
+/*                                                                    */
+/*  An address of 'ALL' will mean to delete all entries (ALL is a     */
+/*  restricted userid under VM since it would affect the WNG and      */
+/*  MSG commands operation).                                          */
+/*                                                                    */
+/* *****************************************************************  */
+
+Delete:  procedure ,  /* Do processing for a DELETE operation */
+         expose cmdstring console foruser msgcmd requestor
+
+parse var cmdstring . destination            /*                       */
+
+if translate(destination) = 'ALL'  then      /*                       */
+   return deleteall()                        /*                       */
+
+if validdest()  then  do                     /*                       */
+   exitrc = 0                                /*                       */
+   end
+else  do                                     /*                       */
+   call msg '"'destination'" is not valid: ' failure
+   exitrc = 8                                /*                       */
+   end
+
+if exists(foruser 'FORWARD A')  then  do     /*                       */
+   'EXECIO * DISKR' foruser 'FORWARD A (FINIS STEM FORWARD.'
+   if rc <> 0  then  do                      /*                       */
+      exitrc = rc                            /*                       */
+      call msg '"'destination'" not found in forwarding file'
+      end
+   else  do                                  /*                       */
+      matches = addresscan(destination)      /*                       */
+      if matches > 0  then  do               /*                       */
+         'ERASE' foruser 'FORWARD A'         /* Erase old file        */
+         call msg 'Forward: ' matches 'forwarding id(s) deleted'
+         do i=1 to forward.0                 /*                       */
+            if matching.i  then              /*                       */
+               call msg '    ' forward.i     /*                       */
+            else                             /*                       */
+               'EXECIO 1 DISKW' foruser 'FORWARD A (FINIS' ,
+                  'VAR FORWARD.'i            /* Rewrite file line     */
+            end
+         'EXECDROP' foruser 'FORWARD'        /*                       */
+         end
+      else                                   /*                       */
+         call msg 'Forward:  No destinations match address requested'
+      end
+   end
+else  do                                     /*                       */
+   call msg 'No forwarding in effect for' foruser
+   exitrc = 4                                /*                       */
+   end
+
+return exitrc                                /*                       */
+
+
+DeleteAll:  procedure ,  /* Do processing for a DELETE * operation */
+            expose cmdstring console foruser msgcmd requestor
+
+if exists(foruser 'FORWARD A')  then  do     /*                       */
+   'EXECIO * DISKR' foruser 'FORWARD A (FINIS STEM FORWARD.'
+   'ERASE' foruser 'FORWARD A'               /* Erase old file        */
+   call msg 'Forward: ' forward.0 'forwarding id(s) deleted'
+   do i=1 to forward.0                       /*                       */
+      call msg '    ' forward.i              /*                       */
+      end
+   'EXECDROP' foruser 'FORWARD'              /*                       */
+   exitrc = 0                                /*                       */
+   end
+else  do                                     /*                       */
+   call msg 'No forwarding in effect for' foruser
+   exitrc = 4                                /*                       */
+   end
+
+return exitrc                                /*                       */
+
+
+Exists:  procedure  /* Check for existance of a file */
+
+parse upper arg fn ft fm .                   /*                       */
+
+if fn = ''  then  exit 0                     /*                       */
+if ft = ''  then  exit 0                     /*                       */
+if fm = ''  then  fm = '*'                   /*                       */
+
+'ESTATE' fn ft fm                            /*                       */
+if rc = 0  then  return 1                    /*                       */
+return 0
+
+
+/* *****************************************************************  */
+/*                                                                    */
+/*  List will list the forwarding file                                */
+/*                                                                    */
+/*  If the file is more than 2 lines long and the request is not from */
+/*  the console a copy of the file will be sent to the user (using    */
+/*  the CMS SENDFILE command).  All requests from the console are     */
+/*  displayed using the CMS TYPE command.                             */
+/*                                                                    */
+/* *****************************************************************  */
+
+List:  procedure ,  /* Do processing for a LIST operation */
+       expose cmdstring console foruser msgcmd requestor
+
+parse var cmdstring . extra                  /*                       */
+
+if extra <> ''  then  do                     /*                       */
+   call msg 'Too many operands on LIST command'
+   return 8
+   end
+
+if ^exists(foruser 'FORWARD A')  then  do    /*                       */
+   call msg 'No forwarding in effect for' foruser
+   exitrc = 4                                /*                       */
+   end                                       /*                       */
+else  do                                     /*                       */
+   if console  then  do                      /*                       */
+      say 'Forward:  Forwarding file for' foruser
+      'TYPE' foruser 'FORWARD A'             /*                       */
+      say 'Forward:  End of forwarding file for' foruser
+      end
+   else  do                                  /*                       */
+      'MAKEBUF'                              /*                       */
+      'LISTFILE' foruser 'FORWARD A (DATE STACK' /*                   */
+      parse upper pull . . . . . records .   /*                       */
+      'DROPBUF'                              /*                       */
+      if records > 2  then  do               /*                       */
+         call msg 'Sending a copy of forwarding file to  you'
+         parse var requestor userid '@' node /*                       */
+         if node = ''  then                  /*                       */
+            'EXEC SENDFILE' foruser 'FORWARD A TO' requestor
+         else                                /*                       */
+            'EXEC SENDFILE' foruser 'FORWARD A TO' requestor 'AT' node
+         end
+      else  do                               /*                       */
+         'EXECIO * DISKR' foruser 'FORWARD A (FINIS STEM FORWARDS.'
+         call msg 'Forward:  Forwarding file for' foruser
+         do i=1 to forwards.0                /*                       */
+            call msg forwards.i              /*                       */
+            end
+         call msg 'Forward:  End of forwarding file for' foruser
+         end
+      end
+   exitrc = 0                                /*                       */
+   end
+
+return exitrc                                /*                       */
+
+
+/* *****************************************************************  */
+/*                                                                    */
+/*  MSG sends a msg to the requestor                                  */
+/*                                                                    */
+/*  Operation is effected by the location of the request;  on the     */
+/*  console, a local user or a network user.                          */
+/*                                                                    */
+/* *****************************************************************  */
+
+Msg:  procedure , /* Send reply to requestor */
+      expose console msgcmd requestor
+
+parse arg msgstring                          /*                       */
+
+if console  then                             /*                       */
+   say msgstring                             /*                       */
+else  do                                     /*                       */
+   parse var requestor userid '@' node       /*                       */
+   if node = ''  then  do                    /*                       */
+      'CP' msgcmd userid msgstring           /*                       */
+      if rc <> 0 & ,                         /* Behave like msg code  */
+         msgcmd = 'MSGNOH'  then             /*    in MAILER          */
+         'CP MSG' userid msgstring           /*                       */
+      end
+   else                                      /*                       */
+      'EXEC TELL' userid 'AT' node msgstring /*                       */
+   end
+
+return
+
+/* *****************************************************************  */
+/*                                                                    */
+/*  ValidDest will validate an address against RFC822 (I hope).       */
+/*                                                                    */
+/*  The address to be check is passed in the REXX variable            */
+/*  'destination'.  This value may be changed during the validation   */
+/*  process so that all addresses will be in a standard form.         */
+/*                                                                    */
+/*  If there is a problem with the address, the reason for the        */
+/*  failure will be returned in the exposed variable 'failure'        */
+/*                                                                    */
+/* *****************************************************************  */
+
+ValidDest:  procedure , /* Validate a destination address */
+            expose destination failure
+
+workdest = strip(destination)                /*                       */
+
+if workdest = '*'  then  do                  /* To user?              */
+   destination = '<*>'                       /* Yes, kludge address   */
+   return 1                                  /*                       */
+   end
+
+failure = ''                                 /*                       */
+routeaddr = ''                               /*                       */
+userid = ''                                  /*                       */
+domain = ''                                  /*                       */
+quoted.0 = 0                                 /*                       */
+
+do while left(workdest,1) = '<'              /* Strip any hairpins    */
+   if right(workdest,1) <> '>'  then  do     /*                       */
+      failure = '"<" missing matching ">"'   /*                       */
+      return 0                               /*                       */
+      end
+   else                                      /*                       */
+      workdest = substr(workdest,2,length(workdest)-2)
+   end
+
+do i=1                                       /* Remove quoted strings */
+   first = pos('"',workdest)                 /*                       */
+   if first = 0  then  leave                 /*                       */
+   second = pos('"',workdest,first+1)        /*                       */
+   if second = 0  then  do                   /* Not matched           */
+      failure = 'Missing ending quote on quoted string'
+      return 0                               /*                       */
+      end
+   quoted.0 = i                              /*                       */
+   quoted.i = substr(workdest,first+1,second-first-1)
+   workdest = delstr(workdest,first,second-first+1) /* Delete quote   */
+   workdest = insert(d2c(i),workdest,first-1)/* Insert flag           */
+   end
+
+/* May have an RFC733 address at this point.  The only problem is the */
+/* use of ' AT ' for '@' in 733.  See if this is the case and convert */
+/* to valid RFC822 form.                                              */
+
+if words(workdest) = 3  then  do             /* Possible RFC733 format*/
+   if translate(word(workdest,2)) = 'AT'  then  /* It is 733 format   */
+      workdest = word(workdest,1)'@'word(workdest,3)
+   end
+
+/* Have <routeaddr:>userid<@node> at this point with quoted strings   */
+/* hidden as unprintable values.                                      */
+
+if pos(':',workdest) > 0  then               /*                       */
+   parse var workdest routeaddr ':' userid '@' domain
+else                                         /*                       */
+   parse var workdest userid '@' domain
+
+if routeaddr <> '' & domain = ''  then  do   /*                       */
+   routeaddr = reverse(routeaddr)            /*                       */
+   parse var routeaddr domain '@' routeaddr
+   domain = reverse(domain)                  /*                       */
+   if left(routeaddr,1) = ','  then
+      routeaddr = substr(routeaddr,2)
+   routeaddr = reverse(routeaddr)            /*                       */
+   end
+
+select                                       /*                       */
+   when routeaddr = '' & domain = ''  then  do  /*                    */
+      destination = '<'userid'>'             /*                       */
+      end
+   when routeaddr = '' & domain <> '' then  do  /*                    */
+      upper domain                           /*                       */
+      destination = '<'userid'@'domain'>'    /*                       */
+      end
+   otherwise  do                             /*                       */
+      upper routeaddr domain                 /*                       */
+      destination = '<'routeaddr':'userid'@'domain'>'
+      end
+   end                                       /*                       */
+
+do i=1 to quoted.0                           /*                       */
+   spot = pos(d2c(i),destination)            /*                       */
+   destination = delstr(destination,spot,1)  /*                       */
+   destination = insert('"'quoted.i'"',destination,spot-1)
+   end
+
+return 1
+
+/* **************** */
+/*  Error handlers  */
+/* **************** */
+
+HALT:
+parse source . . myname .
+say "Halt in" myname "line" sigl":"
+say sourceline(sigl)
+exitrc = 16
+signal errexit
+
+NOVALUE:
+parse source . . myname .
+say "NOVALUE error in" myname "line" sigl":"
+say sourceline(sigl)
+exitrc = 16
+signal errexit
+
+SYNTAX:
+parse source . . myname .
+say "SYNTAX error in" myname "line" sigl": " errortext(rc)
+say sourceline(sigl)
+exitrc = 16
+signal errexit
+
+ERREXIT:
+trace ?r
+nop
+exit exitrc

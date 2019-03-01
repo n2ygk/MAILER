@@ -1,0 +1,8 @@
+./ R 00546187          $ 546192 5                     12/06/90 14:37:25
+*        EQU   X'08'               Trace smtpin                         00546192
+./ R 00546548          $ 546549 1                     12/06/90 14:37:25
+         DC    A(DBGFLG1-MAILBLOK,SMTPTR15,X'08')                       00546547
+         DC    A(DBGFLG6-MAILBLOK,MAILTR61,DBGNOOUT)                    00546548
+./ R 00546821          $ 546822 1                     12/06/90 14:37:25
+SMTPTR15 DC    Y(19),C'SMTPIN-TRACE-SMTPIN'                             00546820
+MAILTR61 DC    Y(18),C'TRACE-SEND-NO-MAIL'                              00546821

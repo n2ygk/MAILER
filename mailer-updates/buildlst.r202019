@@ -1,0 +1,16 @@
+./ R 00239400          $ 239410 10                    02/23/89 14:39:37
+         ST    R7,GNODE            Save address of TOKEND               00239410
+         MVC   GSTKADDR,=A(LCLSTACK) GENLIST breaks stk addr            00239420
+         MVC   GSTKLEN,=A(L'LCLSTACK)   Update stack length             00239430
+         CALL  GENLIST,(GNODE,FAKETOKA,FAKETOKL,GSTKADDR,GSTKLEN)       00239440
+         LTR   R15,R15             Successful?                          00239450
+         BNZ   BLDSKP1             No, skip this address                00239460
+         CALL  CHKLOCAL,((R11),LCLSTACK,FAKETOKL)                       00239470
+         LTR   R15,R15             Local routeaddr?                     00239480
+         BZ    BLDHOK              ---> Yes                             00239490
+         ST    R8,DELMBOX          Store MBOX address
+         CALL  DELROUTE,(DELMBOX)  Delete routeaddr                     00239500
+         B     BLDLOOP1            ---> Try again                       00239510
+./ I 00534650          $ 534660 10                    02/23/89 14:39:37
+DELMBOX  DC    A(0)                Address of MBOX for DELROUTE
+         SPACE 1                                                        00534650

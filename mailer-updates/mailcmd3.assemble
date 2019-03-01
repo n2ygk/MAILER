@@ -1,0 +1,452 @@
+MAILCMD3 TITLE 'VM Network Mailer Release 2 - Command processor'        00001000
+*---------------------------------------------------------------------* 00002000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00003000
+*    Program Property of the Trustees of Columbia University in the   * 00004000
+*    City of New York.                                                * 00005000
+*                Copyright (c) 1990 Princeton University              * 00006000
+*---------------------------------------------------------------------* 00007000
+         SPACE 1                                                        00008000
+MAILCMD3 CSECT ,                                                        00009000
+         SPACE 1                                                        00010000
+* MAILCMD3 -                                                            00011000
+*                                                                       00012000
+* CALLED VIA -                                                          00013000
+*  CALL MAILCMD3,(MAILBLOK,MSGBLOK)                                     00014000
+         SPACE 1                                                        00015000
+PAB      DSECT ,                                                        00016000
+@MBLOK   DS    A                   MAILBLOK address                     00017000
+@MSGBLOK DS    A                   MSGBLOK address                      00018000
+         SPACE                                                          00019000
+* REGISTER USAGE -                                                      00020000
+         SPACE 1                                                        00021000
+R0  EQU  0 - Work reg                                                   00022000
+R1  EQU  1 - Work reg                                                   00023000
+R2  EQU  2 -                                                            00024000
+R3  EQU  3 -                                                            00025000
+R4  EQU  4 - Console message processing                                 00026000
+R5  EQU  5 - Cmd length, return code                                    00027000
+R6  EQU  6 -                                                            00028000
+R7  EQU  7 -                                                            00029000
+R8  EQU  8 -                                                            00030000
+R9  EQU  9 -                                                            00031000
+R10 EQU 10 - Internal subroutine linkage                                00032000
+R11 EQU 11 - MAILBLOK BASE                                              00033000
+R12 EQU 12 - PROGRAM BASE                                               00034000
+R13 EQU 13 - SAVE AREA                                                  00035000
+R14 EQU 14 - SUBROUTINE LINKAGE                                         00036000
+R15 EQU 15 - SUBROUTINE LINKAGE                                         00037000
+         BLOCKS ,                                                       00038000
+         NUCON DSECT                                                    00039000
+         COPY  IPARML                                                   00040000
+         MSGBLOK ,                                                      00041000
+         MAILBLOK ,                                                     00042000
+         COPY  MAILEQU                                                  00043000
+         TRACETBL ,                                                     00044000
+         EJECT                                                          00045000
+MAILCMD3 CSECT ,                                                        00046000
+         USING MAILCMD3,R15  TEMPORARY ADDRESSABILITY                   00047000
+         B     EYESKIP       BRANCH OVER EYESKIP                        00048000
+MYNAME   DC    CL8'MAILCMD3',CL8'&SYSDATE'                              00049000
+EYESKIP  DS    0H                                                       00050000
+         DROP  R15                                                      00051000
+         STM   R14,R12,12(R13) SAVE CALLER'S REGS                       00052000
+         LR    R12,R15       PERMANENT ADDRESSABILITY                   00053000
+         USING MAILCMD3,R12                                             00054000
+         LA    R14,SAVE      MY SAVE AREA                               00055000
+         ST    R13,4(R14)    SAVE CALLER'S PTR                          00056000
+         ST    R14,8(R13)    CHAIN MINE BACK                            00057000
+         LR    R13,R14       SET MY SAVE PTR                            00058000
+         USING PAB,R1        ADDRESS PARMS                              00059000
+         L     R11,@MBLOK    GET MAILBLOK                               00060000
+         L     R9,@MSGBLOK         Get MSGBLOK                          00061000
+         SPACE 1                                                        00062000
+         DROP  R1                                                       00063000
+         USING MAILBLOK,R11                                             00064000
+         USING MSGBLOK,R9                                               00065000
+         SPACE ,                                                        00066000
+*--------------------------------------------------------------------   00067000
+*        Route to the appropriate command                               00068000
+*--------------------------------------------------------------------   00069000
+         SPACE 1                                                        00070000
+LOOP     EQU   *                                                        00071000
+         L     R14,ARGVP           Pick up token ptr                    00072000
+         S     R14,=F'4'           Back up to command name              00073000
+         L     R14,0(,R14)         Pick up length and address           00074000
+         SRDL  R14,24              Length                               00075000
+         SRL   R15,8                   and address                      00076000
+         LA    R0,CMDTAB           Command table address                00077000
+         CALL  TBLUK,((0),(15),(14),TWORK)                              00078000
+         C     R15,=F'4'           Found an entry?                      00079000
+         BNHR  R1                  ---> Go to it                        00080000
+         B     LOGICERR            ---> HUH?, MAILCMD0 sent this here   00081000
+         SPACE 2                                                        00082000
+* MAILCMD3 called when processing routine not found in MAILCMD3         00083000
+         SPACE 1                                                        00084000
+LOGICERR EQU   *                                                        00085000
+         LA    R1,LOGICMSG         Point to msg                         00086000
+         LA    R0,L'LOGICMSG       Get length                           00087000
+         BAL   R14,WRITEMSG        Send the msg                         00088000
+         B     DONE                Get out                              00089000
+         SPACE 1                                                        00090000
+LOGICMSG DC    C'MAILCMD3:  Command table error in MAILCMD0'            00091000
+         SPACE 2                                                        00092000
+* All processors return here when done                                  00093000
+         SPACE 1                                                        00094000
+DONE     EQU   *                                                        00095000
+         LA    R15,0               Set return code                      00096000
+         L     R13,4(R13)          Previous save area                   00097000
+         L     R14,12(R13)         Pick R14                             00098000
+         LM    R0,R12,20(R13)      Pick up R0-R12                       00099000
+         BR    R14                 Return                               00100000
+         SPACE 3                                                        00101000
+* Table for command routing                                             00102000
+         SPACE 2                                                        00103000
+CMDTAB   TBSTART ,                                                      00104000
+         T 'SET'                   SET command                          00105000
+         TBEND ,                                                        00106000
+         SPACE 3                                                        00107000
+*-------------------------------------------------------------------    00108000
+* BOGUS command routine                                                 00109000
+*                                                                       00110000
+* This routine is used when the command is invalid or the user          00111000
+* is not authorized to do what they have requested.                     00112000
+*--------------------------------------------------------------------   00113000
+         SPACE 1                                                        00114000
+BOGUS    DS    0H                                                       00115000
+         L     R1,=A(BOGMSG)       Point to message                     00116000
+         LA    R0,L'BOGMSG              and get length                  00117000
+         BAL   R14,WRITEMSG        Write it                             00118000
+         B     DONE                                                     00119000
+         SPACE 1                                                        00120000
+BOGMSG   DC    C'Command not allowed or invalid.'                       00121000
+         EJECT ,                                                        00122000
+*--------------------------------------------------------------------   00123000
+*                            S E T                                      00124000
+*                                                                       00125000
+*  An authorized user may issue SET commands.  The authorization of     00126000
+*  this user has already been checked in MAILCMD0, so no testing        00127000
+*  is needed here.                                                      00128000
+*--------------------------------------------------------------------   00129000
+         SPACE 1                                                        00130000
+$SET     DS    0H                                                       00131000
+         L     R1,ARGVP            Get pointer to next token            00132000
+         L     R1,0(R1)            Get address of next token            00133000
+         ST    R1,ATTNDATA         Stuff address into ATTN plist        00134000
+         LA    R1,0(,R1)           Clean up high end                    00135000
+         L     R0,@MESSAGE         Original msg start                   00136000
+         A     R0,@MSGLEN          + Total length                       00137000
+         SR    R0,R1               - Token start = length left          00138000
+         STC   R0,ATTNDATA         Length into plist                    00139000
+         LA    R1,ATTNPARM   GET ATTN PLIST                             00140000
+         SVC   202           STACK THE DATA                             00141000
+         DC    AL4(*+4)                                                 00142000
+         LA    R1,SUBSET     CMS SUBSET PLIST                           00143000
+         SVC   202           ISSUE THE COMMAND                          00144000
+         DC    AL4(*+4)                                                 00145000
+         BAL   R14,RCMSG           Format return code msg               00146000
+         BAL   R14,WRITEMSG        Write rc message                     00147000
+         B     DONE                All done                             00148000
+         EJECT ,                                                        00149000
+*********************************************************************** 00150000
+*                                                                       00151000
+*  RCMSG - Format return code message                                   00152000
+*                                                                       00153000
+*  Regs at entry:                                                       00154000
+*                                                                       00155000
+*    R14 - Return address                                               00156000
+*    R15 - Return code to format                                        00157000
+*                                                                       00158000
+*  Registers at exit:                                                   00159000
+*                                                                       00160000
+*    R0  - Total message lengt                                          00161000
+*    R1  - Message address                                              00162000
+*    R15 - Destroyed                                                    00163000
+*                                                                       00164000
+*  Exit to R14+0                                                        00165000
+*                                                                       00166000
+*********************************************************************** 00167000
+         SPACE 1                                                        00168000
+RCMSG    DS    0H                  Report on result of operation        00169000
+         MVC   MSGRC(14),=C'R(     ) for: '  Initialize                 00170000
+         MVC   MSGRCCMD,MSGRCCMD-1 Clear buffer                         00171000
+         CVD   R15,DWORD           Convert it to something readable     00172000
+         UNPK  MSGRCRC,DWORD       Unpack it                            00173000
+         OI    MSGRCRC+L'MSGRCRC-1,X'F0' Kill the zone                  00174000
+         L     R1,ARGV             Get pointer to first token           00175000
+         LA    R1,0(,R1)           Clean up high end                    00176000
+         L     R15,@MESSAGE        Original msg start                   00177000
+         A     R15,@MSGLEN         + Total length                       00178000
+         SR    R15,R1              - Token start = length left          00179000
+         C     R15,=A(L'MSGRCCMD)  Enough space?                        00180000
+         BNH   RCMSG010            ---> Yes                             00181000
+         LA    R15,L'MSGRCCMD      No, truncate                         00182000
+RCMSG010 EQU   *                                                        00183000
+         BCTR  R15,0               Decrement for execute                00184000
+         EX    R15,MOVECMD         Move in command                      00185000
+         LA    R1,MSGRC            Message address                      00186000
+         LA    R0,MSGRCCMD-MSGRC+1(,R15)     Total length               00187000
+         BR    R14                 Return                               00188000
+         SPACE 1                                                        00189000
+MOVECMD  MVC   MSGRCCMD(0),0(R1)                                        00190000
+         TITLE 'VM Network Mailer Release 2 - Command processor internaX00191000
+               l subroutines'                                           00192000
+*********************************************************************** 00193000
+*                                                                     * 00194000
+*  CHKAUTH - Check if user is authorized                              * 00195000
+*                                                                     * 00196000
+*  Regs on entry:                                                     * 00197000
+*                                                                     * 00198000
+*     R9   - MSGBLOK block base                                       * 00199000
+*     R14  - Return address                                           * 00200000
+*                                                                     * 00201000
+*  Regs on exit:                                                      * 00202000
+*                                                                     * 00203000
+*     R2 - R13 Unchanged                                              * 00204000
+*                                                                     * 00205000
+*  Exit made to:    R14+0  - Not authorized                           * 00206000
+*                   R14+4  - Authorized user                          * 00207000
+*                                                                     * 00208000
+*                                                                     * 00209000
+*********************************************************************** 00210000
+         SPACE 1                                                        00211000
+CHKAUTH  EQU   *                   Check authorization                  00212000
+         SPACE 1                                                        00213000
+         USING MSGBLOK,R9                                               00214000
+         SPACE 1                                                        00215000
+         CLC   SRCCODE,=A(CMDCONS) Command from console?                00216000
+         BE    CHKOK                                                    00217000
+         CLC   SRCCODE,=A(CMDSMSG) Command from smsg?                   00218000
+         BE    CHKSMS              Check smsg source                    00219000
+         CLC   SRCCODE,=A(CMDNET)  Command from network?                00220000
+         BE    CHKSMS              ---> Yes                             00221000
+         B     0(,R14)             ---> Unknown source, not authorized  00222000
+CHKSMS   EQU   *                                                        00223000
+         LA    R15,MAINTID         Point to first entry of table        00224000
+CHKSMS10 DS    0H                                                       00225000
+         CLI   0(R15),X'FF'                    At end of list?          00226000
+         BE    CHKNOTOK                   ---> Yes, SMSG is illegal     00227000
+         CLC   MAINTNOD-MAINTID(,R15),=8X'00'  No cpu specified?        00228000
+         BE    CHKSMS30                   ---> Yes, accept any          00229000
+         CLC   SRCCODE,=A(CMDNET)              Command from network?    00230000
+         BE    CHKSMS20                   ---> Yes, node id present     00231000
+         CLC   MAINTNOD-MAINTID(,R15),CPUSTR   Maintainer on this cpu?  00232000
+         BNE   CHKSMS40                   ---> No, go try next          00233000
+         B     CHKSMS30                   ---> Yes, go check id         00234000
+         SPACE 1                                                        00235000
+CHKSMS20 DS    0H                                                       00236000
+         CLC   MAINTNOD-MAINTID(,R15),SRCNODE  Maintainer node match?   00237000
+         BNE   CHKSMS40                   ---> No, go try next          00238000
+         SPACE 1                                                        00239000
+CHKSMS30 DS    0H                                                       00240000
+         CLC   MAINTID-MAINTID(,R15),SRCUSER   Sender on the list?      00241000
+         BE    CHKOK                      ---> Yes                      00242000
+         SPACE 1                                                        00243000
+CHKSMS40 DS    0H                                                       00244000
+         LA    R15,MAINTID2-MAINTID(R15)  To the next entry             00245000
+         B     CHKSMS10                                                 00246000
+         SPACE 1                                                        00247000
+CHKNOTOK EQU   *                                                        00248000
+         B     0(,R14)                                                  00249000
+         SPACE 1                                                        00250000
+CHKOK    EQU   *                                                        00251000
+         B     4(,R14)                                                  00252000
+         EJECT ,                                                        00253000
+*--------------------------------------------------------------------   00254000
+*                                                                       00255000
+* FIND15 - Finds next newline in a string                               00256000
+*                                                                       00257000
+* Registers at entry:                                                   00258000
+*                                                                       00259000
+*  R1  - Address of string                                              00260000
+*  R2  - Length of string                                               00261000
+*  R14 - Return address                                                 00262000
+*                                                                       00263000
+* Registers at exit:                                                    00264000
+*                                                                       00265000
+*  R0  - Length of substring                                            00266000
+*  R1  - Updated to pointer after x'15'                                 00267000
+*  R2  - Remaining string length                                        00268000
+*                                                                       00269000
+*--------------------------------------------------------------------   00270000
+FIND15   EQU   *                                                        00271000
+         SR    R0,R0         CHARACTER COUNTER                          00272000
+FIND15L  EQU   *                                                        00273000
+         CLI   0(R1),X'15'   FIND X'15'?                                00274000
+         BE    F15RET        YES... RETURN                              00275000
+         LA    R1,1(R1)      BUMP POINTER                               00276000
+         A     R0,=F'1'      BUMP LENGTH COUNTER                        00277000
+         BCT   R2,FIND15L    LOOP BACK TO TEST NEXT CHARACTER           00278000
+F15RET   EQU   *                                                        00279000
+         LA    R1,1(R1)      POINT PAST THE X'15'                       00280000
+         BCTR  R2,0          -1 FOR THE X'15' FROM LENGTH               00281000
+         BR    R14                                                      00282000
+         EJECT ,                                                        00283000
+*--------------------------------------------------------------------   00284000
+*                          F R E E E V A L                              00285000
+*                                                                       00286000
+*  Free an EVALBLOK returned from REXX function call                    00287000
+*                                                                       00288000
+*--------------------------------------------------------------------   00289000
+         SPACE 1                                                        00290000
+FREEEVAL DS    0H                                                       00291000
+         CLC   $EXCFUNR,=F'0'      Anything to free?                    00292000
+         BER   R14                 ---> No                              00293000
+         L     R1,$EXCFUNR         Pick up EVALBLOK ptr                 00294000
+         L     R0,4(,R1)           Get length in dblwords               00295000
+         XC    $EXCFUNR,$EXCFUNR   Clear the pointer                    00296000
+         DMSFRET LOC=(1),DWORDS=(0) Free the EVALBLOK                   00297000
+         BR    R14                 Return to caller                     00298000
+         EJECT ,                                                        00299000
+*--------------------------------------------------------------------   00300000
+*                           W R I T E M S G                             00301000
+*                                                                       00302000
+*  Send reply to the command issuer.  Multiline replies are seperated   00303000
+*  by x'15' (newline) characters.  Registers are as follows:            00304000
+*        R1 - message address                                           00305000
+*        R0 - length                                                    00306000
+*--------------------------------------------------------------------   00307000
+         SPACE 1                                                        00308000
+WRITEMSG DS    0H                                                       00309000
+         STM   R14,R12,12(R13)                                          00310000
+         LA    R15,WRITSAVE        Point to our save                    00311000
+         ST    R15,8(,R13)         Chain forward                        00312000
+         ST    R13,4(,R15)         Chain back                           00313000
+         LR    R13,R15             Point to the new save area           00314000
+         LR    R7,R1                                                    00315000
+         LR    R8,R0                                                    00316000
+MESSAGE1 EQU   *                                                        00317000
+         LTR   R2,R8               Length zero?                         00318000
+         BNH   MSGRET              Just return                          00319000
+         LR    R5,R7               Address of string                    00320000
+         LR    R1,R5                                                    00321000
+         BAL   R14,FIND15          Get end of string                    00322000
+         LR    R7,R1               Copy for next pass thru loop         00323000
+         LR    R8,R2                                                    00324000
+         LR    R3,R0                                                    00325000
+         CLC   SRCCODE,=A(CMDCONS) Is it from the console?              00326000
+         BE    MSGCON              Message to console                   00327000
+         CLC   SRCCODE,=A(CMDSMSG) Is it from SMSG?                     00328000
+         BE    MSGMSG              Msg back via MSG command             00329000
+         CLC   SRCCODE,=A(CMDNET)  Is it from the network?              00330000
+         BE    MSGNET              Yes : Output via network.            00331000
+         B     MSGRET              Unknown code                         00332000
+MSGCON   EQU   *                                                        00333000
+         WRTERM (R5),(R3)          Write reply to console               00334000
+         B     MESSAGE1            Get the next line if there is one    00335000
+MSGNET   DS    0H                                                       00336000
+         MVC   MSGBUF,=CL18'SMSG rscsname MSG '                         00337000
+         MVC   MSGBUF+5(8),RSCSNAME                                     00338000
+         B     MSGCOMM                                                  00339000
+MSGMSG   EQU   *                                                        00340000
+         TM    FLAG,SMSFLG   WANT SMSG REPLY?                           00341000
+         BNO   MSG2          NOPE                                       00342000
+         MVC   MSGBUF,=CL18'SMSG '                                      00343000
+         B     MSGCOMM                                                  00344000
+MSG2     EQU   *                                                        00345000
+         MVC   MSGBUF,=CL18'MSGNOH '                                    00346000
+         L     R14,MAILPTAB        Parameter table                      00347000
+         L     R15,ATBLUK          TBLUK routine                        00348000
+         CALL  (15),((R14),MSGCMD,L'MSGCMD,TWORK)                       00349000
+         LTR   R15,R15             Found MSGCMD?                        00350000
+         BNZ   MSGCOMM             ---> No                              00351000
+         MVC   MSGBUF,=CL18' '     Clear all blanks                     00352000
+         IC    R15,0(R1)           Get length                           00353000
+         C     R15,=F'8'           Longer than 8?                       00354000
+         BH    MSGCOMM             ---> Yes, can't use it               00355000
+         BCTR  R15,0               Decrement for EX                     00356000
+         EX    R15,MSGCMDMV        Move in the command                  00357000
+         B     MSGCOMM                                                  00358000
+         SPACE 1                                                        00359000
+MSGCMDMV MVC   MSGBUF(1),1(R1)     Executed                             00360000
+         SPACE 1                                                        00361000
+MSGCOMM  DS    0H                                                       00362000
+         C     R3,=A(L'MSGDATA) ROOM FOR THE DATA?                      00363000
+         BNH   *+8                                                      00364000
+         LA    R3,L'MSGDATA  TRUNC IT                                   00365000
+         BCTR  R3,0          -1 FOR EXECUTE                             00366000
+         EX    R3,MOVEDATA   MVC MSGDATA(0),0(R5)                       00367000
+         LA    R3,MSGLEN+1(R3) LENGTH OF ENTIRE COMMAND                 00368000
+         LA    R1,MSGBUF                                                00369000
+         LR    R0,R3         GET LENGTH                                 00370000
+         DC    X'83100008'   MESSAGE TO SENDER                          00371000
+         LTR   R0,R0         OK RETCODE?                                00372000
+         BZ    MESSAGE1      TRY FOR NEXT LINE                          00373000
+         C     R0,=F'1'      MSGNOH UNKNOWN FOR THIS USER?              00374000
+         BNE   MSGRET        NO, OTHER ERROR (I.E. NOT LOGGED IN)       00375000
+         CLC   =CL4'MSG ',MSGBUF   Was it MSG?                          00376000
+         BE    MSGRET              ---> Yes, can't fix it up then.      00377000
+         MVC   MSGBUF,=CL18'MSG '  USE MSG COMMAND INSTEAD              00378000
+MSG3     EQU   *                                                        00379000
+         LA    R1,MSGBUF                                                00380000
+         LR    R0,R3                                                    00381000
+         DC    X'83100008'    SEND THE MSG                              00382000
+         LTR   R0,R0         OK RETCODE?                                00383000
+         BZ    MESSAGE1      YES, DO NEXT LINE                          00384000
+MSGRET   EQU   *                                                        00385000
+         L     R13,4(,R13)         Back to previous save area           00386000
+         LM    R14,R12,12(R13)                                          00387000
+         BR    R14                                                      00388000
+         SPACE ,                                                        00389000
+MOVEDATA MVC   MSGDATA(0),0(R5)                                         00390000
+         SPACE ,                                                        00391000
+ENDMSG   DS    0H            <- here to end multi-line reply            00392000
+         L     R1,=A(ENDMESG) end marker                                00393000
+         LA    R0,L'ENDMESG  length of above                            00394000
+         BAL   R14,WRITEMSG   and send the message                      00395000
+         B     DONE          and return                                 00396000
+         SPACE 1                                                        00397000
+ENDMESG  DC    C'- output complete.'                                    00398000
+         SPACE ,                                                        00399000
+         DROP  R9                                                       00400000
+         TITLE 'VM Network Mailer Release 2 - Command processor data arX00401000
+               eas'                                                     00402000
+         LTORG ,                                                        00403000
+         SPACE 2                                                        00404000
+SAVE     DS    18F                 Save area                            00405000
+WRITSAVE DS    18F                 WRITEMSG save area                   00406000
+DWORD    DS    D                                                        00407000
+         SPACE 1                                                        00408000
+TWORK    DS    64F                 TBLUK work area                      00409000
+         SPACE 1                                                        00410000
+MSGCMD   DC    C'Msgcmd'           For TBLUK lookup                     00411000
+         SPACE 1                                                        00412000
+MSGRC    DS    C'R('               Return code message                  00413000
+MSGRCRC  DS    CL5                                                      00414000
+         DS    C') for: '                                               00415000
+MSGRCCMD DS    CL100                                                    00416000
+         SPACE 1                                                        00417000
+ATTNPARM DC    0D'0',CL8'ATTN',CL4'LIFO'                                00418000
+ATTNDATA DS    F                                                        00419000
+         DC    8X'FF'                                                   00420000
+SUBSET   DC    0D'0',CL8'SUBSET',CL8'(RETURN',8X'FF'                    00421000
+         SPACE 2                                                        00422000
+*  Data areas for EXEC command processing                               00423000
+         SPACE 2                                                        00424000
+         DS    0D                                                       00425000
+$EXCPL   DC    CL8'EXEC'           Tokenized plist                      00426000
+$EXCPLFN DC    CL8'xxxxxxxx'       FORWARD | MAILLIST                   00427000
+         DC    8X'FF'              Fence for pretty                     00428000
+         SPACE 1                                                        00429000
+$EXCEPL  DC    A($EXCPL)           Point to 'EXEC'                      00430000
+         DC    A($EXCARGS)         Start of arguments                   00431000
+         DC    A($EXCARGE)         End of arguments                     00432000
+         DC    A($EXCFBLK)         File block pointer                   00433000
+         DC    A($EXCARGL)         Argument list ptr                    00434000
+$EXCFUNR DC    A(0)                Function return                      00435000
+         SPACE 1                                                        00436000
+$EXCARGL DS    0F                  REXX argument list                   00437000
+         DC    A($EXCARGS),A($EXCARGE-$EXCARGS)                         00438000
+$EXCARG2 DC    A(0),A(0)           Address/length of 'MSGCMD' value     00439000
+         DC    8X'FF'                                                   00440000
+         SPACE 1                                                        00441000
+$EXCFBLK DS    0F                                                       00442000
+         DC    CL8' '              FN = ?                               00443000
+         DC    CL8'MAILER'         FT = MAILER                          00444000
+         DC    CL2'*'              FM = *                               00445000
+         DC    H'0'                No extension                         00446000
+         SPACE 1                                                        00447000
+$EXCARGS DS    0C                  Arguments start here                 00448000
+         DC    CL256' '            Command arguments                    00449000
+$EXCARGE EQU   *                   End of arguments                     00450000
+         SPACE 3                                                        00451000
+         END   MAILCMD3                                                 00452000

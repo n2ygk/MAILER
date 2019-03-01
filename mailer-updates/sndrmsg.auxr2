@@ -1,0 +1,5 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R207024    Send mail delivered reply to sender only if FORM=QUIET or
+*          left(FORM,2)<>'QU'
+R205026    Handle userids with '.'s correctly in SNDRMSG
+R202018    Remove PRINT NOGENs, make DSECTs honor SYSPARM(SUP)/SYSPARM(EXP)

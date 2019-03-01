@@ -1,0 +1,18 @@
+./ I 00211500          $ 211600 100                   02/09/89 17:16:43
+         LR    R15,R2             Copy buffer pointer                   00211600
+         S     R15,=A(MAIL)       Compute length                        00211700
+         C     R15,=F'80'         Longer than 80?                       00211800
+         BH    NODEF2             ---> Yes                              00211900
+./ I 00213590          $ 213600 10                    02/09/89 17:16:43
+         SPACE 1                                                        00213600
+NODEF2   EQU   *                  Here if length > 80                   00213610
+         MVC   TWORK(1),MAIL+79      Save value                         00213620
+         MVI   MAIL+79,X'15'         Put in NL character                00213630
+         PUNCHC MAIL,ERROR=PUNERR    Punch the MAIL FROM: line          00213640
+         MVC   MAIL+79(1),TWORK      Restore char                       00213650
+         PUNCHC MAIL+79,ERROR=PUNERR Punch the continuation             00213660
+         B     OVERNULL                                                 00213670
+./ R 00330000          $ 330490 490                   02/09/89 17:16:43
+MAIL     DC    CL160' '           the mail message                      00330000
+./ R 00333180          $ 333570 390                   02/09/89 17:16:43
+MAILFROM DC    CL150' '           space for the userid                  00333570

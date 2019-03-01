@@ -1,0 +1,5 @@
+./ R 00031000          $ 31490 490                    10/04/88 11:35:34
+offset oldldom 4             % spare (was ptr to local-domain string)
+./ I 00055000          $ 56000 1000                   10/04/88 11:35:34
+origin 2232
+offset lclhost 36            % array of ptrs to local-host strings

@@ -1,0 +1,4 @@
+./ I 00365600          $ 365800 200                   11/28/89 10:30:35
+         DC    A(MAILOPTS-MAILBLOK,STRALLM,MOPTALLM)                    00365600
+./ I 00373600          $ 373800 200                   11/28/89 10:30:35
+STRALLM  DC    Y(13),C'SHOW-ALL-MSGS'                                   00373600

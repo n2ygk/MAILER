@@ -1,0 +1,27 @@
+./ R 00010998          $ 10999 1                      03/15/91 12:10:52
+         DC    A(88)         HIGHEST MESSAGE NUMBER DEFINED      [1.24] 00010999
+./ R 00014999 00015000 $ 15289 290                    03/15/91 12:10:52
+         DC A(M77,M78,M79,M80,M81,M82,M83,M84,M85,M86,M87,M88)          00015289
+* MESSAGE DESCIPTORS:                                                   00015579
+./ R 00203880          $ 204870 990                   03/15/91 12:10:52
+         SPACE 1                                                        00204870
+T85      DC    AL1(LT85),C'MAILER085E **** MAILER PROFILE coding error' 00205860
+         DC    C' ***** : THISNODE value not found in OUTGOING table'   00206850
+LT85     EQU   *-T85-1                                                  00207840
+M85      DC    A(T85),AL1(3,3,0)                                        00208830
+         SPACE 1                                                        00209820
+T86      DC    AL1(LT86),C'MAILER086E **** MAILER PROFILE coding error' 00210810
+         DC    C' ***** : One or more MAINTUSERn values not defined'    00211800
+LT86     EQU   *-T86-1                                                  00212790
+M86      DC    A(T86),AL1(3,3,0)                                        00213780
+         SPACE 1                                                        00214770
+T87      DC    AL1(LT87),C'MAILER087E **** MAILER PROFILE coding error' 00215760
+         DC    C' ***** : MAINTNODE.. missing MAINTUSER'                00216750
+LT87     EQU   *-T87-1                                                  00217740
+M87      DC    A(T87),AL1(3,3,61,2,0)                                   00218730
+         SPACE 1                                                        00214770
+T88      DC    AL1(LT88),C'MAILER088E **** MAILER PROFILE coding error' 00215760
+         DC    C' ***** : MAINTNODE.. not found in OUTGOING table'      00216750
+LT88     EQU   *-T88-1                                                  00217740
+M88      DC    A(T88),AL1(3,3,61,2,0)                                   00218730
+         END   MSGTEXT                                                  00219720

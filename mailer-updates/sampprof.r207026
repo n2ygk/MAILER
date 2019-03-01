@@ -1,0 +1,41 @@
+./ I 00036000          $ 36020 20                     03/22/91 10:29:29
+/* ****************************************************************** */00036020
+/*  SAMPPROF2 - Sample profile for the mail/file scavenger server     */00036021
+/* ****************************************************************** */00036022
+                                                                        00036023
+address 'COMMAND'                            /*                       */00036024
+                                                                        00036025
+'SET RDYMSG SMSG'                                                       00036026
+'SET BLIP OFF'                                                          00036027
+'CP SET EMSG ON'                                                        00036028
+'CP SPOOL RDR NOH'                                                      00036029
+                                                                        00036030
+/*  The following line assumes the standard disk configuration as     */00036031
+/*  described in the Mailer Installation and Maintenance Guide        */00036032
+                                                                        00036033
+'ACCESS 193 C/A'                                                        00036034
+                                                                        00036035
+do while disc()                                                         00036036
+   'EXEC FORWARDX'                           /* Do some forwarding    */00036037
+   'CP SLEEP 15 MIN'                         /* Wait a while          */00036038
+   end                                                                  00036039
+                                                                        00036040
+exit                                                                    00036041
+                                                                        00036042
+/* ******************* */                                               00036043
+/*  Internal Routines  */                                               00036044
+/* ******************* */                                               00036045
+                                                                        00036046
+Disc:  procedure /* Determine if running disconnected */                00036047
+parse value diag(8,'QUERY V CONS') with ,    /*                       */00036048
+   . . status .                              /*                       */00036049
+if status = 'DISCONNECTED'  then             /*                       */00036050
+   disc = 1                                  /*                       */00036051
+else                                         /*                       */00036052
+   disc = 0                                  /*                       */00036053
+return disc                                  /*                       */00036054
+                                                                        00036055
+                                                                        00036056
+                                                                        00036057
+                                                                        00036058
+                                                                        00036059

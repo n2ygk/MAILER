@@ -1,0 +1,5 @@
+./ R 00079849          $ 79852 3                      09/08/88 13:24:34
+         ICM   R2,B'1111',FIPARS   Get parse list                       00079852
+         BZ    COUNTOK             ---> Null field                      00079855
+./ I 00079975          $ 79979 4                      09/08/88 13:24:34
+COUNTOK  DS    0H                                                       00079952

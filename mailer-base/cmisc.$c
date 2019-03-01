@@ -1,0 +1,476 @@
+/*-------------------------------------------------------------------*  00001000
+ *    MAILER -- Copyright (c) 1982,1986 Columbia University.         *  00002490
+ *  Program Property of the Trustees of Columbia University in the   *  00003000
+ *  City of New York.                                                *  00004000
+ *-------------------------------------------------------------------*/ 00005000
+/*                                                                      00006000
+ * Miscellaneous C functions                                            00007000
+ */                                                                     00008000
+                                                                        00009000
+#undef __STDC__                                                         00009500
+#include "mailblok.h"                                                   00010000
+#include "cfuncs.h"                                                     00011000
+                                                                        00013000
+int cmisc;                    /* just to get dragged in by loader */    00015000
+                                                                        00016000
+/* xcmp - case independent bcmp */                                      00017000
+xcmp(s1,s2,l)                                                           00018000
+register char *s1, *s2;                                                 00019000
+register int l;                                                         00020000
+{                                                                       00021000
+    register int d;                                                     00022000
+                                                                        00023000
+    for (; l > 0; l--, s1++, s2++)                                      00024000
+        if ((d = upcase[*s1] - upcase[*s2]))                            00025000
+            return d;                                                   00026000
+    return 0;                                                           00027000
+}                                                                       00028000
+                                                                        00029000
+/* rdcard - do a cms rdcard macro */                                    00030000
+static struct {                                                         00031000
+    union {                                                             00032000
+        double foo;                  /* force dword alignment */        00033000
+        char name[8];                                                   00034000
+    } u;                                                                00035000
+    unsigned bufptr;                                                    00036000
+    u_short len1, len2;                                                 00037000
+} rdcard_plist;                                                         00038000
+                                                                        00039000
+rdcard(bp, l)                                                           00040000
+char *bp;                                                               00041000
+int l;                                                                  00042000
+{                                                                       00043000
+    int rc;                                                             00044000
+    register int i;                                                     00045000
+                                                                        00046000
+    bcopy("CARDRD  ",rdcard_plist.u.name, 8);                           00047000
+    rdcard_plist.bufptr = 0x80000000 | (int)bp;                         00048000
+    rdcard_plist.len1 = rdcard_plist.len2 = l;                          00049000
+    if ((rc = svc202(&rdcard_plist)) != 0)                              00050000
+        return -1;                                                      00051000
+    for (i = rdcard_plist.len2-1; i >= 0 && isspace(bp[i]); i--);       00052000
+    return i+1;                                                         00053000
+}                                                                       00054000
+                                                                        00055000
+/* punchc - do a cms punchc macro */                                    00056000
+static struct {                                                         00057000
+    union {                                                             00058000
+        double foo;                  /* force dword alignment */        00059000
+        char name[8];                                                   00060000
+    } u;                                                                00061000
+    unsigned bufptr;                                                    00062000
+} punchc_plist;                                                         00063000
+                                                                        00064000
+punchc(bp, l)                                                           00065000
+char *bp;                                                               00066000
+int l;                                                                  00067000
+{                                                                       00068000
+    int rc;                                                             00069000
+    char buf[80];                                                       00070000
+    register i;                                                         00071000
+                                                                        00072000
+    bcopy(bp, buf, (l > 80)? (l = 80): l);                              00073000
+    for (i = l; i < 80; i++)         /* pad w/ blanks */                00074000
+        buf[i] = ' ';                                                   00075000
+    bcopy("CARDPH  ",punchc_plist.u.name, 8);                           00076000
+    punchc_plist.bufptr = (unsigned)buf;                                00077490
+    return svc202(&punchc_plist);                                       00078000
+}                                                                       00079000
+                                                                        00080000
+/* wrterm - do a cms wrterm macro */                                    00081000
+static struct {                                                         00082000
+    union {                                                             00083000
+        double foo;                  /* force dword alignment */        00084000
+        char name[8];                                                   00085000
+    } u;                                                                00086000
+    unsigned bufptr;                                                    00087000
+    char flags[2];                                                      00088000
+    u_short len;                                                        00089000
+} wrterm_plist;                                                         00090000
+                                                                        00091000
+wrterm(sp)                                                              00092000
+char *sp;                                                               00093000
+{                                                                       00094000
+    int rc;                                                             00095000
+                                                                        00096000
+    bcopy("TYPLIN  ",wrterm_plist.u.name, 8);                           00097000
+    wrterm_plist.bufptr = 0x01000000 | (int)sp;                         00098000
+    wrterm_plist.flags[0] = 'B';                                        00099000
+    wrterm_plist.flags[1] = 0;                                          00100000
+    wrterm_plist.len = strlen(sp);                                      00101000
+    if ((rc = svc202(&wrterm_plist)) != 0)                              00102000
+        return -1;                                                      00103000
+}                                                                       00104000
+                                                                        00105000
+/* wtr - call the message writer */                                     00106000
+/* sample invocation: wtr("SMT", 4, 2, "x", 47, "ca", "hello");   */    00107000
+/*                               ^msg # */                              00108000
+extern monwtr(), acall();                                               00109000
+                                                                        00110000
+wtr(mod, id, n, f1, p1, f2, p2, f3, p3, f4, p4, f5, p5, f6, p6, f7, p7) 00111000
+char *mod;                                                              00112000
+{                                                                       00113000
+    int wtrplist[10], i, *p;                                            00114000
+    char data[4];                                                       00115000
+                                                                        00116000
+    if (strlen(mod) != 3) return;                                       00117000
+    wtrplist[0] = id & 0x00ffffff;                                      00118000
+    data[0] = 0x04;                                                     00119000
+    bcopy(mod, &data[1], 3);           /* module identifier */          00120000
+    bcopy(data, &wtrplist[1], 4);                                       00121000
+    for (i = 2, p = &f1; i < 10 && n > 0; i++, n--, p++) {              00122000
+        int flag = 0;                                                   00123000
+        char *fmt = (char *)*p++;                                       00124000
+        while (*fmt != '\0') switch(*fmt++) {                           00125000
+        case 'a':                                                       00126000
+        case 'A':                                                       00127000
+            flag |= 0x10000000;                                         00128000
+            break;                                                      00129000
+        case 'b':                                                       00130000
+        case 'B':                                                       00131000
+            flag |= 0x08000000;                                         00132000
+            break;                                                      00133000
+        case 'c':                                                       00134000
+        case 'C':                                                       00135000
+            flag |= 0x04000000;                                         00136000
+            break;                                                      00137000
+        case 'd':                                                       00138000
+        case 'D':                                                       00139000
+            flag |= 0x02000000;                                         00140000
+            break;                                                      00141000
+        case 'x':                                                       00142000
+        case 'X':                                                       00143000
+            flag |= 0x01000000;                                         00144000
+            break;                                                      00145000
+        default:                                                        00146000
+            return;                                                     00147000
+        }                                                               00148000
+        wtrplist[i] = (int)*p&0x00ffffff | flag;                        00149000
+    }                                                                   00150000
+    wtrplist[i-1] |= 0x80000000;                                        00151000
+    acall(monwtr, 0, wtrplist);                                         00152000
+}                                                                       00153000
+                                                                        00154000
+/*                                                                      00155000
+ * salloc - alloc some memory from the mailer stack.                    00156000
+ * adjusts the MAILBLOK stack pointer, length pair.                     00157000
+ */                                                                     00158000
+int                                                                     00159000
+salloc(amount)                                                          00160000
+int amount;                                                             00161000
+{                                                                       00162000
+    int ptr;                                                            00163000
+                                                                        00164000
+    amount += 7;                    /* round up to the next hightest */ 00165000
+    amount &= 0xFFFFFFF8;           /* douleword boundary */            00166000
+    if (stackp[1] < amount)                                             00167000
+        return 0;                   /* stack overflow */                00168490
+    stackp[1] -= amount;                                                00169000
+    ptr = stackp[0];                                                    00170000
+    stackp[0] += amount;                                                00171000
+    bzero(ptr, amount);                                                 00172000
+    return ptr;                                                         00173000
+}                                                                       00174000
+                                                                        00175000
+/*                                                                      00176000
+ * CMS disk file I/O                                                    00177000
+ * file name format used is: "fn.ft.fm"                                 00178000
+ *  fsinit() - just fills the name into the fscb                        00179000
+ *  fserase  - erases the named file                                    00180000
+ *  fsread   - read                                                     00181000
+ *  fswrite  - write                                                    00182000
+ *  fsclose  - close                                                    00183000
+ *  fspoint  - set read/write record pointer                            00183500
+ *  (file format options, etc are set by stuffing the fscb)             00184000
+ */                                                                     00185000
+fsinit(f, n)                                                            00186000
+register struct fscb *f;                                                00187000
+register char *n;                                                       00188000
+{                                                                       00189000
+    static char nameini[] = "                A1";                       00190000
+    register i;                                                         00191000
+                                                                        00192000
+    bzero(f, sizeof(*f));                                               00193000
+    bcopy(nameini, f->fscbfn, 18);     /* initialize fn ft fm */        00194000
+    for (i = 0; i < 8 && *n != '.' && *n != '\0'; i++, n++)             00195000
+        f->fscbfn[i] = upcase[*n];                                      00196000
+    if (*n++ != '.') return 24;                                         00197000
+    for (i = 0; i < 8 && *n != '.' && *n != '\0'; i++, n++)             00198000
+        f->fscbft[i] = upcase[*n];                                      00199000
+    if (*n == '\0') return 0;                                           00200000
+    if (*n++ != '.') return 24;                                         00201000
+    for (i = 0; i < 2 && *n != '\0'; i++, n++)                          00202000
+        f->fscbfm[i] = upcase[*n];                                      00203000
+    if (*n != '\0') return 24;                                          00204000
+    return 0;                                                           00205000
+}                                                                       00206000
+                                                                        00207000
+fserase(name)                                                           00208000
+char *name;                                                             00209000
+{                                                                       00210000
+    struct fscb f;                                                      00211000
+    int rc;                                                             00212000
+                                                                        00213000
+    if (rc = fsinit(&f, name))                                          00214000
+        return rc;                                                      00215000
+    bcopy("ERASE   ", f.fscbcomm, 8);                                   00216000
+    return svc202(&f);                                                  00217000
+}                                                                       00218000
+                                                                        00219000
+fsread(f, buf, buflen)                                                  00220000
+struct fscb *f;                                                         00221000
+char *buf;                                                              00222000
+int *buflen;                                                            00223000
+{                                                                       00224000
+    int rc;                                                             00225000
+                                                                        00226000
+    f->fscbbuf = buf;                                                   00227000
+    f->fscbsize = *buflen;                                              00228000
+    bcopy("RDBUF   ", f->fscbcomm, 8);                                  00229000
+    f->fscbflg |= FSCBEPL;                                              00230000
+    f->fscbnoit = f->fscbanit = 1;                                      00231000
+    rc = svc202(f);                                                     00232000
+    *buflen = f->fscbnord;                                              00233000
+    return rc;                                                          00234000
+}                                                                       00235000
+                                                                        00236000
+fswrite(f, buf, buflen)                                                 00237000
+struct fscb *f;                                                         00238000
+char *buf;                                                              00239000
+int *buflen;                                                            00240000
+{                                                                       00241000
+    f->fscbbuf = buf;                                                   00244000
+    f->fscbsize = *buflen;                                              00245000
+    bcopy("WRBUF   ", f->fscbcomm, 8);                                  00246000
+    f->fscbflg |= FSCBEPL;                                              00247000
+    f->fscbnoit = f->fscbanit = 1;                                      00248000
+    return svc202(f);                                                   00249990
+}                                                                       00251000
+                                                                        00252000
+fsclose(f)                                                              00253000
+struct fscb *f;                                                         00254000
+{                                                                       00255000
+    bcopy("FINIS   ", f->fscbcomm, 8);                                  00256000
+    return svc202(f);                                                   00257000
+}                                                                       00258000
+                                                                        00259000
+fspoint(f,wr,rd)                                                        00260000
+struct fscb *f;                                                         00261000
+int wr,rd;                                                              00262000
+{                                                                       00263000
+    bcopy("EPOINT  ", f->fscbcomm, 8);                                  00264000
+    f->fscbwptr = wr;                                                   00265000
+    f->fscbrptr = rd;                                                   00266000
+    return svc202(f);                                                   00267000
+}                                                                       00268000
+                                                                        00269000
+/*                                                                      00270000
+ * _rdhdr:   Return next record from mail header.  Called by exits      00271000
+ *           that want to read the mail file rather than simply         00272000
+ *           push it along with PUNHDR.  This duplicates a lot of       00273000
+ *           code that was originally in PUNHDR.                        00274000
+ *                                                                      00275000
+ *  Chugs through the list of FIELDDs hanging from mailfld and returns  00276000
+ *  them in the order seen.  Those marked invisible are skipped and     00277000
+ *  those marked edited are generated from the (edited) TOKEND list     00278000
+ *  rather than the usual method of simply using everything between     00279000
+ *  fistr and fiend.                                                    00280000
+ *                                                                      00281000
+ *  returns: 0 or 12 for EOH or no header (HDRSCAN failed)              00282000
+ *                                                                      00283000
+ *  How it works:                                                       00284000
+ *                                                                      00285000
+ *  The curfld static variable points to the current fieldd being worked00286000
+ *  on.  It is initially zero and is reset to zero when EOH is returned 00287000
+ *  as a means of determining whether we are in the midst of getting    00288000
+ *  header lines or have just been invoked for the first time for a new 00289000
+ *  header.                                                             00290000
+ *                                                                      00291000
+ *  The curstr static variable points to the current position in the    00292000
+ *  fieldd being worked on (i.e. between fitok->tokptr and fiend)       00293490
+ *  It is equal to fiend when the fieldd has been completely exhausted. 00294000
+ *  This indicates that curfld should be set to point to the next fieldd00295000
+ *  to start the cycle over again.  This is how we keep track of how    00296000
+ *  far we have progressed through the current fieldd between calls.    00297000
+ *  Curtok is used similarly for edited fields.                         00298000
+ */                                                                     00299000
+int                                                                     00300000
+_rdhdr(buf,lenp)                                                        00301000
+char *buf;  /* buffer to return record in */                            00302000
+int *lenp;  /* input: max length of buf, output: actual length */       00303000
+{                                                                       00304000
+    static struct fieldd *curfld = 0;  /* initial & final value */      00305000
+    static char *curstr = 0;           /* current pos within fieldd */  00306000
+    static struct tokend *curtok = 0;  /*  ditto for edited fieldds */  00307000
+    static struct tokend *prevtok = 0;                                  00308000
+    static char beginning = 0;                                          00309000
+                                                                        00310000
+    if (curfld == 0) {                 /* initial call */               00311000
+        if (!(mailflg1&MFLG1HDS))      /* no header was scanned */      00312000
+          return 12;                   /* so report EOH */              00313000
+        if ((curfld = mailfld) == 0)   /* head of fieldd list */        00314000
+          return 12;                                                    00315000
+        beginning = 1;                 /* at beginning of field */      00316000
+    }                                                                   00317000
+                                                                        00318000
+top:                                                                    00319000
+    if (beginning) {                   /* extra work at beginning */    00320000
+        beginning = 0;                                                  00321000
+        while (curfld->fiflg1&FIINVFLG)  /* "invisible" field */        00322000
+          if ((curfld = FINEXT(curfld)) == 0) /* skip it */             00323000
+            return 12;                                                  00324000
+        if (curfld->fiflg1&FIEDIFLG) { /* it's been edited (argh) */    00325000
+            curtok = FITOK(curfld);    /* so use tokend list */         00326000
+            prevtok = 0;                                                00327000
+            curstr = 0;                /* indicate by zeroing other */  00328000
+        } else {                                                        00329000
+            curstr = TOKPTR(FITOK(curfld));                             00330490
+            curtok = 0;                /* indicate by zeroing other */  00331000
+        }                                                               00332000
+    }                                                                   00333000
+                                                                        00334000
+    /* now actually figure out how much to return and copy it to buf */ 00335000
+    if (!(curfld->fiflg1&FIEDIFLG)) { /* unedited */                    00336000
+        int slen = curfld->fiend - curstr;                              00337000
+        register int n;                                                 00338000
+                                                                        00339000
+        if (slen <= 0) {                /* all used up */               00340000
+            if ((curfld = FINEXT(curfld)) == 0) /* get next field */    00341000
+              return 12;                                                00342000
+            beginning = 1;                                              00343000
+            goto top;                   /* and start over */            00344000
+        }                                                               00345000
+                                                                        00346000
+        /* First look for x15(newline) line break and then see if       00347000
+           what's left is still too long for the given record length.   00348000
+           If so, back up until we find a blank and split the line. */  00349000
+        for (n = 0; curstr[n] != 0x15 && n < slen; n++) ;               00350000
+        slen = n;                                                       00351000
+        if (slen > *lenp)               /* find a line break */         00352000
+          for (n = *lenp-1; curstr[n] != ' ' && n > 0; n--) ;           00353000
+        else                                                            00354000
+          n = slen;                                                     00355000
+        bcopy(curstr,buf,n);            /* move into buffer */          00356000
+        *lenp = n;                      /* return length moved */       00357000
+        curstr += n;                    /* update ptr for next call */  00358000
+        if ((curstr < curfld->fiend) && (*curstr == 0x15))              00359000
+          ++curstr;                     /* skip the newline */          00360000
+    } else {                            /* edited - this is ugly! */    00361000
+        int n = *lenp;                                                  00362000
+        static int fold = 0;                                            00363000
+                                                                        00364000
+        if (curtok == 0) {              /* used up this record */       00365000
+            if ((curfld = FINEXT(curfld)) == 0) /* get next field */    00366000
+              return 12;                                                00367000
+            beginning = 1;                                              00368000
+            fold = 0;                                                   00369000
+            goto top;                   /* and start over */            00370000
+        }                                                               00371000
+        if (fold) {                                                     00372000
+            fold = 0;                                                   00373000
+            *buf++ = ' ';               /* insert leading blank */      00374000
+            --n;                                                        00375000
+        }                                                               00376000
+        while (n > 0) {                                                 00377000
+            if (curtok->toklen < n) {   /* room for next token */       00378000
+                int extra;                                              00379000
+                if (prevtok                                             00380000
+                    && (prevtok->toktype == TOKATM                      00381790
+                        || prevtok->toktype == TOKQSTR)                 00382580
+                    && (curtok->toktype == TOKATM                       00383370
+                        || curtok->toktype == TOKQSTR)) {               00384160
+                    *buf++ = ' ';                                       00385000
+                    extra = 1;                                          00386000
+                } else                                                  00387000
+                  extra = 0;                                            00388000
+                bcopy(TOKPTR(curtok),buf,curtok->toklen);               00389490
+                buf += curtok->toklen;                                  00390000
+                n -= curtok->toklen + extra;                            00391000
+                if (curtok == FITOK(curfld)) { /* first token */        00392000
+                    *buf++ = ':';             /* gets a colon! */       00393000
+                    --n;                                                00394000
+                }                                                       00395000
+                prevtok = curtok;                                       00396000
+                if ((curtok = TOKNEXT(curtok)) == 0)                    00397000
+                  break;                                                00398000
+            } else {                    /* fold to next record */       00399000
+                fold = 1;                                               00400000
+                break;                                                  00401000
+            }                                                           00402000
+        }                                                               00403000
+        *lenp -= n;                     /* subtract residual */         00404000
+    }                                                                   00405000
+    return 0;                                                           00406000
+}                                                                       00407000
+                                                                        00408000
+/*                                                                      00409000
+ * rdtxt: returns the text portion of the message.  This is the         00410000
+ *  companion of rdhdr as puntxt is the companion of punhdr.            00411000
+ *  Records too long to fit in the supplied buffer get wrapped.         00412000
+ *                                                                      00413000
+ * returns 0 or 12 for EOF.                                             00414000
+ *                                                                      00415000
+ * How it works:                                                        00416000
+ *  Either reads cards from the reader or the SMTP DATA file            00417000
+ *  depending on the MFLG2SMT flag.                                     00418000
+ */                                                                     00419000
+int                                                                     00420000
+_rdtxt(buf,lenp)                                                        00421000
+char *buf;   /* buffer to return record in */                           00422000
+int *lenp;   /* input: max length of buf, output: actual length */      00423000
+{                                                                       00424000
+    static struct fscb fs;                                              00425000
+    static int beginning = 1;                                           00426000
+    static char inbuf[132],*inp; /* xxx not a very general solution */  00427000
+    static int resid = 0;      /* residual length */                    00428000
+                                                                        00429000
+    /* Do one-time source-specific(rdr/smtp) initialization */          00430000
+    if (beginning) {                                                    00431000
+        if (mailflg2&MFLG2SMT) {       /* BSMTP */                      00432000
+            fsclose("smtp.data");                                       00433000
+            fsinit(&fs,"smtp.data");                                    00434000
+            fspoint(&fs, 0, mailhrec+2); /* skip over header */         00435000
+        } else {                       /* reader */                     00436000
+            int i;                                                      00437000
+            cpcmd("CLOSE 00C",9);                                       00438000
+            if (cpcmd("READY 00C",9)) return 12;                        00439000
+            /* skip header records */                                   00440000
+            for (i = 0; i < mailhrec; i++)                              00441000
+              if (rdcard(inbuf,mailsfb.sfbrecsz) < 0)                   00442000
+                return 12;                                              00443000
+        }                                                               00444000
+        resid = 0;                                                      00445000
+        beginning = 0;                                                  00446000
+    }                                                                   00447000
+                                                                        00448000
+    /* read a new record if nothing left in inbuf from previous call */ 00449000
+    if (resid == 0) {                                                   00450000
+        resid = sizeof(inbuf);                                          00451000
+        /* read a new record.  resid will contain length read */        00452000
+        if (mailflg2&MFLG2SMT) {       /* source is smtp data */        00453000
+            if (fsread(&fs,inbuf,&resid)) {                             00454000
+                beginning = 1;         /* EOF or other FSREAD error */  00455000
+                return 12;                                              00456000
+            }                                                           00457000
+        } else {                       /* source is reader */           00458000
+            if ((resid = rdcard(inbuf,mailsfb.sfbrecsz)) < 0) {         00459000
+                beginning = 1;         /* EOF or other RDCARD error */  00460000
+                return 12;                                              00461000
+            }                                                           00462000
+        }                                                               00463000
+        inp = inbuf;                   /* set up pointer */             00464000
+    }                                                                   00465000
+                                                                        00466000
+    /* Return as much of inbuf as possible in caller's buffer and       00467000
+       leave any residual around for a subsequent call. */              00468000
+    if (resid > *lenp) {           /* record has to be wrapped */       00469000
+        bcopy(inp,buf,*lenp);      /* copy as much as will fit */       00470000
+        resid -= *lenp;            /* residual length */                00471000
+        inp += *lenp;              /* set up pointer for residual */    00472000
+    } else {                       /* record fits just fine */          00473000
+        bcopy(inp,buf,resid);      /* copy it all */                    00474000
+        *lenp = resid;             /* update returned length */         00475000
+        resid = 0;                 /* set to zero for next time */      00476000
+    }                                                                   00477000
+    return 0;                                                           00478000
+}                                                                       00479000

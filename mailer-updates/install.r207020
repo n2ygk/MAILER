@@ -1,0 +1,13 @@
+./ R 01782717 01782720 $ 1782767 50                   03/13/91 17:01:18
+.sp 2                                                                   01782698
+MAILER083E **** MAILER PROFILE coding error ***** : THISNODE not        01782699
+defined
+.in +4                                                                  01782704
+.sp 1                                                                   01782705
+The THISNODE variable has not been defined.                             01782706
+Mailer cannot run without the local node name being defined.            01782707
+Correct this by coding a value for THISNODE (see instructions for       01782711
+mailer profile).                                                        01782712
+.in -4                                                                  01782716
+.in -.33i                                                               01782717
+.subhead 13.2. BSMTP Messages                                           01782720

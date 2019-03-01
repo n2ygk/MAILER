@@ -1,0 +1,34 @@
+./ R 00545997 00546000 $ 546007 10                    12/21/89 11:09:32
+         SPACE 1                                                        00546007
+* Debugging flag bytes                                                  00546017
+         SPACE 1                                                        00546027
+DBGFLG0  DC    X'0'                SMTPIN tracing flags                 00546037
+*        EQU   X'80'               Procedure call trace                 00546047
+*        EQU   X'40'               Trace check_local                    00546057
+*        EQU   X'20'               Trace find_routd                     00546067
+*        EQU   X'10'               Trace is_mailer                      00546077
+*        EQU   X'08'               Trace rep_mail                       00546087
+*        EQU   X'04'               Trace s_getdata                      00546097
+*        EQU   X'02'               Trace s_input                        00546107
+*        EQU   X'01'               Trace s_rcpt                         00546117
+         SPACE 1                                                        00546127
+DBGFLG1  DC    X'0'                More SMTPIN tracing flags            00546137
+*        EQU   X'80'               Trace s_mail                         00546147
+*        EQU   X'40'               Trace parse_data_header              00546157
+*        EQU   X'20'               Unused                               00546167
+*        EQU   X'10'               Unused                               00546177
+*        EQU   X'08'               Unused                               00546187
+*        EQU   X'04'               Unused                               00546197
+*        EQU   X'02'               Unused                               00546207
+*        EQU   X'01'               Unused                               00546217
+         SPACE 1                                                        00546227
+DBGFLG2  DC    X'0'                Unused                               00546237
+DBGFLG3  DC    X'0'                Unused                               00546247
+DBGFLG4  DC    X'0'                Unused                               00546257
+DBGFLG5  DC    X'0'                Unused                               00546267
+DBGFLG6  DC    X'0'                Unused                               00546277
+         SPACE 1                                                        00546287
+DBGFLG7  DC    X'0'                Various assembler routines           00546297
+DBGBLDLS EQU   X'80'               Trace BUILDLST processing            00546307
+         DS    0D            Just for pretty                            00546317
+MAILBLEN EQU   *-MAILXXXX    LENGTH IN BYTES                            00546327

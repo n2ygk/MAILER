@@ -1,0 +1,42 @@
+/* ****************************************************************** */
+/*  MACGEN - Generate the maclibs needed by MAILER                    */
+/* ****************************************************************** */
+
+address command
+
+ectl = 'MAILEXEC'                            /* EXEC control file     */
+mctl = 'MAILER'                              /* MACLIB control file   */
+
+exitrc = 0                                   /* Default value         */
+
+maclib.0 = 2                                 /* List of MACLIBs       */
+maclib.1 = 'MAILER'                          /* Standard maclib       */
+maclib.2 = 'MAILCOMP'                        /* Compatibility support */
+
+do i=1 for maclib.0                          /* Process list          */
+
+   say ' '
+   say 'Rebuilding' maclib.i 'MACLIB load list'
+   'EXEC EXECUPDT' maclib.i 'EXEC (CTL' ectl /* Update load list      */
+   if rc <> 0  then  do
+      if rc > exitrc  then  exitrc = rc
+      iterate
+      end
+
+   'ERASE' maclib.i 'UPDLOG  A'              /* Discard logs          */
+   'ERASE' maclib.i 'UPDATES A'
+
+   say ' '
+   say 'Rebuilding' maclib.i 'MACLIB'
+   'EXEC VMFMAC' maclib.i mctl               /* Create maclib         */
+   if rc <> 0  then  do
+      if rc > exitrc  then  exitrc = rc
+      iterate
+      end
+
+   'ERASE' maclib.i 'EXEC A'                 /* Discard loadlist      */
+   'ERASE' maclib.i 'COPY A'                 /* Discard log           */
+
+   end
+
+exit exitrc

@@ -1,0 +1,151 @@
+./ I 00124000          $ 124001 1                     12/21/89 11:49:28
+*---------------------------------------------------------------------- 00124001
+* And do the same for the debugging bit values                          00124002
+*---------------------------------------------------------------------- 00124003
+         SPACE ,                                                        00124004
+         LA    R5,DBITLEN          Set bit-values now                   00124005
+         LA    R6,DBITARR          Address of array                     00124006
+DBITLOOP EQU   *                                                        00124007
+         L     R3,0(R6)            Get offset into mailblok             00124008
+         LA    R3,0(R11,R3)        Get actual address                   00124009
+         L     R7,4(R6)            Get string pointer                   00124010
+         LH    R4,0(R7)            Length                               00124011
+         LA    R7,2(R7)            Address                              00124012
+         CALL  TBLUK,((R8),(R7),(R4),TWORK)                             00124013
+         LTR   R15,R15             Find it?                             00124014
+         BNZ   SET3B               Nope, take the default (false)       00124015
+         OI    1(R1),X'40'         Make it upper case                   00124016
+         CLI   1(R1),C'T'          Set bit true?                        00124017
+         BNE   DBITFALS            Set it false                         00124018
+         LA    R15,=CL5'True'      Remember the correct value           00124019
+         L     R1,8(R6)            Get value to set                     00124020
+         SR    R2,R2               Get zero                             00124021
+         IC    R2,0(R3)            Get current value                    00124022
+         OR    R2,R1               Or in the new flag                   00124023
+         STC   R2,0(R3)            And put it back                      00124024
+         B     SET3                Get next one                         00124025
+DBITFALS EQU   *                   Set the flag false                   00124026
+         L     R1,8(R6)            Get value to set                     00124027
+         X     R1,=F'-1'           Flip the bits                        00124028
+         SR    R2,R2               Get zero                             00124029
+         IC    R2,0(R3)            Get current flag value               00124030
+         NR    R2,R1               And them                             00124031
+         STC   R2,0(R3)            Put new flag back                    00124032
+         SPACE 1                                                        00124033
+SET3     EQU   *                                                        00124034
+         MVC   MSGBUFF,MSGBUFF-1   Clear to blanks                      00124035
+         LINEDIT TEXT='.............................. = ''.....''',    X00124036
+               SUB=(CHARA,((R7),(R4)),CHARA,(R15)),                    X00124037
+               DISP=NONE,BUFFA=MSGBUFF,DOT=NO,COMP=YES,RENT=NO          00124038
+         WTR   STI075,(CA,MSGBUFF+1)   Write msg                        00124039
+SET3B    EQU   *                                                        00124040
+         LA    R6,12(R6)                                                00124041
+         BCT   R5,DBITLOOP                                              00124042
+         SPACE ,                                                        00124043
+./ I 00366600          $ 366620 20                    12/21/89 11:49:28
+         SPACE 1                                                        00366620
+* The debugging flag bits                                               00366640
+         SPACE 1                                                        00366660
+DBITARR  DC    A(DBGFLG0-MAILBLOK,SMTPTR01,X'80')                       00366680
+         DC    A(DBGFLG0-MAILBLOK,SMTPTR02,X'40')                       00366700
+         DC    A(DBGFLG0-MAILBLOK,SMTPTR03,X'20')                       00366720
+         DC    A(DBGFLG0-MAILBLOK,SMTPTR04,X'10')                       00366740
+         DC    A(DBGFLG0-MAILBLOK,SMTPTR05,X'08')                       00366760
+         DC    A(DBGFLG0-MAILBLOK,SMTPTR06,X'04')                       00366780
+         DC    A(DBGFLG0-MAILBLOK,SMTPTR07,X'02')                       00366800
+         DC    A(DBGFLG0-MAILBLOK,SMTPTR08,X'01')                       00366820
+         DC    A(DBGFLG1-MAILBLOK,SMTPTR11,X'80')                       00366840
+         DC    A(DBGFLG1-MAILBLOK,SMTPTR12,X'40')                       00366860
+         DC    A(DBGFLG7-MAILBLOK,MAILTR71,DBGBLDLS)                    00366880
+DBITLEN  EQU   (*-DBITARR)/12                                           00366900
+         SPACE 1                                                        00366920
+./ R 00368000 00376000 $ 371990 3990                  12/21/89 11:49:28
+         SPACE 1                                                        00371990
+./ I 00387700          $ 387703 3                     12/21/89 11:49:28
+         SPACE ,                                                        00387703
+*--------------------------------------------------------------------   00387706
+*        Strings for searching for variable values                      00387709
+*--------------------------------------------------------------------   00387712
+         SPACE ,                                                        00387715
+*  Who we and the RSCS(es) are                                          00387718
+         SPACE 1                                                        00387721
+STRTHIS  DC    Y(8),C'THISNODE'                                         00387724
+STRRSCS  DC    Y(8),C'RSCSNAME'                                         00387727
+STRRALT  DC    Y(7),C'RSCSALT'                   [1.13]                 00387730
+         SPACE 1                                                        00387733
+*  Priviliged users list                                                00387736
+         SPACE 1                                                        00387739
+STRMUSE  DC    Y(9),C'MAINTUSER'                                        00387742
+STRMNOD  DC    Y(9),C'MAINTNODE'                                        00387745
+STRMUSE1 DC    Y(10),C'MAINTUSER1'                                      00387748
+STRMNOD1 DC    Y(10),C'MAINTNODE1'                                      00387751
+STRMUSE2 DC    Y(10),C'MAINTUSER2'                                      00387754
+STRMNOD2 DC    Y(10),C'MAINTNODE2'                                      00387757
+STRMUSE3 DC    Y(10),C'MAINTUSER3'                                      00387760
+STRMNOD3 DC    Y(10),C'MAINTNODE3'                                      00387763
+STRMUSE4 DC    Y(10),C'MAINTUSER4'                                      00387766
+STRMNOD4 DC    Y(10),C'MAINTNODE4'                                      00387769
+STRMUSE5 DC    Y(10),C'MAINTUSER5'                                      00387772
+STRMNOD5 DC    Y(10),C'MAINTNODE5'                                      00387775
+STRMUSE6 DC    Y(10),C'MAINTUSER6'                                      00387778
+STRMNOD6 DC    Y(10),C'MAINTNODE6'                                      00387781
+STRMUSE7 DC    Y(10),C'MAINTUSER7'                                      00387784
+STRMNOD7 DC    Y(10),C'MAINTNODE7'                                      00387787
+STRMUSE8 DC    Y(10),C'MAINTUSER8'                                      00387790
+STRMNOD8 DC    Y(10),C'MAINTNODE8'                                      00387793
+STRMUSE9 DC    Y(10),C'MAINTUSER9'                                      00387796
+STRMNOD9 DC    Y(10),C'MAINTNODE9'                                      00387799
+         SPACE 1                                                        00387802
+*  Run time operation                                                   00387805
+         SPACE 1                                                        00387808
+STRALLOW DC    Y(19),C'ALLOW-UNKNOWN-NODES'                             00387811
+STRCHAR  DC    Y(16),C'ALLOW-CHARLATANS'                         [1.24] 00387814
+STRVL    DC    Y(15),C'VERBOSE-LOGGING'                          [1.24] 00387817
+STRALLM  DC    Y(13),C'SHOW-ALL-MSGS'                                   00387820
+STRSUPPL DC    Y(21),C'SUPPLY-DEFAULT-FIELDS'                           00387823
+         SPACE 1                                                        00387826
+*  RSCS domain name(s)                                                  00387829
+         SPACE 1                                                        00387832
+STRDOMAI DC    Y(11),C'RSCS-DOMAIN'                              [1.22] 00387835
+STRDOM1  DC    Y(12),C'RSCS-DOMAIN1'                                    00387838
+STRDOM2  DC    Y(12),C'RSCS-DOMAIN2'                                    00387841
+STRDOM3  DC    Y(12),C'RSCS-DOMAIN3'                                    00387844
+STRDOM4  DC    Y(12),C'RSCS-DOMAIN4'                                    00387847
+STRDOM5  DC    Y(12),C'RSCS-DOMAIN5'                                    00387850
+STRDOM6  DC    Y(12),C'RSCS-DOMAIN6'                                    00387853
+STRDOM7  DC    Y(12),C'RSCS-DOMAIN7'                                    00387856
+STRDOM8  DC    Y(12),C'RSCS-DOMAIN8'                                    00387859
+STRDOM9  DC    Y(12),C'RSCS-DOMAIN9'                                    00387862
+         SPACE 1                                                        00387865
+*  Alternate local host name(s)                                         00387868
+         SPACE 1                                                        00387871
+STRLCLDO DC    Y(12),C'LOCAL-DOMAIN'                             [1.22] 00387874
+STRLCLH1 DC    Y(11),C'LOCAL-HOST1'                                     00387877
+STRLCLH2 DC    Y(11),C'LOCAL-HOST2'                                     00387880
+STRLCLH3 DC    Y(11),C'LOCAL-HOST3'                                     00387883
+STRLCLH4 DC    Y(11),C'LOCAL-HOST4'                                     00387886
+STRLCLH5 DC    Y(11),C'LOCAL-HOST5'                                     00387889
+STRLCLH6 DC    Y(11),C'LOCAL-HOST6'                                     00387892
+STRLCLH7 DC    Y(11),C'LOCAL-HOST7'                                     00387895
+STRLCLH8 DC    Y(11),C'LOCAL-HOST8'                                     00387898
+STRLCLH9 DC    Y(11),C'LOCAL-HOST9'                                     00387901
+         SPACE 1                                                        00387904
+*  Table identifiers                                                    00387907
+         SPACE 1                                                        00387910
+ROUTING  DC    CL8'Outgoing'                                            00387913
+VALID    DC    CL8'Incoming'                                            00387916
+         SPACE 1                                                        00387919
+* The following variable names are related to debugging                 00387922
+         SPACE 1                                                        00387925
+SMTPTR01 DC    Y(18),C'SMTPIN-TRACE-CALLS'                              00387928
+SMTPTR02 DC    Y(24),C'SMTPIN-TRACE-CHECK-LOCAL'                        00387931
+SMTPTR03 DC    Y(23),C'SMTPIN-TRACE-FIND-ROUTD'                         00387934
+SMTPTR04 DC    Y(22),C'SMTPIN-TRACE-IS-MAILER'                          00387937
+SMTPTR05 DC    Y(23),C'SMTPIN-TRACE-REP-MAILER'                         00387940
+SMTPTR06 DC    Y(22),C'SMTPIN-TRACE-S-GETDATA'                          00387943
+SMTPTR07 DC    Y(20),C'SMTPIN-TRACE-S-INPUT'                            00387946
+SMTPTR08 DC    Y(19),C'SMTPIN-TRACE-S-RCPT'                             00387949
+SMTPTR11 DC    Y(19),C'SMTPIN-TRACE-S-MAIL'                             00387952
+SMTPTR12 DC    Y(30),C'SMTPIN-TRACE-PARSE-DATA-HEADER'                  00387955
+MAILTR71 DC    Y(14),C'BUILDLST-TRACE'                                  00387958
+         SPACE 2                                                        00387961

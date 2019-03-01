@@ -1,0 +1,9 @@
+./ R 00546167 00546177 $ 546173 6                     11/29/90 15:38:39
+*        EQU   X'20'               Trace check_sender                   00546173
+*        EQU   X'10'               Trace check_domain                   00546179
+./ I 00546545          $ 546546 1                     11/29/90 15:38:39
+         DC    A(DBGFLG1-MAILBLOK,SMTPTR13,X'20')                       00546545
+         DC    A(DBGFLG1-MAILBLOK,SMTPTR14,X'10')                       00546545
+./ I 00546818          $ 546819 1                     11/29/90 15:38:39
+SMTPTR13 DC    Y(25),C'SMTPIN-TRACE-CHECK-SENDER'                       00546818
+SMTPTR14 DC    Y(25),C'SMTPIN-TRACE-CHECK-DOMAIN'                       00546818

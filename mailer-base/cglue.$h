@@ -1,0 +1,28 @@
+/*-------------------------------------------------------------------*  00001000
+ *    MAILER -- Copyright (c) 1982,1985 Columbia University.         *  00002000
+ *  Program Property of the Trustees of Columbia University in the   *  00003000
+ *  City of New York.                                                *  00004000
+ *-------------------------------------------------------------------*/ 00005000
+/*                                                                      00006000
+ * Various declarations that help to bind the C and assembler code      00007000
+ *                                                                      00008000
+ * Alan Crosswell, 11/85                                                00009000
+ */                                                                     00010000
+struct ossave {            /* an OS save area (based by R13) */         00011000
+    int junk[3];                                                        00012000
+    int r14;                                                            00013000
+    int r15;                                                            00014000
+    int r0;                                                             00015000
+    int r1;                                                             00016000
+    int r2;                                                             00017000
+    int r3;                                                             00018000
+    int r4;                                                             00019000
+    int r5;                                                             00020000
+    int r6;                                                             00021000
+    int r7;                                                             00022000
+    int r8;                                                             00023000
+    int r9;                                                             00024000
+    int r10;                                                            00025000
+    int r11;                                                            00026000
+    int r12;                                                            00027000
+};                                                                      00028000

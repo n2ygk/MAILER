@@ -1,0 +1,27 @@
+./ R 00239490          $ 239493 3                     01/12/90 16:23:54
+         BNZ   BLDHOK              ---> No                              00239493
+BLDRTLCL EQU   *                   Routeaddress for local system        00239496
+./ R 00270980 00271970 $ 271070 90                    01/12/90 16:23:54
+         LTR   R4,R15              Found it?                            00271070
+         BZ    BLDNF1              ---> Nope                            00271160
+         USING ROUTD,R4            Address the ROUTD                    00271250
+         CLC   MBXRTL,=F'0'        Working with route address?          00271340
+         BE    BLDCHN1             ---> No                              00271430
+         CLC   RTPROG,=CL8'LOCAL'  Local exit                           00271520
+         BNE   BLDCHN1             ---> No, everything is ok            00271610
+         SPACE 1                                                        00271700
+* Arriving here implies that the destination is really a synonym        00271790
+* for the local machine.  Since it wasn't caught earlier, this          00271880
+* must mean that the profile is improperly coded.                       00271970
+*                                                                       00272060
+* Issue an error message and continue as if CHKLOCAL has                00272150
+* returned TRUE above.                                                  00272240
+         SPACE 1                                                        00272330
+         WTR   BLS079                                                   00272420
+         WTR   BLS080,(CA,(R3))                                         00272510
+         B     BLDRTLCL            ---> Go drop routeaddr               00272600
+         SPACE 1                                                        00272690
+./ D 00274000                                         01/12/90 16:23:54
+./ D 00283000                                         01/12/90 16:23:54
+./ I 00287000          $ 287700 700                   01/12/90 16:23:54
+         LR    R1,R4         Get ROUTD pointer                          00287700

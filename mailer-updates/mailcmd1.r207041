@@ -1,0 +1,101 @@
+./ R 00428583 00428681 $ 428584 1                     04/02/91 08:34:15
+         LA    R1,WORKBUF(R4)      Character after bit name             00428584
+         MVI   0(R1),C' '          Make it a blank                      00428585
+         MVC   1(9,R1),=CL9'not found'                                  00428587
+         LA    R1,WORKBUF          Message address                      00428588
+         LA    R0,10(,R4)              & length                         00428589
+         BAL   R14,WRITEMSG                                             00428590
+         B     BIT099                                                   00428591
+         SPACE 1                                                        00428592
+BIT020   EQU   *                   Entry found                          00428593
+         BAL   R10,BITFMT          Format field                         00428594
+BIT099   EQU   *                                                        00428595
+         CLC   ARGC,=F'0'          Any args left?                       00428596
+         BNE   $BIT000             ---> Yes, around again               00428597
+         B     RET                 Return                               00428598
+         SPACE 2                                                        00428599
+$BIT1    EQU   *                   Request was SHOW BIT *               00428600
+         LA    R1,BITMSG           Write header lines                   00428601
+         LA    R0,LBITMSG                                               00428602
+         BAL   R14,WRITEMSG                                             00428603
+         SPACE 1                                                        00428604
+         LA    R6,PBITARR          Address of standard bit array        00428605
+         LA    R7,PBITLEN          Number of entries                    00428606
+$BIT100  EQU   *                                                        00428607
+         BAL   R10,BITFMT                                               00428608
+         LA    R6,12(,R6)          Bump entry pointer                   00428609
+         BCT   R7,$BIT100          ---> Do another one                  00428610
+         SPACE 1                                                        00428611
+         LA    R6,DBITARR          Address of standard bit array        00428612
+         LA    R7,DBITLEN          Number of entries                    00428613
+$BIT110  EQU   *                                                        00428614
+         BAL   R10,BITFMT                                               00428615
+         LA    R6,12(,R6)          Bump entry pointer                   00428616
+         BCT   R7,$BIT110          ---> Do another one                  00428617
+         SPACE 1                                                        00428618
+         B     ENDMSG                                                   00428619
+         SPACE 2                                                        00428620
+BITFMT   DS    0H                  Format 1 entry                       00428621
+*                                  R6  - Address of entry               00428622
+         LM    R14,R0,0(R6)        Get entry values                     00428623
+*                                  R14 - Offset to flag byte in MAILBLO 00428624
+*                                  R15 - Flag name (length/string) ptr  00428625
+*                                  R0  - Flag bit                       00428626
+         MVI   WORKBUF,C' '        Clear to blanks                      00428627
+         MVC   WORKBUF+1(LBITMSG),WORKBUF                               00428628
+         LH    R1,0(R15)           Get length of string                 00428629
+         BCTR  R1,0                Decrement for EX                     00428630
+         EX    R1,BITMVC01         MVC  WORKBUF(0),2(R15)               00428631
+         LA    R14,MAILBLOK(R14)   Address of flag byte                 00428632
+         LR    R1,R0               Copy to a different reg              00428633
+         EX    R1,BITTM01          Is bit on?                           00428634
+         BO    BITFMT10            ---> Yes                             00428635
+         MVC   WORKBUF+BITMSGVA(5),=C'False'                            00428636
+         B     BITFMT20                                                 00428637
+BITFMT10 EQU   *                                                        00428638
+         MVC   WORKBUF+BITMSGVA(4),=C'True'                             00428639
+BITFMT20 EQU   *                                                        00428640
+         LA    R1,WORKBUF          Buffer address                       00428641
+         LA    R0,LBITMSG              & length                         00428642
+         BAL   R14,WRITEMSG        Write the output line                00428643
+         BR    R10                 Return                               00428644
+         SPACE 2                                                        00428645
+BITSRCH  DS    0H                                                       00428646
+*  WORKBUF+0 - Name translated to uppercase                             00428647
+*  R4 - Name length                                                     00428648
+*  R6 - First entry address                                             00428649
+*  R7 - Count of entries                                                00428650
+         LR    R14,R4              Copy value                           00428651
+         BCTR  R14,0               Decrement for EX                     00428652
+BITSRCH0 EQU   *                                                        00428653
+         L     R15,4(,R6)          Flag name ptr                        00428654
+         CH    R4,0(R15)           Lengths match?                       00428655
+         BNE   BITSRCH2            ---> No                              00428656
+         EX    R14,BITCLC01        Names matchs?                        00428657
+         BER   R10                 ---> Return                          00428658
+BITSRCH2 EQU   *                                                        00428659
+         LA    R6,12(,R6)          Bump ptr to next entry               00428660
+         BCT   R7,BITSRCH0         ---> Keep looking                    00428661
+         B     4(,R10)             ---> Not found                       00428662
+         SPACE 2                                                        00428663
+BITCLC01 CLC   WORKBUF(0),2(R15)                                        00428664
+BITMVC01 MVC   WORKBUF(0),2(R15)                                        00428665
+BITMVC02 MVC   WORKBUF(0),0(R5)                                         00428666
+BITTM01  TM    0(R14),X'00'                                             00428667
+BITTR01  TR    WORKBUF(0),UPCASE                                        00428668
+         SPACE 2                                                        00428669
+BITMSG   DC    C' Flag name                                    Value '  00428670
+         DC    X'15'                                                    00428671
+         DC    C'===========================================  ======='  00428672
+LBITMSG  EQU   *-BITMSG                                                 00428673
+BITMSGVA EQU   46                  Offset to value field                00428674
+         SPACE 1                                                        00428675
+BITHLP   DC    C'SHOW BIT bitname',X'15'                                00428676
+         DC    C'            *   '                                      00428677
+LBITHLP  EQU   *-BITHLP                                                 00428678
+         EJECT ,                                                        00428679
+*--------------------------------------------------------------------   00428680
+*                       S H O W    S T A T U S                          00428681
+*                                                                       00428682
+*  List status info                                                     00428683
+*--------------------------------------------------------------------   00428684

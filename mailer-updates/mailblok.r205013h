@@ -1,0 +1,34 @@
+./ I 00078990          $ 79010 20                     12/21/89 11:09:41
+    char dbgflg[8];          /* Debugging flag bytes                 */ 00079020
+                             /* Flags defined in dbgflg[0]           */ 00079050
+#define TRACE_CALLS              0x80  /* Procedure call trace       */ 00079080
+#define TRACE_CHECK_LOCAL        0x40  /* Trace check_local routine  */ 00079110
+#define TRACE_FIND_ROUTD         0x20  /* Trace find_routd routine   */ 00079140
+#define TRACE_IS_MAILER          0x10  /* Trace is_mailer routine    */ 00079170
+#define TRACE_REP_MAIL           0x08  /* Trace rep_mail routine     */ 00079200
+#define TRACE_S_GETDATA          0x04  /* Trace s_getdata routine    */ 00079230
+#define TRACE_S_INPUT            0x02  /* Trace s_input routine      */ 00079260
+#define TRACE_S_RCPT             0x01  /* Trace s_rcpt routine       */ 00079290
+                                                                        00079320
+                             /* Flags defined in dbgflg[1]           */ 00079350
+#define TRACE_S_MAIL             0x80  /* Trace s_mail routine       */ 00079080
+#define TRACE_PARSE_DATA_HEADER  0x40  /* Trace parse_data_header    */ 00079080
+                                                                        00079410
+                             /* Flags defined in dbgflg[2]           */ 00079440
+                             /*    Not used (yet)                    */ 00079470
+                                                                        00079500
+                             /* Flags defined in dbgflg[3]           */ 00079530
+                             /*    Not used (yet)                    */ 00079560
+                                                                        00079590
+                             /* Flags defined in dbgflg[4]           */ 00079620
+                             /*    Not used (yet)                    */ 00079650
+                                                                        00079680
+                             /* Flags defined in dbgflg[5]           */ 00079710
+                             /*    Not used (yet)                    */ 00079740
+                                                                        00079770
+                             /* Flags defined in dbgflg[6]           */ 00079800
+                             /*    Not used (yet)                    */ 00079830
+                                                                        00079860
+                             /* Flags defined in dbgflg[7]           */ 00079890
+                             /*   used for assembler routines        */ 00079920
+#define DBGBLDLS                 0x80  /* Trace BUILDLST processing  */ 00079950

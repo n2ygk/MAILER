@@ -1,0 +1,4 @@
+./ R 00251000          $ 251490 490                   11/03/89 14:39:32
+         MVI   TRAPTAB+C';',X'FF'  Trap on semicolon
+./ R 00257000          $ 257490 490                   11/03/89 14:39:32
+         MVI   TRAPTAB+C';',0      Reset the TRT table for the next guy

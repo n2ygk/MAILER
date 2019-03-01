@@ -1,0 +1,14 @@
+./ R 00533360          $ 533390 30                    10/04/88 14:04:52
+OLDRDOM  DC    A(0)                Spare (was -> Rscs-Domain).
+./ R 00545986          $ 545987 1                     10/04/88 14:04:52
+RSCSDOM1 DC    A(0)                Domain #1 for the RSCS network.
+RSCSDOM2 DC    A(0)                Domain #2 for the RSCS network.
+RSCSDOM3 DC    A(0)                Domain #3 for the RSCS network.
+RSCSDOM4 DC    A(0)                Domain #4 for the RSCS network.
+RSCSDOM5 DC    A(0)                Domain #5 for the RSCS network.
+RSCSDOM6 DC    A(0)                Domain #6 for the RSCS network.
+RSCSDOM7 DC    A(0)                Domain #7 for the RSCS network.
+RSCSDOM8 DC    A(0)                Domain #8 for the RSCS network.
+RSCSDOM9 DC    A(0)                Domain #9 for the RSCS network.
+RSCSDOM  EQU   RSCSDOM1,*-RSCSDOM1 The whole array.
+         DS    0D            Just for pretty

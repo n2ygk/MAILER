@@ -1,0 +1,2 @@
+./ I 00479600          $ 479800 200                   07/21/89 12:30:52
+MOPTTBD  EQU   X'08'         Print debugging info in TBLUK.             00479700

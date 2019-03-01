@@ -1,0 +1,42 @@
+/* ****************************************************************** */00001000
+/*  SENDMAIL - Distribute mailer files                                */00002000
+/* ****************************************************************** */00003000
+/*                                                                    */00004000
+/*  command format:   SENDMAIL < userid >                             */00005000
+/*                             < userid@node >                        */00006000
+/*                                                                    */00007000
+/*  SENDMAIL is used to ship the files necessary to run the mailer    */00008000
+/*  to a userid.                                                      */00009000
+/*                                                                    */00010000
+/* ****************************************************************** */00011000
+                                                                        00012000
+address COMMAND                                                         00013000
+parse upper arg dest .                       /*                       */00014000
+if dest = ?  then  do                        /*                       */00015000
+   'EXEC CLEAR'                              /*                       */00016000
+   do i=1 while sourceline(i) <> ''          /*                       */00017000
+      say sourceline(i)                      /*                       */00018000
+      end                                                               00019000
+   exit                                                                 00020000
+   end                                                                  00021000
+                                             /*                       */00022000
+if dest = ''  then  userid = 'VMMAILT'       /*                       */00023000
+else  do                                     /*                       */00024000
+   parse var dest userid '@' node .          /*                       */00025000
+   if node <> ''  then  userid = userid 'AT' node                       00026000
+   end                                                                  00027000
+                                                                        00028000
+'ESTATE MAILLCL TXTLIB *'                    /*                       */00029000
+if rc = 0  then  maillcl = 1                 /*                       */00030000
+else             maillcl = 0                 /*                       */00031000
+                                                                        00032000
+signal on error                                                         00033000
+trace "Commands"                                                        00034000
+                                                                        00035000
+'EXEC SENDFILE MAILER  MODULE TO' userid                                00036000
+'EXEC SENDFILE MAILER  TXTLIB TO' userid                                00037000
+'EXEC SENDFILE MABNXIT EXEC   TO' userid                                00038000
+if maillcl  then                                                        00039000
+   'EXEC SENDFILE MAILLCL TXTLIB TO' userid                             00040000
+                                                                        00041000
+Error: exit rc                                                          00042000

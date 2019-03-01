@@ -1,0 +1,8 @@
+./ I 00053000          $ 53100 100                    01/10/90 14:52:48
+         SPACE 1
+         TM    DBGFLG6,DBGNOOUT    Producing output mail?
+         BNO   SKIP001             ---> Yes
+         WRTERM 'RSMAIL:  Trace-send-no-mail set'
+         SR    R15,R15             Set return code
+         B     RET
+SKIP001  EQU   *

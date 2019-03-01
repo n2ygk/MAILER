@@ -1,0 +1,23 @@
+./ R 00078000          $ 78000                        12/16/88 17:37:00
+         MVC   SRCUSER,=CL8' '
+./ R 00084000          $ 84000                        12/16/88 17:37:00
+         LA    R3,SRCUSER(R3)      Left pad to this address.
+./ I 00088040          $ 88060                        12/16/88 17:37:00
+         MVC   MSGSENDR,SRCUSER    Initialize response userid.
+./ R 00088120          $ 88120                        12/16/88 17:37:00
+         MVC   SRCNODE,=CL8' '     Blank out nodename.
+./ R 00088440          $ 88440                        12/16/88 17:37:00
+         LA    R3,SRCNODE(R3)      Left-align ADDRESS
+./ I 00088640          $ 88645 5                      12/16/88 17:37:00
+         MVC   MSGNODE,=CL8' '     Blank out response node.
+         CLC   @CODE,=A(CMDNET)    Is it from the network?
+         BNE   *+10                No  : Skip
+         MVC   MSGNODE,SRCNODE     Yes : Initialize response node.
+./ R 00242000 00242500 $ 242000 500                   12/16/88 17:37:00
+         MVC   CMDSNDR,SRCUSER     Pass along response userid
+         MVC   CMDNODE,MSGNODE        and nodename.
+./ R 00962380          $ 962380                       12/16/88 17:37:00
+MSGNODE  DS    CL8                 Nodename of user for responses.
+./ I 00965000          $ 965100 100                   12/16/88 17:37:00
+SRCUSER  DS    CL8                 Userid of user sending command.
+SRCNODE  DS    CL8                 Nodename of user sending command.

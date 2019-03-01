@@ -1,0 +1,13 @@
+./ R 00502450          $ 502540 90                    02/13/89 17:17:32
+         DC    CL3' '              Unused                               00502540
+HALTRC   DC    F'0'                Return Code from STOP command.       00502630
+./ R 00513470          $ 513510 40                    02/13/89 17:17:32
+CMDECB   DC    F'0'                Incoming Command ECB.                00513540
+         AIF   ('&DSECT' NE 'NO').CMD1                                  00513610
+         ENTRY CMDECB                                                   00513680
+.CMD1    ANOP  ,                                                        00513750
+STOPECB  DC    F'0'                Stop command ECB
+         AIF   ('&DSECT' NE 'NO').STOP1                                 00513610
+         ENTRY STOPECB                                                  00513680
+.STOP1   ANOP  ,                                                        00513750
+         DC    204X'00'            Spare.                               00513820

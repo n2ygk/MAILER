@@ -1,0 +1,175 @@
+; +-----------------------------------------------------------------+   00001000
+; |                                                                 |   00002000
+; |             M A I L E R   R 2    P R O F I L E                  |   00003000
+; |                                                                 |   00004000
+; |        VM Network Mailer Version 2 profile template             |   00005000
+; |                                                                 |   00006000
+; +-----------------------------------------------------------------+   00007000
+                                                                        00008000
+;**                                                                     00009000
+;** NOTE:  This sample template contains many additional comment        00010000
+;**        lines as instructions on how to fill in the entries.         00011000
+;**        All of these lines begin with ';**' and should be removed    00012000
+;**        after you have customized the template for your local site.  00013000
+;**                                                                     00014000
+;** A ';' indicates the beginning of a comment.  Anything preceeding    00015000
+;** the semi-colon is processed.                                        00016000
+;**                                                                     00017000
+;** ********** The real profile stuff begins here **********            00018000
+;**                                                                     00019000
+;** The following 3 lines identify the userids of the RSCS server(s)    00020000
+;** on the system on which MAILER will be running.                      00021000
+;**                                                                     00022000
+rscsname=RSCS13              ; name of rscs/networking vm userid        00023000
+rscsalt=KNET                 ; name of alternate rscs userid            00024000
+;**                                                                     00025000
+;** The following line gives the default domain suffix used by the      00026000
+;** RSCS network.  For the majority of sites this will be '.BITNET'.    00027000
+;**                                                                     00028000
+RSCS-Domain=.BITNET          ; the RSCS network is called .BITNET       00029000
+;**                                                                     00030000
+;** Then node name for the node on which MAILER is running              00031000
+;**                                                                     00032000
+thisnode=MYNODE              ; local node name                          00033000
+;**                                                                     00034000
+;** Fill in the full domain name of your node if it is not node.BITNET  00035000
+;**                                                                     00036000
+Local-Domain=LOCAL.DOMAIN.EDU    ; in addition to .BITNET               00037000
+;**                                                                     00038000
+;** The following users may issue privileged commands to MAILER (via    00039000
+;** SMSG, MSG or TELL).  The maintuser@maintnode will be informed of    00040000
+;** problems with mail processing.  The maintuserN@maintnodeN users     00041000
+;** will not receive these notifications.  A maximum of 9 ids are       00042000
+;** allowed.                                                            00043000
+;**                                                                     00044000
+maintuser=user1              ; userid of maintainer                     00045000
+maintnode=node2              ; node name of maintainer                  00046000
+maintuser2=user2             ; Alternate privileged userid              00047000
+maintnode2=node2             ;                                          00048000
+maintuser3=user3             ; Alternate privileged userid              00049000
+maintnode3=node3             ;                                          00050000
+maintuser4=user4             ; Alternate privileged userid              00051000
+maintnode4=node4             ;                                          00052000
+maintuser5=user5             ; Alternate privileged userid              00053000
+maintnode5=node5             ;                                          00054000
+maintuser6=user6             ; Alternate privileged userid              00055000
+maintnode6=node6             ;                                          00056000
+maintuser7=user7             ; Alternate privileged userid              00057000
+maintnode7=node7             ;                                          00058000
+maintuser8=user8             ; Alternate privileged userid              00059000
+maintnode8=node8             ;                                          00060000
+maintuser9=user9             ; Alternate privileged userid              00061000
+maintnode9=node9             ;                                          00062000
+;**                                                                     00063000
+;** Leave this value as is.  This option was never implemented.         00064000
+;**                                                                     00065000
+supply-default-fields=FALSE  ; leave FALSE (not yet implemented)        00066000
+;**                                                                     00067000
+;** Change this value to true if you are willing to assume that any     00068000
+;** mail reaching you from an RSCS server has come from a valid         00069000
+;** node.  Leaving the value set as false requires that the source      00070000
+;** node exist in the incoming table or that it pass the validation     00071000
+;** test.                                                               00072000
+;**                                                                     00073000
+allow-unknown-nodes=FALSE    ; allows nodes not in my table but         00074000
+                             ; known to RSCS to exchange mail.          00075000
+;**                                                                     00076000
+;** Leave this value as TRUE if you are willing to allow the BSMTP      00077000
+;** from address to disagree with the RSCS origin value.  If this       00078000
+;** occurs a warning message will be inserted in the header.  Change    00079000
+;** this value to FALSE if you want to always reject the mail unless    00080000
+;** the addresses agree.                                                00081000
+;**                                                                     00082000
+allow-charlatans=TRUE        ; Let BSMTP origin disagree with RSCS      00083000
+                             ; origin value                             00084000
+;**                                                                     00085000
+;** Specify the command to be used to send informational messages.      00086000
+;** You can specify MSGNOH, but this may require special privilege      00087000
+;** classes for the MAILER server.  Consult your local system support   00088000
+;** guru for more information on MSGNOH.                                00089000
+;**                                                                     00090000
+msgcmd=MSG                   ; Send messages using MSG                  00091000
+;**                                                                     00092000
+;** You may specify a prefix to be used on msgs issued by the LOCAL     00093000
+;** or PROFS exits.  These messages announce the arrival of new mail    00094000
+;** for the user.  If you do not specify a prefix, a prefix of '*'      00095000
+;** will be used.  You will need to remove the ';' at the start of      00096000
+;** line to use the msgprefix value                                     00097000
+;**                                                                     00098000
+; msgprefix=                 ; Prefix for local delivery messages       00099000
+;**                                                                     00100000
+;** Leave the following value FALSE if you do not want to log (display  00101000
+;** on the console) the BSMTP transaction lines.  Change this value to  00102000
+;** TRUE if you want them all listed.  You may want to change this      00103000
+;** value to TRUE for debugging or just so you can see that the value   00104000
+;** of FALSE creates a less confusing console listing.                  00105000
+;**                                                                     00106000
+verbose-logging=FALSE        ; Don't print BSMTP                        00107000
+;**                                                                     00108000
+;** The following lines provide special information used for            00109000
+;** forwarding (rerouting) mail.  The values are used in by             00110000
+;** entries coded in the DOMAINS and SPECIAL tables below.              00111000
+;** The value before the '=' is the parameter name you need to          00112000
+;** code on the lines where these values are used.  See sample          00113000
+;** for DEC, OZ and SPAN in the DOMAINS list and POSTMAST in            00114000
+;** the SPECIAL list.                                                   00115000
+;                                                                       00116000
+; Forwarding info                                                       00117000
+; (see "SPECIAL:" table below)                                          00118000
+;                                                                       00119000
+;**                                                                     00120000
+;** Place the address of the postmaster here.  This value may be        00121000
+;** either 'userid' or 'userid@node' if the postmaster is on another    00122000
+;** node in your network.                                               00123000
+;**                                                                     00124000
+postmast=userid@node         ; Person for mail system questions         00125000
+                                                                        00126000
+; The following entries allow indirect routing for other networks       00127000
+                                                                        00128000
+viaCSN=@RELAY.CS.NET                        ; Through CSNET relay       00129000
+viaJPL=@VLSI.JPL.NASA.GOV                   ; SPAN domain               00130000
+viaDEC=@DECWRL.DEC.COM                      ; DEC domain                00131000
+viaOZ=@UUNET.UU.NET                         ; OZ domain                 00132000
+                                                                        00133000
+; The following table lists the possible sources of incoming            00134000
+; files and the name of an optional exit to validity check              00135000
+; the file. It is your responsibility to validity check mail from       00136000
+; an insecure gateway.                                                  00137000
+                                                                        00138000
+INCOMING:                                                               00139000
+; NODE   USERID   EXIT        COMMENTS                                  00140000
+;------- -------- ---------  -------------------------------            00141000
+%incoming                                                               00142000
+*DEFAULT* *DEFAULT* RSCSVER   ; Standard RSCS tag checking              00143000
+END INCOMING                                                            00144000
+                                                                        00145000
+; Table of mail nodes that I can send to.                               00146000
+                                                                        00147000
+OUTGOING:                                                               00148000
+; Alias name     Node     Userid   Exit     Type Parm                   00149000
+; ----------     -------- -------- -------- ---- --------               00150000
+%outgoing                                                               00151000
+END OUTGOING                                                            00152000
+                                                                        00153000
+; Table of mail domains that I can send to.                             00154000
+                                                                        00155000
+DOMAINS:                                                                00156000
+; Domain name    Node     Userid   Exit     Type Parm                   00157000
+; ----------     -------- -------- -------- ---- --------               00158000
+%domains                                                                00159000
+.DEC             INTERBIT SMTP     BSMTP     3    %viaDEC               00160000
+.OZ              INTERBIT SMTP     BSMTP     3    %viaOZ                00161000
+.SPAN            INTERBIT SMTP     BSMTP     3    %viaJPL               00162000
+END DOMAINS                                                             00163000
+                                                                        00164000
+; Local addresses to receive "special handling":                        00165000
+                                                                        00166000
+SPECIAL:                                                                00167000
+;           Exit     Exit                                               00168000
+; Userid    Name     Type Parm         Comments                         00169000
+; ------    -------- ---- ----------   -------------------------------- 00170000
+SYSTEM                                  ; To prevent punched decks      00171000
+MAILER      RSMAIL    2   POSTMAST      ; Trap mail to mailer           00172000
+POSTMAST    RSMAIL    2   POSTMAST      ; The postmaster                00173000
+POSTMASTER  RSMAIL    2   POSTMAST      ; The postmaster                00174000
+END SPECIAL                                                             00175000

@@ -1,0 +1,191 @@
+*9/18/86 calculate MAILULEN, MAILNLEN.                           [1.24] 00001290
+*[1.13] 11/15/83 - added secondary RSCS vmid (RSCSALT)                  00001580
+*[1.12] 4/7/83 - added CP CHANGE RDR #### NOHOLD.                       00002000
+GTSP     TITLE 'CUCCA VM NETWORK MAILER - VERSION 1 -    GET SPOOL FILE*00003000
+                INFORMATION'                                            00004000
+*---------------------------------------------------------------------* 00005000
+*      MAILER -- Copyright (c) 1982,1986 Columbia University.         * 00006490
+*    Program Property of the Trustees of Columbia University in the   * 00007000
+*    City of New York.                                                * 00008000
+*---------------------------------------------------------------------* 00009000
+GETSPOOL CSECT ,                                                        00010000
+* GETSPOOL RETURNS THE PERTINENT INFORMATION ABOUT THE NEXT SPOOL       00011000
+*  FILE IN THE CARD READER AND PUTS IT IN THE MAILBLOK.                 00012000
+*                                                                       00013000
+*  CALLED VIA - CALL GETSPOOL,(MAILBLOK)                                00016000
+*    MAILBLOK = ADDRESS OF MAILBLOK MACRO EXPANSION                     00017000
+PAB      DSECT ,                                                        00018000
+@MBLOK   DS    A             ADDRESS OF MAILBLOK                        00019000
+*                                                                       00020000
+*  RETURN CODES IN R15 -                                                00021000
+*        0 - NO ERRORS                                                  00022000
+*        4 - READER EMPTY                                               00023000
+         SPACE ,                                                        00024000
+* REGISTER USAGE -                                                      00025000
+R0  EQU  0 -                                                            00026000
+R1  EQU  1 -                                                            00027000
+R2  EQU  2 -                                                            00028000
+R3  EQU  3 -                                                            00029000
+R4  EQU  4 -                                                            00030000
+R5  EQU  5 - SPOOL FILE BLOCK BASE                                      00031000
+R6  EQU  6 - DIAGNOSE 14 WORK                                           00032000
+R7  EQU  7 - DIAGNOSE 14 WORK                                           00033000
+R8  EQU  8 - work for calculating MAILULEN,NLEN                  [1.24] 00034590
+R9  EQU  9 -  "                                                  [1.24] 00035180
+R10 EQU 10 -                                                            00036000
+R11 EQU 11 - MAILBLOK BASE                                              00037000
+R12 EQU 12 - PROGRAM BASE                                               00038000
+R13 EQU 13 - SAVE AREA                                                  00039000
+R14 EQU 14 - SUBROUTINE LINKAGE                                         00040000
+R15 EQU 15 - SUBROUTINE LINKAGE                                         00041000
+         SPACE ,                                                        00042000
+         PRINT     NOGEN                                                00043000
+         BLOCKS ,                                                       00044000
+         MAILBLOK ,                                                     00045000
+         RSCSTAG ,                                                      00046000
+         EJECT ,                                                        00047000
+GETSPOOL CSECT                                                          00048000
+         USING GETSPOOL,R15  TEMPORARY ADDRESSABILITY                   00049000
+         B     EYESKIP       SKIP EYE-CATCHER                           00050000
+MYNAME   DC    CL8'GETSPOOL',CL8'&SYSDATE'                              00051000
+EYESKIP  DS    0H                                                       00052000
+         DROP  R15                                                      00053000
+         STM   R14,R12,12(R13)                                          00054000
+         LR    R12,R15       GET PERMANENT ADDRESSABILITY               00055000
+         USING GETSPOOL,R12                                             00056000
+         LA    R14,SAVE                                                 00057000
+         ST    R13,4(R14)                                               00058000
+         ST    R14,8(R13)                                               00059000
+         LR    R13,R14                                                  00060000
+         USING PAB,R1        GET PARMS                                  00061000
+         L     R11,@MBLOK    GET MBLOK BASE                             00062000
+         DROP  R1                                                       00063000
+         USING MAILBLOK,R11  ADDRESS THE MAILBLOK                       00064000
+         SPACE ,                                                        00065000
+*--------------------------------------------------------------------   00066000
+*        GET THE NEXT READER SPOOL FILE BLOCK AND TAG TEXT (IF ANY)     00067000
+*--------------------------------------------------------------------   00068000
+         LA    R5,MAILSFB    ADDRESS OF SPOOL BLOCK                     00069000
+         SR    R6,R6         START AT READER ANCHOR                     00070000
+NEXTBLK  EQU   *             LOOP BACK IF FILE IS IN USE                00071000
+         LA    R7,X'0FFF'    SUBCODE X'0FFF'                            00072000
+         DC    X'83560014'   DIAGNOSE 14 (SPOOL INPUT)                  00073000
+         BNZ   SFERR         SPOOL FILE ERROR                           00074000
+         SPACE ,                                                        00075000
+*--------------------------------------------------------------------   00076000
+*        READ THE SFB AND TAG AND GET THE SENDER NODE AND USERID.       00077000
+*        ALSO CONVERT THE SPOOL FILE NUMBER TO CHARACTER FOR LATER      00078000
+*        USE AND SET FLAGS INDICATING THE FILE ORIGIN.                  00079000
+*--------------------------------------------------------------------   00080000
+         USING SFBLOK,R5     ADDRESSABILITY                             00081000
+         LH    R6,SFBFILID   GET FILE NUMBER                            00082000
+         ST    R6,MAILFILE   SAVE INTO MAILBLOK                         00083000
+         CVD   R6,DWORD      STUFF PACKED DECIMAL                       00084000
+         UNPK  MAILFTXT,DWORD MAKE IT CHARS                             00085000
+         OI    MAILFTXT+L'MAILFTXT-1,X'F0'  FIX THE ZONE                00086000
+         TM    SFBFLAG,SFBINUSE  IS THE FILE BEING USED?                00087000
+         BO    NEXTBLK       GET THE NEXT BLOCK                         00088000
+         MVC   ORIGIN(8),SFBORIG   COPY ORIGIN ID INTO MESSAGE          00089000
+*--------------------------------------------------------------------   00090000
+* CHECK IF FILE IS FROM RSCS. IF SO, GET USERID AND NODE FROM           00091000
+* RSCS TAG TEXT. ELSE, GET USERID FROM SFBLOK AND NODE FROM             00092000
+* LOCAL NODE NAME.                                                      00093000
+*--------------------------------------------------------------------   00094000
+         CLC   ORIGIN,RSCSNAME    SEE IF FROM NETWORK                   00095000
+         BE    FROMRSCS      YES, IT'S FROM RSCS                        00096000
+         CLC   ORIGIN,RSCSALT [1.13]Alternate name                      00097000
+         BE    FROMRSCS      [1.13]It's from the other RSCS id.         00098000
+* NO, IT'S FROM A LOCAL USERID...                                       00099000
+         OI    MAILFLG1,MFLG1LCL   LOCAL ORIGIN OF MAIL                 00100000
+         MVC   MAILUSER,ORIGIN    SET THE USER NAME                     00101000
+         MVC   MAILNODE,CPUSTR    SET LOCAL NODE NAME                   00102000
+         B     LOCAL                                                    00103000
+FROMRSCS EQU   *                                                        00104000
+         NI    MAILFLG1,255-MFLG1LCL  NOT LOCAL                         00105000
+         LA    R1,MAILTAG    ADDRESS OF TAG                             00106000
+         USING RSCSTAG,R1                                               00107000
+         MVC   MAILNODE,RSCSNODE    COPY NODE                           00108000
+         MVC   MAILUSER,RSCSUSER                                        00109000
+         DROP  R1                                                       00110000
+LOCAL    EQU   *                                                        00111000
+         CLC   MAILUSER,=CL8' ' USERNAME BLANK?                         00112000
+         BNE   USERNB        NOPE                                       00113000
+         MVC   MAILUSER,=CL8'MAILER'  SET IT TO MAILER                  00114000
+USERNB   EQU   *                                                        00115000
+*----------------------------------------------------------------[1.24] 00115040
+* calculate lengths of MAILNODE, MAILUSER (trim trailing blanks) [1.24] 00115080
+*----------------------------------------------------------------[1.24] 00115120
+         LA    R9,MAILUSER             point to user string      [1.24] 00115160
+         LA    R8,7                    max len-1                 [1.24] 00115200
+UTRIM    EQU   *                       <-back here when trimming [1.24] 00115240
+         LA    R1,0(R8,R9)             point to curr char        [1.24] 00115280
+         CLI   0(R1),C' '              is it a blank?            [1.24] 00115320
+         BNE   UTRIMOUT                ->no.  Found the end.     [1.24] 00115360
+         BCT   R8,UTRIM                ->yes, keep on trimming   [1.24] 00115400
+UTRIMOUT EQU   *                       <-here w/len-1 in R4      [1.24] 00115440
+         LA    R8,1(,R8)               actual length of name     [1.24] 00115480
+         ST    R8,MAILULEN             stuff into mailblok       [1.24] 00115520
+         LA    R9,MAILNODE             point to node string      [1.24] 00115560
+         LA    R8,7                    max len-1                 [1.24] 00115600
+NTRIM    EQU   *                       <-back here when trimming [1.24] 00115640
+         LA    R1,0(R8,R9)             point to curr char        [1.24] 00115680
+         CLI   0(R1),C' '              is it a blank?            [1.24] 00115720
+         BNE   NTRIMOUT                ->no.  Found the end.     [1.24] 00115760
+         BCT   R8,NTRIM                ->yes, keep on trimming   [1.24] 00115800
+NTRIMOUT EQU   *                       <-here w/len-1 in R4      [1.24] 00115840
+         LA    R8,1(,R8)               actual length of name     [1.24] 00115880
+         ST    R8,MAILNLEN             stuff into mailblok       [1.24] 00115920
+* Write a nice message.                                          [1.24] 00115960
+         LA    R3,MAILNODE   ADDRESS OF USER NODE AND NAME              00116000
+         LA    R4,MAILFTXT   ADDRESS OF FILE NUMBER TEXT                00117000
+         WTR   GTS009,(CA,(R4),CA,ORIGIN,CA,(R3)) WRITE MSG             00118000
+         CLC   SFBRECSZ,=H'80'  IS IT LRECL 80?                         00119000
+         BNE   BADLRECL      NOPE                                       00120000
+*--------------------------------------------------------------------   00121000
+*[1.12]  change rdr #### nohold in case it was punched in user hold.    00122000
+*--------------------------------------------------------------------   00123000
+         MVC   CHFNUM,MAILFTXT         [1.12]file # into command        00124000
+         LA    R1,CHNOHOLD             [1.12]cmd                        00125000
+         LA    R0,LCHNHLD              [1.12]length                     00126000
+         DC    X'83100008'             [1.12]change it                  00127000
+         TM    SITEOPTS,S#MAINE        [1.12]U.MAINE SPECIAL CASE?      00128000
+         BZ    NOMAINE                 [1.12]--> nope                   00129000
+         MVC   CHFNUM2,MAILFTXT        [1.12]                           00130000
+         LA    R1,CHFORM               [1.12]Change form to standard    00131000
+         LA    R0,LCHFORM              [1.12]                           00132000
+         DC    X'83100008'             [1.12]                           00133000
+NOMAINE  EQU   *                                                        00134000
+         SR    R15,R15       ZERO RETURN CODE                           00135000
+RET      EQU   *                                                        00136000
+         L     R13,4(R13)                                               00137000
+         L     R14,12(R13)                                              00138000
+         LM    R0,R12,20(R13)                                           00139000
+         BR    R14                                                      00140000
+         SPACE ,                                                        00141000
+*--------------------------------------------------------------------   00142000
+*        ERROR RETURNS                                                  00143000
+*--------------------------------------------------------------------   00144000
+SFERR    EQU   *                                                        00145000
+         LA    R15,4                                                    00146000
+         B     RET                                                      00147000
+         SPACE ,                                                        00148000
+*--------------------------------------------------------------------   00149000
+*  FILE IS NOT LRECL 80 CARD FORMAT....                                 00150000
+*--------------------------------------------------------------------   00151000
+BADLRECL EQU   *                                                        00152000
+         WTR   GTS035                                                   00153000
+         LA    R15,8         ERROR                                      00154000
+         B     RET                                                      00155000
+         LTORG ,                                                        00156000
+SAVE     DS    18F                                                      00157000
+DWORD    DS    D                                                        00158000
+ORIGIN   DS    CL8                                                      00159000
+CHNOHOLD DC    C'CH RDR '              [1.12]Change possible user       00160000
+CHFNUM   DS    CL4                     [1.12]hold status.               00161000
+         DC    C' NOHOLD'              [1.12]                           00162000
+LCHNHLD  EQU   *-CHNOHOLD              [1.12]                           00163000
+CHFORM   DC    C'CH RDR '              [1.12]U.Maine special case       00164000
+CHFNUM2  DS    CL4                     [1.12]of "FORM MAIL" handled     00165000
+         DC    C' FORM STANDARD'       [1.12]here.                      00166000
+LCHFORM  EQU   *-CHFORM                [1.12]                           00167000
+         END   GETSPOOL                                                 00168000

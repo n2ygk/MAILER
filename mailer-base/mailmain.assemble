@@ -1,0 +1,236 @@
+*[1.22]add call to RDRFILT (new rdr file types)                 [1.22]  00001290
+*[1.20]Add call to ORGFILTR (origins table)                             00001580
+MAIN     TITLE 'CUCCA VM NETWORK MAILER - VERSION 1 - MAIN PROCESSING  *00002000
+               ROUTINE'                                                 00003000
+*---------------------------------------------------------------------* 00004000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00005000
+*    Program Property of the Trustees of Columbia University in the   * 00006000
+*    City of New York.                                                * 00007000
+*---------------------------------------------------------------------* 00008000
+MAILMAIN CSECT ,                                                        00009000
+* MAILMAIN -  THIS ROUTINE IS ENTERED AT STARTUP AND WHENEVER           00010000
+*  IT IS SUSPECTED THAT A READER FILE IS AVAILABLE (USUALLY             00011000
+*  WHEN A READER INTERRUPT IS RECEIVED).  IT PROCESSES ALL              00012000
+*  AVAILABLE READER FILES BEFORE RETURNING.                             00013000
+*                            ALAN CROSSWELL       7/81                  00014000
+*                                                                       00015000
+* LAST EDIT: 5/27/82 BY ALAN CROSSWELL                                  00016000
+*                                                                       00017000
+*  INVOKED VIA - CALL MAILMAIN,(MAILBLOK)                               00018000
+*    MAILBLOK=ADDRESS OF MAILBLOK MACRO EXPANSION                       00019000
+PAB      DSECT ,                                                        00020000
+@MBLOK   DS    A             ADDRESS OF MAILBLOK                        00021000
+         SPACE ,                                                        00022000
+* REGISTER USAGE -                                                      00023000
+R0  EQU  0 -                                                            00024000
+R1  EQU  1 -                                                            00025000
+R2  EQU  2 -                                                            00026000
+R3  EQU  3 -                                                            00027000
+R4  EQU  4 -                                                            00028000
+R5  EQU  5 -                                                            00029000
+R6  EQU  6 -                                                            00030000
+R7  EQU  7 -                                                            00031000
+R8  EQU  8 -                                                            00032000
+R9  EQU  9 -                                                            00033000
+R10 EQU 10 -                                                            00034000
+R11 EQU 11 - MAILBLOK BASE                                              00035000
+R12 EQU 12 - PROGRAM BASE                                               00036000
+R13 EQU 13 - SAVE AREA                                                  00037000
+R14 EQU 14 - SUBROUTINE LINKAGE                                         00038000
+R15 EQU 15 - SUBROUTINE LINKAGE                                         00039000
+         SPACE ,                                                        00040000
+         PRINT NOGEN                                                    00041000
+         BLOCKS ,                                                       00042000
+         TRACETBL ,                                                     00042500
+         MAILBLOK ,                                                     00043000
+         RSCSTAG ,                                                      00044000
+         DMSABW ,                  Abend work area mapping              00044300
+         NUCON  ,                                                       00044600
+         EJECT ,                                                        00045000
+MAILMAIN CSECT                                                          00046000
+         USING MAILMAIN,R15  TEMPORARY ADDRESSABILITY                   00047000
+         B     EYESKIP       SKIP EYE-CATCHER                           00048000
+         DROP  R15                                                      00049000
+MYNAME   DC    CL8'MAILMAIN',CL8'&SYSDATE'                              00050000
+EYESKIP  DS    0H                                                       00051000
+         STM   R14,R12,12(R13)                                          00052000
+         LR    R12,R15       GET PERMANENT ADDRESSABILITY               00053000
+         USING MAILMAIN,R12                                             00054000
+         LA    R14,SAVE                                                 00055000
+         ST    R13,4(R14)                                               00056000
+         ST    R14,8(R13)                                               00057000
+         LR    R13,R14                                                  00058000
+         USING PAB,R1        ADDRESS PAB                                00059000
+         L     R11,@MBLOK    GET MAILBLOK BASE                          00060000
+         DROP  R1            DONE WITH PARM LIST                        00061000
+         USING MAILBLOK,R11  ADDRESS IT                                 00062000
+         MAILTRC ENTER                                                  00062500
+         SPACE ,                                                        00063000
+*--------------------------------------------------------------------   00064000
+*        GET THE NEXT FILE, PROCESS IT, GET THE NEXT, ETC.              00065000
+*--------------------------------------------------------------------   00066000
+         MVC   STACKP,STACK  INIT FOR STATS                             00067000
+FILELOOP EQU   *                                                        00068000
+         L     R1,STACKP     GET STACK POINTER                          00069000
+         C     R1,MAILSTMX   COMPARE TO MAX                             00070000
+         BNH   *+8           NOT THE NEW MAX                            00071000
+         ST    R1,MAILSTMX   SET THE NEW MAX                            00072000
+         XC    MAILFLG1,MAILFLG1   ZERO FLAGS                           00073000
+         XC    MAILFLG2,MAILFLG2   zero new flags                [1.23] 00073500
+         XC    MAILSFLD,MAILSFLD   SO RTS KNOWS WHO TO SEND FILE TO     00074000
+         FSERASE 'SMTP DATA A'     make sure these files get     [1.24] 00074200
+         FSERASE 'SMTP REPLY A'    cleaned up                    [1.24] 00074400
+         LA    R5,MAILULFN                                       [1.24] 00074600
+         FSERASE (R5)                                            [1.24] 00074800
+         LM    R14,R15,STACK       Start of stack/length of stack       00074850
+         SR    R1,R1               Have 0 length input w/zero fill      00074900
+         MVCL  R14,R0              Clear it all to zeros                00074950
+         MVC   STACKP,STACK  RESET STACK POINTER                        00075000
+         MAILTRC CALL,GETSPOOL                                          00075500
+         CALL  GETSPOOL,((R11))   GET NEXT READER FILE                  00076000
+         MAILTRC RETURN,GETSPOOL,(R15)                                  00076500
+         LTR   R15,R15       IS THERE A FILE?                           00077000
+         BZ    OK1           YES                                        00078000
+         C     R15,=F'8'     SPOOL ERROR OR JUST EMPTY READER?          00079000
+         BE    RTS           SPOOL ERROR                                00080000
+         SR    R15,R15       NO, JUST RETURN                            00081000
+         B     RET                                                      00082000
+OK1      EQU   *                                                        00083000
+         L     R1,MAILICNT   GET INCOMING FILE COUNTER                  00084000
+         LA    R1,1(R1)      INCREMENT IT                               00085000
+         ST    R1,MAILICNT                                              00086000
+         CALL  ORGFILTR,((R11)) [1.20] "filter" thru origins table      00087000
+         LTR   R15,R15       [1.20]RC = 0 says continue                 00088000
+         BZ    FILTCONT      [1.20]                                     00089000
+         C     R15,=F'4'     [1.20] RC=4 says purge it                  00090000
+         BE    PURGE         [1.20] go purge the file                   00091000
+         B     RET           [1.20] a "real" error                      00092000
+FILTCONT EQU   *             [1.20] continue                            00093000
+         MAILTRC CALL,RDRFILT                                           00093050
+         CALL  RDRFILT,((R11)) check for various types of files  [1.22] 00093100
+         MAILTRC RETURN,RDRFILT,(R15)                                   00093150
+         LTR   R15,R15       rc 0 says continue                  [1.22] 00093200
+         BZ    RFILTCON                                          [1.22] 00093300
+         C     R15,=F'4'     rc 4 says purge it                  [1.22] 00093400
+         BE    PURGE                                             [1.22] 00093500
+         B     RET           other rc's indicate a hard error    [1.22] 00093600
+RFILTCON EQU   *                                                 [1.22] 00093700
+         MAILTRC CALL,GETHDR                                            00093800
+         ST    R13,ABENDR13        Save R13 in case of abend            00093860
+         ABNEXIT SET,EXIT=ABENDXIT,UWORD=(R11)                          00093920
+         CALL  GETHDR,((R11))     READ MESSAGE HEADER IN                00094000
+         MAILTRC RETURN,GETHDR,(R15)                                    00094500
+         LTR   R15,R15       ANY ERRORS?                                00095000
+         BNZ   RTS           YES, RETURN TO SENDER                      00096000
+         MAILTRC CALL,HDRSCAN                                           00096500
+         CALL  HDRSCAN,((R11))    SCAN HEADER FIELDS                    00097000
+         MAILTRC RETURN,HDRSCAN,(R15)                                   00097500
+         LTR   R15,R15       TEST RETURN CODE                           00098000
+         BNZ   RTS           RETURN TO SENDER                           00099000
+         MAILTRC CALL,VALIDATE                                          00099500
+         CALL  VALIDATE,((R11))  VALIDATE THE SENDER                    00100000
+         MAILTRC RETURN,VALIDATE,(R15)                                  00100500
+         LTR   R15,R15       INVALID SENDER?                            00101000
+         BNZ   RTS           SORRY, RETURN TO SENDER                    00102000
+*         CALL  HDRPROC,((R11))    DO THE REAL WORK                     00103000
+         MAILTRC CALL,BUILDLST                                          00103500
+         CALL  BUILDLST,((R11))  BUILD ACTION LIST                      00104000
+         MAILTRC RETURN,BUILDLST,(R15)                                  00104500
+         LTR   R15,R15       ANY PROBLEMS?                              00105000
+         BNZ   RTS           YES... RETURN TO SENDER                    00106000
+         MAILTRC CALL,SENDLST                                           00106500
+         CALL  SENDLST,((R11))  NO SEND THE FILES OFF                   00107000
+         MAILTRC RETURN,SENDLST,(R15)                                   00107500
+         LTR   R15,R15       ANY ERRORS?                                00108000
+         BNZ   RTS           YES... RETURN TO SENDER                    00109000
+         SPACE ,                                                        00110000
+         LTR   R15,R15       ANY BUGS?                                  00111000
+         BNZ   RTS           RETURN TO SENDER                           00112000
+PURGE    EQU   *                                                        00113000
+         ABNEXIT CLR,EXIT=ABENDXIT                                      00113500
+         L     R4,MAILFILE   GET FILE NUMBER                            00114000
+         LINEDIT TEXT='PURGE RDR ....',DOT=NO,RENT=NO,DISP=CPCOMM,     *00115000
+               SUB=(DEC,(R4))                                           00116000
+         B     FILELOOP                                                 00117000
+         SPACE ,                                                        00118000
+*-------------------------------------------------------------------*   00119000
+*                  RETURN    TO     SENDER                          *   00120000
+*                  =======================                          *   00121000
+*  AN ERROR WAS ENCOUNTERED WHILE TRYING TO PROCESS THE MAIL FILE.  *   00122000
+* SEND IT BACK TO THE SENDER WITH AN EXPLANATION OF WHAT WENT WRONG *   00123000
+*-------------------------------------------------------------------*   00124000
+RTS      EQU   *                                                        00125000
+         C     R15,=F'12'    FATAL ERROR                                00126000
+         BNL   RETCLR                  DIE                              00127490
+         CALL  MAILRET,((R11))         RETURN THE FILE TO SENDER        00128000
+         B     PURGE         ALL DONE, PURGE THE FILE                   00129000
+         SPACE ,                                                        00130000
+RETCLR   EQU   *                                                        00130300
+         ABNEXIT CLR,EXIT=ABENDXIT                                      00130600
+RET      EQU   *                                                        00131000
+         MAILTRC EXIT,(R15)                                             00131500
+         L     R13,4(R13)                                               00132000
+         L     R14,12(R13)                                              00133000
+         LM    R0,R12,20(R13)                                           00134000
+         BR    R14                                                      00135000
+         SPACE 1                                                        00136190
+         DROP  R12,R11                                                  00136380
+         SPACE 1                                                        00136570
+         LTORG ,                                                        00137000
+SAVE     DS    18F                                                      00138000
+         TITLE 'CUCCA VM NETWORK MAILER - VERSION 2 - MAIN PROCESSING  *00138010
+               ROUTINE - Abend exit processesors'                       00138020
+ABENDXIT DS    0D                                                       00138030
+         USING ABENDXIT,R15                                             00138040
+         USING NUCON,R0                                                 00138050
+         TM    MISFLAGS,KXSWITCH   Here due to HX?                      00138060
+         BOR   R14                 ---> Yes, continue with abend        00138070
+         STM   R14,R12,12(R13)     Save registers                       00138080
+         L     R12,=A(MAILMAIN)    Get a better base reg                00138090
+         DROP  R15                                                      00138100
+         USING MAILMAIN,R12                                             00138110
+         LR    R2,R1               Copy ABWSECT address                 00138120
+         USING ABWSECT,R2                                               00138130
+         L     R11,ABNUWRD         Get base for MAILBLOK                00138140
+         USING MAILBLOK,R11                                             00138150
+         LINEDIT TEXT='CLOSE RDR HOLD',DOT=NO,RENT=NO,DISP=CPCOMM       00138160
+         L     R4,MAILFILE   GET FILE NUMBER                            00138170
+         LINEDIT TEXT='CHANGE RDR .... NOHOLD',DOT=NO,RENT=NO,         *00138180
+               DISP=CPCOMM,SUB=(DEC,(R4))                               00138190
+         MVC   EXECMID,MAINTID     Move in maintainer's id & node       00138200
+         MVC   EXECSPID(9),=CL9' ' Clear spoolid field to blanks        00138210
+         LINEDIT TEXT='........',DOT=NO,RENT=NO,DISP=NONE,             +00138220
+               BUFFA=EXECSPID,SUB=(DEC,(R4))                            00138230
+         MVC   EXECSPID(8),EXECSPID+1  Shift left to remove length byte 00138240
+         MVC   FENCEIT,=8X'FF'     Put fence on plist                   00138250
+         LA    R1,EXECCMD          Point to parameter list              00138260
+         SVC   202                 Go run abend exit exec               00138270
+         DC    AL4(1)              Ignore errors                        00138280
+         L     R1,=A(PURGE)        Where we want to continue            00138290
+         STCM  R1,B'0111',ABNPSW+5 Fix up PSW                           00138300
+         LTR   R3,R15              Successful?                          00138310
+         BZ    MAILEX10            Yes                                  00138320
+         C     R3,=F'801'          File not found from EXEC?            00138330
+         BE    MAILEX10            ---> Yes, let it slide               00138340
+         L     R1,=A(RTS)          Continue here instead                00138350
+         STCM  R1,B'0111',ABNPSW+5 Fix up PSW                           00138360
+MAILEX10 DS    0H                                                       00138370
+         ABNEXIT RESET             Reset exit taken flag                00138380
+         LR    R15,R3              Restore EXEC return code             00138390
+         L     R13,ABENDR13        Restore save area pointer            00138400
+         LPSW  ABNPSW              Continue on                          00138410
+         SPACE 1                                                        00138420
+         DROP  R2,R11,R12                                               00138430
+         SPACE 3                                                        00138440
+         DS    0D                                                       00138450
+EXECCMD  DC    CL8'EXEC'                                                00138460
+         DC    CL8'MABNXIT'                                             00138470
+EXECMID  DC    CL16' '             Maintainer's id and node             00138480
+EXECSPID DC    CL8' '              Spool file id                        00138490
+FENCEIT  DC    XL8'FF'             Fence goes here                      00138500
+         SPACE 1                                                        00138510
+ABENDR13 DC    F'0'                Save area for R13                    00138520
+         SPACE 1                                                        00138530
+         LTORG ,                                                        00138540
+         SPACE 2                                                        00138550
+         END   MAILMAIN                                                 00139000

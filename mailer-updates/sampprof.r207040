@@ -1,0 +1,13 @@
+./ I 00036300          $ 36301 1                      03/27/91 17:08:15
+
+/*  The following code assumes you want the file forwarding code run  */
+/*  every 15 minutes.  This is certainly one way to run the code but  */
+/*  you could also remove this loop and have another server (such as  */
+/*  SMART) autolog the MAILFWD id whenever you want FORWARDX run.     */
+/*  **** Note ****                                                    */
+/*  If you want to use this loop, then you must remove the            */
+/*                                                                    */
+/*     if disc()  then  'CP LOGOFF'                                   */
+/*                                                                    */
+/*  line when modifying the FORWARDX EXEC.                            */
+

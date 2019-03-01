@@ -1,0 +1,9 @@
+./ I 00007000          $ 7100 100                     05/31/90 17:04:42
+         SPACE 1
+./ I 00007200          $ 7300 100                     05/31/90 17:04:42
+         SPACE 1
+./ R 00008000          $ 8190 190                     05/31/90 17:04:42
+TBT#EXAC EQU       X'20' Return only exact matches                      00013490
+         SPACE 1
+* TBLUK table entry flags used in TBS$FLG in the TBS string             00008490
+         SPACE 1

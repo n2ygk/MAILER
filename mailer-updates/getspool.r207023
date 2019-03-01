@@ -1,0 +1,10 @@
+./ I 00072000          $ 72300 300                    12/10/90 15:27:21
+         ICM   R7,B'1000',=AL1(X'80'+MSFBSIZE)    Length of SFBLOK to
+*                                                 return.
+./ I 00089000          $ 89500 500                    12/10/90 15:27:21
+         MVC   MAILFORM,SFBUFORM   Copy FORM value                      00089500
+./ I 00115000          $ 115008 8                     12/10/90 15:27:21
+         CLC   MAILFORM(2),=CL2'QU'     Quiet variation?                00115008
+         BE    KEEPFORM                 ---> Yes, leave it alone        00115016
+         MVC   MAILFORM,=CL8'QUIET'     Set form to QUIET               00115024
+KEEPFORM EQU   *                                                        00115032

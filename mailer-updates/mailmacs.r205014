@@ -1,0 +1,2 @@
+./ I 00479900          $ 479930 30                    12/20/89 11:46:12
+MOPTNO82 EQU   X'02'         Do not look for RFC822 headers in BSMTP    00479950

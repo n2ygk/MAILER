@@ -1,0 +1,317 @@
+./ R 00001370 00001580 $ 1560 190                     04/19/90 10:45:25
+MAILCMD1 TITLE 'VM Network Mailer Release 2 - Command processor'        00001560
+MAILCMD1 CSECT ,                                                        00001750
+./ I 00005000          $ 5500 500                     04/19/90 10:45:25
+*                Copyright (c) 1990 Princeton University              * 00005500
+./ R 00007000          $ 7490 490                     04/19/90 10:45:25
+         SPACE 1                                                        00007490
+./ R 00009000 00016000 $ 10990 1990                   04/19/90 10:45:25
+         SPACE 1                                                        00010990
+* MAILCMD1 contains the routines to procss the SHOW/QUERY command.      00012980
+./ D 00018000 00019000                                04/19/90 10:45:25
+./ R 00021490          $ 21580 90                     04/19/90 10:45:25
+*  CALL MAILCMD1,(MAILBLOK,MSGBLOK)                                     00021580
+         SPACE 1                                                        00021670
+./ R 00023000 00027000 $ 23990 990                    04/19/90 10:45:25
+@MBLOK   DS    A             MAILBLOK address                           00023990
+@MSGBLOK DS    A             MSGBLOK address                            00024980
+./ I 00030000          $ 30500 500                    04/19/90 10:45:25
+         SPACE 1                                                        00030500
+./ R 00040000 00043000 $ 40790 790                    04/19/90 10:45:25
+R9  EQU  9 - MSGBLOK base                                               00040790
+R10 EQU 10 -                                                            00041580
+R11 EQU 11 - MAILBLOK base                                              00042370
+R12 EQU 12 - Program base                                               00043160
+./ I 00053500          $ 53600 100                    04/19/90 10:45:25
+         COPY  IPARML                                                   00053600
+         MSGBLOK ,                                                      00053700
+./ R 00064000 00069000 $ 64990 990                    04/19/90 10:45:25
+         LA    R14,SAVEAREA                                             00064990
+         ST    R13,4(,R14)         Chain forward                        00065980
+         ST    R14,8(,R13)         Chain backward                       00066970
+         LR    R13,R14             Point to ours                        00067960
+         USING PAB,R1        ADDRESS THE PARMS                          00068950
+./ I 00070000          $ 70200 200                    04/19/90 10:45:25
+         L     R9,@MSGBLOK         Get MSGBLOK                          00070200
+         SPACE 1                                                        00070400
+         DROP  R1                                                       00070600
+./ R 00072000 00379490 $ 171990 99990                 04/19/90 10:45:25
+         USING MSGBLOK,R9                                               00171990
+         SPACE 2                                                        00271980
+./ R 00383000          $ 383490 490                   04/19/90 10:45:25
+*  Show current values of assorted counters and tables                  00383490
+./ D 00385000 00394000                                04/19/90 10:45:25
+./ R 00397000 00420000 $ 397590 590                   04/19/90 10:45:25
+         CLC   ARGC,=F'0'          ANY TOKENS LEFT?                     00397590
+         BNH   BOGUS               ---> No                              00398180
+         L     R15,ARGVP           Get ARGV index ptr                   00398770
+         L     R14,0(R15)          Address of token                     00399360
+         LA    R15,4(,R15)         Bump ARGV pointer to next token      00399950
+         ST    R15,ARGVP           Update ARGV pointer                  00400540
+         L     R1,ARGC             Get remaining token count            00401130
+         BCTR  R1,0                Decrement                            00401720
+         ST    R1,ARGC             Update it                            00402310
+         LA    R0,SHOTAB           SHOW options table                   00402900
+         SRDL  R14,24              Length of token                      00403490
+         SRL   R15,8               Address of token                     00404080
+         CALL  TBLUK,((0),(15),(14),TWORK)                              00404670
+         C     R15,=F'4'           Unique substring found?              00405260
+         BNHR  R1                  ---> Go to command routine           00405850
+         B     BOGUS               ---> Unknown command                 00406440
+         SPACE 1                                                        00407030
+SHOTAB   TBSTART ,           SHOW COMMAND OPTIONS                       00407620
+         T '?',$SHELP                                                   00408210
+         T 'ACTIVE'                                                     00408800
+         T 'AUTHORIZATION'                                              00409390
+         T 'DOMAINS'                                                    00409980
+         T 'INCOMING'                                                   00410570
+         T 'ORIGINS'                                                    00411160
+         T 'OUTGOING'                                                   00411750
+         T 'SPECIAL'                                                    00412340
+         T 'STATUS'                                                     00412930
+         T 'VERSION'                                                    00413520
+         TBEND ,                                                        00414110
+         EJECT ,                                                        00414700
+*--------------------------------------------------------------------   00415290
+*                        S H O W     H E L P                            00415880
+*                                                                       00416470
+*  Help for the SHOW command                                            00417060
+*--------------------------------------------------------------------   00417650
+         SPACE 1                                                        00418240
+./ R 00423000 00424000 $ 423590 590                   04/19/90 10:45:25
+         LA    R0,LSHLP                 and length                      00423590
+         BAL   R14,WRITEMSG        Write messge                         00424180
+./ R 00428200 00428600 $ 428230 30                    04/19/90 10:45:25
+         EJECT ,                                                        00428230
+*--------------------------------------------------------------------   00428260
+*                       S H O W    A C T I V E                          00428290
+*                                                                       00428320
+*  List active entries in some table                                    00428350
+*--------------------------------------------------------------------   00428380
+         SPACE 1                                                        00428410
+$ACTIVE  DS    0H                  SHOW ACTIVE                          00428440
+         OI    FLAG,ACTFLG         set flag to indicate so              00428470
+         B     $SHOW               and continue command processing      00428500
+         EJECT ,                                                        00428530
+*--------------------------------------------------------------------   00428560
+*                       S H O W    S T A T U S                          00428590
+*                                                                       00428620
+*  List status info                                                     00428650
+*--------------------------------------------------------------------   00428680
+         SPACE 1                                                        00428710
+./ R 00430000 00432000 $ 430690 690                   04/19/90 10:45:25
+         MVC   WORKBUF(LSTMSG),STMSG    Copy msg skeleton               00430690
+         TM    MAILSTAT,MSTINWT         In wait state?                  00431380
+         BO    $STAT1                   ---> Yes                        00432070
+./ R 00435000 00436000 $ 435590 590                   04/19/90 10:45:25
+         TM    MAILSTAT,MSTQSC          Quiescent?                      00435590
+         BO    $STAT2                   ---> Yes                        00436180
+./ R 00441000          $ 441490 490                   04/19/90 10:45:25
+         L     R1,MAILICNT              Msgs in                         00441490
+./ R 00445000          $ 445490 490                   04/19/90 10:45:25
+         L     R1,MAILRTOT              Msgs out                        00445490
+./ R 00449000          $ 449490 490                   04/19/90 10:45:25
+         L     R1,MAILRMAX              Max multi                       00449490
+./ R 00453000 00455000 $ 453690 690                   04/19/90 10:45:25
+         SR    R4,R4                    Zero hi divide register         00453690
+         L     R5,MAILSTMX              Get stack maximum               00454380
+         S     R5,STACK                 - origin address                00455070
+./ R 00457000 00465000 $ 457890 890                   04/19/90 10:45:25
+         D     R4,STACK+4               Divided by stack size           00457890
+         C     R5,=F'99'                More than 99% used?             00458780
+         BH    $STAT3                                                   00459670
+         CVD   R5,DWORD                 Convert to decimal              00460560
+         UNPK  WORKBUF+STSTKM(2),DWORD                                  00461450
+         OI    WORKBUF+STSTKM+1,X'F0'                                   00462340
+$STAT3   EQU   *                                                        00463230
+         L     R1,STACK+4               Max available                   00464120
+         SRL   R1,10                    Get in terms of K               00465010
+./ R 00471000          $ 471490 490                   04/19/90 10:45:25
+         BAL   R14,WRITEMSG                                             00471490
+./ I 00486000          $ 486100 100                   04/19/90 10:45:25
+         EJECT ,                                                        00486100
+*--------------------------------------------------------------------   00486200
+*                   S H O W    A U T H O R I Z E D                      00486300
+*                                                                       00486400
+*  List authorized ids - not implemented                                00486500
+*--------------------------------------------------------------------   00486600
+         SPACE 1                                                        00486700
+./ I 00488000          $ 488500 500                   04/19/90 10:45:25
+         EJECT ,                                                        00488500
+./ R 00492000 00494000 $ 492690 690                   04/19/90 10:45:25
+*  Shows information about incoming messages for the named mail         00492690
+*  server by finding the VALD from MAILVTAB and displaying the          00493380
+*  information in it.                                                   00494070
+./ I 00495000          $ 495500 500                   04/19/90 10:45:25
+         SPACE 1                                                        00495500
+./ R 00497000 00508000 $ 497890 890                   04/19/90 10:45:25
+         CLC   ARGC,=F'0'          Not enough parms?                    00497890
+         BNH   $INHELP             ---> No, give them help              00498780
+         L     R1,ARGVP            Get the token address                00499670
+         L     R4,0(R1)            Get token ptr                        00500560
+         SRDL  R4,24               Get token length                     00501450
+         SRL   R5,8                    and address                      00502340
+         CLI   0(R1),1             Only 1 character?                    00503230
+         BNE   $IN0                ---> No, must be node                00504120
+         CLI   0(R5),C'*'          Want all of them?                    00505010
+         BE    $IN1                ---> Yes, list all                   00505900
+         CLI   0(R5),C'?'          Want help?                           00506790
+         BNE   $IN0                ----> No, must be node               00507680
+./ R 00510490 00512000 $ 511080 590                   04/19/90 10:45:25
+         L     R1,=A(INHLP)        Point to help msg                    00511080
+         LA    R0,L'INHLP               and get length                  00511670
+         BAL   R14,WRITEMSG        Write message                        00512260
+./ R 00514000 00543000 $ 514990 990                   04/19/90 10:45:25
+         SPACE 1                                                        00514990
+$IN0     EQU   *                   List 1 node                          00515980
+         CLC   ARGC,=F'2'          2 tokens required                    00516970
+         BL    $INHELP                                                  00517960
+         C     R4,=F'8'            Nodename more than 8?                00518950
+         BH    BOGUS               ---> Yes, not NJE node, bogus        00519940
+         MVI   WORKBUF,C' '        Init to blanks                       00520930
+         MVC   WORKBUF+1(15),WORKBUF                                    00521920
+         BCTR  R4,0                -1 for executed move                 00522910
+         EX    R4,MOVEVAL          MVC WORKBUF(0),0(R5)                 00523900
+         L     R1,ARGVP            Get argv pointer                     00524890
+         LA    R1,4(R1)            Point to next argv entry             00525880
+         L     R4,0(R1)            Get token ptr                        00526870
+         SRDL  R4,24               Get length of username token         00527860
+         SRL   R5,8                Get address of toen                  00528850
+         C     R4,=F'8'            More than 8?                         00529840
+         BH    BOGUS               ---> Yes, not NJE userid, bogus      00530830
+         BCTR  R4,0                -1 for exec                          00531820
+         EX    R4,MOVEVAL2         Move the second part                 00532810
+         L     R0,MAILVTAB         Get validation table                 00533800
+         LA    R15,WORKBUF         String address                       00534790
+         LA    R14,16              All VTAB keywords are 16 long        00535780
+         CALL  TBLUK,((0),(15),(14),TWORK)                              00536770
+         LTR   R15,R15             Find it?                             00537760
+         BNZ   $IN2                ---> Not found                       00538750
+         LR    R5,R0               Hold for a sec                       00539740
+./ R 00545490          $ 545680 190                   04/19/90 10:45:25
+         L     R1,=A(INMSG)        Write heading messages               00545680
+./ R 00547000          $ 547490 490                   04/19/90 10:45:25
+         BAL   R14,WRITEMSG                                             00547490
+./ R 00550000 00552000 $ 550690 690                   04/19/90 10:45:25
+         LA    R2,WORKBUF          Output buffer                        00550690
+         BAL   R14,PRINTVA         Format the VALD                      00551380
+         LA    R0,INLEN            Write info line                      00552070
+./ R 00554000          $ 554490 490                   04/19/90 10:45:25
+         BAL   R14,WRITEMSG                                             00554490
+./ I 00557000          $ 557500 500                   04/19/90 10:45:25
+         SPACE 1                                                        00557500
+./ R 00561000 00570000 $ 561890 890                   04/19/90 10:45:25
+         BAL   R14,WRITEMSG         Print title lines                   00561890
+         L     R6,MAILVTAB         Get validation table                 00562780
+         USING TBTAB,R6            Address it                           00563670
+         ICM   R7,B'1111',TB$LEN   Get count of entries                 00564560
+         BZ    $IN2                No  entries in table                 00565450
+         BCTR  R7,0                -1 to get start address of last one  00566340
+         MH    R7,=Y(TBE$LEN)      #entries * length of each            00567230
+         L     R8,TB$ADR           BXLE index                           00568120
+         AR    R7,R8               BXLE comparand address               00569010
+         LA    R6,TBE$LEN          BXLE increment                       00569900
+./ R 00575490          $ 575680 190                   04/19/90 10:45:25
+         L     R1,TBE$DSP    GET VALD POINTER                           00575680
+./ R 00576100 00576700 $ 576190 90                    04/19/90 10:45:25
+         TM    FLAG,ACTFLG   Want only ACTIVE entries?                  00576190
+         BZ    $INLOOP2      no,  want all of them                      00576280
+         USING VALD,R1                                                  00576370
+         CLC   =F'0',VAMSGLEN check for non-zero counter                00576460
+         BE    $INLOOP3      skip this record                           00576550
+         DROP  R1                                                       00576640
+$INLOOP2 EQU   *                                                        00576730
+./ R 00580000          $ 580490 490                   04/19/90 10:45:25
+         BAL   R14,WRITEMSG   SEND IT OUT                               00580490
+./ R 00581500          $ 581690 190                   04/19/90 10:45:25
+$INLOOP3 EQU   *             <- here when skipping inactive rec.        00581690
+./ R 00583490          $ 583680 190                   04/19/90 10:45:25
+         B     ENDMSG        -> end of multi-line message               00583680
+./ R 00587000          $ 587490 490                   04/19/90 10:45:25
+         BAL  R14,WRITEMSG                                              00587490
+./ R 00649500          $ 649690 190                   04/19/90 10:45:25
+*                   D O M A I N S   /  O R I G I N S                    00649690
+./ R 00654100 00654600 $ 654190 90                    04/19/90 10:45:25
+$DOMAINS DS    0H                                                       00654190
+         MVC   $OUTTAB,MAILDTAB  use domains table                      00654280
+         B     $OUTST                                                   00654370
+$ORIGINS DS    0H                                                       00654460
+         MVC   $OUTTAB,MAILOTAB  use origins table                      00654550
+         B     $OUTST                                                   00654640
+./ R 00663000 00666000 $ 663790 790                   04/19/90 10:45:25
+         L     R1,ARGVP      GET THE TOKEN ADDRESS                      00663790
+         L     R4,0(R1)      GET A ZERO                                 00664580
+         SRDL  R4,24         GET TOKEN LENGTH                           00665370
+         SRL   R5,8          AND ADDRESS                                00666160
+./ R 00676000          $ 676490 490                   04/19/90 10:45:25
+         BAL   R14,WRITEMSG                                             00676490
+./ I 00677000          $ 677500 500                   04/19/90 10:45:25
+         SPACE 1                                                        00677500
+./ R 00679000 00687000 $ 681990 2990                  04/19/90 10:45:25
+         L     R0,$OUTTAB    GET ROUTING TABLE                          00681990
+         CALL  TBLUK,((0),(5),(4),TWORK)                                00684980
+./ R 00694000          $ 694490 490                   04/19/90 10:45:25
+         BAL   R14,WRITEMSG                                             00694490
+./ R 00701000          $ 701490 490                   04/19/90 10:45:25
+         BAL  R14,WRITEMSG                                              00701490
+./ R 00708000          $ 708490 490                   04/19/90 10:45:25
+         BAL   R14,WRITEMSG   PRINT TITLE LINES                         00708490
+./ R 00723100 00723700 $ 723190 90                    04/19/90 10:45:25
+         TM    FLAG,ACTFLG   want ACTIVE records only?                  00723190
+         BZ    $OUTLOO2      no, all records                            00723280
+         USING ROUTD,R1      address the ROUTD                          00723370
+         CLC   =F'0',RTMSGLEN is this an active record?                 00723460
+         BE    $OUTLOO3      no, inactive. skip it                      00723550
+         DROP  R1            done w/ROUTD                               00723640
+$OUTLOO2 EQU   *             <- here when we want all records           00723730
+./ R 00727000          $ 727490 490                   04/19/90 10:45:25
+         BAL   R14,WRITEMSG   SEND IT OUT                               00727490
+./ R 00728500          $ 728690 190                   04/19/90 10:45:25
+$OUTLOO3 EQU   *             <- here when skipping inactive rec         00728690
+./ R 00730490          $ 730680 190                   04/19/90 10:45:25
+         B     ENDMSG        -> end of multiline respons                00730680
+./ R 00734000          $ 734490 490                   04/19/90 10:45:25
+         BAL  R14,WRITEMSG                                              00734490
+./ R 00815000          $ 815490 490                   04/19/90 10:45:25
+         BAL  R14,WRITEMSG                                              00815490
+./ R 00826000          $ 826490 490                   04/19/90 10:45:25
+         BAL  R14,WRITEMSG                                              00826490
+./ R 00831000          $ 831490 490                   04/19/90 10:45:25
+*                           W R I T E M S G                             00831490
+./ R 00833000 00836000 $ 833790 790                   04/19/90 10:45:25
+*  Send reply to the command issuer.  Multiline replies are seperated   00833000
+*  by x'15' (newline) characters.  Registers are as follows:            00834000
+*        R1 - message address                                           00835000
+*        R0 - length                                                    00836000
+./ R 00838000          $ 838290 290                   04/19/90 10:45:25
+         SPACE 1
+WRITEMSG DS    0H                                                       00838490
+./ R 00851490          $ 851680 190                   04/19/90 10:45:25
+         CLC   SRCCODE,=A(CMDCONS) Is it from the console?              00851680
+./ R 00853490          $ 853680 190                   04/19/90 10:45:25
+         CLC   SRCCODE,=A(CMDSMSG) Is it from SMSG?                     00853680
+./ R 00854300          $ 854390 90                    04/19/90 10:45:25
+         CLC   SRCCODE,=A(CMDNET)  Is it from the network?              00854390
+./ R 00889100          $ 889160 60                    04/19/90 10:45:25
+ENDMSG   DS    0H            <- here to end multi-line reply            00889160
+./ R 00889300 00889500 $ 889590 290                   04/19/90 10:45:25
+         LA    R0,L'ENDMESG  length of above                            00889590
+         BAL   R14,WRITEMSG   and send the message                      00889880
+         B     RET           and return                                 00890170
+./ R 00891490 00892000 $ 892180 690                   04/19/90 10:45:25
+RET      DS    0H                                                       00892180
+./ D 00894000                                         04/19/90 10:45:25
+./ D 00898010 00912000                                04/19/90 10:45:25
+./ D 00938000 00940000                                04/19/90 10:45:25
+./ R 00945000 00948390 $ 945990 990                   04/19/90 10:45:25
+SHLPMSG  DC    C'SHOW options:  STatus | Version | [ACtive] '           00945990
+         DC    C'{Domains | ORigins | OUtgoing | SPecial}'              00946980
+./ R 00948780          $ 948790 10                    04/19/90 10:45:25
+ENDMESG  DC    C'- output complete.'                                    00948790
+./ R 00949000 00950000 $ 949590 590                   04/19/90 10:45:25
+         SPACE 1                                                        00949590
+SAVEAREA DS    18F           SAVE AREA                                  00950180
+./ D 00953000 00960000                                04/19/90 10:45:25
+./ R 00962190 00967500 $ 964180 1990                  04/19/90 10:45:25
+         SPACE 1                                                        00964180
+./ D 00970000                                         04/19/90 10:45:25

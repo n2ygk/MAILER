@@ -1,0 +1,4 @@
+./ I 00366860          $ 366865 5                     01/15/90 14:15:29
+         DC    A(DBGFLG6-MAILBLOK,MAILTR61,DBGNOOUT)                    00366865
+./ I 00387955          $ 387956 1                     01/15/90 14:15:29
+MAILTR61 DC    Y(18),C'TRACE-SEND-NO-MAIL'                              00387951

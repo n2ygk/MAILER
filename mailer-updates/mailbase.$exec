@@ -1,0 +1,76 @@
+/* ****************************************************************** */00001000
+/*  MAILBASE - Create base files using the UPDATE command             */00002000
+/* ****************************************************************** */00003000
+/*                                                                    */00004000
+/*  Command format:  MAILBASE  loadlist  cntrlfile                    */00005000
+/*                                                                    */00006000
+/*  MAILBASE creates merged base files using the UPDATE command.      */00007000
+/*  These files are suitable for distribution to sites that want to   */00008000
+/*  modify the code since they still retain all sequence numbers and  */00009000
+/*  sid codes (if any).  This means the standard XEDIT/EXECUPDT or    */00010000
+/*  XEDIT/ASSEMBLE/COMPILE cylce will work on these files.            */00011000
+/*                                                                    */00012000
+/*  "Loadlist" is the filename of a file (with filetype EXEC) in CMS  */00013000
+/*  EXEC format giving the names of the files to be processed.        */00014000
+/*                                                                    */00015000
+/*  "Cntrlfile" is the name of the cntrl file to be used to update    */00016000
+/*  the files.                                                        */00017000
+/*                                                                    */00018000
+/* ****************************************************************** */00019000
+                                                                        00020000
+address command                                                         00021000
+parse upper arg loadlist cntrl extra '(' options ')' .                  00022000
+                                                                        00023000
+if loadlist = '' | loadlist = '?' | ,       /* Needs help            */ 00024000
+   cntrl = ''    | extra <> ''     then  do                             00025000
+   'VMFCLEAR'                                                           00026000
+   do i=1 while sourceline(i) <> ''                                     00027000
+      say sourceline(i)                                                 00028000
+      end                                                               00029000
+   exit                                                                 00030000
+   end                                                                  00031000
+                                                                        00032000
+'ESTATE' loadlist 'EXEC *'                                              00033000
+if rc <> 0  then  do                                                    00034000
+   say '"'loadlist 'EXEC *" not found'                                  00035000
+   exit 28                                                              00036000
+   end                                                                  00037000
+                                                                        00038000
+'ESTATE' cntrl 'CNTRL *'                                                00039000
+if rc <> 0  then  do                                                    00040000
+   say '"'cntrl 'CNTRL *" not found'                                    00041000
+   exit 28                                                              00042000
+   end                                                                  00043000
+                                                                        00044000
+'EXECIO * DISKR' loadlist 'EXEC * (FINIS STEM FILES.'                   00045000
+if rc <> 0  then  exit rc                                               00046000
+                                                                        00047000
+exitrc = 0                                                              00048000
+                                                                        00049000
+do i=1 for files.0                                                      00050000
+   if left(files.i,1) = '*'  then  iterate                              00051000
+   parse var files.i . . fn ft .                                        00052000
+   'ESTATEW' fn '$'ft 'A'                                               00053000
+   if rc = 0  then  do                                                  00054000
+      say '"'fn '$'ft' A" already exists, update suppressed.'           00055000
+      if rc > exitrc  then  exitrc = rc                                 00056000
+      iterate                                                           00057000
+      end                                                               00058000
+   'UPDATE' fn '$'ft '*' cntrl 'CNTRL * (CTL NOREP OUTMODE A'           00059000
+   select                                                               00060000
+      when  rc = 0  then  do                                            00061000
+         'RENAME $'fn '$'ft 'A' fn '= ='                                00062000
+         say '"'fn '$'ft 'A" created'                                   00063000
+         'ERASE' fn 'UPDATES A'
+         'ERASE' fn 'UPDLOG  A'
+         end                                                            00064000
+      when  rc = 40  then  do                                           00065000
+         'COPYFILE' fn '$'ft '* = = A'
+         say '"'fn '$'ft 'A" created'                                   00066000
+         end                                                            00067000
+      otherwise                                                         00068000
+         if rc > exitrc  then  exitrc = rc                              00069000
+      end                                                               00070000
+   end                                                                  00071000
+                                                                        00072000
+exit exitrc                                                             00073000

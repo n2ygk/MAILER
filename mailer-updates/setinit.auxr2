@@ -1,0 +1,34 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R207037    Validate node entries in maintainers list (MAINTNODEn values)
+*          Validate THISNODE value
+R207036    Add debug tracing to VALIDATE
+R207035    Report on holes in Local-Hostn list and stop if any exist
+R207020    Stop if THISNODE not defined.
+R207006    Add SET command
+R205027    Change existing parse tracing code from assembly time
+*          switches to runtime switches.  This adds 'Trace-Parsing'
+*          to the debugging variables
+R205023    More tracing controls.  This adds keywords for:
+R205020    Add tracing code to HDRSCAN
+R205018    Add flag to only trace a mail creating exit.
+*          When this flag is set, the exit should list the actions
+*          it would have performed, but *NOT* create the output file.
+R205016    Add tracing code to TBLUK
+R205015    Add control to allow accpetance of BSMTP streams with
+*          FILE FROM: header.
+R205014    Add control to turn off looking for RFC822 headers inside
+*          the BSMTP envelope
+R205013    Move debugging controls to variables
+R205009    Use LOAD SVC, not LOAD command, to load external exits
+R205006    Provide support to turn on listing of all msgs received
+*          This is meant to be used for debugging
+R203030    Verify existence of Local-Host# values in OUTGOING table.
+*          List various (important) variable values
+R203028    Support MAINTUSER1@MAINTNODE1 as synonym for MAINTUSER@MAINTNODE
+*          Issue warning when variables multiply defined
+R202018    Remove PRINT NOGENs, make DSECTs honor SYSPARM(SUP)/SYSPARM(EXP)
+R201006    Create new default exit for outgoing table.  This exit will
+*          re-implement the Allow-Unknown-Nodes code without the
+*          cross network routing of the internet exit.
+R200009    Allow multiple Rscs-Domains.
+R200008    Allow multiple Local-Hosts.

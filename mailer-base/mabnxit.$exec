@@ -1,0 +1,118 @@
+/* ****************************************************************** */00001000
+/*  MABNXIT - MAILER R2 abend exit processor                          */00002000
+/* ****************************************************************** */00003000
+/*                                                                    */00004000
+/*  This exec receives control from the abend trap in MAILMAIN.  It   */00005000
+/*  is passed the userid of the maintainer and the spoolid of the     */00006000
+/*  file being processed when the abend occurred.                     */00007000
+/*                                                                    */00008000
+/*  The code in this exec determines what should be done with the     */00009000
+/*  mail file that is the probable cause of the failure:              */00010000
+/*                                                                    */00011000
+/*                                                                    */00012000
+/*     RC   Mailer action                                             */00013000
+/*    ==== ========================================================   */00014000
+/*      0   Purge file                                                */00015000
+/*    <12   Return to sender                                          */00016000
+/*    12+   Stop mailer                                               */00017000
+/*                                                                    */00018000
+/* ****************************************************************** */00019000
+                                                                        00020000
+address COMMAND                              /*                       */00021000
+parse upper arg maintid maintnode spoolid .  /*                       */00022000
+                                                                        00023000
+'IDENTIFY (LIFO'                                                        00024000
+parse pull myid . mynode . rscsid date time timezone .                  00025000
+                                                                        00026000
+say 'MABNXIT: Called with maintid='maintid'@'maintnode ,                00027000
+   'spoolid='spoolid                                                    00028000
+                                                                        00029000
+if maintnode = mynode  then  do              /* Local maintainer      */00030000
+   say 'MABNXIT: Taking VMDUMP'              /* Take a VMDUMP         */00031000
+   'CP VMDUMP 0-END TO' maintid 'FORMAT CMS * Mail abend at' ,          00032000
+      'approximately' time timezone 'on' date                           00033000
+   end                                                                  00034000
+                                                                        00035000
+'ERASE ERROR NOTEBOOK A'                     /*                       */00036000
+'EXEC RECEIVE' spoolid 'ERROR NOTEBOOK A ( NOTEBOOK ERROR LOG'          00037000
+                                                                        00038000
+newid = newft()                                                         00039000
+'RENAME ERROR NOTEBOOK A MAILPROB' newid 'A'                            00040000
+say 'MABNXIT: Problem mail file saved in "MAILPROB"' newid 'A"'         00041000
+                                                                        00042000
+call sendmail 'MAILPROB' newid 'A'                                      00043000
+                                                                        00044000
+'ESTATE' spoolid 'EFLAG A'                                              00045000
+if rc = 0  then  do                          /* Saw this before       */00046000
+   'ERASE' spoolid 'EFLAG A'                 /* Forget we saw it      */00047000
+   exitrc = 0                                /* Purge it this time    */00048000
+   end                                                                  00049000
+else  do                                     /* Remember the spoolid  */00050000
+   'EXECIO 1 DISKW' spoolid 'EFLAG A (FINIS STRING' spoolid             00051000
+   exitrc = 16                               /* Restart mailer        */00052000
+   end                                                                  00053000
+                                                                        00054000
+exit exitrc                                                             00055000
+                                                                        00056000
+/* ******************* */                                               00057000
+/*  Internal routines  */                                               00058000
+/* ******************* */                                               00059000
+                                                                        00060000
+/**********************************************************************/00061000
+NewFt:  procedure  /* Find a open filetype of the form FILEnnnn       */00062000
+do i=1 for 9999                                                         00063000
+   'ESTATE MAILPROB FILE'right(i,4,'0') 'A'                             00064000
+   if rc <> 0  then leave                                               00065000
+   end                                                                  00066000
+return 'FILE'right(i,4,'0')                                             00067000
+                                                                        00068000
+/**********************************************************************/00069000
+SendMail:  procedure , /* Send error notification to maintainer       */00070000
+           expose maintid maintnode myid mynode rscsid timezone         00071000
+                                                                        00072000
+parse arg fileid                                                        00073000
+fileid = strip(fileid)                                                  00074000
+                                                                        00075000
+'ERASE ERROR MAIL A1'                                                   00076000
+line.0 = 7                                                              00077000
+line.1 = 'Date:' left(date('W'),3)',' ,                                 00078000
+                 delstr(right(date(),11,'0'),8,2) Time() timezone       00079000
+line.2 = 'From:' myid'@'mynode                                          00080000
+line.3 = 'To:  ' maintid'@'maintnode                                    00081000
+line.4 = ' '                                                            00082000
+line.5 = 'A mailer abend has occurred.  The file being processed at the'00083000
+line.6 = 'time of the failure has been saved as "'fileid'".'            00084000
+line.7 = ' '                                                            00085000
+'EXECIO' line.0 'DISKW ERROR MAIL A ( FINIS STEM LINE.'                 00086000
+                                                                        00087000
+/*  Here we send the mail to the maintainer.  Since the mailer may    */00088000
+/*  be badly broken, the mail is sent using standard RSCS services.   */00089000
+/*  Since RSCS V2 may not be installed this code has to worry about   */00090000
+/*  local routing.                                                    */00091000
+/*                                                                    */00092000
+/*  The following code assumes the console has been spooled start     */00093000
+/*  by either the PROFILE EXEC or a driver exec for the mailer.       */00094000
+                                                                        00095000
+'CP CLOSE PUNCH PURGE'                                                  00096000
+if maintnode <> mynode  then  do                                        00097000
+   'CP SPOOL PUNCH' rscsid 'CLASS M CONT'                               00098000
+   'CP SPOOL CONSOLE' rscsid 'CLASS T'                                  00099000
+   'CP TAG DEV PUNCH' maintnode maintid                                 00100000
+   'CP TAG DEV CONSOLE' maintnode maintid                               00101000
+   end                                                                  00102000
+else do                                                                 00103000
+   'CP SPOOL PUNCH' maintid 'CLASS M CONT'                              00104000
+   'CP SPOOL CONSOLE' maintid 'CLASS T'                                 00105000
+   end                                                                  00106000
+                                                                        00107000
+'PUNCH ERROR MAIL A ( NOH'                                              00108000
+'CP SPOOL PUNCH NOCONT'                                                 00109000
+'PUNCH' fileid '( NOH'                                                  00110000
+'CP SPOOL PUNCH OFF'                                                    00111000
+'CP TAG DEV PUNCH'                                                      00112000
+'ERASE ERROR MAIL A'                                                    00113000
+                                                                        00114000
+'CP SPOOL CONSOLE CLOSE'                                                00115000
+'CP TAG DEV CONSOLE'                                                    00116000
+                                                                        00117000
+return                                                                  00118000

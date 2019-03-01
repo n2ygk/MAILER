@@ -1,0 +1,559 @@
+./ D 00017160 00017720                                01/25/90 15:35:28
+./ R 00062400 00062800 $ 62690 290                    01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+        wrterm("==> Entered smtpin");
+./ R 00089400 00089800 $ 89590 190                    01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered check_incoming");
+./ R 00107400 00107800 $ 107590 190                   01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered rep_init");
+./ R 00119440 00119500 $ 119470 30                    01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered rep_wrt");
+./ R 00129180 00129380 $ 129370 190                   01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered rep_send");
+./ R 00179074 00179078 $ 179076 2                     01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered rep_smtp");
+./ R 00179744 00179748 $ 179746 2                     01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered rep_mail");
+./ R 00179770 00179774 $ 179772 2                     01/25/90 15:35:28
+        if (mailblok.dbgflg[0] & TRACE_REP_MAIL)
+            wrterm("==> Valid MAIL FROM");
+./ R 00179853 00179859 $ 179857 4                     01/25/90 15:35:28
+        if (mailblok.dbgflg[0] & TRACE_REP_MAIL)
+            wrterm("==> No valid MAIL FROM & not a trusted mailer");
+./ R 00179904 00179908 $ 179906 2                     01/25/90 15:35:28
+        if (mailblok.dbgflg[0] & TRACE_REP_MAIL)
+            wrterm("==> No valid MAIL FROM & a trusted mailer");
+./ R 00222400 00222800 $ 222590 190                   01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered s_init");
+./ R 00249470 00249550 $ 249500 30                    01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered s_init0");
+./ R 00271740 00271900 $ 271810 70                    01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered mydomain");
+./ D 00299560                                         01/25/90 15:35:28
+./ R 00299740 00299920 $ 299810 70                    01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered s_input");
+./ R 00306630 00306690 $ 306650 20                    01/25/90 15:35:28
+       if (mailblok.dbgflg[0] & TRACE_S_INPUT)
+           wrterm("==> BSMTP: Continue line being processed");
+./ R 00306810 00306850 $ 306820 10                    01/25/90 15:35:28
+       if (mailblok.dbgflg[0] & TRACE_S_INPUT) {
+           sprintf(dbgmsg,
+               "==> BSMTP: Continued line - new length is %d" , l);
+           wrterm(dbgmsg);
+       }
+./ R 00307200 00308200 $ 307290 90                    01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_S_INPUT) {
+        bcopy("==> BSMTP:>", dbgmsg , 11);
+        bcopy(s, &dbgmsg[11], l);
+        bcopy("<", &dbgmsg[11+l], 2);
+        wrterm(dbgmsg);
+    }
+./ R 00335400 00335800 $ 335590 190                   01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered s_finish");
+./ R 00346400 00346800 $ 346590 190                   01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered s_helo");
+./ D 00376302                                         01/25/90 15:35:28
+./ D 00376306                                         01/25/90 15:35:28
+./ R 00376310 00376314 $ 376313 3                     01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered check_local");
+./ I 00376340          $ 376350 10                    01/25/90 15:35:28
+
+./ D 00376382                                         01/25/90 15:35:28
+./ R 00376386 00376392 $ 376387 1                     01/25/90 15:35:28
+        if (mailblok.dbgflg[0] & TRACE_CHECK_LOCAL) {
+           bcopy("==> No match: <", dbgmsg , 15);
+           bcopy(mailblok.mailnode, &dbgmsg[15], mailblok.mailnlen);
+           bcopy(">", &dbgmsg[15+mailblok.mailnlen], 2);
+           wrterm(dbgmsg);
+        }
+./ D 00376396                                         01/25/90 15:35:28
+./ I 00376420          $ 376430 10                    01/25/90 15:35:28
+
+./ R 00376592          $ 376593 1                     01/25/90 15:35:28
+                   xcmp(s, mailblok.mailnode, i) == 0) {
+                   if (mailblok.dbgflg[0] & TRACE_CHECK_LOCAL) {
+                      bcopy("==> Matched : <", dbgmsg , 15);
+                      bcopy(rp ,&dbgmsg[15], rl);
+                      bcopy(">", &dbgmsg[15+rl], 2);
+                      wrterm(dbgmsg);
+                   }
+./ R 00376602 00376612 $ 376604 2                     01/25/90 15:35:28
+               }
+           if (mailblok.dbgflg[0] & TRACE_CHECK_LOCAL) {
+              bcopy("==> no match: <", dbgmsg , 15);
+              bcopy(rp ,&dbgmsg[15], rl);
+              bcopy(">", &dbgmsg[15+rl], 2);
+              wrterm(dbgmsg);
+           }
+./ R 00376710 00376776 $ 376712 2                     01/25/90 15:35:28
+
+    if (mailblok.lclhost[0] != 0) {
+        for (ri = 0; mailblok.lclhost[ri] != 0 &&
+             ri < MAXLCLHOST; ri++) {
+            int rl = mailblok.lclhost[ri][0];
+            char *rp = &mailblok.lclhost[ri][1];
+
+            if (rl == l && xcmp(rp, s, l) == 0) {
+                return 1;
+                if (mailblok.dbgflg[0] & TRACE_CHECK_LOCAL) {
+                   bcopy("==> Matched : <", dbgmsg , 15);
+                   bcopy(rp ,&dbgmsg[15], rl);
+                   bcopy(">", &dbgmsg[15+rl], 2);
+                   wrterm(dbgmsg);
+                }
+            }
+            if (mailblok.dbgflg[0] & TRACE_CHECK_LOCAL) {
+               bcopy("==> No match: <", dbgmsg , 15);
+               bcopy(rp ,&dbgmsg[15], rl);
+               bcopy(">", &dbgmsg[15+rl], 2);
+               wrterm(dbgmsg);
+           }
+        }
+    }
+./ R 00394600 00396200 $ 395390 790                   01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered check_domain");
+./ R 00448700 00448900 $ 448790 90                    01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered s_mail");
+./ R 00451000          $ 451190 190                   01/25/90 15:35:28
+    if (xcmp(" FROM:", &s[4], 6) != 0) {   /* check syntax */
+        if (mailblok.dbgflg[0] & TRACE_S_MAIL)
+           wrterm("s_mail:  Not MAIL FROM:");
+./ I 00452000          $ 452500 500                   01/25/90 15:35:28
+    }
+./ R 00458490          $ 458580 90                    01/25/90 15:35:28
+    if (!f || !t || !ts) {
+        if (mailblok.dbgflg[0] & TRACE_S_MAIL)
+           wrterm
+               ("s_mail:  Storage allocation failure for f or t or ts");
+./ I 00459000          $ 459900 900                   01/25/90 15:35:28
+    }
+./ I 00465000          $ 465300 300                   01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_S_MAIL)
+       wrterm("s_mail:  Copying FROM: to stack");
+./ I 00478000          $ 478200 200                   01/25/90 15:35:28
+
+    if (mailblok.dbgflg[0] & TRACE_S_MAIL)
+       wrterm("s_mail:  Building FROM: fieldd");
+./ R 00481750          $ 481760 10                    01/25/90 15:35:28
+        if (f->fistr[i] == '>')         /* MAIL FROM:<> */
+./ R 00482000          $ 482090 90                    01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_S_MAIL)
+       wrterm("s_mail:  Parsing FROM:");
+    if (_aparse(f) != 0) {              /* parse the string */
+        if (mailblok.dbgflg[0] & TRACE_S_MAIL)
+           wrterm("s_mail:  Syntax error in FROM:");
+./ I 00483000          $ 483700 700                   01/25/90 15:35:28
+    }
+./ R 00485400          $ 485460 60                    01/25/90 15:35:28
+         (a->mbxdcnt == 0)) {
+       if (mailblok.dbgflg[0] & TRACE_S_MAIL)
+           wrterm("s_mail:  Syntax error in FROM:");
+./ I 00485690          $ 485740 50                    01/25/90 15:35:28
+    }
+./ I 00488390          $ 488490 100                   01/25/90 15:35:28
+        if (mailblok.dbgflg[0] & TRACE_S_MAIL)
+            wrterm("s_mail:  Not from a trusted mailer");
+./ I 00488780          $ 488880 100                   01/25/90 15:35:28
+            if (mailblok.dbgflg[0] & TRACE_S_MAIL)
+                wrterm("s_mail:  Charlatan sender found");
+./ I 00492670          $ 492770 100                   01/25/90 15:35:28
+                if (mailblok.dbgflg[0] & TRACE_S_MAIL)
+                    wrterm("s_mail:  Charlatan sender accepted");
+./ I 00497780          $ 497790 10                    01/25/90 15:35:28
+            if (mailblok.dbgflg[0] & TRACE_S_MAIL)
+                wrterm("s_mail:  Sender ok");
+./ I 00498140          $ 498240 100                   01/25/90 15:35:28
+        if (mailblok.dbgflg[0] & TRACE_S_MAIL)
+            wrterm("s_mail:  From a trusted mailer");
+./ R 00506462 00506474 $ 506468 6                     01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered do_null_from");
+./ R 00518900 00518960 $ 518920 20                    01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered check_sender");
+./ D 00559930                                         01/25/90 15:35:28
+./ D 00559950                                         01/25/90 15:35:28
+./ R 00559970 00559990 $ 559980 10                    01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered s_rcpt");
+./ R 00620177 00620191 $ 620184 7                     01/25/90 15:35:28
+       if (mailblok.dbgflg[0] & TRACE_S_RCPT)
+          wrterm("==> s_rcpt: Processing routeaddr");
+./ R 00620565 00620590 $ 620570 5                     01/25/90 15:35:28
+       if (mailblok.dbgflg[0] & TRACE_S_RCPT) {
+          bcopy("==> s_rcpt: <", dbgmsg, 13);
+          bcopy(hs,&dbgmsg[13],hl);
+          bcopy(">",&dbgmsg[hl+13],2);
+          wrterm(dbgmsg);
+       }
+./ R 00620610 00620630 $ 620620 10                    01/25/90 15:35:28
+          if (mailblok.dbgflg[0] & TRACE_S_RCPT)
+             wrterm("==> s_rcpt: Removing route address");
+./ R 00620811 00620813 $ 620812 1                     01/25/90 15:35:28
+       if (mailblok.dbgflg[0] & TRACE_S_RCPT)
+          wrterm("==> s_rcpt: Adding @local-host to userid");
+./ R 00623432 00623444 $ 623438 6                     01/25/90 15:35:28
+       if (mailblok.dbgflg[0] & TRACE_S_RCPT)
+          wrterm("==> s_rcpt: Using domain for lookup");
+./ R 00623495 00623505 $ 623500 5                     01/25/90 15:35:28
+       if (mailblok.dbgflg[0] & TRACE_S_RCPT)
+          wrterm("==> s_rcpt: Using route-addr for lookup");
+./ R 00623810 00623960 $ 623820 10                    01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_S_RCPT) {
+       bcopy("==> s_rcpt routing with: <", dbgmsg, 26);
+       bcopy(hs,&dbgmsg[26],hl);
+       bcopy(">",&dbgmsg[hl+26],2);
+       wrterm(dbgmsg);
+    }
+./ R 00656400 00656800 $ 656590 190                   01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered add_mailchn");
+./ R 00715120 00715240 $ 715170 50                    01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered s_data");
+./ D 00740100                                         01/25/90 15:35:28
+./ D 00740300                                         01/25/90 15:35:28
+./ R 00740500 00740700 $ 740590 90                    01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered s_getdata");
+./ R 00758590 00758790 $ 758680 90                    01/25/90 15:35:28
+            if (mailblok.dbgflg[0] & TRACE_S_GETDATA)
+                wrterm("==> s_getdata: Calling sendlst");
+./ R 00763200 00763600 $ 763390 190                   01/25/90 15:35:28
+                if (mailblok.dbgflg[0] & TRACE_S_GETDATA)
+                    wrterm("==> s_getdata: RC=12 from sendlst");
+./ R 00766190 00766590 $ 766380 190                   01/25/90 15:35:28
+                if (mailblok.dbgflg[0] & TRACE_S_GETDATA)
+                    wrterm("==> s_getdata: Errors from sendlst");
+./ R 00782100 00782600 $ 782190 90                    01/25/90 15:35:28
+        if (mailblok.dbgflg[0] & TRACE_S_GETDATA) {
+            bcopy("==> s_getdata: >", dbgmsg, 16);
+            bcopy(s, &dbgmsg[16], l);
+            bcopy("<", &dbgmsg[16+l], 2);
+            wrterm(dbgmsg);
+        }
+./ R 00806200 00806400 $ 806290 90                    01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered s_rset");
+./ R 00817200 00817400 $ 817290 90                    01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered s_noop");
+./ R 00828400 00828800 $ 828590 190                   01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered s_quit");
+./ R 00842200 00842400 $ 842290 90                    01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered s_verb");
+./ R 00860400 00860800 $ 860590 190                   01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered s_tick");
+./ R 00867220 00867230 $ 867225 5                     01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered s_rply");
+./ R 00867730 00867740 $ 867735 5                     01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered s_read");
+./ R 00874200 00874400 $ 874290 90                    01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered s_oseq");
+./ R 00883200 00883400 $ 883290 90                    01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered s_badc");
+./ R 00892200 00892400 $ 892290 90                    01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered s_errr");
+./ R 00903400 00903800 $ 903590 190                   01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered s_nosp");
+./ R 00917400 00917800 $ 917590 190                   01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered s_syntax");
+./ R 00928400 00928800 $ 928590 190                   01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered s_syntax553");
+./ R 00933510 00933530 $ 933520 10                    01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered s_maxr");
+./ R 00946200 00946400 $ 946290 90                    01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered _aparse");
+./ R 00952234 00952238 $ 952236 2                     01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered parse_data_hdr");
+./ R 00952256          $ 952257 1                     01/25/90 15:35:28
+                 (int)salloc(mailblok.mailhbuf[1] = resid)) <= 0) {
+       if (mailblok.dbgflg[1] & TRACE_PARSE_DATA_HEADER)
+          wrterm("parse_data_header:  Storage allocation failure");
+./ I 00952260          $ 952263 3                     01/25/90 15:35:28
+    }
+    if (mailblok.dbgflg[1] & TRACE_PARSE_DATA_HEADER)
+       wrterm("parse_data_header:  Reading headers onto stack");
+./ I 00952310          $ 952313 3                     01/25/90 15:35:28
+            if (mailblok.dbgflg[1] & TRACE_PARSE_DATA_HEADER)
+               wrterm("parse_data_header:  Read error");
+./ I 00952410          $ 952413 3                     01/25/90 15:35:28
+    if (mailblok.dbgflg[1] & TRACE_PARSE_DATA_HEADER)
+       wrterm("parse_data_header:  Scanning headers");
+./ R 00952486          $ 952488 2                     01/25/90 15:35:28
+        if (ctbluk(&te,mailblok.mailktab,"from",4) != TBMATCH) {
+          if (mailblok.dbgflg[1] & TRACE_PARSE_DATA_HEADER)
+             wrterm("parse_data_header:  No FROM:, adding BSMTP FROM:");
+./ R 00952502          $ 952503 1                     01/25/90 15:35:28
+        }
+        if (ctbluk(&te,mailblok.mailktab,"to",2) != TBMATCH) {
+          if (mailblok.dbgflg[1] & TRACE_PARSE_DATA_HEADER)
+             wrterm("parse_data_header:  No TO:, adding BSMTP TO:");
+./ I 00952510          $ 952515 5                     01/25/90 15:35:28
+        }
+./ R 00965200 00965400 $ 965290 90                    01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered _fnroutd");
+./ D 00975060                                         01/25/90 15:35:28
+./ D 00975180                                         01/25/90 15:35:28
+./ R 00975300 00975420 $ 975350 50                    01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered find_routd");
+./ R 00975540 00975840 $ 975570 30                    01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_FIND_ROUTD) {
+       bcopy("==> find_routd: >", dbgmsg, 17);
+       bcopy(s, &dbgmsg[17], l);
+       bcopy("<", &dbgmsg[17+l], 2);
+       wrterm(dbgmsg);
+    }
+./ R 00975860 00975864 $ 975861 1                     01/25/90 15:35:28
+
+    if (mailblok.dbgflg[0] & TRACE_FIND_ROUTD)
+       wrterm("==> find_routd: Checking MAILRTAB");
+./ R 00975876 00975894 $ 975885 9                     01/25/90 15:35:28
+        if (mailblok.dbgflg[0] & TRACE_FIND_ROUTD)
+            wrterm("==> find_routd: Found in MAILRTAB");
+./ R 00977970 00978150 $ 978060 90                    01/25/90 15:35:28
+
+    if (mailblok.dbgflg[0] & TRACE_FIND_ROUTD)
+       wrterm("==> find_routd: Attempting RSCS domain removal");
+./ R 00979080 00979280 $ 979270 190                   01/25/90 15:35:28
+        if (mailblok.dbgflg[0] & TRACE_FIND_ROUTD)
+           wrterm("==> find_routd: Checking RSCS domains");
+./ R 00983010 00983370 $ 983030 20                    01/25/90 15:35:28
+              if (mailblok.dbgflg[0] & TRACE_FIND_ROUTD) {
+                 bcopy("==> find_routd: >", dbgmsg, 17);
+                 bcopy(rp, &dbgmsg[17], rl);
+                 bcopy("< dropped", &dbgmsg[17+rl], 10);
+                 wrterm(dbgmsg);
+              }
+           }  else {
+              if (mailblok.dbgflg[0] & TRACE_FIND_ROUTD) {
+                 bcopy("==> find_routd: >", dbgmsg, 17);
+                 bcopy(rp, &dbgmsg[17], rl);
+                 bcopy("< no match", &dbgmsg[17+rl], 11);
+                 wrterm(dbgmsg);
+              }
+           }
+./ R 00983540 00983890 $ 983590 50                    01/25/90 15:35:28
+        if (mailblok.dbgflg[0] & TRACE_FIND_ROUTD) {
+            bcopy("==> find_routd: >", dbgmsg, 17);
+            bcopy(s, &dbgmsg[17], l);
+            bcopy("<", &dbgmsg[17+l], 2);
+            wrterm(dbgmsg);
+        }
+./ R 00986870          $ 986890 20                    01/25/90 15:35:28
+
+    if (mailblok.dbgflg[0] & TRACE_FIND_ROUTD)
+./ D 00987050                                         01/25/90 15:35:28
+./ R 00987670 00987850 $ 987760 90                    01/25/90 15:35:28
+        if (mailblok.dbgflg[0] & TRACE_FIND_ROUTD)
+            wrterm("==> find_routd: Found in MAILRTAB");
+./ R 00990870          $ 990890 20                    01/25/90 15:35:28
+
+    if (mailblok.dbgflg[0] & TRACE_FIND_ROUTD)
+./ D 00991050                                         01/25/90 15:35:28
+./ R 00991670 00991850 $ 991760 90                    01/25/90 15:35:28
+        if (mailblok.dbgflg[0] & TRACE_FIND_ROUTD)
+            wrterm("==> find_routd: Found in MAILDTAB");
+./ I 00994730          $ 994750 20                    01/25/90 15:35:28
+
+./ R 00994810 00994890 $ 994840 30                    01/25/90 15:35:28
+       if (mailblok.dbgflg[0] & TRACE_FIND_ROUTD)
+           wrterm("==> find_routd: Allow unknown nodes set");
+./ I 00994940          $ 994950 10                    01/25/90 15:35:28
+
+./ R 00995010          $ 995020 10                    01/25/90 15:35:28
+
+       if (mailblok.dbgflg[0] & TRACE_FIND_ROUTD)
+./ R 00995090 00995130 $ 995120 30                    01/25/90 15:35:28
+       if (ctbluk(&te, mailblok.mailrtab, "*DEFAULT*", 9)
+./ R 00995210 00995290 $ 995230 20                    01/25/90 15:35:28
+           if (mailblok.dbgflg[0] & TRACE_FIND_ROUTD)
+               wrterm(
+                 "==> find_routd: Using *DEFAULT* in OUTGOING table");
+./ I 00995410          $ 995430 20                    01/25/90 15:35:28
+
+./ I 00995450          $ 995530 80                    01/25/90 15:35:28
+
+./ R 00995770 00995970 $ 995790 20                    01/25/90 15:35:28
+               if (mailblok.dbgflg[0] & TRACE_FIND_ROUTD) {
+                   bcopy("==> find_routd: ", dbgmsg, 16);
+                   bcopy("Checking MAILDTAB with ", dbgmsg+16, 23);
+                   bcopy(defrt, dbgmsg+39, ol-l+15);
+                   bcopy(" in DOMAINS table", dbgmsg+39+(ol-l+15), 18);
+                   wrterm(dbgmsg);
+               }
+./ R 00996090 00996290 $ 996110 20                    01/25/90 15:35:28
+                   if (mailblok.dbgflg[0] & TRACE_FIND_ROUTD) {
+                       bcopy("==> find_routd: Using ", dbgmsg, 22);
+                       bcopy(defrt, dbgmsg+22, ol-l+15);
+                       bcopy(" in DOMAINS table", dbgmsg+22+(ol-l+15),
+                             18);
+                       wrterm(dbgmsg);
+                   }
+./ I 00996410          $ 996430 20                    01/25/90 15:35:28
+
+./ R 00996460 00996480 $ 996466 6                     01/25/90 15:35:28
+
+           if (mailblok.dbgflg[0] & TRACE_FIND_ROUTD)
+               wrterm(
+                 "==> find_routd: Checking MAILDTAB with *DEFAULT*");
+./ R 00996570 00996690 $ 996600 30                    01/25/90 15:35:28
+               if (mailblok.dbgflg[0] & TRACE_FIND_ROUTD)
+                   wrterm(
+                    "==> find_routd: Using *DEFAULT* in DOMAINS table");
+./ R 00999200 00999600 $ 999390 190                   01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_FIND_ROUTD)
+        wrterm("==> find_routd: Not found");
+./ R 01010400 01010800 $ 1010590 190                  01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered log_errors");
+./ R 01072400 01072800 $ 1072590 190                  01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered add_received");
+./ R 01116400 01116800 $ 1116590 190                  01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered foldwrite");
+./ R 01144400 01144800 $ 1144590 190                  01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered count_received");
+./ R 01154200 01154400 $ 1154290 90                   01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered _cntrcvd");
+./ R 01181400 01181800 $ 1181590 190                  01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered smtprep");
+./ R 01203200 01203400 $ 1203290 90                   01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered r_init");
+./ R 01219200 01219400 $ 1219290 90                   01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered r_finish");
+./ R 01242400 01242800 $ 1242590 190                  01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered r_input");
+./ R 01302400 01302800 $ 1302590 190                  01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered err_mail");
+./ D 01408050                                         01/25/90 15:35:28
+./ D 01408150                                         01/25/90 15:35:28
+./ R 01408400 01408800 $ 1408590 190                  01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered is_mailer");
+./ I 01413000          $ 1413500 500                  01/25/90 15:35:28
+
+./ I 01414000          $ 1415000 1000                 01/25/90 15:35:28
+
+./ R 01417080 01417480 $ 1417130 50                   01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_IS_MAILER) {
+        bcopy("==> is_mailer: userid=<", dbgmsg, 23);
+        bcopy(us, &dbgmsg[23], ul);
+        bcopy(">", &dbgmsg[23+ul], 2);
+        wrterm(dbgmsg);
+    }
+./ R 01417640 01418000 $ 1417830 190                  01/25/90 15:35:28
+                                         /* is longer than NJE limit  */
+      if (mailblok.dbgflg[0] & TRACE_IS_MAILER)
+          wrterm("===> is_mailer: Not a mailer, userid too long");
+      return 0;
+./ I 01419490          $ 1419690 200                  01/25/90 15:35:28
+
+./ I 01420000          $ 1421000 1000                 01/25/90 15:35:28
+
+./ R 01422510 01422710 $ 1422570 60                   01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_IS_MAILER) {
+        bcopy("==> is_mailer: node=<", dbgmsg, 21);
+        bcopy(hs, &dbgmsg[21], hl);
+        bcopy(">", &dbgmsg[21+hl], 2);
+        wrterm(dbgmsg);
+    }
+./ R 01424300 01424900 $ 1424590 290                  01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_IS_MAILER)
+        wrterm("==> is_mailer: Found in OUTGOING or DOMAINS table");
+./ R 01427190 01428520 $ 1427280 90                   01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_IS_MAILER) {
+        bcopy("==> is_mailer: <", dbgmsg, 16);
+        bcopy(key.part.user, &dbgmsg[16], 8);
+        bcopy("> != <", &dbgmsg[24], 6);
+        bcopy(r->rtuser, &dbgmsg[30], 8);
+        bcopy(">", &dbgmsg[38], 2);
+        wrterm(dbgmsg);
+    }
+
+./ I 01428710          $ 1428800 90                   01/25/90 15:35:28
+
+./ R 01430070 01430840 $ 1430120 50                   01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_IS_MAILER) {
+        bcopy("==> is_mailer: <", dbgmsg, 16);
+        bcopy(key.part.node, &dbgmsg[16], 8);
+        bcopy("> != <", &dbgmsg[24], 6);
+        bcopy(mailblok.cpustr, &dbgmsg[30], 8);
+        bcopy(">  |  <", &dbgmsg[38], 7);
+        bcopy(key.part.user, &dbgmsg[45], 8);
+        bcopy("> != <", &dbgmsg[53], 6);
+        bcopy(mailblok.mailvmid, &dbgmsg[59], 8);
+        bcopy(">", &dbgmsg[67], 2);
+        wrterm(dbgmsg);
+    }
+
+./ R 01431200 01432200 $ 1431290 90                   01/25/90 15:35:28
+
+    if (mailblok.dbgflg[0] & TRACE_IS_MAILER) {
+        bcopy("==> is_mailer: search incoming table for >", dbgmsg, 42);
+        bcopy(&key, &dbgmsg[42], 16);
+        bcopy("<", &dbgmsg[58], 2);
+        wrterm(dbgmsg);
+    }
+./ I 01433000          $ 1433500 500                  01/25/90 15:35:28
+
+./ I 01434090          $ 1434130 40                   01/25/90 15:35:28
+
+./ R 01434190 01434240 $ 1434200 10                   01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_IS_MAILER) {
+        bcopy("==> is_mailer: search incoming table for >", dbgmsg, 42);
+        bcopy(&key, &dbgmsg[42], 16);
+        bcopy("<", &dbgmsg[58], 2);
+        wrterm(dbgmsg);
+    }
+./ I 01434360          $ 1434400 40                   01/25/90 15:35:28
+
+./ R 01434550 01434750 $ 1434640 90                   01/25/90 15:35:28
+
+    if (mailblok.dbgflg[0] & TRACE_IS_MAILER)
+        wrterm("===> is_mailer: Not a mailer");
+./ R 01446400 01446800 $ 1446590 190                  01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered err_loop");
+./ R 01462400 01462800 $ 1462590 190                  01/25/90 15:35:28
+    if (mailblok.dbgflg[0] & TRACE_CALLS)
+       wrterm("==> Entered punch");

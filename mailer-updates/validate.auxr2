@@ -1,0 +1,15 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R207036    Add debug tracing to VALIDATE
+R205007    Report existence of multiple From or Senders correctly
+R203025    Fix case sensitivity in VALIDATE w/LocalHost.
+R202018    Remove PRINT NOGENs, make DSECTs honor SYSPARM(SUP)/SYSPARM(EXP)
+R202009    Support userid aliases in INCOMING table.  This allows a
+*          well known userid (such as MAILER) to be represented by 1
+*          entry instead of 1 entry per node.  The format for these
+*          entries will be a node of '*default*' and a userid of the
+*          specific userid
+R200009    Allow multiple Rscs-Domains.
+R200008    Allow multiple Local-Hosts.
+R200007    VALIDATE doesn't understand LocalDomain.
+R200006    VALIDATE changes MAILUSER and MAILNODE without changing
+*          MAILULEN and MAILNLEN. Force them to 8 each.

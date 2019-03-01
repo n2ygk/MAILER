@@ -1,0 +1,6 @@
+./ I 00546316          $ 546318 2                     03/14/91 16:53:36
+DBGVALID EQU   X'02'               Trace VALIDATE processing            00546318
+./ I 00546569          $ 546570 1                     03/14/91 16:53:36
+         DC    A(DBGFLG7-MAILBLOK,MAILTR77,DBGVALID)                    00546569
+./ I 00546842          $ 546843 1                     03/14/91 16:53:36
+MAILTR77 DC    Y(14),C'VALIDATE-TRACE'                                  00546842

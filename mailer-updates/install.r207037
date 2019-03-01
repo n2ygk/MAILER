@@ -1,0 +1,52 @@
+./ R 01783267 01783317 $ 1783273 6                    03/15/91 13:32:26
+.sp 2                                                                   01783270
+MAILER085E **** MAILER PROFILE coding error ***** : THISNODE value not  01783273
+found in OUTGOING table.                                                01783276
+.in +4                                                                  01783279
+.sp 1                                                                   01783282
+The THISNODE value does not have a matching entry in the OUTGOING table.01783285
+.us /This means /Mailer/ will not be able to deliver to the local node  01783288
+name.                                                                   01783291
+.sp 1                                                                   01783294
+To fix the error add a line to the OUTGOING section to handle a nodename01783297
+of the THISNODE value.                                                  01783300
+.in -4                                                                  01783303
+.sp 2                                                                   01783270
+MAILER086E **** MAILER PROFILE coding error ***** : One or more         01783273
+MAINTUSERn values not defined                                           01783276
+.in +4                                                                  01783279
+.sp 1                                                                   01783282
+The MAINTUSERnn/MAINTNODEnn values pairs must start with                01783285
+MAINTUSER1/MAINTNODE1 and increment sequentially.
+There is a gap in the list that you have coded.                         01783288
+.sp 1
+To fix the error
+look at your profile to determine which MAINTUSERnn value(s) are missing01783297
+and correct the numbers (move everything following the gap to a lower   01783300
+number).
+.in -4                                                                  01783303
+.sp 2                                                                   01783270
+MAILER087E **** MAILER PROFILE coding error ***** : MAINTNODEnn missing 01783273
+MAINTUSER                                                               01783276
+.in +4                                                                  01783279
+.sp 1                                                                   01783282
+A MAINTNODEnn value was coded but there is no matching MAINTUSERnn      01783285
+value.
+.sp 1                                                                   01783294
+To fix the error add a matching MAINTUSERnn value.                      01783297
+.in -4                                                                  01783303
+.sp 2                                                                   01783270
+MAILER088E **** MAILER PROFILE coding error ***** : MAINTNODEnn not     01783273
+found in OUTGOING table.                                                01783276
+.in +4                                                                  01783279
+.sp 1                                                                   01783282
+The MAINTNODEnn value does not exist in the OUTGOING table.             01783285
+Since all nodes on the network normally exist there this indicates a    01783288
+possible problem.                                                       01783291
+.sp 1                                                                   01783294
+To fix the error add a line to the OUTGOING section to handle a nodename01783297
+of the MAINTNODEnn value or correct the MAINTNODEnn value if it is      01783300
+wrong.
+.in -4                                                                  01783303
+.in -.33i                                                               01783306
+.subhead 13.2. BSMTP Messages                                           01783317

@@ -1,0 +1,383 @@
+VMMLOG   TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - VMM LOG EXIT'       00001000
+*---------------------------------------------------------------------* 00002000
+*      MAILER -- Copyright (c) 1982,1987 Columbia University.         * 00003000
+*    Program Property of the Trustees of Columbia University in the   * 00004000
+*    City of New York.                                                * 00005000
+*---------------------------------------------------------------------* 00006000
+VMMLOG   CSECT ,                                                        00007000
+* VMMLOG -                                                              00008000
+*  This exit appends mail to a Columbia VMM-format log file (a VMMLOG)  00009000
+*  which can be used to implement a "bulletin board."  This code is     00010000
+*  a MAILER 1.24 rewrite of the older BBMAIL exit.                      00011000
+*                                                                       00012000
+*  The name of the vmmlog file is derived from the rtparm field         00013000
+*  for the filename,  "vmmlog" for the file type,  and the letter       00014000
+*  specified in the mailer profile parm "<rtparm>-Mail-disk" or,        00015000
+*  if not specified, "A".                                               00016000
+*                                                                       00017000
+* called via-                                                           00018000
+*  call vmmlog,(mailblok,actadr)                                        00019000
+PAB      DSECT ,                                                        00020000
+@MBLOK   DS    A             ADDRESS OF MAILBLOK                        00021000
+@ACT     DS    A             ADDRESS OF ACTADR BLOCK                    00022000
+*                                                                       00023000
+*---------------------------------------------------------------------* 00024000
+*  How it works:                                                        00025000
+*   1) Find the current last record number in the VMMLOG.               00026000
+*      a) If the file doesn't exist, initialize a new one.              00027000
+*      b) If it does exist,  parse the preceding *:VmmE record for      00028000
+*         the memo number.  Avoid decimal data exceptions :-)           00029000
+*   2) Append a dummy *:VmmS header to the file.  The various header    00030000
+*      item pointers or record count can't be filled in until we've     00031000
+*      actually copied the mail file and looked for the headers.        00032000
+*      (The header has a trailing ';' in column 80 to guarantee it is   00033000
+*       of fixed length even though the file recfm is V.)               00034000
+*   3) Copy the mail header (with rdhdr) to the file,  parsing for      00035000
+*      the "Subject, From, To, Date, CC, Sender, Reply-To" fields.      00036000
+*      Set the appropriate field header pointer in the in-core *:VmmS   00037000
+*      header.                                                          00038000
+*   4) Copy the mail body (with rdtxt) to the file, counting records.   00039000
+*   5) Now that the *:VmmS header has been filled in, fspoint back to   00040000
+*      where the "place-holder" was written and rewrite the completed   00041000
+*      header.                                                          00042000
+*   6) Make the necessary changes to the *:VmmS header to turn it into  00043000
+*      a *:VmmE header and append it to the end of the file.            00044000
+*--------------------------------------------------------------------*  00045000
+         SPACE                                                          00046000
+* REGISTER USAGE -                                                      00047000
+R0  EQU  0 -                                                            00048000
+R1  EQU  1 -                                                            00049000
+R2  EQU  2 -                                                            00050000
+R3  EQU  3 -                                                            00051000
+R4  EQU  4 - work                                                       00052000
+R5  EQU  5 -                                                            00053000
+R6  EQU  6 -                                                            00054000
+R7  EQU  7 -                                                            00055000
+R8  EQU  8 - Record counter                                             00056000
+R9  EQU  9 - VMMLOG file FSCB                                           00057000
+R10 EQU 10 - The "current" VMM header/trailer buffer (base for VMMH)    00058000
+R11 EQU 11 - MAILBLOK BASE                                              00059000
+R12 EQU 12 - PROGRAM BASE                                               00060000
+R13 EQU 13 - SAVE AREA                                                  00061000
+R14 EQU 14 - SUBROUTINE LINKAGE                                         00062000
+R15 EQU 15 - SUBROUTINE LINKAGE                                         00063000
+         SPACE                                                          00064000
+         PRINT NOGEN                                                    00065000
+         BLOCKS ,                                                       00066000
+         MAILBLOK ,                                                     00067000
+         FSTD  DSECT                                                    00068000
+         EJECT ,                                                        00069000
+VMMLOG   CSECT ,                                                        00070000
+         USING VMMLOG,R15    TEMPORARY ADDRESSABILITY                   00071000
+         B     EYESKIP       BRANCH OVER EYESKIP                        00072000
+MYNAME   DC    CL8'VMMLOG',CL8'&SYSDATE'                                00073000
+EYESKIP  DS    0H                                                       00074000
+         DROP  R15                                                      00075000
+         STM   R14,R12,12(R13) SAVE CALLER'S REGS                       00076000
+         LR    R12,R15       PERMANENT ADDRESSABILITY                   00077000
+         USING VMMLOG,R12                                               00078000
+         LA    R14,SAVE      MY SAVE AREA                               00079000
+         ST    R13,4(R14)    SAVE CALLER'S PTR                          00080000
+         ST    R14,8(R13)    CHAIN MINE BACK                            00081000
+         LR    R13,R14       SET MY SAVE PTR                            00082000
+         USING PAB,R1        ADDRESS THE PARMS                          00083000
+         L     R11,@MBLOK    GET MAILBLOK BASE                          00084000
+         USING MAILBLOK,R11  make use of it                             00085000
+         L     R1,@ACT       GET ACTADR ADDRESS                         00086000
+         USING ACTADR,R1     ADDRESS IT                                 00087000
+         L     R1,ACTRT      GET ROUTD ADDRESS                          00088000
+         USING ROUTD,R1      ADDRESS IS                                 00089000
+         MVC   FNAME,RTPARM  USE PARM AS FILE NAME                      00090000
+         DROP  R1            done with ROUTD                            00091000
+         CLI   FNAME,C' '    did they provide a filename?               00092000
+         BNE   FNAMEOK       -> the name filled in is OK.               00093000
+         MVC   FNAME,=CL8'BBOARD' else default it to BBOARD.            00094000
+FNAMEOK  EQU   *             <- here when name is set                   00095000
+         SPACE ,                                                        00096000
+*--------------------------------------------------------------------   00097000
+*   FIND FILEMODE OF VMMLOG DISK                                        00098000
+*   THIS DEFAULT TO "A6" BUT CAN BE OVERIDDEN BY A PARM KEYWORD         00099000
+*   COMPOSED OF THE RTPARM (OR FILE) NAME AND "-MAIL-DISK".  FOR        00100000
+*   EXAMPLE:                                                            00101000
+*        US-MAIL-DISK=F                                                 00102000
+*        SY-MAIL-DISK=G                                                 00103000
+*        SYSTEM-MAIL-DISK=H                                             00104000
+*--------------------------------------------------------------------   00105000
+         LA    R1,FNAME+8    POINT TO END OF NAME                       00106000
+         MVI   TRAPTAB+C' ',X'FF' TRAP ON BLANKS                        00107000
+         TRT   FNAME,TRAPTAB TRAP THE FIRST BLANK                       00108000
+         MVI   TRAPTAB+C' ',X'00' RESET THE TABLE                       00109000
+         S     R1,=A(FNAME)  GET LENGTH OF TOKEN                        00110000
+         BCTR  R1,0          -1 FOR EXECUTE                             00111000
+         EX    R1,MOVER      MVC PARMDISK(0),FNAME                      00112000
+         LA    R2,PARMDISK+1(R1) GET POSITION TO COPY FIXED PART FROM   00113000
+         MVC   0(L'MAILDISK,R2),MAILDISK BUILD THE PARM NAME            00114000
+         MVC   FMODE,=CL2'A6'  DEFAULT SETTING                          00115000
+         LA    R3,L'MAILDISK+1(R1) GET LENGTH OF PARM NAME              00116000
+         L     R5,MAILPTAB   GET MAILER PARM TABLE                      00117000
+         L     R15,ATBLUK                                               00118000
+         CALL  (15),((R5),PARMDISK,(R3),TWORK)                          00119000
+         LTR   R15,R15       FIND IT                                    00120000
+         BNZ   NODISK        NOPE                                       00121000
+         CLI   0(R1),1       1 CHARACTER OR 2?                          00122000
+         BH    NDISK1        2                                          00123000
+         MVC   FMODE(1),1(R1) GET THE FIRST LETTER, NUMBER IS 2         00124000
+         B     NODISK                                                   00125000
+NDISK1   EQU   *                                                        00126000
+         MVC   FMODE,1(R1)   GET LETTER AND NUMBER (I.E. F2)            00127000
+NODISK   EQU   *                                                        00128000
+         SPACE ,                                                        00129000
+*---------------------------------------------------------------------- 00130000
+* 0) Initialize the *:VmmS and *:VmmE buffers.                          00131000
+*---------------------------------------------------------------------- 00132000
+         MVI   VMMS,C' '     start with a blank                         00133000
+         MVC   VMMS+1(L'VMMS-1),VMMS and then propagate it.             00134000
+         USING VMMH,R10      R10 will always point at *some* VMM header 00135000
+         LA    R10,VMMS      first grab the header.                     00136000
+         MVC   VMMIDENT,=C'*:VmmS' initalize                            00137000
+         MVI   VMMLAST,C';'  drop off the trailing semicolon            00138000
+*--------------------------------------------------------------------   00139000
+*  1) Find record number we will be appending at....                    00140000
+*     a) State the file and create it if it doesn't exist.              00141000
+*     b) For an existing file, read the last record which should        00142000
+*        be a VmmE.  Parse out the memo number and increment it.        00143000
+*--------------------------------------------------------------------   00144000
+         LA    R3,FNAME                                                 00145000
+         FSSTATE (R3),ERROR=FSSERR,FORM=E                               00146000
+         USING FSTD,R1                                                  00147000
+         L     R4,FSTAIC               get record count                 00148000
+         DROP  R1                                                       00149000
+         FSREAD (R3),RECNO=(R4),BUFFER=PREVHDR,RECFM=V,BSIZE=80,       *00150000
+               ERROR=FSRERR,FORM=E                                      00151000
+         LR    R9,R1                   get fscb                         00152000
+         FSCLOSE FSCB=(R9)             close it (in case of CDF)        00153000
+         LA    R4,1(,R4)               +1 is where the new VmmS goes.   00154000
+         ST    R4,RECNO                save for later                   00155000
+         LA    R10,PREVHDR             look at previous header          00156000
+         CLC   =C'*:Vmm',VMMIDENT      see if it is proper data.        00157000
+         BNE   CORRUPT                 -> file has become corrupted     00158000
+         CLI   VMMHLINS,C'='           memo # is preceeded by '='       00159000
+         BNE   CORRUPT                 -> junk                          00160000
+         TRT   VMMHLINS+1(L'VMMHLINS-1),DIGITS look for non-decimal     00161000
+         BNZ   CORRUPT                 -> avoid decimal data exceptions 00162000
+         PACK  DWORD,VMMHLINS+1(L'VMMHLINS-1)  good ole PD              00163000
+         AP    DWORD,=P'1'             add 1 to the current seqnum      00164000
+         UNPK  NEXTSEQ,DWORD           to get the new one               00165000
+         OI    NEXTSEQ+L'NEXTSEQ-1,X'F0'                                00166000
+CREATED  EQU   *                       <- "come from" FSSERR/CREATE     00167000
+*--------------------------------------------------------------------   00168000
+*   Fill in the VmmS fields that we know about now.                     00169000
+*--------------------------------------------------------------------   00170000
+         LA    R10,VMMS      repoint VMMH base at *:VmmS buffer         00171000
+         MVC   VMMKEY,=CL8' ' SET DEFAULT KEY TO BLANKS                 00172000
+         LA    R1,TDATE      4 DWORDS                                   00173000
+         DC    X'8310000C'   GET TIME                                   00174000
+         MVC   VMMDATEN(2),TDATE+6 GET YEAR PAIR                        00175000
+         MVC   VMMDATEN+2(2),TDATE GET MONTH PAIR                       00176000
+         MVC   VMMDATEN+4(2),TDATE+3 GET DAY PAIR                       00177000
+         MVC   VMMTIMEN(2),TDATE+8   GET TIMESTAMP                      00178000
+         MVC   VMMTIMEN+2(2),TDATE+11                                   00179000
+         MVC   VMMTIMEN+4(2),TDATE+14                                   00180000
+         L     R5,MAILKTAB   GET MAIL FILE KEYWORD TABLE                00181000
+         L     R15,ATBLUK                                               00182000
+         CALL  (15),((R5),KEYWORD,L'KEYWORD,TWORK)                      00183000
+         LTR   R15,R15       FIND IT                                    00184000
+         BNZ   NOKEY         NOPE                                       00185000
+         LR    R6,R1         COPY FIELDD POINTER                        00186000
+         USING FIELDD,R6     ADDRESS IT                                 00187000
+         ICM   R6,B'1111',FITOK GET TOKEN LIST                          00188000
+         DROP  R6                                                       00189000
+         USING TOKEND,R6     THIS IS THE "KEYWORD:" TOKEN               00190000
+         ICM   R6,B'1111',TOKNEXT  NEXT IS THE KEYWORD VALUE            00191490
+         BZ    NOKEY         NO KEYWORD SUPPLIED                        00192000
+         SR    R4,R4         GET ZERO                                   00193000
+         MVC   VMMKEY,=CL8' '  BLANK IT                                 00194000
+         L     R4,TOKLEN     GET LENGTH                                 00195490
+         C     R4,=F'8'      CHECK LENGTH                               00196000
+         BNH   *+8           TRUNCATE IF MORE THAN 8                    00197000
+         LA    R4,8                                                     00198000
+         L     R6,TOKPTR          STRING POINTER                        00199680
+         DROP  R6                                                       00200000
+         BCTR  R4,0          -1 FOR EXECUTE                             00201000
+         EX    R4,MOVEKEY    MOVE THE KEYWORD IN                        00202000
+         OC    VMMKEY,=CL8' ' CONVERT TO UPPER CASE                     00203000
+NOKEY    EQU   *                                                        00204000
+* append the partially filled in VmmS record.  Come back to it later.   00205000
+         FSWRITE FSCB=(R9),BUFFER=VMMS,RECFM=V,BSIZE=80,               *00206000
+               RECNO=0,ERROR=FSWERR,FORM=E                              00207000
+*---------------------------------------------------------------------  00208000
+* 3) Write the mail header out to the file now.  As each header line    00209000
+*    is written:                                                        00210000
+*    a) keep track of the number of records written                     00211000
+*    b) look for the keywords and if found plug the record number into  00212000
+*       the VmmS header.                                                00213000
+*---------------------------------------------------------------------  00214000
+         LA    R8,1          currently have written one record out.     00215000
+HDRLOOP  EQU   *             <- top of header copying loop              00216000
+         LA    R1,L'BUFFER   set max buffer length for RDHDR            00217000
+         ST    R1,BUFLEN      "   "   "       "     "    "              00218000
+         L     R15,ARDHDR    address of the header reader               00219000
+         CALL  (15),(BUFFER,BUFLEN) call rdhdr; buflen gets updated     00220000
+         LTR   R15,R15       end of header?                             00221000
+         BNZ   HDREND        end of the header loop                     00222000
+         L     R4,BUFLEN     get length of this header line             00223000
+         FSWRITE FSCB=(R9),BUFFER=BUFFER,RECFM=V,BSIZE=(R4),           *00224000
+               ERROR=FSWERR,FORM=E                                      00225000
+         LA    R8,1(,R8)     increment record counter                   00226000
+*---------------------------------------------------------------------- 00227000
+*  Check for header keywords:  Uppercase the buffer and then compare    00228000
+*  the list of keywords.  The list is pretty small,  so just do it      00229000
+*  inline instead of mucking around with some sort of table.            00230000
+*  Also,  it's pretty safe to ignore the length of the buffer.          00231000
+*---------------------------------------------------------------------- 00232000
+         TR    BUFFER,UPCASE upper case the buffer                      00233000
+         CLC   =C'SUBJECT',BUFFER                                       00234000
+         BE    HDRSUBJ                                                  00235000
+         CLC   =C'FROM',BUFFER                                          00236000
+         BE    HDRFROM                                                  00237000
+         CLC   =C'TO',BUFFER                                            00238000
+         BE    HDRTO                                                    00239000
+         CLC   =C'DATE',BUFFER                                          00240000
+         BE    HDRDATE                                                  00241000
+         CLC   =C'CC',BUFFER                                            00242000
+         BE    HDRCC                                                    00243000
+         CLC   =C'SENDER',BUFFER                                        00244000
+         BE    HDRSEND                                                  00245000
+         CLC   =C'REPLY-TO',BUFFER                                      00246000
+         BE    HDRREPL                                                  00247000
+* Not one of the keywords, so just get the next header line             00248000
+         B     HDRLOOP                                                  00249000
+HDRSUBJ  LA    R3,VMMSUBJ    point to field to fill in                  00250000
+         B     HDRCOMM       and go do common code                      00251000
+HDRFROM  LA    R3,VMMFROM                                               00252000
+         B     HDRCOMM                                                  00253000
+HDRTO    LA    R3,VMMTO                                                 00254000
+         B     HDRCOMM                                                  00255000
+HDRDATE  LA    R3,VMMDATE                                               00256000
+         B     HDRCOMM                                                  00257000
+HDRCC    LA    R3,VMMCC                                                 00258000
+         B     HDRCOMM                                                  00259000
+HDRSEND  LA    R3,VMMSENDR                                              00260000
+         B     HDRCOMM                                                  00261000
+HDRREPL  LA    R3,VMMREPTO                                              00262000
+HDRCOMM  EQU   *             <- common code for header record numbers   00263000
+         CVD   R8,DWORD      convert record number to decimal           00264000
+         SP    DWORD,=P'1'   minus 1 (don't count VmmS line)            00265000
+         UNPK  0(5,R3),DWORD unpack into appropriate header field       00266000
+         OI    4(R3),X'F0' fix the zone                                 00267000
+         B     HDRLOOP       -> get next header line                    00268000
+HDREND   EQU   *             <- here when end of hdr                    00269000
+         CVD   R8,DWORD      put the number of header lines in VmmS     00270000
+         UNPK  VMMHLINS,DWORD                                           00271000
+         OI    VMMHLINS+L'VMMHLINS-1,X'F0'                              00272000
+* Drop off a blank line to seperate header from body                    00273000
+         FSWRITE FSCB=(R9),BUFFER=ONEBLANK,RECFM=V,BSIZE=1,            *00274000
+               ERROR=FSWERR,FORM=E                                      00275000
+         LA    R8,1(,R8)     increment record count                     00276000
+*---------------------------------------------------------------------- 00277000
+* 4) Copy message body to the file.                                     00278000
+*---------------------------------------------------------------------- 00279000
+TXTLOOP  EQU   *             <- top of body copying loop                00280000
+         LA    R1,L'BUFFER   set max buffer length for RDTXT            00281000
+         ST    R1,BUFLEN      "   "   "       "     "    "              00282000
+         L     R15,ARDTXT    address of the text reader                 00283000
+         CALL  (15),(BUFFER,BUFLEN) call rdtxt; buflen gets updated     00284000
+         LTR   R15,R15       end of text?                               00285000
+         BNZ   TXTEND        -> end of the text part                    00286000
+         L     R4,BUFLEN     length of this line                        00287000
+         FSWRITE FSCB=(R9),BUFFER=BUFFER,RECFM=V,BSIZE=(R4),           *00288000
+               ERROR=FSWERR,FORM=E                                      00289000
+         LA    R8,1(,R8)     increment record counter                   00290000
+         B     TXTLOOP       -> back to the top                         00291000
+TXTEND   EQU   *             <- end of the text                         00292000
+*---------------------------------------------------------------------- 00293000
+* 5) Finish filling in the header/trailer with the record count in R8.  00294000
+*    Write out the trailer record and rewrite the header record.        00295000
+*---------------------------------------------------------------------- 00296000
+         CVD   R8,DWORD      put the total number of lines in VmmS      00297000
+         UNPK  VMMLINES,DWORD                                           00298000
+         OI    VMMLINES+L'VMMLINES-1,X'F0'                              00299000
+         MVC   VMME,VMMS     now dup the header into the trailer        00300000
+         LA    R10,VMME      point at the trailer buffer                00301000
+         MVI   VMMIDENT+5,C'E'   change VmmS to VmmE                    00302000
+         MVI   VMMHLINS,C'=' prepend '=' to message number              00303000
+         MVC   VMMHLINS+1(4),NEXTSEQ   copy sequence number in          00304000
+         FSWRITE FSCB=(R9),BUFFER=VMME,RECFM=V,BSIZE=80,ERROR=FSWERR,  *00305000
+               FORM=E                                                   00306000
+         L     R4,RECNO      remember recnum of VmmS                    00307000
+         FSWRITE FSCB=(R9),BUFFER=VMMS,RECFM=V,BSIZE=80,ERROR=FSWERR,  *00308000
+               FORM=E,RECNO=(R4) rewrite the completed VmmS header      00309000
+         FSCLOSE FSCB=(R9)   close it                                   00310000
+         LOG   VMM066,(CA,FNAME)                                        00311000
+         SR    R15,R15                                                  00312000
+RET      EQU   *                                                        00313000
+         L     R13,4(R13)              GET CALLER'S SAVE PTR            00314000
+         L     R14,12(R13)             GET R14                          00315000
+         LM    R0,R12,20(R13)          GET R0-R12                       00316000
+         BR    R14                     RETURN                           00317000
+         SPACE ,                                                        00318000
+*---------------------------------------------------------------------- 00319000
+*  Error junk                                                           00320000
+*---------------------------------------------------------------------- 00321000
+         SPACE ,                                                        00322000
+CORRUPT  DS    0H           <- here when VMMLOG is full of garbage      00323000
+         LOG   VMM065,(CA,FNAME)                                        00324000
+         LA    R15,8                                                    00325000
+         B     RET                                                      00326000
+         SPACE ,                                                        00327000
+FSSERR   DS    0H           <- here for FSSTATE error.                  00328000
+         C     R15,=F'28'   if file not found                           00329000
+         BE    CREATE       -> create it                                00330000
+         LA    R4,=CL8'FSSTATE'                                         00331000
+         B     FSCOMMON     -> go to common code                        00332000
+CREATE   EQU   *            <- here to initialize new file              00333000
+         FSWRITE (R3),BUFFER=ONEBLANK,RECFM=V,BSIZE=1,FORM=E,          *00334000
+               ERROR=FSWERR                                             00335000
+         MVC   RECNO,=F'2'  where new VmmS gets written                 00336000
+         MVC   NEXTSEQ,=CL4'0001' new message sequence number           00337000
+         LR    R9,R1        address of FSCB                             00338000
+         B     CREATED      -> new file created.                        00339000
+         SPACE ,                                                        00340000
+FSRERR   DS    0H           <- here for FSREAD error.                   00341000
+         LA    R4,=CL8'FSREAD'                                          00342000
+         B     FSCOMMON     -> go to the common code                    00343000
+         SPACE ,                                                        00344000
+FSWERR   DS    0H           <- here for FSWRITE error.                  00345000
+         LA    R4,=CL8'FSWRITE'                                         00346000
+         B     FSCOMMON     -> go to the common code                    00347000
+         SPACE ,                                                        00348000
+FSCOMMON DS    0H           <- common code for FS errors                00349000
+         LR    R5,R15       preserve return code                        00350000
+         LOG   VMM050,(CA,(R4),D,(R5))                                  00351000
+         LR    R15,R5                                                   00352000
+         B     RET                                                      00353000
+         SPACE ,                                                        00354000
+MOVEKEY  MVC   VMMKEY(0),0(R6)                                          00355000
+MOVER    MVC   PARMDISK(0),FNAME                                        00356000
+DIGITS   DC    256X'1'                 xlate table to find bad numbers  00357000
+         ORG   DIGITS+C'0'                                              00358000
+         DC    10X'0'                                                   00359000
+         ORG   DIGITS+C' '   blank is like zero                         00360000
+         DC    X'0'                                                     00361000
+         ORG   ,                                                        00362000
+         LTORG ,                                                        00363000
+ONEBLANK DC    C' '          like the name says                         00364000
+KEYWORD  DC    C'KEYWORDS'                                              00365000
+MAILDISK DC    C'-MAIL-DISK' RIGHT END OF "<PARM>-MAIL-DISK"            00366000
+FNAME    DC    CL8'SYSTEM',CL8'VMMLOG'                                  00367000
+FMODE    DS    CL2           SYSTEM MAIL FILE DISK                      00368000
+SAVE     DS    18F                     SAVE AREA                        00369000
+DWORD    DS    D                                                        00370000
+TWORK    DS    32D                                                      00371000
+TDATE    DS    4D                                                       00372000
+RECNO    DS    F                                                        00373000
+NEXTSEQ  DS    CL4                                                      00374000
+BUFFER   DC    CL80' '                                                  00375000
+BUFLEN   DS    F                                                        00376000
+PARMDISK DC    C'12345678-MAIL-DISK'  MAX LENGTH PARAMETER NAME         00377000
+VMMS     DS    CL80          the *:VmmS header                          00378000
+VMME     DS    CL80          the *:VmmE trailer                         00379000
+PREVHDR  DS    CL80          the previous *:VmmE trailer                00380000
+VMMH     DSECT ,             The VMM header/trailer                     00381000
+         COPY  VMM                                                      00382000
+         END   VMMLOG                                                   00383000

@@ -1,0 +1,10 @@
+./ R 00010995          $ 10997 2                      12/05/90 13:58:53
+         DC    A(83)         HIGHEST MESSAGE NUMBER DEFINED      [1.24] 00010995
+./ R 00014997          $ 14998 1                      12/05/90 13:58:53
+         DC A(M77,M78,M79,M80,M81,M82,M83)                              00014997
+./ I 00203690          $ 203720 30                    12/05/90 13:58:53
+         SPACE 1                                                        00202930
+T83      DC    AL1(LT83),C'MAILER083E **** MAILER PROFILE coding error' 00202970
+         DC    C' ***** : THISNODE not defined'                         00203010
+LT83     EQU   *-T83-1                                                  00203050
+M83      DC    A(T83),AL1(3,3,0)                                        00203090

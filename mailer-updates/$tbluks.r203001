@@ -1,0 +1,6 @@
+./ I 00046000          $ 46100 100                    03/06/89 11:55:40
+    if (sl < 0) {                                                       00046100
+        wrterm("*** Error *** _tbluks called with negative length");    00046200
+        return TBNOT;                                                   00046300
+    }                                                                   00046400
+                                                                        00046500

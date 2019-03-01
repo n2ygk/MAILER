@@ -1,0 +1,6 @@
+./ I 00196000          $ 196100 100                   03/27/91 17:16:08
+/*  The following line assumes that FORWARDX is run only 1 time if    */
+/*  the server is running disconnected.  If you want to use the       */
+/*  CP SLEEP loop in the sample PROFILE EXEC you must delete this     */
+/*  line.                                                             */
+

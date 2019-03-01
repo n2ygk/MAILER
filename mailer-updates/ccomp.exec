@@ -1,0 +1,53 @@
+/*
+ * CCOMP fn [ft] [(options]  C compile w/updates
+ *
+ * options: passed to GET
+ */
+
+signal on error
+arg fn ft '(' options ')' .
+if fn = "" then exit;
+if ft = "" then ft = "C";
+
+ccopts = ''                                  /*                       */
+getopts = ''                                 /*                       */
+
+do i=1 to words(options)                     /*                       */
+   option = word(options,i)                  /*                       */
+   if find('CLOBBER CONT LOGERASE MACS PRINT',option) > 0  then
+      getopts = getopts option
+   else                                      /*                       */
+      ccopts = ccopts option
+   end
+
+address COMMAND 'CP SPOOL PRT CONT'
+'GET' fn ft '(MACS NOLOGERASE' getopts
+pull .
+if ft = "Y" then
+  'BISON' fn                  /* preprocess w/ parser generator */
+'CC' fn '(OPT ALIGN' ccopts
+address COMMAND 'CP SPOOL PRT NOCONT CLOSE'
+
+/* now add update history to front of text file */
+
+signal off error
+address COMMAND 'ESTATE' fn 'UPDATES A'
+signal on error
+if rc = 0 then do             /* updates exist */
+    'RENAME' fn 'TEXT A = = A3'
+    'COPY' fn 'TEXT A' fn 'UPDATES A (APPEND'
+    'RENAME' fn 'UPDATES A = TEXT A1'
+end
+
+/* clean up and exit */
+
+signal off error
+address COMMAND 'ERASE' fn ft
+address COMMAND 'ERASE' fn 'UPDATES'
+address COMMAND 'ERASE' fn 'UPDLOG'
+if ft = "Y" then do
+    address COMMAND 'ERASE' fn 'C'
+    address COMMAND 'ERASE' fn 'ACTION'
+end
+
+error: exit rc;

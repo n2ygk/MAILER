@@ -1,0 +1,15 @@
+./ I 00037000          $ 37060 60                     10/12/88 13:26:11
+;**                                                                     00038000
+;** The following lines allow you to specify alternate local hostids.   00038000
+;** This is useful if your host is connected to more than 1 network
+;** and has different hostids on the connected network.
+;**                                                                     00038000
+Local-Host1=LCL.DOMAIN.EDU       ; Alternate host identifier
+Local-Host2=LCL.DOMAIN.EDU       ; Alternate host identifier
+Local-Host3=LCL.DOMAIN.EDU       ; Alternate host identifier
+Local-Host4=LCL.DOMAIN.EDU       ; Alternate host identifier
+Local-Host5=LCL.DOMAIN.EDU       ; Alternate host identifier
+Local-Host6=LCL.DOMAIN.EDU       ; Alternate host identifier
+Local-Host7=LCL.DOMAIN.EDU       ; Alternate host identifier
+Local-Host8=LCL.DOMAIN.EDU       ; Alternate host identifier
+Local-Host9=LCL.DOMAIN.EDU       ; Alternate host identifier

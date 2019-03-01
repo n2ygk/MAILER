@@ -1,0 +1,2 @@
+./ I 00026370          $ 26570 200                    12/20/89 11:46:09
+#define MOPTNO82 0x02        /* Don't look for RFC822 inside BSMTP   */ 00026670

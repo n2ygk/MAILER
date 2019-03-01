@@ -1,0 +1,167 @@
+./ I 00124880          $ 124881 1                     03/18/91 10:21:36
+         EJECT ,                                                        00124881
+./ R 00124889 00124942 $ 124890 1                     03/18/91 10:21:36
+*--------------------------------------------------------------------   00124890
+         SPACE 2                                                        00124891
+*--------------------------------------------------------------------   00124892
+*                                                                       00124893
+*        At the top of the local-host loop (label LCHLOOP) register     00124894
+*        15 will point to the last lclhost entry used.  This is         00124895
+*        done to allow for checking for holes in the Local-Hostn        00124896
+*        list.  If a hole is found the return code will be set          00124897
+*        to stop execution of Mailer.                                   00124898
+*                                                                       00124899
+*        This loop will also verify the existince of the local-host     00124900
+*        name in the OUTGOING table.  If not found a message will       00124901
+*        be issued and the name will be checked for in the DOMAINS      00124902
+*        table.  A message indicating the success or failure of this    00124903
+*        search will always be issued.  Mailer will continue to run     00124904
+*        even if one or more of the local-host names are not found.     00124905
+*        This isn't necessarily good, but I assume you know what you    00124906
+*        are doing (and there will be error messages in the console     00124907
+*        to help you figure out what you did).                          00124908
+*                                                                       00124909
+*--------------------------------------------------------------------   00124910
+         SPACE 1                                                        00124911
+         LA    R3,LCLHOST          Address of LocalHost array.          00124912
+         LA    R4,L'LCLHOST/4      Number of entries in LCLHOST.        00124913
+         LR    R15,R3              Initial last entry ptr value         00124914
+LCHLOOP  DS    0H                                                       00124915
+         ICM   R1,B'0111',1(R3)    Is there a LocalHost ptr?            00124916
+         BZ    LCHNEXT             ---> No, keep looping.               00124917
+         CLC   1(3,R15),=XL3'0'    Was there a previous one?            00124918
+         BNE   LCHNOHOL            ---> Yes                             00124919
+         WTR   STI084              Tell user about hole                 00124920
+         MVC   EXITRC,=F'16'       Set error return code                00124921
+LCHNOHOL EQU   *                                                        00124922
+         SR    R6,R6               Get Local-Host                       00124923
+         ICM   R6,B'0001',0(R1)       length.                           00124924
+         BZ    LCHNEXT             ---> Zero length                     00124925
+         LA    R7,1(,R1)           Start of string                      00124926
+         L     R8,MAILRTAB         Point to OUTGOING table              00124927
+         CALL  TBLUK,((R8),(R7),(R6),TWORK)                             00124928
+         LTR   R15,R15             Was it found?                        00124929
+         BZ    LCHNEXT             ---> Yes                             00124930
+         LR    R15,R6              Copy field name length               00124931
+         BCTR  R15,0               Decrement                            00124932
+         MVC   LCHOSTNM,=CL40' '   Clear to blanks                      00124933
+         EX    R15,COPYNAME        Move into field for msg processing   00124934
+         WTR   STI072,(CA,LCHOSTNM)  Issue msg                          00124935
+         L     R8,MAILDTAB         Point to DOMAINS table               00124936
+         CALL  TBLUK,((R8),(R7),(R6),TWORK)                             00124937
+         LTR   R15,R15             Was it found?                        00124938
+         BZ    LCHNDOM             ---> Yes                             00124939
+         WTR   STI073,(CA,LCHOSTNM)  Issue msg                          00124940
+         B     LCHNEXT             ---> Keep looping                    00124941
+         SPACE 1                                                        00124942
+LCHNDOM  EQU   *                                                        00124943
+./ R 00124958 00125000 $ 124967 9                     03/18/91 10:21:36
+         SPACE 2                                                        00124967
+*--------------------------------------------------------------------   00124976
+*        Validate the existence of the THISNODE value in the            00124985
+*        OUTGOING table.  Since this is the NJE name for the local      00124994
+*        node this is the only reasonable place for it to appear.       00125003
+*                                                                       00125012
+*        If THISNODE is not defined or if the value in not found        00125021
+*        in OUTGOING the return code will be set to stop mailer         00125030
+*        before mail processing begins.                                 00125039
+*--------------------------------------------------------------------   00125048
+         SPACE 1                                                        00125057
+         CLC   CPUSLEN,=F'0'       THISNODE defined?                    00125066
+         BNE   HAVETHIS            ---> Yes                             00125075
+         WTR   STI083              Issue msg                            00125084
+         B     BADTHIS             ---> Set return code                 00125093
+         SPACE 1                                                        00125102
+HAVETHIS EQU   *                                                        00125111
+         L     R0,MAILRTAB         Pointer to OUTGOING table            00125120
+         LA    R14,CPUSTR          Pointer to string                    00125129
+         L     R15,CPUSLEN         Length                               00125138
+*        CALL  TBLUK,(MAILRTAB,CPUSTR,CPUSLEN,TWORK)                    00125147
+         CALL  TBLUK,((R0),(R14),(R15),TWORK)                           00125156
+         LTR   R15,R15             Found                                00125165
+         BZ    MNTCHECK            ---> Yes                             00125174
+         WTR   STI085              Issue msg                            00125183
+         SPACE 1                                                        00125192
+BADTHIS  EQU   *                                                        00125201
+         MVC   EXITRC,=F'16'       Set return code                      00125210
+         SPACE 2                                                        00125219
+*--------------------------------------------------------------------   00125228
+*        Validate the MAINTNODEn values.  Since these values only       00125237
+*        appear during MSG/SMSG validation they must be NJE             00125246
+*        addresses.is the only reasonable place for it to appear.       00125255
+*--------------------------------------------------------------------   00125264
+         SPACE 1                                                        00125273
+MNTCHECK EQU   *                                                        00125282
+         LA    R3,MAINTID          Point to start of list               00125291
+         LR    R15,R3              Initial last entry ptr value         00125300
+MNTLOOP  EQU   *                                                        00125309
+         CLI   0(R3),X'FF'         At end of list?                      00125318
+         BE    LOADEXIT            ---> Yes                             00125327
+         CLI   0(R3),X'00'         Have a userid?                       00125336
+         BNE   MNTUID              ---> Yes                             00125345
+         CLI   8(R3),X'00'         Have a node value?                   00125354
+         BE    MNTNEXT             ---> No, that's ok                   00125363
+         SPACE 1                                                        00125372
+*        If we arrive here we have a node with no userid                00125381
+*        Validate that previous entry existed before issuing error msg  00125390
+         SPACE 1                                                        00125399
+         CLI   0(R15),X'00'        Previous entry?                      00125408
+         BNE   MNTNOU              ---> Yes                             00125417
+         WTR   STI086              Issue error messgage                 00125426
+MNTNOU   EQU   *                                                        00125435
+         LR    R15,R3              Copy current pointer                 00125444
+         LA    R14,MAINTID         Table start                          00125453
+         SR    R15,R14             Offset to pointer                    00125462
+         SRL   R15,4                / 16 (length of each entry)         00125471
+         LA    R2,1(,R15)           +1 = entry number                   00125480
+         MVC   MSGBUFF,MSGBUFF-1   Clear to blanks                      00125489
+         LINEDIT TEXT='..',SUB=(DEC,(R2)),                             X00125498
+               DISP=NONE,BUFFA=MSGBUFF,DOT=NO,COMP=YES                  00125507
+         WTR   STI087,(CA,MSGBUFF+1)    Issue error msg                 00125516
+         B     MNTNEXT                                                  00125525
+         SPACE 1                                                        00125534
+*        If we arrive here we have a userid                             00125543
+*        Validate that previous entry existed before checking node      00125552
+         SPACE 1                                                        00125561
+MNTUID   EQU   *                                                        00125570
+         CLI   0(R15),X'00'        Previous entry?                      00125579
+         BNE   MNTUID2             ---> Yes                             00125588
+         WTR   STI086              Issue error messgage                 00125597
+MNTUID2  EQU   *                                                        00125606
+         CLI   8(R3),X'00'         Have a node value?                   00125615
+         BE    MNTNEXT             ---> No, that's ok                   00125624
+         L     R0,MAILRTAB         Pointer to OUTGOING table            00125633
+         LA    R14,8(,R3)          Pointer to string                    00125642
+         LA    R15,7(,R14)         Last character                       00125651
+MNTUID4  EQU   *                                                        00125660
+         CLI   0(R15),C' '         A blank?                             00125669
+         BNE   MNTUID6             ---> No, done trimming               00125678
+         BCT   R15,MNTUID4         ---> Trim 1 and try again            00125687
+MNTUID6  EQU   *                                                        00125696
+         SR    R15,R14             Compute offset                       00125705
+         BM    MNTNEXT             ---> all blanks                      00125714
+         LA    R15,1(,R15)         Compute length                       00125723
+*        CALL  TBLUK,(MAILRTAB,STR,STRLEN,TWORK)                        00125732
+         CALL  TBLUK,((R0),(R14),(R15),TWORK)                           00125741
+         LTR   R15,R15             Found                                00125750
+         BZ    MNTNEXT             ---> Yes                             00125759
+         LR    R15,R3              Copy current pointer                 00125768
+         LA    R14,MAINTID         Table start                          00125777
+         SR    R15,R14             Offset to pointer                    00125786
+         SRL   R15,4                / 16 (length of each entry)         00125795
+         LA    R2,1(,R15)           +1 = entry number                   00125804
+         MVC   MSGBUFF,MSGBUFF-1   Clear to blanks                      00125813
+         LINEDIT TEXT='..',SUB=(DEC,(R2)),                             X00125822
+               DISP=NONE,BUFFA=MSGBUFF,DOT=NO,COMP=YES                  00125831
+         WTR   STI088,(CA,MSGBUFF+1)    Issue error msg                 00125840
+         SPACE 1                                                        00125849
+MNTNEXT  EQU   *                                                        00125858
+         LR    R15,R3              Remember last entry location         00125867
+         LA    R3,16(,R3)          To next entry                        00125876
+         B     MNTLOOP             ---> Around again                    00125885
+         SPACE 2                                                        00125894
+*--------------------------------------------------------------------   00125903
+*        End of profile validation                                      00125912
+*--------------------------------------------------------------------   00125921
+         EJECT ,                                                        00125930
+*--------------------------------------------------------------------   00125939

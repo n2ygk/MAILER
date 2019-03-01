@@ -1,0 +1,354 @@
+TOKENIZR TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - TOKENIZE ARPA ADDRE*00001000
+               SS STRING'                                               00002000
+TOKENIZR CSECT ,                                                        00003000
+*---------------------------------------------------------------------* 00004000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00005000
+*    Program Property of the Trustees of Columbia University in the   * 00006000
+*    City of New York.                                                * 00007000
+*---------------------------------------------------------------------* 00008000
+*  TOKENIZR TAKES A STRING AS INPUT AND RETURNS A LINKED LIST           00009000
+*  OF TOKENS AS DEFINED BY RFC733 (ARPA MESSAGE HEADER FORMAT).         00010000
+*                                                                       00011000
+*  LAST EDIT: 4/9/82 BY ALAN CROSSWELL                                  00012000
+*                                                                       00013000
+* ON ENTRY, R1 POINTS TO A PARMLIST:                                    00014000
+PAB      DSECT ,                                                        00015000
+@STR     DS    A             ADDRESS OF INPUT STRING POINTER            00016000
+@END     DS    A             ADDRESS OF END OF INPUT STRING POINTER     00017000
+@STK     DS    A             ADDRESS OF STACK SPACE                     00018000
+@LEN     DS    A             ADDRESS OF LENGTH OF STACK SPACE           00019000
+@TOK     DS    A             ADDRESS OF TOKEN ARRAY POINTER             00020000
+         SPACE ,                                                        00021000
+*                                                                       00022000
+* ON RETURN -                                                           00023000
+*                                                                       00024000
+*   TOKEN POINTER DWORD FORMAT:                                         00025000
+         SPACE ,                                                        00026000
+         BLOCKS ,                                                       00027000
+         SPACE 1                                                        00027300
+         COPY  DEBUG                                                    00027600
+         SPACE ,                                                        00028000
+* REGISTER USAGE -                                                      00029000
+R0 EQU 0 -                                                              00030000
+R1 EQU 1 - PARM LIST POINTER AND TRT WORK REGISTER                      00031000
+R2 EQU 2 - TRT WORK REGISTER                                            00032000
+R3 EQU 3 -                                                              00033000
+R4 EQU 4 -                                                              00034000
+R5 EQU 5 - TOKEN LIST END ADDRESS                                       00035000
+R6 EQU 6 - CURRENT INPUT STRING CHARACTER POINTER                       00036000
+R7 EQU 7 - LENGTH REMAINING IN INPUT STRING                             00037000
+R8 EQU 8 - CURRENT TOKEN POINTER ADDRESS                                00038000
+R9 EQU 9 - ADDRESS OF END OF INPUT STRING                               00039000
+R10 EQU 10 -                                                            00040000
+R11 EQU 11 -                                                            00041000
+R12 EQU 12 - BASE REGISTER                                              00042000
+R13 EQU 13 - SAVE AREA ADDRESS                                          00043000
+R14 EQU 14 -                                                            00044000
+R15 EQU 15 - RETURN CODE                                                00045000
+*                                                                       00046000
+* GLOBAL VARIABLES -                                                    00047000
+* FUNC - FUNCTION CODE BYTE FROM LATEST TRT                             00048000
+*                                                                       00049000
+* RETURN CODES                                                          00050000
+*  4 - TOKEN BUFFER SUPPLIED WAS TOO SMALL                              00051000
+*  8 - UNEXPECTED (EARLY) END OF INPUT STRING                           00052000
+* 12 - ILLEGAL CHARACTER FOUND IN TOKENIZING                            00053000
+* 16 - TOKEN LIST COMPLETE BUT MISSING ENDING X'00' CODE                00054000
+*      BECAUSE SPACE USED UP.                                           00055000
+         EJECT ,                                                        00056000
+TOKENIZR CSECT ,                                                        00057000
+         USING TOKENIZR,R15  TEMPORARY ADDRESSABILITY                   00058000
+         B     EYESKIP       SKIP OVER EYE-CATCHER                      00059000
+MYNAME   DC    CL8'TOKENIZR',CL8'&SYSDATE'                              00060000
+EYESKIP  DS    0H                                                       00061000
+         DROP  R15                                                      00062000
+         STM   R14,R12,12(R13) SAVE CALLER'S REGISTERS                  00063000
+         LR    R12,R15       GET PERMANENET ADDRESSABILITY              00064000
+         USING TOKENIZR,R12                                             00065000
+         LA    R15,SAVE      SAVE AREA                                  00066000
+         ST    R13,4(R15)    SAVE CALLER'S R13                          00067000
+         ST    R15,8(R13)    CHAIN SAVE AREAS                           00068000
+         LR    R13,R15       POINT AT MY SAVE AREA                      00069000
+         ST    R1,PARM       SAVE ADDRESS OF PARMLIST                   00070000
+         USING PAB,R1        GRAB PLIST                                 00071000
+         L     R2,@STR       ADDRESS OF STRING POINTER                  00072000
+         L     R6,0(R2)      ADDRESS OF STRING                          00073000
+         L     R2,@END       ADDRESS OF STRING END POINTER              00074000
+         L     R7,0(R2)      ADDRESS OF END OF STRING                   00075000
+         SR    R7,R6         LENGTH OF STRING                           00076000
+         L     R2,@STK       ADDRESS OF STACK POINTER                   00077000
+         L     R8,0(R2)      ADDRESS OF STACK                           00078000
+         L     R2,@LEN       ADDRESS OF LENGTH                          00079000
+         L     R5,0(R2)      LENGTH OF STACK                            00080000
+         L     R2,@TOK       ADDRESS OF TOKEN LIST POINTER              00081000
+         ST    R8,0(R2)      SET STACK TOP AS FIRST TOKEN ADDRESS       00082000
+         DROP  R1            DONE WITH PLIST                            00083000
+         AR    R5,R8                   ADDRESS OF END OF TOKEN AREA     00084000
+         LR    R9,R6         GET BEGINNING OF STRING                    00085000
+         AR    R9,R7         ADDRESS OF END OF STRING                   00086000
+         S     R8,=A(TOKSIZ) Backup ptr by one TOKEND length            00087490
+* START STATE (STATE0)                                                  00088000
+START    EQU   *                                                        00089000
+         MVI   CURRSTAT,0    CURRENT STATE IS ZERO                      00090000
+         CR    R6,R9         PAST END OF STRING?                        00091000
+         BNL   DONE          DONE, FINISH UP                            00092000
+         LA    R8,TOKSIZ(R8) POINT TO NEXT TOKEN ENTRY                  00093490
+         CR    R8,R5         PAST END OF LIST?                          00094000
+         BH    TOKOVFL       OVERFLOW ERROR                             00095000
+         SR    R0,R0         GET A ZERO                                 00096000
+         USING TOKEND,R8     ADDRESS THE TOKEN ENTRY                    00097000
+         XC    TOKLEN,TOKLEN  INIT TOKEN LENGTH TO ZERO                 00098690
+         LA    R1,TOKSIZ(R8)      GET ADDRESS OF NEXT TOKEN             00099380
+         ST    R1,TOKNEXT         SET NEXT POINTER                      00100070
+         LA    R14,TABLE0    ADDRESS OF STATE 0 TRT TABLE               00101000
+         B     TESTER        GO DO THE TRT STUFF                        00102000
+TOKOVFL  EQU   *             TOKEN  LIST WAS TOO SMALL                  00103000
+         LA    R15,4         ERROR CODE                                 00104000
+         B     RET           GO RETURN                                  00105000
+* ATOM STATE (STATE1)                                                   00106000
+ATOM     EQU   *                                                        00107000
+         MVI   CURRSTAT,1    CURRENT STATE IS 1                         00108000
+         LA    R14,TABLE1    STATE 1 TRANSLATE TABLE                    00109000
+         B     TESTER                                                   00110000
+* Q-STR STATE (STATE2)                                                  00111000
+QSTR     EQU   *                                                        00112000
+         MVI   CURRSTAT,2    CURRENT STATE IS 2                         00113000
+         LA    R14,TABLE2    STATE 2 TRANSLATE TABLE                    00114000
+         B     TESTER                                                   00115000
+* Q-CH (STATE3) - QUOTED CHARACTER. APPEND THE NEXT CHAR ONTO THE       00116000
+*                 TOKEN STRING                                          00117000
+QCH      EQU   *                                                        00118000
+         MVI   CURRSTAT,3          CURRENT STATE IS 3                   00119000
+* ????                                                                  00120000
+* ERROR - CONTROL PASSED HERE IF AN ERROR CODE IS SET IN FUNC           00121000
+ERROR    EQU   *                                                        00122000
+         LA    R15,12                                                   00123000
+         B     RET                                                      00124000
+****************************************************************        00125000
+* THREE OF THE STATES SHARE THIS CODE SEGMENT TO TEST FOR BREAK         00126000
+* CHARACTERS.                                                           00127000
+TESTER   EQU   *                                                        00128000
+         C     R7,F256       MORE THAN 256 CHARS LEFT?                  00129000
+         BH    FAKE256       FAKE IT TO 256                             00130000
+         LR    R11,R7        COPY LENGTH                                00131000
+         B     TESTER1                                                  00132000
+FAKE256  EQU   *                                                        00133000
+         LA    R11,256                                                  00134000
+TESTER1  EQU   *                                                        00135000
+         BCTR  R11,0         MINUS ONE FOR EXECUTE                      00136000
+         EX    R11,TRT                                                  00137000
+         BC    8,STREND      EARLY END OF STRING                        00138000
+         STC   R2,FUNC       SAVE THE FUNCTION BYTE                     00139000
+         SR    R7,R1         CALCULATE NEW LENGTH                       00140000
+         AR    R7,R6         R7 := R7 - (R1 - R6)                       00141000
+         LR    R6,R1         UPDATED STRING POINTER                     00142000
+* NOW LOOK AT THE FUNCTION CODE AND DO THE STATE CHANGE                 00143000
+         B     STATES                                                   00144000
+STREND   EQU   *                                                        00145000
+         LA    R15,8         INDICATE ERROR                             00146000
+         B     RET                                                      00147000
+*************************************************************           00148000
+* 1) SET THE TOKEN CODE                                                 00149000
+* 2) DEPENDING ON FUNCTION CODE, ADJUST APPROPRIATE REGISTERS           00150000
+*    AND TOKEN LENGTH                                                   00151000
+* 3) BRANCH TO STATE NAMED IN LEFT 4 BITS OF FUNC. CODE                 00152000
+*                                                                       00153000
+*                                                                       00154000
+STATES   EQU   *                                                        00155000
+         CLI   CURRSTAT,0    START STATE                                00156000
+         BNE   STATESB       NOPE, DON'T SET CODE                       00157000
+         ST    R6,TOKPTR         STORE START ADDRESS OF TOKEN           00158680
+         TM    FUNC,X'F0'    STATE ZERO                                 00159000
+         BZ    STATES2       YES, NEXT IS ZERO                          00160000
+         TM    FUNC,STATE1   IS NEXT ATOM STATE?                        00161000
+         BNO   STATES3                                                  00162000
+         MVI   TOKTYPE,TOKATM PUT CODE INTO POINTER                     00163490
+         B     STATESB                                                  00164000
+STATES3  EQU   *                                                        00165000
+* BY DEFAULT, GET Q-STR STATE (Q-CH STATE IS IMPOSSIBLE FROM ZERO)      00166000
+         MVI   TOKTYPE,TOKQSTR  PUT CODE INTO POINTER                   00167490
+         B     STATESB                                                  00168000
+STATES2  EQU   *                                                        00169000
+* THE FUNCTION CODE = THE DELIMITER CHARACTER                           00170000
+         MVC   TOKTYPE,0(R6) PUT INTO TOKEN CODE                        00171490
+STATESB  EQU   *                                                        00172000
+* NOW CHECK THE FUNCTION CODE AND DO THE APPROPRIATE THING              00173000
+         TM    FUNC,A        APPEND THE TOKEN                           00174000
+         BNO   STATESB1      NOPE, TRY NEXT                             00175000
+* APPENDING THE TOKEN MEANS ADD 1 TO TOKEN LENGTH                       00176000
+         SR    R1,R1         GET ZERO                                   00177000
+         L     R1,TOKLEN     GET LENGTH                                 00178490
+         LA    R1,1(R1)      ADD ONE                                    00179000
+         ST    R1,TOKLEN     AND SAVE IT BACK                           00180490
+STATESB1 EQU   *                                                        00181000
+         TM    FUNC,S        SKIP THE TOKEN                             00182000
+         BNO   STATESB2      NOPE, TRY NEXT                             00183000
+* SKIPPING THE TOKEN MEANS ADD 1 TO INPUT POINTER                       00184000
+         LA    R6,1(R6)      BUMP INPUT POINTER                         00185000
+         BCTR  R7,0          MINUS 1 FROM REMAINDER COUNT               00186000
+STATESB2 EQU   *             NOW CHECK FOR ERROR                        00187000
+         TM    FUNC,X        ERROR INDICATED?                           00188000
+         BO    ERROR                                                    00189000
+STATESC EQU    *                                                        00190000
+         TM    FUNC,X'F0'    STATE 0?                                   00191000
+         BZ    START         GO TO STATE0 (START)                       00192000
+         TM    FUNC,STATE1   STATE 1?                                   00193000
+         BO    ATOM          GO TO STATE1 (ATOM)                        00194000
+         TM    FUNC,STATE2   STATE 2?                                   00195000
+         BO    QSTR                                                     00196000
+         B     QCH           QUOTED CHAR (STATE 3)                      00197000
+DONE     EQU   *                                                        00198000
+         SR    R15,R15                                                  00199000
+         LA    R8,TOKSIZ(R8) PUT ENDING ZERO ON TOK LIST                00200490
+         CR    R8,R5         IS THIS PAST END OF TOKEN LIST             00201000
+         BH    DONEIN        SIGH                                       00202000
+         XC    0(TOKSIZ,R8),0(R8) INTO TOKEN CODE                       00203490
+DONE2    EQU   *                                                        00204000
+         L     R1,PARM       GET PARM LIST ADDRESS                      00205000
+         USING PAB,R1        ADDRESS IT                                 00206000
+         LA    R8,TOKSIZ(R8) UPDATE STACK POINTER                       00207490
+         L     R2,@STK       GET ADDRESS FOR STACK POINTER              00208000
+         ST    R8,0(R2)      SET NEW STACK POINTER                      00209000
+         L     R2,@TOK       ADDRESS FOR TOKEN POINTER                  00210000
+         S     R8,0(R2)      LENGTH USED UP                             00211000
+         L     R2,@LEN       ADDRESS OF LENGTH                          00212000
+         L     R3,0(R2)      GET PREVIOUS LENGTH                        00213000
+         SR    R3,R8         -1 LENGTH USED                             00214000
+         ST    R3,0(R2)      IS REMAINING LENGTH                        00215000
+         DROP  R1                                                       00216000
+         B     RET                                                      00217000
+DONEIN   EQU   *                                                        00218000
+         LA    R15,16        INDICATE COMPLETE LIST, BUT                00219000
+*                            NO END FLAG.                               00220000
+         B     DONE2                                                    00221000
+*                                                                       00222000
+RET      EQU   *                                                        00223000
+         L     R13,4(R13)    RESTORE CALLER'S R13                       00224000
+         L     R14,12(R13)   RESTORE CALLER'S R14                       00225000
+         LM    R0,R12,20(R13)   RESTORE CALLER'S R0-R12                 00226000
+         BR    R14           AND RETURN                                 00227000
+         DROP  R8                                                       00228000
+TRT      TRT   0(0,R6),0(R14)      A TRT                                00229000
+F8       DC    F'8'                                                     00230000
+F256     DC    F'256'                                                   00231000
+SAVE     DS    18F                                                      00232000
+PARM     DS    F                   ADDRESS OF PARM LIST                 00233000
+FUNC     DS        X                   FUNCTION CODE FROM LAST TRT      00234000
+CURRSTAT DS        X                   CURRENT STATE                    00235000
+*************************************************************           00236000
+* TOKENIZER TRT TABLES:                                                 00237000
+* THE LEFT 4 BITS OF THE FUNCTION CODE DENOTE A NEXT STATE.             00238000
+* THE RIGHT 4 BITS DENOTE AN ACTION TO BE TAKEN PRIOR TO                00239000
+* GOING TO THE NEXT STATE.                                              00240000
+*                                                                       00241000
+* ACTION CODES ARE:                                                     00242000
+S        EQU       1                   SKIP THE CHARACTER               00243000
+A        EQU       2                   APPEND TO TOKEN STRING           00244000
+E        EQU       4                   END OF TOKEN                     00245000
+X        EQU       8                   ERROR                            00246000
+STATE0   EQU       X'00'               START STATE                      00247000
+STATE1   EQU       X'10'               ATOM                             00248000
+STATE2   EQU       X'20'               Q-STR (QUOTED STRING)            00249000
+STATE3   EQU       X'40'               Q-CH (QUOTED CHARACTER)          00250000
+TABLE0   EQU       *                   STATE 0 TRANSLATE TABLE          00251000
+         DC        5AL1(X)             NUL - PF; ERROR                  00252000
+         DC        AL1(0)              HT - WHITE SPACE; SKIP           00253000
+         DC        15AL1(X)            LC - RES; ERROR                  00254000
+*         DC        AL1(A+E+S)          NL - NEW LINE                   00255000
+         DC        AL1(0)          NL - NEW LINE (WHSP)                 00256000
+         DC        42AL1(X)            BS - SUB; ERROR                  00257000
+         DC        AL1(0)              SP - WHITE SPACE; SKIP           00258000
+         DC        10AL1(X)            X'41' - X'4A'; ERROR             00259000
+         DC        AL1(A+S+STATE1)     C'.'; ATOM CHARACTER             00260000
+         DC        2AL1(A+E+S)         < AND (; DELIMS                  00261000
+         DC        3AL1(A+S+STATE1)    + - &; ATOM CHARACTERS           00262000
+         DC        9AL1(X)             X'51' - X'59' ; ERROR            00263000
+         DC        3AL1(A+S+STATE1)    C'!' - C'*'; ATOM CHARS          00264000
+         DC        2AL1(A+E+S)         ) AND ; -- DELIMS                00265000
+         DC        3AL1(A+S+STATE1)    NOT - /; ATOM CHARS              00266000
+         DC        9AL1(X)             X'62'-X'6A'; ERROR               00267000
+         DC        AL1(A+E+S)          COMMA; DELIM                     00268000
+         DC        2AL1(A+S+STATE1)    % - _; ATOM CHARS                00269000
+         DC        AL1(A+E+S)          > DELIM                          00270000
+         DC        AL1(A+S+STATE1)     ? - ATOM CHAR                    00271000
+         DC        9AL1(X)             X'70'-X'78'; ERROR               00272000
+         DC        AL1(A+S+STATE1)     ACCENT GRAVE - ATOM CHAR         00273000
+         DC        AL1(A+E+S)          COLON; DELIM                     00274000
+         DC        AL1(A+S+STATE1)     # - ATOM CHAR                    00275000
+         DC        AL1(A+E+S)          ATSIGN - DELIM                   00276000
+         DC        2AL1(A+S+STATE1)    ' - =  ; ATOM CHARS              00277000
+         DC        AL1(A+S+STATE2)     QUOTE - Q-STR DELIM              00278000
+         DC        AL1(X)              X'80' - ERROR                    00279000
+         DC        9AL1(A+S+STATE1)    LOWER CASE A - I                 00280000
+         DC        2AL1(X)             X'8A'-X'8B' - ERROR              00281000
+         DC        5AL1(X)             X'8C'-X'90' - ERROR              00282000
+         DC        9AL1(A+S+STATE1)    LOWER CASE J-R                   00283000
+         DC        7AL1(X)             X'9A'-X'A0'; ERROR               00284000
+         DC        AL1(A+S+STATE1)     TILDE - ATOM CHAR                00285000
+         DC        8AL1(A+S+STATE1)    LOWER CASE S - Z                 00286000
+         DC        3AL1(X)             X'AA'-X'AC'; ERROR               00287000
+         DC        AL1(A+S+STATE1)     [ - ATOM CHAR                    00288000
+         DC        15AL1(X)            X'AE'-X'BC' ; ERROR              00289000
+         DC        AL1(A+S+STATE1)     ] - ATOM CHAR                    00290000
+         DC        2AL1(X)             X'BE' - X'BF'; ERROR             00291000
+         DC        10AL1(A+S+STATE1)   { AND UPPER CASE A - I           00292000
+         DC        6AL1(X)             ERROR                            00293000
+         DC        10AL1(A+S+STATE1)   } AND UPPER CASE J - R           00294000
+         DC        6AL1(X)             X'DA'-X'DF' - ERROR              00295000
+         DC        AL1(A+S+STATE1)     BACKSLASH - ATOM CHAR            00296000
+         DC        AL1(X)              X'E1' - ERROR                    00297000
+         DC        8AL1(A+S+STATE1)     UPPER CASE S- Z                 00298000
+         DC        6AL1(X)             ERRORS                           00299000
+         DC        10AL1(A+S+STATE1)   NUMBERS                          00300000
+         DC        6AL1(X)             MORE JUNK                        00301000
+         TITLE     'TABLE1 - TRANSLATE TABLE FOR STATE 1'               00302000
+TABLE1   EQU       *                   STATE 1 TRT TABLE (ATOMS)        00303000
+         DC        75AL1(E+STATE0)     END                              00304000
+         DC        AL1(A+S+STATE1)     C'.'; ATOM CHARACTER             00305000
+         DC        2AL1(E)             < AND (; END                     00306000
+         DC        3AL1(A+S+STATE1)    + - &; ATOM CHARACTERS           00307000
+         DC        9AL1(E)             X'51' - X'59' ; END              00308000
+         DC        3AL1(A+S+STATE1)    C'!' - C'*'; ATOM CHARS          00309000
+         DC        2AL1(E)             ) AND ; -- END                   00310000
+         DC        3AL1(A+S+STATE1)    NOT - /; ATOM CHARS              00311000
+         DC        9AL1(E)             X'62'-X'6A';  END                00312000
+         DC        AL1(E)              COMMA - DELIM                    00313000
+         DC        2AL1(A+S+STATE1)    % - _; ATOM CHARS                00314000
+         DC        AL1(E)              > - DELIM                        00315000
+         DC        AL1(A+S+STATE1)     ? - ATOM                         00316000
+         DC        9AL1(E)             X'70'-X'78'; END                 00317000
+         DC        AL1(A+S+STATE1)     TILDE - ATOM CHAR                00318000
+         DC        AL1(E)              COLON - DELIM                    00319000
+         DC        AL1(A+S+STATE1)     # - ATOM CHAR                    00320000
+         DC        AL1(E)              ATSIGN - END                     00321000
+         DC        2AL1(A+S+STATE1)    ' - =  ; ATOM CHARS              00322000
+         DC        2AL1(E)             QUOTE AND X'80' ; END            00323000
+         DC        9AL1(A+S+STATE1)    LOWER CASE A - I                 00324000
+         DC        7AL1(E)             X'8A' - X'90';END                00325000
+         DC        9AL1(A+S+STATE1)    LOWER CASE J-R                   00326000
+         DC        7AL1(E)             X'9A'-X'A0'; END                 00327000
+         DC        AL1(A+S+STATE1)     TILDE - ATOM CHAR                00328000
+         DC        8AL1(A+S+STATE1)    LOWER CASE S - Z                 00329000
+         DC        3AL1(E)             X'AA'-X'AC'; END                 00330000
+         DC        AL1(A+S+STATE1)     [ - ATOM CHAR                    00331000
+         DC        15AL1(E)            X'AE'-X'BC' ; END                00332000
+         DC        AL1(A+S+STATE1)     ] - ATOM CHAR                    00333000
+         DC        2AL1(E)             X'BE' - X'BF'; END               00334000
+         DC        10AL1(A+S+STATE1)   { AND UPPER CASE A - I           00335000
+         DC        6AL1(E)             END                              00336000
+         DC        10AL1(A+S+STATE1)   } AND UPPER CASE J - R           00337000
+         DC        6AL1(E)             END                              00338000
+         DC        AL1(A+S+STATE1)     BACKSLASH - ATOM CHAR            00339000
+         DC        AL1(E)              END                              00340000
+         DC        8AL1(A+S+STATE1)     UPPER CASE S- Z                 00341000
+         DC        6AL1(E)             END                              00342000
+         DC        10AL1(A+S+STATE1)   NUMBERS                          00343000
+         DC        6AL1(E)             END                              00344000
+TABLE2   EQU       *                   STATE 2 TRANSLATE TABLE          00345000
+         DC        256AL1(A+S+STATE2)  ALL CHARS                        00346000
+         ORG       TABLE2+C'"'         QUOTE - END DELIM                00349000
+         DC        AL1(A+S+E+STATE0)                                    00350000
+         ORG       TABLE2+C'\'         QUOTE PREFIX                     00351000
+         DC        AL1(S+STATE3)                                        00352000
+         ORG       TABLE2+256                                           00353000
+         END       TOKENIZR                                             00354000

@@ -1,0 +1,8 @@
+./ I 00080000          $ 80100 100                    10/05/88 16:31:50
+         LA    R0,=C'QUERY FILES'  Command.
+         LA    R1,MESSAGE          Output area.
+         L     R2,=AL1(X'40',0,0,11) Length + Output-in-Buffer flag
+         LA    R3,40               Enough for "FILES: nnn RDR ..."
+         DIAG  R0,R2,X'0008'       Get the file counts.
+         CLC   MESSAGE+7(3),=C' NO' Any files waiting?
+         BE    RET                 No  : Let sleeping MAILERs lie.

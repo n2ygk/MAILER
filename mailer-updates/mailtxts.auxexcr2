@@ -1,0 +1,5 @@
+* * * * * * * * * * * * * * * AUXEXCR2 * * * * * * * * * * * * * * * *
+R207017    Automatically rebuild module/maclib lists before doing
+*          processing.  This guarantees that the current file will
+*          always be used.
+R207008    Place MUSIC exit in MAILER TXTLIB

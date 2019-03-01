@@ -1,0 +1,99 @@
+./ I 00072000          $ 72300 300                    11/10/89 14:57:02
+         CLC   CMDCODE,=A(CMDMLS) Is it distlist?                       00072300
+         BE    $CMDMLS            ---> Yes                              00072600
+./ R 00091980          $ 92170 190                    11/10/89 14:57:02
+         EJECT ,                                                        00092170
+./ R 00093940 00094920 $ 94230 290                    11/10/89 14:57:02
+         MVC   $EXCRID,CMDSNDR     Copy requestor's userid              00094230
+         MVC   $EXCRNOD,CMDNODE    Copy requestor's node                00094520
+         MVI   $EXCMNT,C'0'        Assume not maintainer                00094810
+./ R 00096880          $ 97070 190                    11/10/89 14:57:02
+         MVI   $EXCMNT,C'1'        Yes, pass it along                   00097070
+./ R 00097860          $ 97950 90                     11/10/89 14:57:02
+         MVC   $EXCPLFN,=CL8'FORWARD'             Move in command       00097950
+         MVC   $EXCFBLK(16),=CL16'FORWARD MAILER'     name              00098040
+         MVC   $EXCREQ,$EXCREQ-1   Blank out field                      00098130
+./ R 00099330          $ 99520 190                    11/10/89 14:57:02
+         C     R5,=A(L'$EXCREQ)    Enough space?                        00099520
+./ R 00100310          $ 100500 190                   11/10/89 14:57:02
+         LA    R5,L'$EXCREQ        No, truncate                         00100500
+./ R 00102760          $ 102950 190                   11/10/89 14:57:02
+         LA    R1,$EXCPL           Point to tokenized plist             00102950
+./ R 00103740          $ 103930 190                   11/10/89 14:57:02
+         LA    R0,$EXCEPL          Point to extended plist              00103930
+./ I 00117950          $ 117960 10                    11/10/89 14:57:02
+         EJECT ,                                                        00117960
+*********************************************************************** 00117970
+*                                                                       00117980
+*        M A I L L I S T                                                00117990
+*                                                                       00118000
+*********************************************************************** 00118010
+         SPACE 2                                                        00118020
+$CMDMLS  DS    0H                                                       00118030
+         MVC   $EXCRID,CMDSNDR     Copy requestor's userid              00118040
+         MVC   $EXCRNOD,CMDNODE    Copy requestor's node                00118050
+         MVI   $EXCMNT,C'0'        Assume not maintainer                00118060
+         LR    R1,R9               Copy COMMAND block pointer           00118070
+         BAL   R14,CHKAUTH         Is user authorized?                  00118080
+         B     $MLS0010            ---> No                              00118090
+         MVI   $EXCMNT,C'1'        Yes, pass it along                   00118100
+$MLS0010 EQU   *                                                        00118110
+         MVC   $EXCPLFN,=CL8'MAILLIST'            Move in command       00118120
+         MVC   $EXCFBLK(16),=CL16'MAILLISTMAILER'     name              00118130
+         MVC   $EXCREQ,$EXCREQ-1   Blank out field                      00118140
+         ICM   R5,B'1111',CMDDLEN  Get data length                      00118150
+         BZ    $MLS0100            ---> No data                         00118160
+         C     R5,=A(L'$EXCREQ)    Enough space?                        00118170
+         BNH   $MLS0020            ---> Yes                             00118180
+         LA    R5,L'$EXCREQ        No, truncate                         00118190
+$MLS0020 EQU   *                                                        00118200
+         BCTR  R5,0                Decrement for execute                00118210
+         EX    R5,MOVEMLS          Move in command arguments            00118220
+$MLS0100 EQU   *                                                        00118230
+         LA    R1,$EXCPL           Point to tokenized plist             00118240
+         ICM   R1,B'1000',=X'01'   Tell REXX using extended plist       00118250
+         LA    R0,$EXCEPL          Point to extended plist              00118260
+         SVC   202                 Run the FORWARD exec                 00118270
+         DC    AL4(1)              Continue with next instruction       00118280
+         C     R15,=F'10001'       Is it exec not found?                00118290
+         BNE   RCMSG               ---> No                              00118300
+         MVC   $NOMLS,$MLSNONE     Move in message                      00118310
+         LA    R5,L'$NOMLS         Length of message                    00118320
+         BAL   R10,SENDMSG         Send message                         00118330
+         L     R15,=F'10001'       Restore return code                  00118340
+         B     RCMSG                                                    00118350
+         SPACE 1                                                        00118360
+$MLSNONE DC    C'MAILLIST command not implemented'                      00118370
+./ R 00136500          $ 136590 90                    11/10/89 14:57:02
+MOVEFWD  MVC   $EXCREQ(0),CMDDATA                                       00136590
+MOVEMLS  MVC   $EXCREQ(0),CMDDATA                                       00136680
+./ I 00150300          $ 150320 20                    11/10/89 14:57:02
+         SPACE 1                                                        00150320
+         ORG   MSGDATAX            Distlist not implemented msg         00150340
+$NOMLS   DS    CL(L'$MLSNONE)                                           00150360
+./ R 00154009 00154054 $ 154016 7                     11/10/89 14:57:02
+         SPACE 2                                                        00154016
+*  Data areas for FORWARD & MAILLIST command processing                 00154023
+         SPACE 2                                                        00154030
+         DS    0D                                                       00154037
+$EXCPL   DC    CL8'EXEC'           Tokenized plist                      00154044
+$EXCPLFN DC    CL8'xxxxxxxx'       FORWARD | MAILLIST                   00154051
+./ R 00154081 00154108 $ 154088 7                     11/10/89 14:57:02
+$EXCEPL  DC    A($EXCPL)           Point to 'EXEC'                      00154088
+         DC    A($EXCARGS)         Start of arguments                   00154095
+         DC    A($EXCARGE)         End of arguments                     00154102
+         DC    A($EXCFBLK)         File block pointer                   00154109
+./ R 00154126 00154135 $ 154132 6                     11/10/89 14:57:02
+$EXCFBLK DS    0F                                                       00154132
+         DC    CL8'FORWARD'        FN = FORWARD | MAILLIST              00154138
+./ R 00154180          $ 154184 4                     11/10/89 14:57:02
+$EXCARGS DS    0C                  Arguments start here                 00154184
+./ R 00154198          $ 154202 4                     11/10/89 14:57:02
+$EXCRID  DC    CL8' '              Requestor's id                       00154202
+./ R 00154216          $ 154220 4                     11/10/89 14:57:02
+$EXCRNOD DC    CL8' '                   and node                        00154220
+./ R 00154243 00154270 $ 154250 7                     11/10/89 14:57:02
+$EXCMNT  DC    C'0'                Is requestor a maintainer?           00154249
+         DC    C' '                Used to blank $EXCREQ                00154255
+$EXCREQ  DC    CL256' '            Original forward command arguments   00154261
+$EXCARGE EQU   *                   End of arguments                     00154270

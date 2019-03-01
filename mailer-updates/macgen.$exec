@@ -1,0 +1,3 @@
+&ERROR &EXIT &RETCODE                                                   00001000
+EXEC VMFMAC MAILER MAILER                                               00002000
+ERASE MAILER COPY                                                       00003000

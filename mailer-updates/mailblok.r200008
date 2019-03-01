@@ -1,0 +1,5 @@
+./ R 00023000          $ 23490 490                    10/04/88 15:52:52
+extern char *oldldom;           /* main local-domain string */
+./ I 00074000          $ 75000 1000                   10/04/88 15:52:52
+#define MAXLCLHOST 9
+extern char *lclhost[MAXLCLHOST]; /* local-domain strings */

@@ -1,0 +1,4 @@
+./ R 00033000          $ 33490 490                    10/04/88 15:50:50
+offset oldrdom 4             % spare (was ptr to rscs-domain string)
+./ I 00057000          $ 58000 1000                   10/04/88 15:50:50
+offset rscsdom 36            % array of ptrs to rscs-domain strings

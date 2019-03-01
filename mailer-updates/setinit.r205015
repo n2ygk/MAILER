@@ -1,0 +1,4 @@
+./ I 00365900          $ 365950 50                    12/20/89 11:59:35
+         DC    A(MAILOPTS-MAILBLOK,STRFILOK,MOPTFIOK)                   00365900
+./ I 00387824          $ 387825 1                     12/20/89 11:59:35
+STRFILOK DC    Y(15),C'ALLOW-FILE-FROM'

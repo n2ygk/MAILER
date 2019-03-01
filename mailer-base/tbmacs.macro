@@ -1,0 +1,101 @@
+*---------------------------------------------------------------------* 00001000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00002000
+*    Program Property of the Trustees of Columbia University in the   * 00003000
+*    City of New York.                                                * 00004000
+*---------------------------------------------------------------------* 00005000
+* Table lookup routine macros                                           00006000
+         MACRO                                                          00007000
+         TBENTRY                                                        00008000
+TBENTRY  DSECT                                                          00009000
+TBE$STR  DS        A                                                    00010000
+TBE$DSP  DS        A                                                    00011000
+TBE$LEN  EQU       *-TBENTRY                                            00012000
+         SPACE                                                          00013000
+TBS      DSECT                                                          00014000
+TBS$FLG  DS        X                                                    00015000
+TBS$SIZ  DS        X                                                    00016000
+TBS$STR  DS        0C                                                   00017000
+TBS$LEN  EQU   *-TBS                                                    00018000
+         MEND  ,                                                        00019000
+         MACRO                                                          00020000
+&LABEL   TBSTART   &MAX=0                                               00021000
+.* START OF A TBLUK TABLE                                               00022000
+.* EAC 8/81                                                             00023000
+         COPY      TBGLOB              COPY GLOBAL VARIABLE DEFNS       00024000
+         AIF ('&LABEL' EQ '').NONAME                                    00025000
+&TBCNT   SETA      &TBCNT+1            COUNT OF TABLES GENERATED        00026000
+&TBLEN   SETA      0                   LENGTH OF TABLE                  00027000
+&TBMAX   SETC      '&MAX'              MAXIMUM LENGTH OF TABLE          00028000
+&TBNAME  SETC      '&LABEL'            NAME OF THIS TABLE               00029000
+&TBFLG   SETA      1                   TURN ON FLAG                     00030000
+         MEXIT                                                          00031000
+.NONAME  MNOTE     4,'A NAME MUST BE GIVEN TO THE TABLE'                00032000
+         MEND                                                           00033000
+         MACRO                                                          00034000
+         TBINI                                                          00035000
+         COPY      TBBITS                                               00036000
+         MEND                                                           00037000
+         MACRO                                                          00038000
+         TBEND                                                          00039000
+         COPY      TBGLOB              GET GLOBAL VARIABLES             00040000
+         LCLA      &TBIND              INDEX VARIABLE                   00041000
+         AIF ('&TBFLG' NE '1').NOTAB   WAS THERE A START?               00042000
+&TBFLG   SETA      0                   CLEAR THE FLAG                   00043000
+&TBIND   SETA      1                                                    00044000
+         AIF ('&TBMAX' NE '').GOODMAX  MAX SPECIFIED?                   00045000
+&TBMAX   SETC      '&TBLEN'            MAX = LEN                        00046000
+.GOODMAX ANOP                                                           00047000
+&TBNAME  TBTAB    FLAG=0,LEN=&TBLEN,MAX=&TBMAX,ADDRESS=TB$&TBCNT        00048000
+TB$&TBCNT DC       &TBMAX.F'0'         MAXIMUM TABLE ALLOCATTED         00049000
+         ORG       TB$&TBCNT           ORG BACK TO START OF IT          00050000
+.LOOP    ANOP                                                           00051000
+         DC        A(&TBVAL(&TBIND),&TBDSP(&TBIND))                     00052000
+&TBIND   SETA      &TBIND+1                                             00053000
+         AIF ('&TBIND' LE '&TBLEN').LOOP  DONE WITH LOOP?               00054000
+         ORG ,                          ORG BACK TO END OF TABLE        00055000
+         MEXIT                                                          00056000
+.NOTAB   MNOTE     4,'NO TBSTART SPECIFIED'                             00057000
+         MEXIT                                                          00058000
+         MEND                                                           00059000
+         MACRO                                                          00060000
+         T         &STR,&DISP,&FLAGS                                    00061000
+         COPY      TBGLOB              COPY GLOBAL VARIABLES            00062000
+         LCLC      &DSTR,&FLG                                           00063000
+&DSTR    SETC      '&DISP'                                              00064000
+&FLG     SETC      '&FLAGS'                                             00065000
+         AIF ('&DSTR' NE '').SKIP1                                      00066000
+&DSTR    SETC      '&STR'(2,K'&STR-2)                                   00067000
+&DSTR    SETC      '$&DSTR'(1,8)                                        00068000
+.SKIP1   ANOP                                                           00069000
+         AIF ('&FLG' NE '').SKIP2                                       00070000
+&FLG     SETC      '0'                                                  00071000
+.SKIP2   ANOP                                                           00072000
+         AIF ('&TBFLG' NE '1').NOTAB                                    00073000
+&TBLEN   SETA      &TBLEN+1                                             00074000
+TB$&TBCNT&TBLEN DC  AL1(&FLG,L'TB#&TBCNT&TBLEN)                         00075000
+TB#&TBCNT&TBLEN DC  C&STR                                               00076000
+&TBVAL(&TBLEN)  SETC 'TB$&TBCNT&TBLEN'                                  00077000
+&TBDSP(&TBLEN)  SETC '&DSTR'                                            00078000
+         MEXIT                                                          00079000
+.NOTAB   ANOP                                                           00080000
+         MNOTE     4,'NO ACTIVE TBSTART'                                00081000
+         MEND                                                           00082000
+         MACRO                                                          00083000
+&LABEL   TBTAB     &FLAG=0,&LEN=0,&MAX=0,&ADDRESS=0,&DSECT=NO           00084000
+         LCLC      &TFLAG,&TLEN,&TMAX,&TADDR                            00085000
+         AIF ('&DSECT' EQ 'YES').DSECT                                  00086000
+&LABEL   DS        0F                  FULLWORD ALIGNED                 00087000
+         AGO       .NOD                                                 00088000
+.DSECT   ANOP                                                           00089000
+&TFLAG   SETC      'TB$FLG'            FLAG WORD                        00090000
+&TLEN    SETC      'TB$LEN'            LENGTH OF TABLE                  00091000
+&TMAX    SETC      'TB$MAX'            MAX LENGTH OF TABLE              00092000
+&TADDR   SETC      'TB$ADR'            ADDRESS OF THE TABLE             00093000
+TB$SIZE  EQU   4*4                                                      00094000
+TBTAB    DSECT                                                          00095000
+.NOD     ANOP                                                           00096000
+&TFLAG   DC        A(&FLAG)            FLAG WORD                        00097000
+&TLEN    DC        A(&LEN)             CURRENT TABLE LENGTH             00098000
+&TMAX    DC        A(&MAX)             MAXIMUM TABLE LENGTH             00099000
+&TADDR   DC        A(&ADDRESS)         ADDRESS OF TABLE                 00100000
+         MEND  ,                                                        00101000

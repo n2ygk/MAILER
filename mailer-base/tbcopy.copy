@@ -1,0 +1,25 @@
+*COPY    TBBITS                                                         00001000
+*---------------------------------------------------------------------* 00002000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00003000
+*    Program Property of the Trustees of Columbia University in the   * 00004000
+*    City of New York.                                                * 00005000
+*---------------------------------------------------------------------* 00006000
+* TBBITS - TBLUK EQUATES                                                00007000
+* bits defined in leftmost byte of TB$FLG (global table options) [1.22] 00007200
+TBT#SEQ  EQU       X'80' sequential unsorted table               [1.22] 00007400
+TBT#RGT  EQU       X'40' right-adjusted search instead of left   [1.22] 00007600
+* TBLUK TABLE ENTRY FLAGS USED IN TBS$FLG IN THE TBS STRING             00008000
+TB#NOM   EQU       X'80'               RETURN A NO MATCH EVEN IF THIS   00009000
+*                                      ENTRY MATCHES                    00010000
+TB#AMB   EQU       X'40'               RETURN AN AMBIGUOUS MATCH        00011000
+*                                      EVEN IF THIS ENTRY MATCHES       00012000
+TB#RSV1  EQU       X'20'               RESERVED                         00013000
+TB#USR1  EQU       X'10'               AVAILABLE TO THE USER            00014000
+TB#USR2  EQU       X'08'                                                00015000
+TB#USR3  EQU       X'04'                                                00016000
+TB#USR4  EQU       X'02'                                                00017000
+TB#USR5  EQU       X'01'                                                00018000
+*COPY    TBGLOB                                                         00019000
+         GBLA      &TBLEN,&TBCNT,&TBFLG                                 00020000
+         GBLC      &TBNAME,&TBVAL(1000),&TBDSP(1000)                    00021000
+         GBLC      &TBMAX                                               00022000

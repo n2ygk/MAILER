@@ -1,0 +1,6 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R208002    Correct DISTSUB ASSEMBLE to properly handle long MAIL FROM:
+*          lines
+R205018    Add flag to only trace a mail creating exit.
+*          When this flag is set, the exit should list the actions
+R204002    Support comments in FORWARD files

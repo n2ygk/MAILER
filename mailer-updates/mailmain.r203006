@@ -1,0 +1,35 @@
+./ I 00062000          $ 62050 50                     03/15/89 17:40:19
+         SPACE ,                                                        00063000
+*--------------------------------------------------------------------   00063100
+*        Set up abend recovery environment info                         00063200
+*--------------------------------------------------------------------   00063300
+         SPACE ,                                                        00063400
+         ST    R13,ABENDR13        Save R13 in case of abend            00063500
+         ABNEXIT SET,EXIT=ABENDXIT,UWORD=(R11)                          00063600
+         XC    MAILFILE,MAILFILE   Not processing a file yet            00063700
+         SPACE ,                                                        00063800
+./ R 00063000          $ 63490 490                    03/15/89 17:40:19
+         SPACE ,                                                        00063800
+./ D 00093860 00093920                                03/15/89 17:40:19
+./ D 00113500                                         03/15/89 17:40:19
+./ I 00116000          $ 116500 500                   03/15/89 17:40:19
+         XC    MAILFILE,MAILFILE   Not processing a file any more       00116500
+./ R 00127490          $ 127680 190                   03/15/89 17:40:19
+         BNL   RET                     DIE                              00127490
+./ R 00130000 00130600 $ 130490 490                   03/15/89 17:40:19
+         SPACE 1                                                        00130800
+./ I 00131000          $ 131100 100                   03/15/89 17:40:19
+         LR    R3,R15              Save return code                     00130400
+         ABNEXIT CLR,EXIT=ABENDXIT Clear abend exit                     00130600
+         LR    R15,R3              Restore return code                  00130700
+./ R 00138170          $ 138173 3                     03/15/89 17:40:19
+         ICM   R4,B'1111',MAILFILE Get file number                      00138173
+         BZ    MAILEX02            ---> Not processing a file yet       00138176
+./ I 00138360          $ 138361 1                     03/15/89 17:40:19
+         B     MAILEX10                                                 00138361
+         SPACE 1                                                        00138362
+MAILEX02 EQU   *                   Abend when not procssing files       00138363
+         LA    R3,16               Set return code                      00138364
+         L     R1,=A(RET)          Where we want to continue            00138365
+         STCM  R1,B'0111',ABNPSW+5 Fix up PSW                           00138366
+         SPACE 1                                                        00138367

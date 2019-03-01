@@ -1,0 +1,124 @@
+./ I 00022100          $ 22110 10                     05/30/89 14:40:32
+*  As part of local delivery, this routine will look for a file         00022110
+*  with a filename of local userid and a filetype of "FORWARD"          00022120
+*  on MAILER's A disk.  If this file is found, it will be used          00022130
+*  to forward the mail.  This forwarding process will build a           00022140
+*  BSMTP header using whatever addresses are found in the FORWARD       00022150
+*  file and then punch the resulting mail back to MAILER for further    00022160
+*  processing.                                                          00022170
+*                                                                       00022180
+./ R 00073740          $ 73745 5                      05/30/89 14:40:32
+*    Process address not containing a '%'                               00073745
+./ R 00102000          $ 102490 490                   05/30/89 14:40:32
+         EJECT ,                                                        00102490
+./ R 00104000 00105000 $ 104020 20                    05/30/89 14:40:32
+         C     R4,=F'8'            8 or less?                           00104020
+         BH    ILLEGAL             ---> All locals/forwards must be     00104040
+*                                       8 characters or less            00104060
+         MVC   FWDFN,RECVR         Copy in local id                     00104080
+CHKFWD   EQU   *                                                        00104100
+         LA    R1,FWDSTAT          Point to EXECSTAT command            00104120
+         SVC   202                 Issue command                        00104140
+         DC    AL4(1)              Always return to next instruction    00104160
+         LTR   R15,R15             Forward file exist?                  00104180
+         BZ    HAVEFWD             ---> No                              00104200
+         C     R15,=F'4'           Found on disk?                       00104220
+         BNE   NOFWD               ---> No, no forward file             00104260
+         SPACE 1                                                        00104280
+*  Forward file found on disk
+*
+*  Load it into memory using EXECLOAD
+         SPACE 1                                                        00104280
+ONDISK   EQU   *                                                        00104300
+         MVC   EXECLDFN,RECVR      Move in filename                     00104320
+         LA    R1,EXECLOAD         Point to EXECLOAD command            00104340
+         SVC   202                 Go load forwarding file              00104360
+         DC    AL4(1)              Always return at next instruction    00104380
+         LTR   R15,R15             Succesful?                           00104400
+         BZ    CHKFWD              ---> Yes                             00104420
+         C     R15,=F'104'         Was it out of storage?               00104440
+         BE    TRYDROP             ---> Yes, try a EXECDROP             00104460
+         BAL   R2,DIE              ---> No, big trouble                 00104480
+         SPACE 1                                                        00104500
+TRYDROP  EQU   *                                                        00104520
+         LA    R1,EXECDROP         Point to EXECDROP command            00104540
+         SVC   202                 Go load forwarding file              00104560
+         DC    AL4(1)              Always return at next instruction    00104580
+         LTR   R15,R15             Succesful?                           00104600
+         BZ    ONDISK              ---> Yes, try again                  00104620
+         BAL   R2,DIE              ---> No, big trouble                 00104640
+         SPACE 1                                                        00104660
+*--------------------------------------------------------------------   00104680
+*  Process FORWARDing file                                              00104700
+*--------------------------------------------------------------------   00104720
+         SPACE 1                                                        00104740
+HAVEFWD  EQU   *                                                        00104760
+         LR    R3,R1               Save FBLOCK pointer                  00104780
+         SALOC 8,RET               Allocate stack space                 00104800
+         LR    R2,R1               Remember storage address             00104820
+         SPACE 1                                                        00104840
+*--------------------------------------------------------------------   00104860
+*  Building the following:                                              00104880
+*                                                                       00104900
+*        DC    A(MAILBLOK)                                              00104920
+*        DC    A(FBLOCK)                                                00104940
+*                                                                       00104960
+*--------------------------------------------------------------------   00104980
+         SPACE 1                                                        00105000
+         ST    R11,0(,R2)          MAILBLOK base                        00105020
+         ST    R3,4(,R2)           Address of FBLOCK                    00105040
+         L     R15,=V(DISTSUB)     Subroutine address                   00105060
+         CALL  (15)                Call it                              00105080
+         LTR   R15,R15             Successful?
+         BZ    RET                 ---> Yes
+         C     R15,=F'4'           Need local delivery also?
+         BNE   RET                 ---> Yes
+         EJECT ,                                                        00105120
+NOFWD    EQU   *                                                        00105140
+./ R 00292000          $ 292060 60                    05/30/89 14:40:32
+         SPACE ,                                                        00292060
+*  DIE routine is called via BAL R2 whenever a point in execution is    00292120
+*  reached from which recovery is not possible (i.e. out of memory      00292180
+*  for EXECLOAD of forwarding file).                                    00292240
+         SPACE ,                                                        00292300
+DIE      EQU   *                                                        00292360
+         LINEDIT TEXT='MAILCL099 Impossible recovery situation entered'X00292420
+               ,DOT=NO                                                  00292480
+         LINEDIT TEXT='MAILCL099 Failure at ........',                 X00292540
+               SUB=(HEX,(R2)),DOT=NO                                    00292600
+         DC    H'0'                Fall over big                        00292660
+         EJECT ,                                                        00292720
+./ I 00307000          $ 307500 500                   05/30/89 14:40:32
+         SPACE 1                                                        00307500
+./ I 00308000          $ 308500 500                   05/30/89 14:40:32
+         SPACE 1                                                        00308500
+./ I 00309000          $ 309500 500                   05/30/89 14:40:32
+         SPACE 1                                                        00309500
+./ I 00321000          $ 321900 900                   05/30/89 14:40:32
+         SPACE 1                                                        00321900
+./ I 00331390          $ 331393 3                     05/30/89 14:40:32
+FWDSTAT  DS    0D                                                       00331393
+         DC    CL8'EXECSTAT'                                            00331396
+FWDFN    DC    CL8' '                                                   00331399
+         DC    CL8'FORWARD'                                             00331402
+         DC    8X'FF'                                                   00331405
+         SPACE 1                                                        00331408
+EXECLOAD DS    0D                                                       00331411
+         DC    CL8'EXECLOAD'                                            00331414
+EXECLDFN DC    CL8' '                                                   00331417
+         DC    CL8'FORWARD'                                             00331420
+         DC    CL8'A'                                                   00331423
+         DC    CL8'='                                                   00331426
+         DC    CL8'='                                                   00331429
+         DC    CL8'('                                                   00331432
+         DC    CL8'USER'                                                00331435
+         DC    8X'FF'                                                   00331438
+         SPACE 1                                                        00331441
+EXECDROP DS    0D                                                       00331444
+         DC    CL8'EXECDROP'                                            00331447
+         DC    CL8'*'                                                   00331450
+         DC    CL8'FORWARD'                                             00331453
+         DC    CL8'('                                                   00331456
+         DC    CL8'USER'                                                00331459
+         DC    8X'FF'                                                   00331462
+         SPACE 1                                                        00331465

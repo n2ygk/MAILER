@@ -1,0 +1,21 @@
+./ I 00306000          $ 306010 10                    02/07/91 18:02:55
+                                                                        00306010
+    if (mailblok.dbgflg[0] & TRACE_S_INPUT) {                           00306020
+        bcopy("==> BSMTP:>", dbgmsg , 11);                              00306030
+        bcopy(s, &dbgmsg[11], l);                                       00306040
+        bcopy("<", &dbgmsg[11+l], 2);                                   00306050
+        wrterm(dbgmsg);                                                 00306060
+        sprintf(dbgmsg, "==> BSMTP: Line length is %d" , l);            00306070
+        wrterm(dbgmsg);                                                 00306080
+    }                                                                   00306090
+./ R 00306600          $ 306610 10                    02/07/91 18:02:55
+    if ((l==79 && s[79] == 0x15) || (l==80 && s[79] == '<')) {          00306610
+./ R 00306740 00306800 $ 306750 10                    02/07/91 18:02:55
+       if ((rlen = rdcard(&s[79],(int)mailblok.mailsfb.sfbrecsz)) >= 0) 00306750
+          l = 79+rlen;                                                  00306760
+./ I 00306820          $ 306822 2                     02/07/91 18:02:55
+           bcopy("==> BSMTP:>", dbgmsg , 11);                           00306822
+           bcopy(s, &dbgmsg[11], l);                                    00306824
+           bcopy("<", &dbgmsg[11+l], 2);                                00306826
+           wrterm(dbgmsg);                                              00306828
+./ D 00307000 00307740                                02/07/91 18:02:55

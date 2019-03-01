@@ -1,0 +1,4 @@
+./ I 00079660          $ 79740 80                     02/01/90 11:37:20
+#define DBGHDRSC          0x20  /* Trace HDRSCAN processing          */ 00079760
+#define DBGGETHD          0x10  /* Trace GETHDR processing           */ 00079860
+#define DBGLOCAL          0x08  /* Trace LOCAL processing            */ 00079860

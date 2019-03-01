@@ -1,0 +1,28 @@
+./ R 00961220 00961240 $ 961224 4                     03/16/90 15:41:14
+mail forwarding (some of which really amount to address transformatons).
+Processing for the '%' kludge (user%node) and bang format (node!user)
+is handled in LOCAL.
+.sp 1
+The '%' kludge is handled by changing the last (rightmost) '%' to an
+'@'.
+./ R 00961290          $ 961293 3                     03/16/90 15:41:14
+.br
+user%othernode%node2@here --> user%othernode@node2
+./ R 00961310 00961320 $ 961311 1                     03/16/90 15:41:14
+.sp 1
+Bang format addresses are handled by taking everything in front of the
+leftmost '!' and placing it to the right hand end of the address
+following an '@'.
+Examples of this transformation process are:
+.in +.22i
+.sp 1
+here!othernode!user -> othernode!user@here
+.br
+othernode!user@here -> user@othernode
+.br
+here!node2!othernode!user -> node2!othernode!user@here
+.br
+node2!othernode!user@here -> othernode!user@node2
+.in -.22i
+.sp 1
+After the address has been transformed, the mail is reprocessed for

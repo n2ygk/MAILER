@@ -1,0 +1,16 @@
+./ I 00190000          $ 190300 300                   03/30/90 15:47:39
+         TM    DBGFLG6,DBGNOOUT  No output?                             00190300
+         BNO   SKIP001           ---> No, want mail out                 00190600
+         WRTERM 'TRYRSCS:  Trace-send-no-mail set'                      00190900
+SKIP001  EQU   *                                                        00191200
+./ I 00458940          $ 459540 600                   03/30/90 15:47:39
+         TM    DBGFLG6,DBGNOOUT  Send mail file?                        00459540
+         BO    SKIPMAIL          ---> No                                00460140
+./ I 00524000          $ 524010 10                    03/30/90 15:47:39
+         SPACE 2                                                        00524010
+* Don't send mail, but log what would have happened                     00524020
+         SPACE                                                          00524030
+SKIPMAIL EQU   *                                                        00524040
+         LOG   TRY034,(CA,TAGUSER,CA,TAGHOST)                           00524050
+         SR    R15,R15           Set return code                        00524060
+         B     RET                                                      00524070

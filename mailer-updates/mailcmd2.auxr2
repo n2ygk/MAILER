@@ -1,0 +1,12 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R207044    Pass the value of ThisNode to FORWARD/MAILLIST MAILER.
+R207025    Support specification of disk for FORWARD and MAILLIST files
+R207002    Fixes for command processing rewrite
+R207001    Pass MSGCMD value to FORWARD and MAILLIST commands
+*          Correct bug in use of non-MSG command
+R206004    Fix bug in new command processing for MAILLIST command
+R206001    Fix to MSG/SMSG handling
+R204004    Support for DISTLIST command
+R203014    Support for FORWARD command
+R202018    Remove PRINT NOGENs, make DSECTs honor SYSPARM(SUP)/SYSPARM(EXP)
+R202010    Command processing enhancements.

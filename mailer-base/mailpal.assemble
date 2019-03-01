@@ -1,0 +1,905 @@
+PAL      TITLE 'MAILPAL     Columbia Univ Network MAILER (Rel. 2)      *00001000
+               Address-List Parser'                                     00002000
+*-------------------------------------------------------------------*   00003000
+*                                                                   *   00004000
+*        Columbia University Network MAILER  -  Release 2           *   00005000
+*                                                                   *   00006000
+*        Program property of Columbia University                    *   00007000
+*                                                                   *   00008000
+*-------------------------------------------------------------------*   00009000
+         SPACE ,                                                        00010000
+*-------------------------------------------------------------------*   00011000
+*                                                                   *   00012000
+* Module Name:                                                      *   00013000
+*                                                                   *   00014000
+*        MAILPAL                                                    *   00015000
+*                                                                   *   00016000
+* Function:                                                         *   00017000
+*                                                                   *   00018000
+*        Parser for lists of addresses like those found             *   00019000
+*        in the RFC822 To: field.                                   *   00020000
+*                                                                   *   00021000
+* Attributes:                                                       *   00022000
+*                                                                   *   00023000
+*        Reentrant                                                  *   00024000
+*                                                                   *   00025000
+*                                                                   *   00026000
+* Entry Points:                                                     *   00027000
+*                                                                   *   00028000
+*        PRSAL                                                      *   00029000
+*                                                                   *   00030000
+* Entry Conditions:                                                 *   00031000
+*                                                                   *   00032000
+*        R1    = A(PARMS)    see PARMS DSECT,  below                *   00033000
+*        R15   = A(PRSAL)                                           *   00034000
+*        R14   = return address                                     *   00035000
+*        R13   = register save area                                 *   00036000
+*                                                                   *   00037000
+* Sample Invocation:                                                *   00038000
+*                                                                   *   00039000
+*        CALL PRSAL,(STR,LEN,STK,SLEN,TOK,PAR)                      *   00040000
+*              str - address of pointer to input string             *   00041000
+*              len - address of length of input string              *   00042000
+*              stk - address of stack pointer                       *   00043000
+*              slen - address of stack length                       *   00044000
+*              tok - address of token list pointer (output)         *   00045000
+*              par - address of parse list pointer (output)         *   00046000
+*                                                                   *   00047000
+* Exit Conditions:                                                  *   00048000
+*                                                                   *   00049000
+*        Normal                                                     *   00050000
+*                                                                   *   00051000
+*              R15 = 0       Parse completed successfully.  TOK and *   00052000
+*                            PAR filled with pointers to results,   *   00053000
+*                            STK, SLEN, STR, LEN updated.           *   00054000
+*                                                                   *   00055000
+*        Error                                                      *   00056000
+*                                                                   *   00057000
+*              R15 = 24      Stack overflow,  STR, LEN, STK, SLEN   *   00058000
+*                            updated.  TOK or PAR may be updated.   *   00059000
+*              R15 = other   Return codes from LRPARSE and LEX822.  *   00060000
+*                                                                   *   00061000
+* Calls to other routines, macros, etc:                             *   00062000
+*                                                                   *   00063000
+*        LRPARSE             Table driven parser                    *   00064000
+*        LEX822              Lexical tokenizer                      *   00065000
+*        WRTERM              Write to terminal (debugging)          *   00066000
+*        LINEDIT             Write to terminal (debugging)          *   00067000
+*        WAITT               Wait for terminal (debugging)          *   00068000
+*        RFC822 COPY         Tables generated by PAT table generator*   00069000
+*                                                                   *   00070000
+* External References:                                              *   00071000
+*                                                                   *   00072000
+*        None                                                       *   00073000
+*                                                                   *   00074000
+* Work Areas:                                                       *   00075000
+*                                                                   *   00076000
+*        LOCALS DSECT        Allocated from stack                   *   00077000
+*                                                                   *   00078000
+* Operation:                                                        *   00079000
+*                                                                   *   00080000
+*        1) Allocate LOCAL variables storage from stack passed      *   00081000
+*           as argument.                                            *   00082000
+*        2) Set up parameter lists for subroutines, etc. in LOCALS. *   00083000
+*        3) Call LRPARSE,  with RFC822 grammar tables as argument   *   00084000
+*           (see lable PATTBL,  below).                             *   00085000
+*                                                                   *   00086000
+*        LRPARSE,  in the process of parsing,  will call the local  *   00087000
+*        subroutines that follow the main program,  below:          *   00088000
+*                                                                   *   00089000
+*        LEX:                                                       *   00090000
+*              1) Call the actual tokenizer, LEX822.                *   00091000
+*              2) Link returned token into TOK chain pointed to     *   00092000
+*                 by TOKHEAD and TOKLAST in LOCALS.                 *   00093000
+*              3) If the token returned is a comment token,  call   *   00094000
+*                 LEX822 again and repeat until a non-comment token *   00095000
+*                 is returned.                                      *   00096000
+*              4) If the LEX822 returns end-of-string return code,  *   00097000
+*                 return EOS token code (zero).                     *   00098000
+*              5) For other error returns from LEX822,  just pass   *   00099000
+*                 the code along to caller.                         *   00100000
+*                                                                   *   00101000
+*        Semantic routines:                                         *   00102000
+*              The names of the semantic routines are in the table  *   00103000
+*              passed to LRPARSE.  See RFC822 COPY for the grammar  *   00104000
+*              and what reduction causes the semantic routine to    *   00105000
+*              be called.  The general action of the semantic       *   00106000
+*              routines is to take the values of previous reductions*   00107000
+*              off the semantic stack and build the TOK, NODE, and  *   00108000
+*              MBOX control blocks.                                 *   00109000
+*                                                                   *   00110000
+*        All semantic routines and LEX are passed the address of    *   00111000
+*        LOCALS dsect in R1 so that they can communicate through    *   00112000
+*        those variables.  In addition,  R0 contains the current    *   00113000
+*        value of the parser stack pointer for the semantics.       *   00114000
+*                                                                   *   00115000
+*        Resulting control block structures from a successful       *   00116000
+*        parse look something like this:                            *   00117000
+*                                                                   *   00118000
+*                            +---------+         +---------+        *   00119000
+*                            | MBOX 1  |-->...-->| MBOX n  |        *   00120000
+*                            +---------+         +---------+        *   00121000
+*        MBXRTL                |  |  |      MBXDML                  *   00122000
+*     +------------------------+  |  +-----------------+            *   00123000
+*     |                           | MBXLCL             |            *   00124000
+*     |                           +------+             |            *   00125000
+*     V   (route list nodes)             V             V            *   00126000
+*  +---------+     +---------+     +---------+     +---------+      *   00127000
+*  | NODE    |---->| NODE    |     | NODE    |     | NODE    |      *   00128000
+*  +---------+     +---------+     +---------+     +---------+      *   00129000
+*     |                |                |              |            *   00130000
+*     V                V                V              V            *   00131000
+*  +---------+     +---------+     +---------+     +---------+      *   00132000
+*  | NODE    |     | NODE    |     | TOKEND  |     | TOKEND  |      *   00133490
+*  +---------+     +---------+     +---------+     +---------+      *   00134000
+*     |                |                 |               |          *   00135000
+*     V                V                 |               |          *   00136000
+*  +---------+     +---------+           |               |          *   00137000
+*  | TOKEND  |     | TOKEND  |           |               |          *   00138490
+*  +---------+     +---------+           |               |          *   00139000
+*    |                |                  |               |          *   00140000
+*    V                V                  V               V          *   00141000
+* < @A         ,     @B         :     USERID    @     DOMAIN     >  *   00142000
+*                                                                   *   00143000
+*        Basically,  the lowest level is a linked list of all       *   00144000
+*        tokens seen on input.  Each token gets a TOKEND block which*   00145490
+*        points to the actual text of the token and contains its    *   00146000
+*        lexical type (i.e. ATOM, Quoted-String, Comment, etc.).    *   00147000
+*                                                                   *   00148000
+*        The NODE block indicates a NODE in the parse tree.  Each   *   00149000
+*        NODE has a left and right neighbor and a child.  In the    *   00150000
+*        case of a local-part or domain,  one NODE is allocated for *   00151000
+*        each significant token and is set to point down to the     *   00152000
+*        TOKEND block for that token.  In this way, a linked list of*   00153490
+*        NODEs is used to represent a list of tokens in a local     *   00154000
+*        part or domain.  For example,  the domain, "CUVMB.BITNET"  *   00155000
+*        contains three tokens: "CUVMA", ".", "BITNET" but causes   *   00156000
+*        only two NODEs to be allocated,  pointing to "CUVMA" and   *   00157000
+*        "BITNET", respectively.  The head of this list of nodes    *   00158000
+*        is then put in the MBXDML domain list pointer in the MBOX. *   00159000
+*                                                                   *   00160000
+*        A route list has an added level of indirection since a     *   00161000
+*        route list is a list of domains,  where each domain is     *   00162000
+*        a list of NODEs pointing to TOKs.                          *   00163000
+*                                                                   *   00164000
+* Alan Crosswell,  12/83                                            *   00165000
+*-------------------------------------------------------------------*   00166000
+         EJECT ,                                                        00167000
+*-------------------------------------------------------------------*   00168000
+*        Local Macros                                               *   00169000
+*-------------------------------------------------------------------*   00170000
+         MACRO                                                          00171000
+&LABEL   DEBUG &MSG                                                     00172000
+         GBLA  &DODEBUG                                                 00173000
+         AIF   (&DODEBUG).DB01                                          00174000
+         MEXIT                                                          00175000
+.DB01    ANOP                                                           00176000
+&LABEL   WRTERM &MSG                                                    00177000
+         WAITT ,                                                        00178000
+         MEND                                                           00179000
+         MACRO ,                                                        00180000
+&LABEL   SEMENTRY                                                       00181000
+&LABEL   DS    0H            &LABEL semantic routine                    00182000
+         STM   R14,R12,12(R13) save caller's registers                  00183000
+         LR    SP,R0         get stack pointer                          00184000
+         LR    R11,R1        address of LOCALS                          00185000
+         USING LOCALS,R11    address LOCALS                             00186000
+         LR    R12,R15       get base address                           00187000
+         USING &LABEL,R12    tell assembler                             00188000
+         ST    R13,COMMSAVE+4 save in the community save area           00189000
+         LA    R13,COMMSAVE  and make this be my save area              00190000
+         DEBUG '&LABEL'      print my name when debugging               00191000
+         MEND  ,                                                        00192000
+         MACRO  ,                                                       00193000
+&LABEL   SEMEXIT                                                        00194000
+&LABEL   L     R13,4(R13)    restore R13                                00195000
+         L     R14,12(R13)   restore 14                                 00196000
+         LM    R0,R12,20(R13) and 0-12; 15 gets error code              00197000
+         BR    R14           return to caller                           00198000
+         DROP  R11           done with LOCALS                           00199000
+         DROP  R12           done with code                             00200000
+         LTORG ,             literal pool                               00201000
+         MEND  ,                                                        00202000
+         GBLA  &DODEBUG                                                 00203000
+&DODEBUG SETA  0             1 for debugging                            00204000
+*-------------------------------------------------------------------*   00205000
+*        define entries to semantics when debugging                 *   00206000
+*-------------------------------------------------------------------*   00207000
+         AIF   (NOT &DODEBUG).DB00                                      00208000
+         ENTRY SHIFTSEM                                                 00209000
+         ENTRY SEMSP1                                                   00210000
+         ENTRY SEMSP2                                                   00211000
+         ENTRY SEMLST1                                                  00212000
+         ENTRY SEMLST2                                                  00213000
+         ENTRY SEMRTL1                                                  00214000
+         ENTRY SEMRTL2                                                  00215000
+         ENTRY SEMADS1                                                  00216000
+         ENTRY SEMADS2                                                  00217000
+         ENTRY SEMRADDR                                                 00218000
+         ENTRY SEMMBOXL                                                 00219000
+         ENTRY SEMADDRL                                                 00220000
+         ENTRY SEMGOAL                                                  00221000
+.DB00    ANOP                                                           00222000
+         AIF   ('&SYSPARM' EQ 'SUP').NOGEN                              00223000
+         PRINT GEN                                                      00224000
+         AGO   .SKIPIT                                                  00225000
+.NOGEN   ANOP                                                           00226000
+         PRINT NOGEN                                                    00227000
+.SKIPIT  ANOP                                                           00228000
+         EJECT ,                                                        00229000
+*-------------------------------------------------------------------*   00230000
+*        Parameters                                                 *   00231000
+*-------------------------------------------------------------------*   00232000
+PARMS    DSECT ,             parameters                                 00233000
+@STR     DS    A             address of string pointer                  00234000
+@LEN     DS    A             address of string length                   00235000
+@STK     DS    A             address of stack pointer                   00236000
+@SLEN    DS    A             address of stack length                    00237000
+@TOK     DS    A             address of anchor of token list            00238000
+@PAR     DS    A             address of anchor of canonical addr list   00239000
+         EJECT ,                                                        00240000
+*-------------------------------------------------------------------*   00241000
+*        Local dynamic variables                                    *   00242000
+*                                                                   *   00243000
+*        A register save area and local variables are allocated     *   00244000
+*        from the high end of the stack.  R13 is used as the base   *   00245000
+*        of this area so that programs called by this one see       *   00246000
+*        standard OS linkage.                                       *   00247000
+*                                                                   *   00248000
+*        The low end of the stack is where the semantics build the  *   00249000
+*        TOKEND and MBOX data structures.                           *   00250490
+*-------------------------------------------------------------------*   00251000
+LOCALS   DSECT ,             local variables                            00252000
+         DS    18F           register save area                         00253000
+COMMSAVE DS    18F           common save area used by semantics         00254000
+STACK    DS    A             address of stack                           00255000
+STKSIZ   DS    F             length                                     00256000
+PLIST    DS    A             main plist pointer                         00257000
+TOKHEAD  DS    A             head of token list                         00258000
+TOKLAST  DS    A             last token added to list                   00259000
+MBXHEAD  DS    A             head of canonical address list             00260000
+SEMERROR DS    F             indication of parse error                  00261000
+*------- parameter list for LEX822 ---------------------------------*   00262000
+LEXPLIST DS    0F            LEX822 parameter list                      00263000
+LEX@STR  DS    A             address of string pointer                  00264000
+LEX@LEN  DS    A             address of string length                   00265000
+LEX@TTYP DS    A             address of token type                      00266000
+LEX@TPTR DS    A             address of token to fill in                00267000
+LEX@TLEN DS    A             address of token length to fill in         00268000
+*-------------------------------------------------------------------*   00269000
+LEXTTYPE DS    F             token type code returned by LEX            00270000
+*------- parameter list for LRPARSE --------------------------------*   00271000
+LRPLIST  DS    0F            plist for lrparse                          00272000
+LR@TAB   DS    A             address of table                           00273000
+LR@STK   DS    A             address of stack pointer                   00274000
+LR@LEN   DS    A             address of stack length                    00275000
+LR@COMM  DS    A             address of communications area             00276000
+*-------------------------------------------------------------------*   00277000
+LRSTK    DS    200F          work area (stack) used by LRPARSE          00278000
+LLRSTK   EQU   *-LRSTK       lenght of it                               00279000
+LRSTKA   DS    A             pointer to stack                           00280000
+LRLEN    DS    F             length of stack                            00281000
+SSTACK   DS    200F          semantic stack                             00282000
+         DS    0D            keep stack dword aligned                   00283000
+LOCSIZE  EQU   *-LOCALS      length of this dsect                       00284000
+         EJECT ,                                                        00285000
+*-------------------------------------------------------------------*   00286000
+*        Control block definitions                                  *   00287000
+*-------------------------------------------------------------------*   00288000
+         SPACE ,                                                        00289000
+         BLOCKS ,                                                       00290990
+         EJECT ,                                                        00293000
+*-------------------------------------------------------------------*   00294000
+* Register definitions:                                             *   00295000
+*-------------------------------------------------------------------*   00296000
+         SPACE ,                                                        00297000
+R0       EQU   0             work                                       00298000
+R1       EQU   1             work                                       00299000
+T1       EQU   R1            temporary used by array macros             00300000
+R2       EQU   2                                                        00301000
+T2       EQU   R2            temporary used by array macros             00302000
+R3       EQU   3                                                        00303000
+SP       EQU   4             semantic stack pointer                     00304000
+R5       EQU   5                                                        00305000
+R6       EQU   6                                                        00306000
+R7       EQU   7                                                        00307000
+R8       EQU   8                                                        00308000
+R9       EQU   9             TOKEND block base                          00309490
+R10      EQU   10                                                       00310000
+R11      EQU   11                                                       00311000
+R12      EQU   12            program base                               00312000
+R13      EQU   13            local variables base                       00313000
+R14      EQU   14                                                       00314000
+R15      EQU   15                                                       00315000
+         EJECT ,                                                        00316000
+*-------------------------------------------------------------------*   00317000
+*        Main program                                               *   00318000
+*-------------------------------------------------------------------*   00319000
+         SPACE ,                                                        00320000
+MAILPAL  CSECT ,                                                        00321000
+PRSAL    MENTRY ,                                                       00322000
+         ST    R2,STKSIZ     remainder of stack for structures          00323000
+         ST    R15,STACK     address of that stack                      00324000
+*-------------------------------------------------------------------*   00325000
+*        set up parameter lists and other initialized locals        *   00326000
+*        for the LRPARSE and LEX822 routines.                       *   00327000
+*-------------------------------------------------------------------*   00328000
+         USING PARMS,R1      look at parameter list                     00329000
+         L     R2,@STR       address of string pointer                  00330000
+         ST    R2,LEX@STR    pass along to lexical routine              00331000
+         L     R2,@LEN       address of string length                   00332000
+         ST    R2,LEX@LEN    also pass along                            00333000
+         LA    R2,LEXTTYPE   temporary to receive token type            00334000
+         ST    R2,LEX@TTYP   into plist                                 00335000
+         ST    R1,PLIST      keep this in a convenient place            00336000
+         DROP  R1            done with plist for now                    00337000
+         LA    R2,PATTBL     address of grammar table                   00338000
+         ST    R2,LR@TAB     into LRPARSE's plist                       00339000
+         LA    R2,LRSTK      stack for LRPARSE                          00340000
+         ST    R2,LRSTKA     into pointer                               00341000
+         LA    R2,LRSTKA     address of pointer                         00342000
+         ST    R2,LR@STK     into plist                                 00343000
+         LA    R2,LLRSTK     length of the stack                        00344000
+         ST    R2,LRLEN      into plist                                 00345000
+         LA    R2,LRLEN      address of length of stack                 00346000
+         ST    R2,LR@LEN     into plist                                 00347000
+         ST    R13,LR@COMM   communications area == locals area         00348000
+         SPACE ,                                                        00349000
+         XC    TOKHEAD,TOKHEAD initialize token list to empty           00350000
+         XC    TOKLAST,TOKLAST "                                        00351000
+         XC    MBXHEAD,MBXHEAD ditto for canonical address list         00352000
+         XC    SEMERROR,SEMERROR no semantic error yet.                 00353000
+         SPACE ,                                                        00354000
+*-------------------------------------------------------------------*   00355000
+*        Call LRPARSE                                               *   00356000
+*-------------------------------------------------------------------*   00357000
+         LA    R1,LRPLIST    point to the parameter list                00358000
+         L     R15,=V(LRPARSE) address of the parser                    00359000
+         BALR  R14,R15       call it                                    00360000
+         L     R1,PLIST      get handle on plist again                  00361000
+         USING PARMS,R1      get addressability                         00362000
+         L     R2,@TOK       get pointer to token list result           00363000
+         L     R3,TOKHEAD    get head of token list                     00364000
+         ST    R3,0(R2)      return token list head to caller           00365000
+         L     R2,@PAR       do likewise for parse list                 00366000
+         L     R3,MBXHEAD    canonical list head                        00367000
+         ST    R3,0(R2)      ...                                        00368000
+         L     R2,@STK       ditto for updated stack pointer            00369000
+         L     R3,STACK      get stack pointer                          00370000
+         ST    R3,0(R2)      return updated stack to caller             00371000
+         L     R2,@SLEN      stack length                               00372000
+         L     R3,STKSIZ     size                                       00373000
+         LA    R3,LOCSIZE(R3) add length of LOCALS                      00374000
+         ST    R3,0(R2)      this is new remaining stack length         00375000
+         DROP  R1            done with PARMS                            00376000
+         SPACE ,                                                        00377000
+         LTR   R15,R15       check for parse error                      00378000
+         BNZ   RET1          parse error                                00379000
+         L     R15,SEMERROR  else,  check for semantic error            00380000
+RET1     EQU   *                                                        00381000
+         MPEND ,             return via MENTRY macro                    00382000
+         EJECT ,                                                        00383000
+*-------------------------------------------------------------------*   00384000
+*        Parse table generated by PAT                               *   00385000
+*-------------------------------------------------------------------*   00386000
+         SPACE ,                                                        00387000
+PATTBL   DS    0D                                                       00388000
+         COPY  RFC822        copy in the output of PAT/LALR             00389000
+         EJECT ,                                                        00390000
+*-------------------------------------------------------------------*   00391000
+*        LEX                                                        *   00392000
+*                                                                   *   00393000
+*        This is the lexical analyzer,  LEX.  It calls LEX822 which *   00394000
+*        does the real work.                                        *   00395000
+*        on entry,  r1->locals                                      *   00396000
+*              1) allocate a TOKEND block and set LEXPLIST ptrs to it*  00397490
+*              2) Call lex822. If the token is a comment,  call     *   00398000
+*                 LEX822 again until a non-white space token is seen*   00399000
+*              3) Return the token code expected by LRPARSE in r1.  *   00400000
+*-------------------------------------------------------------------*   00401000
+LEX      DS    0H            Lexical analyzer                           00402000
+         STM   R14,R12,12(R13) save caller's registers                  00403000
+         LR    R11,R1        copy handle on LOCALS                      00404000
+         USING LOCALS,R11    get addressability on it                   00405000
+         LR    R12,R15       get my base address                        00406000
+         USING LEX,R12       establish addressability                   00407000
+         ST    R13,COMMSAVE+4 save it for later                         00408000
+         LA    R13,COMMSAVE  common save area shared with semantics     00409000
+LEX#0    EQU   *             here if token was white space              00410000
+*-------------------------------------------------------------------*   00411000
+*        1) Allocate TOKEND block from stack space.                 *   00412490
+*          1a) if the first token allocated,  also set TOKHEAD ptr. *   00413000
+*          1b) if 2nd-nth token,  don't set TOKHEAD, but set TOKNEXT*   00414000
+*-------------------------------------------------------------------*   00415000
+         L     R1,STACK      get stack pointer                          00416000
+         L     R2,STKSIZ     length of stack                            00417000
+         S     R2,=A(TOKSIZ) subtract length of token                   00418000
+         BL    LEX#NOS       no room on the stack for token             00419000
+         LR    R8,R1         get handle on the token                    00420000
+         LA    R1,TOKSIZ(R1) bump the stack pointer                     00421000
+         ST    R1,STACK      and put it back                            00422000
+         ST    R2,STKSIZ     store back updated size                    00423000
+         ICM   R9,B'1111',TOKLAST get address of last token in list     00424000
+         BNZ   LEX#1         already is a last token.                   00425000
+*-------------------------------------------------------------------*   00426000
+*        1a) First call.  the TOKHEAD and TOKLAST pointers          *   00427000
+*        have to be set up.                                         *   00428000
+*-------------------------------------------------------------------*   00429000
+         ST    R8,TOKHEAD    the head of the TOKEND list                00430490
+         ST    R8,TOKLAST    is also the tail                           00431000
+         USING TOKEND,R8    address the TOK                             00432490
+         XC    TOKPREV,TOKPREV there is no previous                     00433000
+         XC    TOKNEXT,TOKNEXT and no next                              00434000
+         DROP  R8            done with 8 as the base                    00435000
+         LR    R9,R8         get into the standard pointer              00436000
+         B     LEX#2         and skip to the common code                00437000
+         SPACE ,                                                        00438000
+*-------------------------------------------------------------------*   00439000
+*        1b) Later call,  set TOKNEXT.                              *   00440000
+*-------------------------------------------------------------------*   00441000
+LEX#1    EQU   *             here when not the first token.             00442000
+         USING TOKEND,R9    address it                                  00443490
+         ST    R8,TOKNEXT    set next pointer in the last token         00444000
+         ST    R8,TOKLAST    new tail of token list                     00445000
+         DROP  R9            stop looking at last token                 00446000
+         USING TOKEND,R8    look at the new token                       00447490
+         ST    R9,TOKPREV    chain back to prev token                   00448000
+         LR    R9,R8         get 9 back as the token base               00449000
+         DROP  R8            drop 8 as the token base                   00450000
+LEX#2    EQU   *             common to both 1st and following token     00451000
+         USING TOKEND,R9    back to 9 as the base                       00452490
+         LA    R1,TOKPTR     where to put address of token string       00453000
+         ST    R1,LEX@TPTR   into LEX822 plist                          00454000
+         LA    R1,TOKLEN     where to put length of token string        00455000
+         ST    R1,LEX@TLEN   into LEX822 plist                          00456000
+* (LEX@TTYP, LEX@STR, LEX@LEN pointers are filled in main code)     *   00457000
+*-------------------------------------------------------------------*   00458000
+*        2) Call LEX822                                             *   00459000
+*-------------------------------------------------------------------*   00460000
+         LA    R1,LEXPLIST   plist for LEX822                           00461000
+         L     R15,=V(LEX822) address of the real lexical scanner       00462000
+         BALR  R14,R15       call it.                                   00463000
+         C     R15,=F'4'     check for error return code                00464000
+         BH    LEX#3         anything >4 is fatal                       00465000
+         SR    R15,R15       0, 4 are OK                                00466000
+         L     R1,LEXTTYPE   get the returned token type into 1         00467000
+         STC   R1,TOKTYPE    store into token type byte                 00468000
+         CLI   TOKTYPE,C'('  is it a comment?                           00469000
+         BE    LEX#0         loop back for a non-whsp token             00470000
+         DROP  R9            no longer need TOKEND block base           00471490
+*-------------------------------------------------------------------*   00472000
+*        3) Return,  token type in 1,  return code in 15 for errors *   00473000
+*-------------------------------------------------------------------*   00474000
+LEX#R    EQU   *             return                                     00475000
+         AIF (NOT &DODEBUG).DB02                                        00476000
+         LR    R5,R1         debug                                      00477000
+         LINEDIT TEXT='LEX: .........',SUB=(DEC,(R5))                   00478000
+         LR    R1,R5                                                    00479000
+.DB02    ANOP                                                           00480000
+         L     R13,4(R13)    and start the long trip home...            00481000
+         L     R14,12(R13)   restore 14                                 00482000
+         L     R0,20(R13)    restore 0                                  00483000
+         LM    R2,R12,28(R13) 2-12; 1 contains token code               00484000
+         BR    R14           return to caller                           00485000
+LEX#3    EQU   *             fatal error from lex822                    00486000
+         ST    R15,SEMERROR  set parse error indication                 00487000
+         SR    R1,R1         return EOS token code                      00488000
+         B     LEX#R         and return                                 00489000
+LEX#NOS  EQU   *             no room on the stack                       00490000
+         LA    R15,24        error retcode                              00491000
+         ST    R15,SEMERROR  set parse error                            00492000
+         B     LEX#R         and return                                 00493000
+         DROP  R11           done with LOCALS base                      00494000
+         DROP  R12           ditto for code base                        00495000
+         SPACE ,                                                        00496000
+         LTORG ,                                                        00497000
+         EJECT ,                                                        00498000
+*-------------------------------------------------------------------*   00499000
+*        SHIFTSEM                                                   *   00500000
+*                                                                   *   00501000
+*        Shiftsem shifts the current token onto the semantic stack. *   00502000
+*        on entry: r0 = SP,  r1 -> LOCALS.                          *   00503000
+*              1) Put address of last allocated TOKEND block on stack*  00504490
+*                 SSTACK[SP] := TOKLAST                             *   00505000
+*-------------------------------------------------------------------*   00506000
+SHIFTSEM SEMENTRY ,          shift semantic routine                     00507000
+         L     R3,TOKLAST    address of last token seen                 00508000
+         STARR R3,SSTACK,SP  onto semantic stack                        00509000
+         SR    R15,R15       zero retcode                               00510000
+         SEMEXIT ,                                                      00511000
+         EJECT ,                                                        00512000
+*-------------------------------------------------------------------*   00513000
+*        NULL, SP1, SP2                                             *   00514000
+*                                                                   *   00515000
+*        Null, SP1, SP2 each just copy a value from the semantic    *   00516000
+*        stack.  Null copies SP+0 (does nothing),  SP1 copies SP+1, *   00517000
+*        and SP2 copies SP+2.                                       *   00518000
+*-------------------------------------------------------------------*   00519000
+         AIF   (&DODEBUG).DB03                                          00520000
+SEMNULL  EQU   0             Normally does nothing                      00521000
+         AGO   .DB04                                                    00522000
+.DB03    ANOP                                                           00523000
+SEMNULL  SEMENTRY ,          when debugging,  print our name            00524000
+         SR    R15,R15       zero retcode                               00525000
+         SEMEXIT ,                                                      00526000
+.DB04    ANOP                                                           00527000
+SEMSP1   SEMENTRY ,          SP1 semantic routine                       00528000
+         LDARR R3,SSTACK+4,SP SSTACK[SP+1]                              00529000
+         STARR R3,SSTACK,SP  SSTACK[SP] := SSTACK[SP+1]                 00530000
+         SR    R15,R15       zero retcode                               00531000
+         SEMEXIT ,                                                      00532000
+SEMSP2   SEMENTRY ,          SP2 semantic routine                       00533000
+         LDARR R3,SSTACK+8,SP SSTACK[SP+2]                              00534000
+         STARR R3,SSTACK,SP  SSTACK[SP] := SSTACK[SP+2]                 00535000
+         SR    R15,R15       zero retcode                               00536000
+         SEMEXIT ,                                                      00537000
+         EJECT ,                                                        00538000
+*-------------------------------------------------------------------*   00539000
+*        ZERO                                                       *   00540000
+*                                                                   *   00541000
+*        Zero returns zero on the semantic stack.                   *   00542000
+*-------------------------------------------------------------------*   00543000
+SEMZERO  SEMENTRY ,          ZERO semantic                              00544000
+         SR    R3,R3         get a zero                                 00545000
+         STARR R3,SSTACK,SP  put it on the stack                        00546000
+         SR    R15,R15       zero retcode                               00547000
+         SEMEXIT ,                                                      00548000
+         EJECT ,                                                        00549000
+*-------------------------------------------------------------------*   00550000
+*        LST1, LST2                                                 *   00551000
+*                                                                   *   00552000
+*        Both domains and local-parts consist of lists of token     *   00553000
+*        that may be separated by other "white space" tokens        *   00554000
+*        like comments.  A NODE block is allocated for each token   *   00555000
+*        which points down to the actual TOKEND block.  The next    *   00556490
+*        and prev pointers of the NODE link the list together.      *   00557000
+*        LST1 allocates a new NODE block and sets up the necessary  *   00558000
+*        pointers and LST2 allocates a NODE block for the <word>    *   00559000
+*        and links it to the NODE block already on the stack.       *   00560000
+*                                                                   *   00561000
+*-------------------------------------------------------------------*   00562000
+SEMLST1  SEMENTRY ,          LST1 semantic routine                      00563000
+         L     R1,STACK      get stack pointer                          00564000
+         L     R2,STKSIZ     get remaining length of stack memory       00565000
+         S     R2,=A(NODSIZ) minus size of a node                       00566000
+         BL    LST1#NOS      no stack space.                            00567000
+         LR    R8,R1         copy the pointer                           00568000
+         LA    R1,NODSIZ(R1) bump stack pointer                         00569000
+         ST    R1,STACK      save it back                               00570000
+         ST    R2,STKSIZ     ditto for stack size                       00571000
+         USING NODE,R8       address the node                           00572000
+         LDARR R3,SSTACK,SP  sstack[sp] -> TOKEND block                 00573490
+         ST    R3,NODDOWN    set the down pointer with this             00574000
+         XC    NODNEXT,NODNEXT no left or right                         00575000
+         XC    NODPREV,NODPREV neighbors at this point                  00576000
+         DROP  R8            done looking at NODE                       00577000
+         STARR R8,SSTACK,SP  return address of node on sem stack        00578000
+         SR    R15,R15       zero retcode                               00579000
+         B     LST1#R        return                                     00580000
+LST1#NOS EQU   *             no stack space                             00581000
+         LA    R15,24                                                   00582000
+         ST    R15,SEMERROR  set parse error                            00583000
+LST1#R   SEMEXIT ,           return                                     00584000
+         SPACE 3                                                        00585000
+SEMLST2  SEMENTRY ,          LST2 semantic routine                      00586000
+         L     R1,STACK      get stack pointer                          00587000
+         L     R2,STKSIZ     get remaining length of stack memory       00588000
+         S     R2,=A(NODSIZ) minus size of a node                       00589000
+         BL    LST2#NOS      no stack space.                            00590000
+         LR    R8,R1         copy the pointer                           00591000
+         LA    R1,NODSIZ(R1) bump stack pointer                         00592000
+         ST    R1,STACK      save it back                               00593000
+         ST    R2,STKSIZ     ditto for stack size                       00594000
+         USING NODE,R8       address the node                           00595000
+         LDARR R6,SSTACK+8,SP  sstack[sp+2] -> TOKEND block             00596490
+         LDARR R5,SSTACK,SP  one NODE is at SP                          00597000
+         ST    R6,NODDOWN    set the down pointer with this             00598000
+         XC    NODNEXT,NODNEXT no next node                             00599000
+         ST    R5,NODPREV    the first is PREV                          00600000
+         DROP  R8            done with NODE                             00601000
+         USING NODE,R5       address the first one                      00602000
+         ST    R8,NODNEXT    the second is NEXT                         00603000
+         DROP  R5                                                       00604000
+         STARR R8,SSTACK,SP  return address of second on stack          00605000
+         SR    R15,R15       zero retcode                               00606000
+         B     LST2#R        return                                     00607000
+LST2#NOS EQU   *             no space on stack                          00608000
+         LA    R15,24                                                   00609000
+         ST    R15,SEMERROR  set error                                  00610000
+LST2#R   SEMEXIT ,                                                      00611000
+         EJECT ,                                                        00612000
+*-------------------------------------------------------------------*   00613000
+*        RTL1, RTL2                                                 *   00614000
+*                                                                   *   00615000
+*        A route lists is a list of domain lists.  RTL1 and RTL2    *   00616000
+*        build lists of NODEs that point to the domain list NODEs   *   00617000
+*        in much the same way that LST1 and LST2 point to TOKens.   *   00618000
+*-------------------------------------------------------------------*   00619000
+SEMRTL1  SEMENTRY ,          RTL1 semantic routine                      00620000
+         L     R1,STACK      get stack pointer                          00621000
+         L     R2,STKSIZ     get remaining length of stack memory       00622000
+         S     R2,=A(NODSIZ) minus size of a node                       00623000
+         BL    RTL1#NOS      no stack space.                            00624000
+         LR    R8,R1         copy the pointer                           00625000
+         LA    R1,NODSIZ(R1) bump stack pointer                         00626000
+         ST    R1,STACK      save it back                               00627000
+         ST    R2,STKSIZ     ditto for stack size                       00628000
+         LDARR R3,SSTACK+4,SP sstack[sp+1] -> last NODE block           00629000
+         USING NODE,R3       address the domain node                    00630000
+RTL1#1   EQU   *             loop to search for 1st NODE                00631000
+         CLC   =F'0',NODPREV is this the 1st node?                      00632000
+         BE    RTL1#2        yes,  break out of loop                    00633000
+         L     R3,NODPREV    chain back                                 00634000
+         B     RTL1#1        and loop                                   00635000
+         DROP  R3            done with NODE                             00636000
+RTL1#2   EQU   *             here when head of list found               00637000
+         USING NODE,R8       address the node                           00638000
+         ST    R3,NODDOWN    set the down pointer with this             00639000
+         XC    NODNEXT,NODNEXT no left or right                         00640000
+         XC    NODPREV,NODPREV neighbors at this point                  00641000
+         DROP  R8            done looking at NODE                       00642000
+         STARR R8,SSTACK,SP  return address of node on sem stack        00643000
+         SR    R15,R15       zero retcode                               00644000
+         B     RTL1#R        return                                     00645000
+RTL1#NOS EQU   *             out of stack space                         00646000
+         LA    R15,24                                                   00647000
+         ST    R15,SEMERROR  set error code                             00648000
+RTL1#R   SEMEXIT ,                                                      00649000
+         SPACE 3                                                        00650000
+SEMRTL2  SEMENTRY ,          RTL2 semantic routine                      00651000
+         L     R1,STACK      get stack pointer                          00652000
+         L     R2,STKSIZ     get remaining length of stack memory       00653000
+         S     R2,=A(NODSIZ) minus size of a node                       00654000
+         BL    RTL2#NOS      no stack space.                            00655000
+         LR    R8,R1         copy the pointer                           00656000
+         LA    R1,NODSIZ(R1) bump stack pointer                         00657000
+         ST    R1,STACK      save it back                               00658000
+         ST    R2,STKSIZ     ditto for stack size                       00659000
+         LDARR R6,SSTACK+12,SP sstack[sp+3] -> last domain NODE block   00660000
+         USING NODE,R6       address the domain node                    00661000
+RTL2#1   EQU   *             loop to find head of domain list           00662000
+         CLC   =F'0',NODPREV is this the head of the list?              00663000
+         BE    RTL2#2        yes                                        00664000
+         L     R6,NODPREV    chain back                                 00665000
+         B     RTL2#1        and itterate                               00666000
+RTL2#2   EQU   *             here when head of domain list found.       00667000
+         DROP  R6            done with NODE                             00668000
+         LDARR R5,SSTACK,SP  one route NODE is at SP                    00669000
+         USING NODE,R8       address the node                           00670000
+         ST    R6,NODDOWN    set the down pointer with this             00671000
+         XC    NODNEXT,NODNEXT no next node                             00672000
+         ST    R5,NODPREV    the first is PREV                          00673000
+         DROP  R8            done with NODE                             00674000
+         USING NODE,R5       address the first one                      00675000
+         ST    R8,NODNEXT    the second is NEXT                         00676000
+         DROP  R5                                                       00677000
+         STARR R8,SSTACK,SP  return address of second on stack          00678000
+         SR    R15,R15       zero retcode                               00679000
+         B     RTL2#R        return                                     00680000
+RTL2#NOS EQU   *             no stack space left                        00681000
+         LA    R15,24                                                   00682000
+         ST    R15,SEMERROR  set error                                  00683000
+RTL2#R   SEMEXIT ,                                                      00684000
+         EJECT ,                                                        00685000
+*-------------------------------------------------------------------*   00686000
+*        ADS1, ADS2                                                 *   00687000
+*                                                                   *   00688000
+*        ADS1 allocates a MBOX block from the stack and fills it    *   00689000
+*        with the local-part and domain pointers after following    *   00690000
+*        them back to their respective head NODEs.  ADS2 is ADS1    *   00691000
+*        with domain set to zero.                                   *   00692000
+*        on entry: r0 = SP,  r1 -> LOCALS.                          *   00693000
+*-------------------------------------------------------------------*   00694000
+SEMADS1  SEMENTRY ,          ADS1 semantic routine                      00695000
+         L     R1,STACK      get stack pointer                          00696000
+         L     R2,STKSIZ     remaining size of stack                    00697000
+         S     R2,=A(MBXSIZ) size of a MBOX bloc                        00698000
+         BL    ADS1#NOS      stack too small                            00699000
+         LR    R8,R1         copy pointer                               00700000
+         LA    R1,MBXSIZ(R1) increment stack pointer                    00701000
+         ST    R1,STACK      put it back                                00702000
+         ST    R2,STKSIZ     ditto for updated size                     00703000
+         USING MBOX,R8       address the mbox                           00704000
+         XC    0(MBXSIZ,R8),0(R8) zero out the block                    00705000
+*-------------------------------------------------------------------*   00706000
+*        SStack points to the last added NODE on the local-part     *   00707000
+*        list.  Follow the PREV pointers back to the first node on  *   00708000
+*        the list and put the address of the first node into MBXLCL *   00709000
+*-------------------------------------------------------------------*   00710000
+         LDARR R5,SSTACK,SP  get local part tail node                   00711000
+         LTR   R5,R5         no local-part?                             00712000
+         BZ    ADS1#1        don't search back then.                    00713000
+         USING NODE,R5       address the NODE structure                 00714000
+ADS1#0   EQU   *             loop to search back for 1st NODE           00715000
+         CLC   =F'0',NODPREV is this the head of the list?              00716000
+         BE    ADS1#1        yes,  r5 has the head node address         00717000
+         L     R5,NODPREV    else,  chain back and iterrate             00718000
+         B     ADS1#0        back to top of loop                        00719000
+ADS1#1   EQU   *             here when head node is found               00720000
+         ST    R5,MBXLCL     this is the local-part list                00721000
+         DROP  R5            done with NODE                             00722000
+*-------------------------------------------------------------------*   00723000
+*        SStack+2 points to the last added NODE on the domain       *   00724000
+*        list.  Follow the PREV pointers back to the first node on  *   00725000
+*        the list and put the address of the first node into MBXDML *   00726000
+*-------------------------------------------------------------------*   00727000
+         LDARR R5,SSTACK+8,SP get domain tail node                      00728000
+         LTR   R5,R5         no domain?                                 00729000
+         BZ    ADS1#3        don't search back then.                    00730000
+         USING NODE,R5       address the NODE structure                 00731000
+ADS1#2   EQU   *             loop to search back for 1st NODE           00732000
+         CLC   =F'0',NODPREV is this the head of the list?              00733000
+         BE    ADS1#3        yes,  r5 has the head node address         00734000
+         L     R5,NODPREV    else,  chain back and iterrate             00735000
+         B     ADS1#2        back to top of loop                        00736000
+ADS1#3   EQU   *             here when head node is found               00737000
+         ST    R5,MBXDML     this is the domain list                    00738000
+         DROP  R5            done with NODE                             00739000
+         STARR R8,SSTACK,SP  return address of MBOX on stack            00740000
+         DROP  R8            done with MBOX base                        00741000
+         SR    R15,R15       zero retcode                               00742000
+         B     ADS1#R        return                                     00743000
+ADS1#NOS EQU   *             no stack space                             00744000
+         LA    R15,24        error code                                 00745000
+         ST    R15,SEMERROR  set error flag                             00746000
+ADS1#R   SEMEXIT ,                                                      00747000
+SEMADS2  SEMENTRY ,          ADS2 semantic routine                      00748000
+         L     R1,STACK      get stack pointer                          00749000
+         L     R2,STKSIZ     remaining size of stack                    00750000
+         S     R2,=A(MBXSIZ) size of a MBOX bloc                        00751000
+         BL    ADS2#NOS      stack too small                            00752000
+         LR    R8,R1         copy pointer                               00753000
+         LA    R1,MBXSIZ(R1) increment stack pointer                    00754000
+         ST    R1,STACK      put it back                                00755000
+         ST    R2,STKSIZ     ditto for updated size                     00756000
+         USING MBOX,R8       address the mbox                           00757000
+         XC    0(MBXSIZ,R8),0(R8) zero out the block                    00758000
+*-------------------------------------------------------------------*   00759000
+*        SStack points to the last added NODE on the local-part     *   00760000
+*        list.  Follow the PREV pointers back to the first node on  *   00761000
+*        the list and put the address of the first node into MBXLCL *   00762000
+*-------------------------------------------------------------------*   00763000
+         LDARR R5,SSTACK,SP  get local part tail node                   00764000
+         LTR   R5,R5         no local-part?                             00765000
+         BZ    ADS2#1        don't search back then.                    00766000
+         USING NODE,R5       address the NODE structure                 00767000
+ADS2#0   EQU   *             loop to search back for 1st NODE           00768000
+         CLC   =F'0',NODPREV is this the head of the list?              00769000
+         BE    ADS2#1        yes,  r5 has the head node address         00770000
+         L     R5,NODPREV    else,  chain back and iterrate             00771000
+         B     ADS2#0        back to top of loop                        00772000
+ADS2#1   EQU   *             here when head node is found               00773000
+         ST    R5,MBXLCL     this is the local-part list                00774000
+         DROP  R5            done with NODE                             00775000
+         DROP  R8            done with MBOX                             00776000
+         STARR R8,SSTACK,SP  return MBOX address on stack               00777000
+         SR    R15,R15       zero retcode                               00778000
+         B     ADS2#R        return                                     00779000
+ADS2#NOS EQU   *             no space on stack                          00780000
+         LA    R15,24                                                   00781000
+         ST    R15,SEMERROR  set error code                             00782000
+ADS2#R   SEMEXIT ,                                                      00783000
+         EJECT ,                                                        00784000
+*-------------------------------------------------------------------*   00785000
+*        RADDR                                                      *   00786000
+*                                                                   *   00787000
+*        RADDR is similar to ADS2.  It gets the head of the route   *   00788000
+*        list and plugs it into MBXRTL.  The address of the MBOX is *   00789000
+*        passed on the stack at SP+2 (addr_spec) and the address of *   00790000
+*        the last element in the route is at SP.                    *   00791000
+*-------------------------------------------------------------------*   00792000
+SEMRADDR SEMENTRY ,          RADDR semantic routine                     00793000
+         LDARR R8,SSTACK+8,SP get address of MBOX                       00794000
+         USING MBOX,R8       address it                                 00795000
+*-------------------------------------------------------------------*   00796000
+*        SStack+2 points to the last added NODE on the route        *   00797000
+*        list.  Follow the PREV pointers back to the first node on  *   00798000
+*        the list and put the address of the first node into MBXRTL *   00799000
+*-------------------------------------------------------------------*   00800000
+         LDARR R5,SSTACK+4,SP get route tail node                       00801000
+         LTR   R5,R5         no route?                                  00802000
+         BZ    RADDR#1       don't search back then.                    00803000
+         USING NODE,R5       address the NODE structure                 00804000
+RADDR#0  EQU   *             loop to search back for 1st NODE           00805000
+         CLC   =F'0',NODPREV is this the head of the list?              00806000
+         BE    RADDR#1       yes,  r5 has the head node address         00807000
+         L     R5,NODPREV    else,  chain back and iterrate             00808000
+         B     RADDR#0       back to top of loop                        00809000
+RADDR#1  EQU   *             here when head node is found               00810000
+         ST    R5,MBXRTL     this is the route list                     00811000
+         STARR R8,SSTACK,SP  return address of MBOX on stack            00812000
+         DROP  R5            done with NODE                             00813000
+         DROP  R8            done with MBOX                             00814000
+         SR    R15,R15       zero retcode                               00815000
+         SEMEXIT ,                                                      00816000
+         EJECT ,                                                        00817000
+*-------------------------------------------------------------------*   00818000
+*        MBOXL                                                      *   00819000
+*                                                                   *   00820000
+*        MBOXL chains one MBOX onto the end of the list of MBOX's   *   00821000
+*        The new MBOX is at SP+2 and the list is at SP. Either      *   00822000
+*        one may be a null pointer.  Check for this case.           *   00823000
+*-------------------------------------------------------------------*   00824000
+SEMMBOXL SEMENTRY ,          MBOXL semantic routine                     00825000
+         LDARR R5,SSTACK,SP  one MBOX is at SP                          00826000
+         LDARR R6,SSTACK+8,SP other is at SP+2                          00827000
+         LTR   R5,R5         check for a null pointer                   00828000
+         BZ    MBOXL#R       it is;  return pointer to other            00829000
+         LTR   R6,R6         ditto for 2nd pointer                      00830000
+         BZ    MBOXL#1       return pointer to other                    00831000
+         USING MBOX,R5       address the first one                      00832000
+         ST    R6,MBXNEXT    the second is NEXT                         00833000
+         DROP  R5                                                       00834000
+         USING MBOX,R6       address the second one                     00835000
+         ST    R5,MBXPREV    the first is PREV                          00836000
+         DROP  R6                                                       00837000
+         B     MBOXL#R       return                                     00838000
+MBOXL#1  EQU   *             here when pointer is null                  00839000
+         LR    R6,R5         get other ptr into result reg              00840000
+MBOXL#R  EQU   *             here for return or null pointer            00841000
+         STARR R6,SSTACK,SP  return address of second on stack          00842000
+         SR    R15,R15       zero retcode                               00843000
+         SEMEXIT ,                                                      00844000
+         EJECT ,                                                        00845000
+*-------------------------------------------------------------------*   00846000
+*        ADDRL                                                      *   00847000
+*                                                                   *   00848000
+*        ADDRL concatenates two address lists.  At SP is the        *   00849000
+*        address of the last MBOX of one list.  At SP+2 is the      *   00850000
+*        address of the tail of the other.  The tail of list1 is    *   00851000
+*        linked to the head of list2 and tail of list2 is returned  *   00852000
+*        on the stack. Either one of list1 or list2 may be a null   *   00853000
+*        pointer if it was passed on the stack from a null rule.    *   00854000
+*-------------------------------------------------------------------*   00855000
+SEMADDRL SEMENTRY ,          ADDRL semantic routine                     00856000
+         LDARR R5,SSTACK,SP   one MBOX is at SP                         00857000
+         LDARR R6,SSTACK+8,SP other is at SP+2                          00858000
+         LTR   R5,R5         see if list1 is a null pointer             00859000
+         BZ    ADDRL#R       it is;  return list2 (even if null)        00860000
+         LTR   R6,R6         ditto for list2                            00861000
+         BZ    ADDRL#2       it is;  return list1                       00862000
+         LR    R7,R6         copy pointer to tail of list2              00863000
+         USING MBOX,R7       use this copy to find the head             00864000
+ADDRL#0  EQU   *             loop to find head of list2                 00865000
+         CLC   =F'0',MBXPREV are we at the head?                        00866000
+         BE    ADDRL#1       yes,  out of loop                          00867000
+         L     R7,MBXPREV    get prev pointer                           00868000
+         B     ADDRL#0       and iterrate                               00869000
+ADDRL#1  EQU   *             here when head of list2 is found           00870000
+         ST    R5,MBXPREV    point list2 back at tail of list1          00871000
+         DROP  R7            done with head of list2                    00872000
+         USING MBOX,R5       talk about tail of list1 now               00873000
+         ST    R7,MBXNEXT    point list1 tail forward to head of list2  00874000
+         DROP  R5            done talking about list1                   00875000
+         B     ADDRL#R       return                                     00876000
+ADDRL#2  EQU   *             here when list2 is null                    00877000
+         LR    R6,R5         use list1 pointer                          00878000
+ADDRL#R  EQU   *             here to return or bypass for null ptr      00879000
+         STARR R6,SSTACK,SP  return address of tail of list2            00880000
+         SR    R15,R15       zero retcode                               00881000
+         SEMEXIT ,                                                      00882000
+         EJECT ,                                                        00883000
+*-------------------------------------------------------------------*   00884000
+*        GOAL                                                       *   00885000
+*                                                                   *   00886000
+*        The goal is achieved!  SP has the address of the last      *   00887000
+*        MBOX in address-list.  Find the head of the list and put   *   00888000
+*        it into MBXHEAD.  Set a non-zero return code to cause the  *   00889000
+*        parser to return.                                          *   00890000
+*-------------------------------------------------------------------*   00891000
+SEMGOAL  SEMENTRY ,          GOAL semantic routine                      00892000
+         LDARR R5,SSTACK,SP   tail MBOX is at SP                        00893000
+         LTR   R5,R5         see if all reductions were null            00894000
+         BZ    GOAL#1        yes,  return an empty mbox list.           00895000
+         USING MBOX,R5       address the mbox                           00896000
+GOAL#0   EQU   *             loop here searching for head of list       00897000
+         CLC   =F'0',MBXPREV look for a prev pointer                    00898000
+         BE    GOAL#1        found the head of the list                 00899000
+         L     R5,MBXPREV    chain back                                 00900000
+         B     GOAL#0        iterrate                                   00901000
+GOAL#1   EQU   *             here when head of list is found            00902000
+         ST    R5,MBXHEAD    set head pointer                           00903000
+         DROP  R5            done with MBOX                             00904000
+         LA    R15,1         non-zero to indicate end of parse          00905000
+         SEMEXIT ,                                                      00906000
+         END   ,                                                        00907000

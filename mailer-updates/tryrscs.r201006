@@ -1,0 +1,130 @@
+./ R 00001190 00027000 $ 4180 2990                    12/16/88 13:29:21
+TRYRSCS  TITLE 'VM NETWORK MAILER Release 2 - Default RSCS routing exit*00004180
+               '                                                        00007170
+TRYRSCS  CSECT ,                                                        00010160
+*                                                                       00013150
+* TRYRSCS -                                                             00016140
+*                                                                       00019130
+./ D 00033000 00037000                                12/16/88 13:29:21
+./ D 00044000 00064980                                12/16/88 13:29:21
+./ D 00094000 00127000                                12/16/88 13:29:21
+./ R 00128100 00128900 $ 128190 90                    12/16/88 13:29:21
+*  'RETURN' parameter (to be specified in MAILER PROFILE)               00128190
+*      When specified will cause mail to be returned to                 00128280
+*      the originating user with an 'Unknown Host:' message.            00128370
+*                                                                       00128460
+./ D 00130000 00143000                                12/16/88 13:29:21
+./ R 00169000 00170000 $ 169990 990                   12/16/88 13:29:21
+TRYRSCS  CSECT ,                                                        00169990
+./ R 00172000          $ 172490 490                   12/16/88 13:29:21
+         USING TRYRSCS,R15       SET UP TEMP ADDRESSABILITY             00172490
+./ R 00174000          $ 174490 490                   12/16/88 13:29:21
+         BAL   R15,SKIPSAVE      BRANCH AROUND LOCAL SAVE AREA          00174490
+./ I 00176000          $ 176500 500                   12/16/88 13:29:21
+         SPACE 1                                                        00176500
+./ R 00178000          $ 178290 290                   12/16/88 13:29:21
+         SPACE 1                                                        00178290
+SKIPSAVE DS    0H                                                       00178580
+./ I 00181000          $ 181200 200                   12/16/88 13:29:21
+         SPACE 1                                                        00181200
+*        GRAB A 2ND BASE REGISTER BEFORE SOME DODO TAKES IT             00181400
+         SPACE 1                                                        00181600
+./ I 00183000          $ 183500 500                   12/16/88 13:29:21
+         SPACE 1                                                        00183500
+./ R 00192380 00194590 $ 192770 390                   12/16/88 13:29:21
+         USING MBOX,R7           GET USER LIST                          00192770
+         CLC   MBXDCNT,=F'1'     More than 1 domain token?              00193160
+         BNE   FAIL              ---> Yes, bad RSCS node name           00193550
+         L     R7,MBXDML         Point to domain list                   00193940
+         USING NODE,R7           ADDRESS IT                             00194330
+./ D 00197000                                         12/16/88 13:29:21
+./ R 00206000 00407000 $ 215990 9990                  12/16/88 13:29:21
+         EX    R5,UPIT           AND UPPERCASE IT                       00215990
+****************************************************************        00225980
+*                                                              *        00235970
+*  Check for "RETURN" parm which means that mail to an unknown *        00245960
+*  host will be returned with an error message.                *        00255950
+*                                                              *        00265940
+****************************************************************        00275930
+         SPACE ,                                                        00285920
+         L     R9,ACTRT          ADDRESS OF ROUTD CARD                  00295910
+         USING ROUTD,R9          ADDRESS ROUTD CARD                     00305900
+         CLC   =CL8'RETURN',RTPARM  WAS RETURN SPECIFIED?               00315890
+         BE    UNKNOWN                                                  00325880
+         SPACE ,                                                        00335870
+         DROP  R9                                                       00345860
+         SPACE 2                                                        00355850
+./ R 00410000 00412000 $ 410990 990                   12/16/88 13:29:21
+* Now resume normal "DEFRT" code for sending the file to an    *        00410990
+* undefined BITNET node.                                       *        00411980
+./ R 00415000 00416000 $ 415990 990                   12/16/88 13:29:21
+         SPACE 1                                                        00415990
+./ R 00420590          $ 420680 90                    12/16/88 13:29:21
+         USING NODE,R7           ADDRESS IT                             00420680
+         ST    R7,NODEA          Store node address                     00420770
+./ R 00423000 00426000 $ 423190 190                   12/16/88 13:29:21
+         LA    R14,STACKP        Stack pointer address ptr              00423190
+         LA    R15,STACKP+4      Stack size address ptr                 00423380
+         CALL  GENLIST,(NODEA,LSTRA,LSTRL,(14),(15))                    00423570
+*                                Expand local part                      00423760
+         LTR   R15,R15           Successful?                            00423950
+         BZ    OKLOCAL           ---> Yes, local part ok                00424140
+         L     R3,TOKPTR         Get string address                     00424330
+         L     R4,TOKLEN         Length of userid string                00424520
+         B     CHECK8                                                   00424710
+         SPACE 1                                                        00424900
+OKLOCAL  EQU   *                 Local part expanded ok                 00425090
+         L     R3,LSTRA          Get string address                     00425280
+         L     R4,LSTRL          Length of userid string                00425470
+         SPACE 1                                                        00425660
+CHECK8   EQU   *                                                        00425850
+         C     R4,=F'8'          8 or less?                             00426040
+         BNH   OK8               ---> Yes                               00426230
+         LA    R4,8              Only use 8                             00426420
+OK8      EQU   *                                                        00426610
+./ D 00428680                                         12/16/88 13:29:21
+./ R 00436590          $ 436780 190                   12/16/88 13:29:21
+         USING NODE,R7           ADDRESS IT                             00436780
+./ D 00439000                                         12/16/88 13:29:21
+./ D 00441000 00444000                                12/16/88 13:29:21
+./ R 00446000          $ 446490 490                   12/16/88 13:29:21
+         BH    FAIL              ---> No, too long for RSCS             00446000
+./ R 00453000 00460000 $ 453990 990                   12/16/88 13:29:21
+         MVC   XRSCS,RSCSNAME    Get RSCS name                          00453990
+         CLC   TAGHOST,CPUSTR    Dest for this host?                    00454980
+         BNE   ISSUETAG          ---> No, use RSCS                      00455970
+         MVC   XRSCS,TAGUSER     Set USERID for destination             00456960
+         SPACE 1                                                        00457950
+ISSUETAG EQU   *                                                        00458940
+./ R 00464000 00503000 $ 483990 19990                 12/16/88 13:29:21
+         SPACE 1                                                        00483990
+./ R 00516000 00521000 $ 518990 2990                  12/16/88 13:29:21
+         LOG   TRY034,(CA,TAGUSER,CA,TAGHOST)                           00521000
+./ I 00524000          $ 524100 100                   12/16/88 13:29:21
+         SPACE 2                                                        00524100
+* Return mail with unknown node message                                 00524200
+         SPACE 1                                                        00524300
+UNKNOWN  DS    0H                                                       00524400
+         LOG   TRY027,(CA,WORK)                                         00524500
+         LA    R15,8             INDICATE INVALID                       00524600
+         B     RET                                                      00524700
+         SPACE 2                                                        00524800
+./ R 00526000          $ 526490 490                   12/16/88 13:29:21
+         LOG   TRY030,(CA,EMSG)  Node name too long!                    00526490
+./ R 00528000          $ 528290 290                   12/16/88 13:29:21
+         B     RET                                                      00524700
+         SPACE 2                                                        00528490
+./ R 00546000 00559000 $ 552990 6990                  12/16/88 13:29:21
+         SPACE 1                                                        00552990
+./ R 00561000 00564000 $ 561990 990                   12/16/88 13:29:21
+         SPACE 1                                                        00561990
+EMSG     DC    CL19'Node name too long '                                00562980
+         SPACE 1                                                        00563970
+./ D 00568000 00570000                                12/16/88 13:29:21
+./ R 00572000 00598970 $ 578990 6990                  12/16/88 13:29:21
+NODEA    DC    A(0)                Address of node for GENLIST          00578990
+LSTRA    DC    A(0)                Address of local part                00585980
+LSTRL    DC    A(0)                Length of local part                 00592970
+./ D 00602000 00648000                                12/16/88 13:29:21
+./ R 00651000 00660000 $ 651990 990                   12/16/88 13:29:21
+         END   TRYRSCS                                                  00651990

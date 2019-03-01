@@ -1,0 +1,4 @@
+./ R 00235850          $ 236340 490                   03/15/91 15:15:57
+    bcopy(mailblok.mailvers,&buf[len],16); len += 16;                   00235850
+./ R 01098490          $ 1098680 190                  03/15/91 15:15:57
+    bcopy(mailblok.mailvers,&buf[len],16); len += 16;                   01098490

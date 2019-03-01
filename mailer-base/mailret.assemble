@@ -1,0 +1,368 @@
+*9/18/86 Rework handling of local vs. net origin of mail.        [1.24] 00001290
+*[1.20] 2/12/85 - try to prevent net mailer-mailer loops!               00001580
+*       Replace "AT" with "@".  Remove blanks from "From:" line.        00002000
+*[1.11] - Fix grammar in EMSG1.                                         00003000
+*[1] X1.9 - REPLACE =V(ARPADATE) WITH REFERENCE TO MAILBLOK POINTER.    00004000
+*                                                                       00005000
+MAILRET  TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - RETURN TO SENDER'   00006000
+*---------------------------------------------------------------------* 00007000
+*      MAILER -- Copyright (c) 1982,1986 Columbia University.         * 00008490
+*    Program Property of the Trustees of Columbia University in the   * 00009000
+*    City of New York.                                                * 00010000
+*---------------------------------------------------------------------* 00011000
+MAILRET  CSECT ,                                                        00012000
+* MAILRET -                                                             00013000
+* Mailret is called when an error has occurred in processing a          00014000
+* mail file that has resulted in one, some, or all of the designated    00015000
+* message recipients not to receive a copy of the file.  Such errors    00016000
+* as a non-existent user or host name, invalid syntax or other          00017590
+* qualifications decided by the user validation exits and/or VALIDATE   00018180
+* determine if a file is to be returned.  The file is returned as       00019000
+* the body of a new message that this routine generates that            00020000
+* contains an explanation of the errors.  The file is returned to       00021990
+* it's sender differently based on these tests:                  [1.24] 00022980
+*  1) If the (from/sender) MAILSFLD is valid,  send return mail  [1.24] 00023970
+*     to that address after checking case (3) below.             [1.24] 00024960
+*  2) If MAILSFLD is invalid,  send return mail to the spool file[1.24] 00025950
+*     origin: MAILUSER@MAILNODE after checking case (3) below.   [1.24] 00026940
+*  3) EXCEPT when sender (MAILSFLD or MAILUSER@MAILNODE) is      [1.24] 00027930
+*     listed as a mail server (in one of the tables) in          [1.24] 00028920
+*     which case,  bounce the mail to local postmaster since a   [1.24] 00029910
+*     trusted mail server should never generate an invalid sender[1.24] 00030900
+*     field (ha!).  This aids preventing mail loops.             [1.24] 00031890
+*  In both cases, the return file is punched to this machine's          00033000
+*  reader to allow the usual processing of mail files.  Looping         00034000
+*  may develop if the file generated here has an error, so it           00035000
+*  is the responsibilty of this machine to check for files              00036000
+*  destined to itself and process them specially (i.e. send them        00037000
+*  to the maintainer userid or throw them away).                        00038000
+*  To aid VALIDATE in determining whether a file punched to *    [1.24] 00039790
+*  is an error reply or something that RSCS rejected and         [1.24] 00040580
+*  transferred back, the tag is set to "--- returned mail file ---".    00041370
+*  The tag on files returned by RSCS will be "<nodename> <userid>".     00042160
+*                                                                       00043000
+*                                                                       00045000
+*  CALLED VIA -                                                         00046000
+*    CALL MAILRET,(MAILBLOK)                                            00047000
+PAB      DSECT ,                                                        00048000
+@MBLOK   DS    A             ADDRESS OF MAILBLOK                        00049000
+         SPACE ,                                                        00050000
+*                                                                       00051000
+         SPACE                                                          00052000
+* REGISTER USAGE -                                                      00053000
+R0  EQU  0 -                                                            00054000
+R1  EQU  1 -                                                            00055000
+R2  EQU  2 -                                                            00056000
+R3  EQU  3 -                                                            00057000
+R4  EQU  4 -                                                            00058000
+R5  EQU  5 -                                                            00059000
+R6  EQU  6 -                                                            00060000
+R7  EQU  7 -                                                            00061000
+R8  EQU  8 -                                                            00062000
+R9  EQU  9 -                                                            00063000
+R10 EQU 10 -                                                            00064000
+R11 EQU 11 - MAILBLOK BASE                                              00065000
+R12 EQU 12 - PROGRAM BASE                                               00066000
+R13 EQU 13 - SAVE AREA                                                  00067000
+R14 EQU 14 - SUBROUTINE LINKAGE                                         00068000
+R15 EQU 15 - SUBROUTINE LINKAGE                                         00069000
+         SPACE                                                          00070000
+         AIF   ('&SYSPARM' NE 'SUP').NOSUP                       [1.23] 00070500
+         PRINT NOGEN                                                    00071000
+.NOSUP   ANOP  ,                                                 [1.23] 00071500
+         BLOCKS                                                         00072000
+         MAILBLOK                                                       00073000
+         EJECT                                                          00074000
+MAILRET  CSECT ,                                                        00075000
+         USING MAILRET,R15   TEMPORARY ADDRESSABILITY                   00076000
+         B     EYESKIP       BRANCH OVER EYESKIP                        00077000
+MYNAME   DC    CL8'MAILRET',CL8'&SYSDATE'                               00078000
+EYESKIP  DS    0H                                                       00079000
+         DROP  R15                                                      00080000
+         STM   R14,R12,12(R13) SAVE CALLER'S REGS                       00081000
+         LR    R12,R15       PERMANENT ADDRESSABILITY                   00082000
+         USING MAILRET,R12                                              00083000
+         LA    R14,SAVE      MY SAVE AREA                               00084000
+         ST    R13,4(R14)    SAVE CALLER'S PTR                          00085000
+         ST    R14,8(R13)    CHAIN MINE BACK                            00086000
+         LR    R13,R14       SET MY SAVE PTR                            00087000
+         USING PAB,R1        ADDRESS PLIST                              00088000
+         L     R11,@MBLOK    GET MAILBLOK BASE                          00089000
+         USING MAILBLOK,R11  ADDRESS IT                                 00090000
+         DROP  R1            DONE WITH PLIST                            00091000
+         SPACE ,                                                        00092000
+*--------------------------------------------------------------------   00093000
+* (1) Check validity of sender field (MAILSFLD)                  [1.24] 00103990
+*----------------------------------------------------------------[1.23] 00117030
+* MAILSFLD may in fact be syntactically valid even though not    [1.24] 00117070
+* semantically.  That is, VALIDATE found the sender/from to be   [1.24] 00117080
+* a counterfeit.  VALIDATE will also notice a RCSC rejection,    [1.24] 00117090
+* so first check for that before general case of VALIDATE fail.  [1.24] 00117100
+*----------------------------------------------------------------[1.23] 00117150
+         TM    MAILFLG1,MFLG1REJ RSCS reject the file?           [1.24] 00117270
+         BO    RSCSREJ       ->yes, MAILSFLD should be valid then[1.24] 00117360
+         TM    MAILFLG2,MFLG2VLF Validate fail for other reason  [1.23] 00117450
+         BO    BADSFLD      -> yes,  ignore MAILSFLD regardless  [1.24] 00117540
+RSCSREJ  EQU   *             <-here if if RSCS reject.  Check    [1.24] 00117630
+*                            validity of MAILSFLD anyhow....     [1.24] 00117720
+         ICM   R7,B'1111',MAILSFLD   AT LEAST A VALID SENDER FIELD?     00118000
+         BZ    BADSFLD       SORRY, KILL IT                      [1.24] 00119490
+         USING FIELDD,R7     ADDRESS THE SENDER FIELDD                  00120000
+         ICM   R7,B'1111',FIPARS  GET MBOX BLOCK POINTER                00121690
+         BZ    BADSFLD       NEVER PARSED AN ADDRESS             [1.24] 00122490
+         USING MBOX,R7     ADDRESS THE ADDRESS BLOCK                    00123690
+         L     R5,MBXLCL         GET USER LIST                          00124380
+         L     R7,MBXDML         GET HOST LIST                          00125070
+         DROP  R7                                                       00126000
+         USING NODE,R5     ADDRESS USERID NODE                          00127590
+         L     R5,NODDOWN    POINT DOWN TO TOKEND                       00128180
+         USING TOKEND,R5     GET USERNAME TOKEN                         00129000
+         SR    R4,R4         ZIP                                        00130000
+         L     R4,TOKLEN     GET TOKEN LENGTH                           00131980
+         L     R5,TOKPTR         STRING POINTER                         00132660
+         DROP  R5                                                       00133000
+         USING NODE,R7     ADDRESS HOSTNAME NODE                        00134590
+         L     R7,NODDOWN    POINT DOWN TO HOST TOKEND                  00135180
+         USING TOKEND,R7     GET HOSTNAME TOKEN                         00136000
+         SR    R6,R6         ZERO                                       00137000
+         L     R6,TOKLEN     HOST TOKEN LENGTH                          00138980
+         L     R7,TOKPTR         HOST NAME STRING ADDRESS               00139660
+         DROP  R7                                                       00140000
+         B     CHEKLOOP      -> now go check case (3) for loop   [1.24] 00140580
+         SPACE ,                                                 [1.24] 00140660
+BADSFLD  EQU   *             <- invalid SFLD comes here          [1.24] 00140740
+*----------------------------------------------------------------[1.24] 00140820
+* (2) MAILSFLD invalid, set up ptrs to MAILUSER and MAILNODE.    [1.24] 00140900
+*----------------------------------------------------------------[1.24] 00140980
+         LA    R5,MAILUSER   point to userid string              [1.24] 00141060
+         L     R4,MAILULEN   length of this string               [1.24] 00141140
+         LA    R7,MAILNODE   point to hostname string            [1.24] 00141220
+         L     R6,MAILNLEN   length of this string               [1.24] 00141300
+*  fall thru to CHEKLOOP:                                        [1.24] 00141380
+CHEKLOOP EQU   *             <- here to do case (3)              [1.24] 00141460
+*----------------------------------------------------------------[1.24] 00141540
+* (3) Check to see if recipient of error mail is a mail server.  [1.24] 00141620
+* At this point,  registers are as follows:                      [1.24] 00141700
+*   R5 - userid  R4 - length                                     [1.24] 00141780
+*   R7 - host    R6 - length                                     [1.24] 00141860
+*                                                                [1.24] 00141940
+*  (a) Look up host ROUTD (outgoing, domains tables) to obtain   [1.24] 00142020
+*      rscs node name for given host's server.                   [1.24] 00142100
+*  (b) Using host -> rscs node mapping from (a), look in incoming[1.24] 00142180
+*      table to see if server is there.                          [1.24] 00142260
+*  If (b)finds a match,  then we can be pretty sure we're        [1.24] 00142340
+*  trying to send error mail to a server which is a loop.        [1.24] 00142420
+*----------------------------------------------------------------[1.24] 00142500
+* (a) Get ROUTD for given host to obtain RSCS node name.         [1.24] 00142580
+        CALL  FNROUTD,((R7),(R6)) look up returnee host          [1.22] 00142990
+        LTR   R8,R15         no such host?                       [1.24] 00144370
+        BZ    RETKILL        kill it for fun.                    [1.24] 00144760
+        USING ROUTD,R8       address the routed returned         [1.24] 00145150
+*----------------------------------------------------------------[1.24] 00145540
+* (b) Use above RTROUTE to build key for INCOMING lookup which   [1.24] 00145930
+*     is a 16 byte string of "node    user    ".  Before looking [1.24] 00146320
+*     there,  check to make sure user@node isn't self.           [1.24] 00146710
+*----------------------------------------------------------------[1.24] 00147100
+        C     R4,=F'8'       if the userid is >8, not much point [1.24] 00147490
+        BH    MRET           in continuing the lookup.           [1.24] 00147880
+        MVC   LOOKNODE,RTROUTE set up lookup stuff for MAILVTAB  [1.24] 00148270
+        DROP  R8             done w/routd                        [1.24] 00148660
+        MVC   LOOKUSER,=CL8' ' blank it first                    [1.24] 00149050
+        LR    R1,R4          get length into r1                  [1.24] 00149440
+        BCTR  R1,0           decrement for EX                    [1.24] 00149830
+        EX    R1,MOVELOOK    MVC LOOKUSER,0(R5)                  [1.24] 00150220
+        CLC   LOOKNODE,CPUSTR is it the local node?              [1.24] 00150610
+        BNE   SKIPLOC        ->nope,  skip next test             [1.24] 00151000
+        CLC   LOOKUSER,MAILVMID is it my own VMID?               [1.24] 00151390
+        BE    NETLOOP        -> that's a loop                    [1.24] 00151780
+SKIPLOC EQU   *              <- wasn't self                      [1.24] 00152170
+        L     R8,MAILVTAB    get address of incoming table       [1.24] 00152560
+        CALL  TBLUK,((R8),LOOKVALD,L'LOOKVALD,TWORK)  look it up [1.24] 00152950
+        LTR   R15,R15        is it a trusted mailer?             [1.24] 00153340
+        BNZ   MRET           ->no,  so we may continue           [1.24] 00153730
+        B     NETLOOP        ->yes,  this would cause a mail loop[1.24] 00154120
+         B     MRET          DO COMMON RETURN CODE NOW                  00155000
+        SPACE ,                                                  [1.24] 00156290
+MOVELOOK MVC  LOOKUSER,0(R5) executed MVC                        [1.24] 00156580
+        SPACE                                                           00157000
+NETLOOP EQU   *      [1.20]                                             00158000
+        WTR   RTS028 [1.20]                                             00159000
+* fall thru to retkill... [1.20]                                        00160000
+RETKILL  EQU   *                                                        00161000
+         WTR   RTS037        INVALID FILE FROM ANOTHER MAILER           00162000
+         B     ERRLOOP       USE THE SAME RETURN TO MAINTAINER          00163000
+         SPACE ,                                                        00164000
+*--- COMMON RETURN STUFF ---*                                           00165000
+MRET     EQU   *                                                        00166000
+         WTR   RTS029,(CA,(R5),CA,(R7))                                 00167000
+         LA    R1,CPSPOOL                                               00168000
+         LA    R0,CPSPLEN                                               00169000
+         DC    X'83100008'   PUNCH THIS TO MYSELF                       00170000
+         MVI   CARD,C' '     INIT TO BLANKS                             00171000
+         MVC   CARD+1(79),CARD                                          00172000
+         MVC   CARD(6),=C'Date: '                                       00173000
+         LA    R1,CARD+6                                                00174000
+         L     R15,AARPADAT            [1]                              00175000
+         BALR  R14,R15                                                  00176000
+         PUNCHC CARD                                                    00177000
+         MVI   CARD,C' '                                                00178000
+         MVC   CARD+1(79),CARD                                          00179000
+         MVC   CARD(22),=CL22'From: Network Mailer <' [1.20]            00180000
+         MVC   CARD+22(8),MAILVMID     MY USERID                        00181000
+         LA    R2,CARD+30    [1.20] point to end of userid              00182000
+ULOOP    EQU   *             [1.20] loop to trim trailing blanks        00183000
+         CLI   0(R2),C' '    [1.20] trim of trailing blanks             00184000
+         BNE   ULOOPOUT      [1.20] out of loop                         00185000
+         BCTR  R2,0          [1.20] decrement                           00186000
+         B     ULOOP         [1.20] loop back                           00187000
+ULOOPOUT EQU   *             [1.20]                                     00188000
+         MVI   1(R2),C'@'    [1.20] stuff in the atsign                 00189000
+         MVC   2(8,R2),CPUSTR [1.20] now drag in my host name           00190000
+         LA    R2,10(R2)     [1.20] point to end of host name           00191000
+HLOOP    EQU   *             [1.20] same kind of loop to trim...        00192000
+         CLI   0(R2),C' '    [1.20] blank?                              00193000
+         BNE   HLOOPOUT      [1.20] done                                00194000
+         BCTR  R2,0          [1.20] decr                                00195000
+         B     HLOOP         [1.20] zzzz                                00196000
+HLOOPOUT EQU   *             [1.20]                                     00197000
+         MVI   1(R2),C'>'    [1.20] Complete the line                   00198000
+         PUNCHC CARD                                                    00199000
+         MVI   CARD,C' '                                                00200000
+         MVC   CARD+1(79),CARD                                          00201000
+         MVC   CARD(25),=C'Subject: Undelivered mail'                   00202000
+         PUNCHC CARD                                                    00203000
+         MVI   CARD,C' '                                                00204000
+         MVC   CARD+1(79),CARD                                          00205000
+         MVC   CARD(4),=C'To: '                                         00206000
+         LA    R2,CARD+4     DESTINATION OF COPY                        00207000
+         LR    R1,R4         LENGTH OF COPY                             00208000
+         BCTR  R1,0          -1 FOR EXECUTE                             00209000
+         LR    R3,R5         SOURCE OF COPY                             00210000
+         EX    R1,COPY       COPY USER NAME IN                          00211000
+         AR    R2,R4         [1.20] POINT PAST USER NAME                00212000
+         MVI   0(R2),C'@'   [1.20]                                      00213000
+         LA    R2,1(R2)      [1.20] point past "@"                      00214000
+         LR    R1,R6         LENGTH OF HOST NAME                        00215000
+         BCTR  R1,0          -1 FOR EXECUTE                             00216000
+         LR    R3,R7         ADDRESS OF NAME                            00217000
+         EX    R1,COPY       COPY IN THE HOST NAME                      00218000
+         PUNCHC CARD         PUNCH THE TO: CARD                         00219000
+         MVI   CARD,C' '                                                00220000
+         MVC   CARD+1(79),CARD                                          00221000
+         PUNCHC CARD         END OF MESSAGE HEADER                      00222000
+         PUNCHC EMSG1        PUNCH THE LITTLE APOLOGY                   00223000
+         PUNCHC EMSG2        PUNCH THE LITTLE APOLOGY                   00224000
+         MVI   CARD,C' '                                                00225000
+         MVC   CARD+1(79),CARD                                          00226000
+         PUNCHC CARD         PRINT A BLANK LINE FOR READABILITY         00227000
+         L     R5,MAILULFS   user log fscb                       [1.23] 00228690
+         FSCLOSE FSCB=(R5),ERROR=DUNFILE                         [1.23] 00229380
+         FSPOINT FSCB=(R5),RDPNT=1,ERROR=DUNFILE                 [1.23] 00230070
+FSLOOP   EQU   *                                                        00231000
+         FSREAD  FSCB=(R5),BUFFER=CARD,BSIZE=80,ERROR=DUNFILE    [1.23] 00232490
+         PUNCHC CARD                                                    00233000
+         B     FSLOOP                                                   00234000
+DUNFILE  EQU   *                                                        00235000
+         FSCLOSE FSCB=(R5)                                       [1.23] 00236290
+         FSERASE FSCB=(R5)                                       [1.23] 00236580
+         MVI   CARD,C' '                                                00237000
+         MVC   CARD+1(79),CARD                                          00238000
+         PUNCHC CARD                                                    00239000
+         SPACE ,                                                 [1.22] 00240030
+*----------------------------------------------------------------[1.22] 00240060
+* If SMTP,  send back the SMTP REPLY too.                        [1.22] 00240090
+*----------------------------------------------------------------[1.22] 00240120
+         TM    MAILFLG2,MFLG2SMT  was it SMTP                    [1.22] 00240150
+         BNO   SKIPSMTP           no sir                         [1.22] 00240180
+         PUNCHC SMTSEPR           a little seperator message     [1.22] 00240210
+         PUNCHC CARD              and another blank line         [1.22] 00240240
+SMTPLOOP EQU   *                                                 [1.22] 00240270
+         MVI   CARD,C' '          blank it out                   [1.22] 00240300
+         MVC   CARD+1(79),CARD                                   [1.22] 00240330
+         FSREAD 'SMTP REPLY',BUFFER=CARD,BSIZE=80,ERROR=SMTPEND, [1.22]*00240370
+               FORM=E                                                   00240380
+         LR    R5,R1              hold on fscb                   [1.22] 00240390
+         PUNCHC CARD                                             [1.22] 00240420
+         B     SMTPLOOP           keep on punching               [1.22] 00240450
+SMTPEND  EQU   *                  done                           [1.22] 00240480
+         FSCLOSE FSCB=(R5)        close the file                 [1.23] 00240520
+SKIPSMTP EQU   *                  here if not SMTP               [1.22] 00240540
+         SPACE ,                                                 [1.22] 00240570
+         PUNCHC SEPR                                                    00240600
+         LA    R5,MAILSFB    GET SFBLOK                                 00241000
+         USING SFBLOK,R5                                                00242000
+         LH    R5,SFBRECSZ   GET RECORD SIZE                            00243000
+         DROP  R5                                                       00244000
+         SPACE ,                                                        00245000
+*--------------------------------------------------------------------   00246000
+*  CHECK TO SEE IF THE HEADER WAS SUCCESFULLY SCANNED.  IF SO, THEN     00247000
+*  THE PUNHDR, PUNTXT, AND PUNCLS ROUTINES CAN BE USED. IF NO, THEN     00248000
+*  JUST COPY THE READER FILE (INCLUDING POSSIBLE "INVISIBLE" FIELDS).   00249000
+*--------------------------------------------------------------------   00250000
+         TM    MAILFLG1,MFLG1HDS       HEADER SCANNED OK?               00251000
+         BNO   HDNOSCN       HEADER NOT SCANNED                         00252000
+         L     R15,APUNHDR   GET HEADER PUNCHER                         00253000
+         CALL  (15),((R11))  CALL IT                                    00254000
+         L     R15,APUNTXT   GET TEXT PUNCHER                           00255000
+         CALL  (15),((R11))                                             00256000
+         L     R15,APUNCLS                                              00257000
+         CALL  (15),((R11))                                             00258000
+         B     SKIPOVER      SKIP THE NEXT PART                         00259000
+         SPACE ,                                                        00260000
+HDNOSCN  EQU   *                                                        00261000
+DECKLOOP EQU   *                                                        00262000
+         RDCARD CARD,(R5),ERROR=DUNDECK                                 00263000
+         PUNCHC CARD                                                    00264000
+         B     DECKLOOP                                                 00265000
+DUNDECK  EQU   *                                                        00266000
+         LA    R1,CPCLOSE                                               00267000
+         LA    R0,CPCLLEN                                               00268000
+         DC    X'83100008'                                              00269000
+SKIPOVER EQU   *                                                        00270000
+         SR    R15,R15                                                  00271000
+RET      EQU   *                                                        00272000
+         L     R13,4(R13)              GET CALLER'S SAVE PTR            00273000
+         L     R14,12(R13)             GET R14                          00274000
+         LM    R0,R12,20(R13)          GET R0-R12                       00275000
+         BR    R14                     RETURN                           00276000
+         SPACE ,                                                        00277000
+ERRLOOP  EQU   *             ERROR LOOP DETECTED                        00278000
+         CLC   MAINTNOD,CPUSTR IS MAINTAINER ON THIS MACHINE?           00279000
+         BNE   ERR2          NOPE                                       00280000
+         CLC   MAINTID,MAILVMID DON'T LET MAINTAINER=MAILER!!           00281000
+         BNE   ERR2          GOOD, THEN I CAN SEND IT TO HIM            00282000
+         WTR   RTS028        ELSE, ERROR LOOP                           00283000
+         SR    R15,R15                                                  00284000
+         B     RET                                                      00285000
+ERR2     EQU   *                                                        00286000
+         LA    R5,MAINTID    SEND FILE TO MAINTID                       00287000
+         LA    R4,8          LENGTH OF IT                               00288000
+         LA    R7,MAINTNOD   MAINTAINER'S NODE                          00289000
+         LA    R6,8          LENGTH                                     00290000
+         B     MRET          ERROR LOOP FIXUP                           00291000
+COPY     MVC   0(0,R2),0(R3)                                            00292000
+         LTORG ,                                                        00293000
+FR       DC    C'From: Network Mailer <         at         >'           00294000
+EMSG1 DC CL80'Your mail was not delivered to some or all of its'        00295000
+EMSG2 DC CL80'intended recipients for the following reason(s):'         00296000
+SEPR     DC    CL80' '                                                  00297000
+         ORG   SEPR                                                     00298000
+         DC    20C'-',C'RETURNED MAIL FILE',20C'-'                      00299000
+         ORG                                                            00300000
+SMTSEPR  DC    CL80'SMTP Transaction log follows:'               [1.22] 00300500
+CPSPOOL  DC    C'SP PUN TO * CLASS M',X'15'                             00301000
+         DC    C'TAG DEV PUN --- returned mail file ---'                00302000
+CPSPLEN  EQU   *-CPSPOOL                                                00303000
+CPCLOSE  DC    C'SP PUN CLOSE',X'15',C'SP PUN OFF',X'15'                00304000
+         DC    C'TAG DEV PUN'                                           00305000
+CPCLLEN  EQU   *-CPCLOSE                                                00306000
+         SPACE ,                                                        00307000
+SAVE     DS    18F                     SAVE AREA                        00308000
+CARD     DS    CL132                                                    00309000
+TWORK    DS    64F   [1.20]                                             00310000
+LOOKVALD DS    CL16                                              [1.24] 00310100
+         ORG   LOOKVALD                                          [1.24] 00310200
+LOOKNODE DS    CL8                                               [1.24] 00310300
+LOOKUSER DS    CL8                                               [1.24] 00310400
+         ORG   ,                                                 [1.24] 00310500
+         END   MAILRET                                                  00311000

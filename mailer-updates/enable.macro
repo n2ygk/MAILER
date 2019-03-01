@@ -1,0 +1,144 @@
+         MACRO                                                          ENA00010
+&LABEL   ENABLE &INTTYPE=,         Interrupt type                      XENA00020
+               &MF=                Macro form, will be ignored          ENA00030
+.*************************************************************          ENA00040
+.*                                                           *          ENA00050
+.*   This code crudely emulates the ENABLE macro from the    *          ENA00060
+.*   bi-modal CMS DMSSP MACLIB.  It will ignore the macro    *          ENA00070
+.*   form (always generating in-line code).                  *          ENA00080
+.*                                                           *          ENA00090
+.*************************************************************          ENA00100
+         AIF   ('&INTTYPE' EQ '').ERR1                                  ENA00110
+         AIF   ('&MF' EQ '').X020                                       ENA00120
+         MNOTE 0,'Macro form value will be ignored'                     ENA00130
+.X020    ANOP                                                           ENA00140
+.*       Flags for various INTTYPE values                               ENA00150
+         LCLB  &ALL                                                     ENA00160
+         LCLB  &CONSOLE                                                 ENA00170
+         LCLB  &EXTERN                                                  ENA00180
+         LCLB  &IO                                                      ENA00190
+         LCLB  &NOCONS                                                  ENA00200
+         LCLB  &NONE                                                    ENA00210
+         LCLA  &I                                                       ENA00220
+.*                                                                      ENA00230
+.*  Find out what bits need to be set                                   ENA00240
+.*  A bad keyword stops all processing                                  ENA00250
+.*                                                                      ENA00260
+&I       SETA  1                                                        ENA00270
+.X100    ANOP                                                           ENA00280
+         AIF   ('&INTTYPE(&I)' EQ 'ALL').X110                           ENA00290
+         AIF   ('&INTTYPE(&I)' EQ 'CONSOLE').X120                       ENA00300
+         AIF   ('&INTTYPE(&I)' EQ 'EXTERN').X130                        ENA00310
+         AIF   ('&INTTYPE(&I)' EQ 'IO').X140                            ENA00320
+         AIF   ('&INTTYPE(&I)' EQ 'NOCONS').X150                        ENA00330
+         AIF   ('&INTTYPE(&I)' EQ 'NONE').X160                          ENA00340
+         AGO   .ERR2                                                    ENA00350
+.X110    ANOP                                                           ENA00360
+&ALL     SETB  1                                                        ENA00370
+         AGO   .X190                                                    ENA00380
+.X120    ANOP                                                           ENA00390
+&CONSOLE SETB  1                                                        ENA00400
+         AGO   .X190                                                    ENA00410
+.X130    ANOP                                                           ENA00420
+&EXTERN  SETB  1                                                        ENA00430
+         AGO   .X190                                                    ENA00440
+.X140    ANOP                                                           ENA00450
+&IO      SETB  1                                                        ENA00460
+         AGO   .X190                                                    ENA00470
+.X150    ANOP                                                           ENA00480
+&NOCONS  SETB  1                                                        ENA00490
+         AGO   .X190                                                    ENA00500
+.X160    ANOP                                                           ENA00510
+&NONE    SETB  1                                                        ENA00520
+         AGO   .X190                                                    ENA00530
+.X190    ANOP                                                           ENA00540
+&I       SETA  &I+1                                                     ENA00550
+         AIF   (&I LE N'&INTTYPE).X100                                  ENA00560
+.*                                                                      ENA00570
+.*  Check for conflicts                                                 ENA00580
+.*  Specifying NONE with anything else is a conflict                    ENA00590
+.*                                                                      ENA00600
+         AIF   (NOT &NONE).X200                                         ENA00610
+         AIF   (&ALL).ERR3                                              ENA00620
+         AIF   (&CONSOLE).ERR3                                          ENA00630
+         AIF   (&EXTERN).ERR3                                           ENA00640
+         AIF   (&IO).ERR3                                               ENA00650
+         AIF   (&NOCONS).ERR3                                           ENA00660
+.*                                                                      ENA00670
+.*  No conflicts, build mask field for SSM instruction                  ENA00680
+.*                                                                      ENA00690
+.X200    ANOP                                                           ENA00700
+         LCLC  &CH0,&CH1,&CH2,&CH3,&CH4,&CH5,&CH6,&EXT                  ENA00710
+.*                                                                      ENA00720
+.*  Set default values (not enabled)                                    ENA00730
+.*                                                                      ENA00740
+&CH0     SETC  '0'                                                      ENA00750
+&CH1     SETC  '0'                                                      ENA00760
+&CH2     SETC  '0'                                                      ENA00770
+&CH3     SETC  '0'                                                      ENA00780
+&CH4     SETC  '0'                                                      ENA00790
+&CH5     SETC  '0'                                                      ENA00800
+&CH6     SETC  '0'                                                      ENA00810
+&EXT     SETC  '0'                                                      ENA00820
+         AIF   (&NONE).X300                                             ENA00830
+         AIF   (NOT &ALL).X210                                          ENA00840
+.*                                                                      ENA00850
+.*  If ALL was specified it doesn't matter what else was in the list    ENA00860
+.*                                                                      ENA00870
+&CH0     SETC  '1'                                                      ENA00880
+&CH1     SETC  '1'                                                      ENA00890
+&CH2     SETC  '1'                                                      ENA00900
+&CH3     SETC  '1'                                                      ENA00910
+&CH4     SETC  '1'                                                      ENA00920
+&CH5     SETC  '1'                                                      ENA00930
+&CH6     SETC  '1'                                                      ENA00940
+&EXT     SETC  '1'                                                      ENA00950
+         AGO   .X300                                                    ENA00960
+.*                                                                      ENA00970
+.X210    ANOP                                                           ENA00980
+.*                                                                      ENA00990
+.*  Set the appropriate bits for what was requested                     ENA01000
+.*                                                                      ENA01010
+         AIF   (NOT &CONSOLE).X220                                      ENA01020
+.*  Console will enable channel 0 (where console is assumed to be)      ENA01030
+&CH0     SETC  '1'                                                      ENA01040
+.*                                                                      ENA01050
+.X220    ANOP                                                           ENA01060
+         AIF   (NOT &EXTERN).X230                                       ENA01070
+.*  External does the obvious                                           ENA01080
+&EXT     SETC  '1'                                                      ENA01090
+.*                                                                      ENA01100
+.X230    ANOP                                                           ENA01110
+         AIF   (NOT &IO).X240                                           ENA01120
+.*  IO will enable all I/O channels                                     ENA01130
+&CH0     SETC  '1'                                                      ENA01140
+&CH1     SETC  '1'                                                      ENA01150
+&CH2     SETC  '1'                                                      ENA01160
+&CH3     SETC  '1'                                                      ENA01170
+&CH4     SETC  '1'                                                      ENA01180
+&CH5     SETC  '1'                                                      ENA01190
+&CH6     SETC  '1'                                                      ENA01200
+.*                                                                      ENA01210
+.X240    ANOP                                                           ENA01220
+         AIF   (NOT &NOCONS).X300                                       ENA01230
+.*  NOCONS will disable channel 0 (where console is assumed to be)      ENA01240
+&CH0     SETC  '0'                                                      ENA01250
+         AGO   .X300                                                    ENA01260
+.*                                                                      ENA01270
+.*                                                                      ENA01280
+.*  Mask has been built                                                 ENA01290
+.*                                                                      ENA01300
+.X300    ANOP                                                           ENA01310
+&LABEL   SSM   =B'&CH0&CH1&CH2&CH3&CH4&CH5&CH6&EXT'                     ENA01320
+         MEXIT                                                          ENA01330
+.*                                                                      ENA01340
+.*  Error messages                                                      ENA01350
+.*                                                                      ENA01360
+.ERR1    MNOTE 8,'INTTYPE parameter must be specified'                  ENA01370
+         MEXIT                                                          ENA01380
+.ERR2    MNOTE 8,'Invalid option (&INTTYPE(&I)) specified for INTTYPE'  ENA01390
+         MEXIT                                                          ENA01400
+.ERR3    MNOTE 8,'Conflicting INTTYPE options (NONE and something else)XENA01410
+               '                                                        ENA01420
+         MEXIT                                                          ENA01430
+         MEND                                                           ENA01440

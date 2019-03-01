@@ -1,0 +1,17 @@
+./ I 00010000          $ 10070 70                     03/14/89 14:51:41
+                                                                        00010070
+ccopts = ''                                  /*                       */00010140
+getopts = ''                                 /*                       */00010210
+                                                                        00010280
+do i=1 to words(options)                     /*                       */00010350
+   option = word(options,i)                  /*                       */00010420
+   if find('CLOBBER CONT LOGERASE MACS PRINT',option) > 0  then         00010490
+      getopts = getopts option                                          00010560
+   else                                      /*                       */00010630
+      ccopts = ccopts option                                            00010700
+   end                                                                  00010770
+                                                                        00010840
+./ R 00012000          $ 12890 890                    03/14/89 14:51:41
+'GET' fn ft '(MACS NOLOGERASE' getopts                                  00012890
+./ R 00017490          $ 17680 190                    03/14/89 14:51:41
+'CC' fn '(OPT ALIGN' ccopts                                             00017680

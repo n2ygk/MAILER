@@ -1,0 +1,35 @@
+./ D 00266680 00267000                                10/04/88 09:56:30
+./ R 00320000 00327000 $ 320690 690                   10/04/88 09:56:30
+         ST    R7,NODEP            Set NODE pointer for GENLIST.
+         MVC   STKP,=A(LCLSTACK)   Init stack pointer
+         MVC   STKL,=A(L'LCLSTACK)    and length.
+         CALL  GENLIST,(NODEP,DOMA,DOML,STKP,STKL) Build HOST string.
+         LTR   R15,R15             Did it work?
+         BNZ   BADLOC              No  : Fail the message.
+         L     R2,DOMA             Get string address
+         L     R7,DOML                and length.
+         DROP  R5,R7
+./ R 00331000          $ 331490 490                   10/04/88 09:56:30
+         BNZ   TRYLDOM             No  : Try LocalDomain.
+./ I 00337000          $ 337060 60                    10/04/88 09:56:30
+         SPACE ,
+TRYLDOM  DS    0H
+         ICM   R3,B'1111',LCLDOM   Is there a LocalDomain?
+         BZ    BADLOC              No  : Bad address.
+         SR    R1,R1               Get Local-Domain
+         IC    R1,0(,R3)              length.
+         CR    R7,R1               Do the lengths match?
+         BNE   BADLOC              No  : Bad address.
+         BCTR  R1,0
+         EX    R1,TLD$CLC          "CLC 0(*-*,R2),1(R3)"
+         BNE   BADLOC              No  : Bad address.
+         SR    R15,R15             Yes : Accept <user>@<lcldom>.
+         B     RET
+TLD$CLC  CLC   0(*-*,R2),1(R3)     *** Executed ***
+./ I 00501000          $ 501100 100                   10/04/88 09:56:30
+DOMA     DS    A                   Address of host string.
+DOML     DS    F                   Length of host string.
+STKP     DS    A                   Stack Pointer.
+STKL     DS    F                   Stack Length.
+NODEP    DS    A                   Address of NODE for GENLIST.
+LCLSTACK DS    XL100               Local stack area.

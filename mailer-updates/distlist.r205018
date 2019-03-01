@@ -1,0 +1,63 @@
+./ I 00077000          $ 77100 100                    01/11/90 08:44:42
+         SPACE 1                                                        00077100
+         TM    DBGFLG6,DBGNOOUT   Produce mail files?                   00077200
+         BNO   SKIP001            ---> Yes                              00077300
+         WRTERM 'DISTLIST:  Trace-send-no-mail set'                     00077400
+SKIP001  EQU   *                                                        00077500
+         SPACE 1                                                        00077600
+./ I 00100000          $ 100100 100                   01/11/90 08:44:42
+         TM    DBGFLG6,DBGNOOUT   Producing mail?                       00100100
+         BNO   SKIP0102           ---> Yes                              00100200
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,HELO),                      X00100300
+               DOT=NO,COMP=NO
+         B     SKIP0104                                                 00100400
+SKIP0102 EQU   *                                                        00100500
+./ I 00101000          $ 101300 300                   01/11/90 08:44:42
+SKIP0104 EQU   *                                                        00101300
+         SPACE 1                                                        00101600
+./ I 00102000          $ 102100 100                   01/11/90 08:44:42
+         TM    DBGFLG6,DBGNOOUT   Producing mail?                       00102100
+         BNO   SKIP0112           ---> Yes                              00102200
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,TICK),                      X00102300
+               DOT=NO,COMP=NO
+         B     SKIP0114                                                 00102400
+SKIP0112 EQU   *                                                        00102500
+./ I 00103000          $ 103500 500                   01/11/90 08:44:42
+SKIP0114 EQU   *                                                        00103500
+./ I 00127000          $ 127100 100                   01/11/90 08:44:42
+         TM    DBGFLG6,DBGNOOUT   Producing mail?                       00127100
+         BNO   SKIP0122           ---> Yes                              00127200
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,MAIL),                      X00127300
+               DOT=NO,COMP=NO
+         B     SKIP0124                                                 00127400
+SKIP0122 EQU   *                                                        00127500
+./ I 00128000          $ 128700 700                   01/11/90 08:44:42
+SKIP0124 EQU   *                                                        00128700
+./ I 00143000          $ 143100 100                   01/11/90 08:44:42
+         TM    DBGFLG6,DBGNOOUT   Producing mail?                       00143100
+         BNO   SKIP0132           ---> Yes                              00143200
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,RCPT),                      X00143300
+               DOT=NO,COMP=NO
+         B     SKIP0134                                                 00143400
+SKIP0132 EQU   *                                                        00143500
+./ I 00144000          $ 144500 500                   01/11/90 08:44:42
+SKIP0134 EQU   *                                                        00144500
+./ I 00153000          $ 153090 90                    01/11/90 08:44:42
+         TM    DBGFLG6,DBGNOOUT   Producing mail?                       00153100
+         BNO   SKIP0142           ---> Yes                              00153200
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,RCPT),                      X00153300
+               DOT=NO,COMP=NO
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,ENDDATA),                   X00153400
+               DOT=NO,COMP=NO
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,QUIT),                      X00153500
+               DOT=NO,COMP=NO
+         B     SKIP0144                                                 00153600
+SKIP0142 EQU   *                                                        00153700
+./ I 00169000          $ 169500 500                   01/11/90 08:44:42
+SKIP0144 EQU   *                                                        00169500
+./ I 00245000          $ 245100 100                   01/11/90 08:44:42
+         SPACE 1                                                        00245100
+LINESKEL DC    AL1(91)
+         DC    CL11'DISTLIST:'
+         DC    80C'.'
+         SPACE 1                                                        00245500

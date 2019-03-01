@@ -1,0 +1,208 @@
+./ R 00027000          $ 27490 490                    11/29/90 13:22:43
+R5  EQU  5 -                                                            00027490
+./ R 00030000 00031000 $ 30590 590                    11/29/90 13:22:43
+R8  EQU  8 -                                                            00030590
+R9  EQU  9 -                                                            00031180
+./ I 00128000          $ 128030 30                    11/29/90 13:22:43
+*                                                                       00128030
+*  The SET command can be used to SET and UNSET bit values using        00128060
+*                                                                       00128090
+*          SET  BIT bitname  True | False                               00128120
+*                                                                       00128150
+*  The SET command can be used to SET and UNSET variable values using   00128180
+*                                                                       00128210
+*          SET  VAR name   < value-string >                             00128240
+*                                                                       00128270
+*  The absence of 'value-string' will cause the variable to be set      00128300
+*  to a null string.                                                    00128330
+*                                                                       00128360
+*                                                                       00128390
+* Register usage local to SET processing:                               00128420
+*                                                                       00128450
+*    R0  - Work reg                                                     00128480
+*    R1  - Work reg                                                     00128510
+*    R2  - Bit/Variable name array entry ptr                            00128540
+*    R3  - Bit/Variable name array entry count                          00128570
+*    R4  - Token length                                                 00128600
+*    R5  - Token address                                                00128630
+*    R6  - Ptr to bit table entry                                       00128660
+*    R7  - Bit/Var name string ptr                                      00128690
+*    R8  - Bit value                                                    00128720
+*    R9  -                                                              00128750
+*    R10 - Internal subroutine linkage                                  00128780
+*    R11 - MAILBLOK base                                                00128810
+*    R12 - PROGRAM base                                                 00128840
+*    R13 - Save area                                                    00128870
+*    R14 - Work reg                                                     00128900
+*    R15 - Decremented length of string (R4-1)                          00128930
+./ R 00132000 00148000 $ 132090 90                    11/29/90 13:22:43
+         CLC   ARGC,=F'0'          Any arguments?                       00132090
+         BE    $SETHELP            ---> No, go tell them how            00132180
+         L     R15,ARGVP           Get pointer to next token            00132270
+         L     R4,0(R15)           Get address of next token            00132360
+         LA    R15,4(,R15)         Bump ARGV pointer to next token      00132450
+         ST    R15,ARGVP           Update ARGV pointer                  00132540
+         L     R15,ARGC            Get remaining token count            00132630
+         BCTR  R15,0               Decrement                            00132720
+         ST    R15,ARGC            Update it                            00132810
+         LA    R0,SETTAB           SET options table                    00132900
+         SRDL  R4,24               Length of token                      00132990
+         SRL   R5,8                    and address                      00133080
+         CALL  TBLUK,((0),(5),(4),TWORK)                                00133170
+         C     R15,=F'4'           Unique substring found?              00133260
+         BNHR  R1                  ---> Go to command routine           00133350
+         B     BOGUS               ---> Unknown command                 00133440
+         SPACE 1                                                        00133530
+SETTAB   TBSTART ,           SHOW COMMAND OPTIONS                       00133620
+         T '?',$SETHELP                                                 00133710
+         T 'BIT',$SETBIT                                                00133800
+         T 'HELP',$SETHELP                                              00133890
+         T 'VAR',$SETVAR                                                00133980
+         TBEND                                                          00134070
+         EJECT ,                                                        00134160
+*---------------------------------------------------------------------- 00134250
+*                          S E T     B I T                              00134340
+*                                                                       00134430
+*  Set/unset a bit value                                                00134520
+*---------------------------------------------------------------------- 00134610
+$SETBIT  DS    0H                                                       00134700
+         CLC   ARGC,=F'2'          Correct number of parms?             00134790
+         BNE   $SETHELP            ---> No, give them help              00134880
+         L     R1,ARGVP            Get the token address                00134970
+         L     R4,0(R1)            Get token ptr                        00135060
+         LA    R1,4(,R1)           Bump pointer                         00135150
+         ST    R1,ARGVP            Update                               00135240
+         L     R15,ARGC            Get current count                    00135330
+         BCTR  R15,0               Decrement                            00135420
+         ST    R15,ARGC            Update                               00135510
+         SRDL  R4,24               Get token length                     00135600
+         SRL   R5,8                    and address                      00135690
+         CLI   0(R1),1             Only 1 character?                    00135780
+         BNE   $SBIT00             ---> No, must be name                00135870
+         CLI   0(R5),C'?'          Help request?                        00135960
+         BE    $SETHELP            ---> Yes                             00136050
+$SBIT00  EQU   *                                                        00136140
+         LR    R3,R4               Save the length here                 00136230
+         MVI   WORKBUF,C' '        Clear to blanks                      00136320
+         MVC   WORKBUF+1(L'WORKBUF-1),WORKBUF                           00136410
+         LR    R15,R3              Copy length                          00136500
+         BCTR  R15,0               Decrement for execute                00136590
+         EX    R15,$SBITMV1        Copy to work area                    00136680
+         EX    R15,$SBITUP         Uppercase token                      00136770
+         LA    R15,WORKBUF+1(R3)   Point into output buffer             00136860
+         MVI   0(R15),C'='         Move in equal sign                   00136950
+         SPACE 1                                                        00137040
+         LA    R6,PBITARR          Start of regular bit array           00137130
+         LA    R7,PBITLEN          Number of entries                    00137220
+         BAL   R10,BITSRCH         Go find entry                        00137310
+         B     $SBIT20             ---> Found                           00137400
+         LA    R6,DBITARR          Start of debug bit array             00137490
+         LA    R7,DBITLEN          Number of entries                    00137580
+         BAL   R10,BITSRCH         Go find entry                        00137670
+         B     $SBIT20             ---> Found                           00137760
+         LA    R15,WORKBUF+1(R3)   Where the text goes                  00137850
+         MVC   0(9,R15),=CL9'not found'                                 00137940
+         LA    R1,WORKBUF          Msg text                             00138030
+         LA    R0,11(,R3)             & length                          00138120
+         BAL   R14,WRITEMSG                                             00138210
+         B     DONE                                                     00138300
+         SPACE 2                                                        00138390
+$SBIT20  EQU   *                   Bit name found                       00138480
+         L     R7,0(R6)            Offset to flag byte in MAILBLOK      00138570
+         LA    R7,MAILBLOK(R7)     Address of flag byte in MAILBLOK     00138660
+         L     R8,8(R6)            Flag bit                             00138750
+         L     R1,ARGVP            Get the next token address           00138840
+         L     R4,0(R1)            Get token ptr                        00138930
+         SRDL  R4,24               Get token length                     00139020
+         SRL   R5,8                    and address                      00139110
+         CALL  TBLUK,($SBIT22,(5),(4),TWORK)                            00139200
+         C     R15,=F'4'           Unique substring found?              00139290
+         BNHR  R1                  ---> Go to appropriate routine       00139380
+         B     $SETHELP            ---> Unknown command                 00139470
+         SPACE 1                                                        00139560
+$SBIT22  TBSTART ,                 True/False check                     00139650
+         T 'FALSE',$SBIT30                                              00139740
+         T 'TRUE',$SBIT35                                               00139830
+         TBEND                                                          00139920
+         SPACE 1                                                        00140010
+$SBIT30  DS    0H                                                       00140100
+         X     R8,=F'-1'           Flip the bits                        00140190
+         EX    R8,$SBITNI          NI 0(R7),X'00'                       00140280
+         LA    R15,WORKBUF+3(R3)   Where the text goes                  00140370
+         MVC   0(5,R15),=C'False'  Finish message                       00140460
+         LA    R0,8(,R3)           Total message length                 00140550
+         B     $SBIT40                                                  00140640
+         SPACE 1                                                        00140730
+$SBIT35  EQU   *                                                        00140820
+         EX    R8,$SBITOI          OI 0(R7),X'00'                       00140910
+         LA    R15,WORKBUF+3(R3)   Where the text goes                  00141000
+         MVC   0(4,R15),=C'True'   Finish message                       00141090
+         LA    R0,7(,R3)           Total message length                 00141180
+$SBIT40  EQU   *                                                        00141270
+         LA    R1,WORKBUF          Message buffer                       00141360
+         BAL   R14,WRITEMSG        Write it                             00141450
+         B     DONE                                                     00141540
+         SPACE 2                                                        00141630
+BITSRCH  DS    0H                                                       00141720
+*  WORKBUF+0 - Name translated to uppercase                             00141810
+*  R4 - Name length                                                     00141900
+*  R6 - First entry address                                             00141990
+*  R7 - Count of entries                                                00142080
+         LR    R14,R4              Copy value                           00142170
+         BCTR  R14,0               Decrement for EX                     00142260
+BITSRCH0 EQU   *                                                        00142350
+         L     R15,4(,R6)          Flag name ptr                        00142440
+         CH    R4,0(R15)           Lengths match?                       00142530
+         BNE   BITSRCH2            ---> No                              00142620
+         EX    R14,BITCLC01        Names matchs?                        00142710
+         BER   R10                 ---> Return                          00142800
+BITSRCH2 EQU   *                                                        00142890
+         LA    R6,12(,R6)          Bump ptr to next entry               00142980
+         BCT   R7,BITSRCH0         ---> Keep looking                    00143070
+         B     4(,R10)             ---> Not found                       00143160
+         SPACE 2                                                        00143250
+BITCLC01 CLC   WORKBUF(0),2(R15)                                        00143340
+         SPACE 2                                                        00143430
+$SBITMV1 MVC   WORKBUF(0),0(R5)    Executed                             00143520
+$SBITNI  NI    0(R7),X'00'         Exeduted                             00143610
+$SBITOI  OI    0(R7),X'00'         Exeduted                             00143700
+$SBITUP  TR    WORKBUF(0),UPCASE   Executed                             00143790
+         EJECT ,                                                        00143880
+*---------------------------------------------------------------------- 00143970
+*                         S E T     H E L P                             00144060
+*                                                                       00144150
+*  Help for SET command                                                 00144240
+*---------------------------------------------------------------------- 00144330
+$SETHELP DS    0H                  Command help msg                     00144420
+         L     R1,=A(SETHELP)                                           00144510
+         LA    R0,SETHELPL                                              00144600
+         BAL   R14,WRITEMSG        Write usage message                  00144690
+         B     DONE                                                     00144780
+         SPACE 1                                                        00144870
+SETHELP  DC    C'SET usage:  SET  BIT  bitname  True|False'             00144960
+*        DC    X'15'                                                    00145050
+*        DC    C'            SET  VAR  varname  <value>'                00145140
+SETHELPL EQU   *-SETHELP                                                00145230
+         EJECT ,                                                        00145320
+*---------------------------------------------------------------------- 00145410
+*                          S E T     V A R                              00145500
+*                                                                       00145590
+*  Set/unset a variable value                                           00145680
+*---------------------------------------------------------------------- 00145770
+$SETVAR  DS    0H                                                       00145860
+         CLC   ARGC,=F'1'          Not enough parms?                    00145950
+         BL    $SETHELP            ---> No, give them help              00146040
+         L     R1,ARGVP            Get the token address                00146130
+         L     R4,0(R1)            Get token ptr                        00146220
+         SRDL  R4,24               Get token length                     00146310
+         SRL   R5,8                    and address                      00146400
+         CLI   0(R1),1             Only 1 character?                    00146490
+         BNE   $SVAR00             ---> No, must be name                00146580
+         CLI   0(R5),C'?'          Help request?                        00146670
+         BE    $SETHELP            ---> Yes                             00146760
+$SVAR00  EQU   *                                                        00146850
+         B     DONE                                                     00146940
+./ D 00417000 00421000                                11/29/90 13:22:43
+./ I 00450000          $ 450300 300                   11/29/90 13:22:43
+         SPACE 1                                                        00450300
+WORKBUF  DS    CL256' '            Output buffer                        00450600

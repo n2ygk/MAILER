@@ -1,0 +1,43 @@
+./ I 00054000          $ 54020 20                     12/10/90 11:31:39
+* + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + *
+* Mail sources on BITNET fall into two groups: people and servers.    *
+* The following code is meant to provide a way for servers to signal  *
+* that a delivery message is not needed.  The problem that is being   *
+* addressed occurs in 2 forms:                                        *
+*                                                                     *
+*   1. Mailer delivers mail and sends the mail delivered message back *
+*      to the sender.  The RSCS (equivalent) at the sender's node     *
+*      sends back a userid not logged on message.                     *
+*                                                                     *
+*   2. Mailer delivers mail and sends the mail delivered message back *
+*      to the sender.  The sender issues an 'invalid command' message.*
+*                                                                     *
+* The first case happens for every piece of mail from LISTSERV.  The  *
+* sender ids are never logged on, they act only as collection points  *
+* on the host that suports the list.                                  *
+*                                                                     *
+* The second case occurs with some servers that create their own      *
+* BSMTP mail files.                                                   *
+*                                                                     *
+* In both cases the result is two messages that didn't need to go out *
+* on the network.  The fix for this will be to look at the value in   *
+* the FORM field.  Sites using the standard installation procedure    *
+* will have a FORM of QUIET for all MAIL (Release < 2.08) and a FORM  *
+* of QUIET or the value found on the incoming file if that begins     *
+* with 'QU'.  This will preserve values from servers (assuming the    *
+* server sets a 'QUxxxxxx' value) or place a standard value in the    *
+* field.                                                              *
+*                                                                     *
+* LISTSERV already uses 'QU' values other than 'QUIET' so this change *
+* will immediately start to decrease the number of unnecessary msgs   *
+* for LISTSERV list mail.                                             *
+* + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + *
+         CLC   MAILFORM,=CL8'QUIET'     FORM=QUIET?
+         BE    WANTMSG                  ---> Yes, want msg
+         CLC   MAILFORM(2),=CL2'QU'     FORM=QUxxxxxx?
+         BNE   WANTMSG                  ---> Yes, skip msg
+         XR    R15,R15                  Set return code
+         B     RET                      ---> Return
+         SPACE 2
+WANTMSG  EQU   *
+         SPACE 1

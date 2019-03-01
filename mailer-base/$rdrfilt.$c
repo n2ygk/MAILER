@@ -1,0 +1,71 @@
+/*-------------------------------------------------------------------*  00001000
+ *    MAILER -- Copyright (c) 1982,1985 Columbia University.         *  00002000
+ *  Program Property of the Trustees of Columbia University in the   *  00003000
+ *  City of New York.                                                *  00004000
+ *-------------------------------------------------------------------*/ 00005000
+/*                                                                      00006000
+ * _rdrfilt - filter reader files.  New code as of version 1.22         00007000
+ *                                                                      00008000
+ * This routine peeks at the input reader file to see if it is          00009000
+ * something other than a plain RFC822 mail file (such as BSMTP         00010000
+ * or a BSMTP reply).  If it is plain mail,  then it returns a          00011000
+ * 0 value which tells mailmain to continue as if this routine          00012000
+ * had never been called.                                               00013000
+ *                                                                      00014000
+ * For other files,  this routine takes over the functionality          00015000
+ * previously in mailmain and does the necessary processing.            00016000
+ * A return value of 4 indicates successful completion which tells      00017000
+ * mailmain to purge the input file.  Any other non-zero value          00018000
+ * indicates a fatal error.                                             00019000
+ *                                                                      00020000
+ * Alan Crosswell, 12/85                                                00021000
+ */                                                                     00022000
+                                                                        00023000
+#include "types.h"                                                      00025000
+#include "mailblok.h"                                                   00026000
+#include "cfuncs.h"                                                     00027000
+                                                                        00028000
+extern bcmp();                                                          00029000
+extern smtpin();                                                        00030000
+extern smtprep();                                                       00031000
+                                                                        00032000
+#define RMAXRECL 132                                                    00033000
+                                                                        00034000
+_rdrfilt(mb)                                                            00035000
+int mb;                           /* mailblok ptr (not needed) */       00036000
+{                                                                       00037000
+    char rbuf[RMAXRECL];                                                00038000
+    int rc, len;                                                        00039000
+                                                                        00040000
+    if ((rc = cpcmd("READY 00C",9)) != 0)                               00041000
+        return(rderr(rc));                                              00042000
+    while (1) {                                                         00043000
+        if ((len = rdcard(rbuf, (int)mailsfb.sfbrecsz)) < 0)            00044000
+            return rderr(rc);                                           00045000
+        if (len >= 5 && (bcmp(rbuf,":READ",5) == 0))                    00046000
+            continue;             /* skip over the :READ header */      00047000
+        /* now check for various 1st cards:                             00048000
+         *  HELO for a BSMTP request                                    00049000
+         *  xxx  (3 digits) for a BSMTP reply                           00050000
+         */                                                             00051000
+        if (len >= 4 && (xcmp(rbuf,"HELO",4) == 0)) {                   00052000
+            rc = smtpin();        /* pass control to smtp input code */ 00053000
+        } else if (len >= 4 && isdigit(rbuf[0]) && isdigit(rbuf[1])     00054000
+                 && isdigit(rbuf[2])) {                                 00055000
+            rc = smtprep();       /* pass control to smtp reply code */ 00056000
+        } else {                  /* just a plain mail file */          00057000
+            rc = 0;               /* return like nothing happened */    00058000
+        }                                                               00059000
+        cpcmd("CLOSE 00C",9);     /* close the reader file */           00060000
+        return rc;                                                      00061000
+    }                                                                   00062000
+}                                                                       00063000
+                                                                        00064000
+static                                                                  00065000
+rderr(rc)                                                               00066000
+int rc;                                                                 00067000
+{                                                                       00068000
+    wtr("RDR",45,1,"d",rc);                                             00069490
+    return 12;                                                          00070000
+}                                                                       00071000
+                                                                        00072000

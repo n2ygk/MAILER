@@ -1,0 +1,34 @@
+* * * * * * * * * * * * * * * * AUXR2$H * * * * * * * * * * * * * * * * *
+R207999H   Change version to 2.08 Beta
+R207036H   Add debug tracing to VALIDATE
+R207023H   Preserve the FORM value (if one exists) when processing mail
+*          from other mailers.  When punching mail from a local user
+*          set the form value to 'QUIET'.
+R207019H   Don't send BSMTP files into black hole if missing '.'
+R207015H   New trace flags:
+*              smtpin-trace-check_sender
+*              smtpin-trace-check_domain
+R207006H   Add SET command
+R205027H   Change existing parse tracing code from assembly time
+*          switches to runtime switches.  This adds 'Trace-Parsing'
+*          to the debugging variables
+R205023H   More tracing controls.  This adds keywords for:
+R205020H   Add tracing code to HDRSCAN
+R205018H   Add flag to only trace a mail creating exit.
+*          When this flag is set, the exit should list the actions
+*          it would have performed, but *NOT* create the output file.
+R205016H   Add tracing code to TBLUK
+R205015H   Add control to allow accpetance of BSMTP streams with
+*          FILE FROM: header.
+R205014H   Add control to turn off looking for RFC822 headers inside
+*          the BSMTP envelope
+R205013H   Move debugging controls to variables
+R205006H   Provide support to turn on listing of all msgs received
+*          This is meant to be used for debugging
+R203026    Interim speedup of TBLUK service, using binary search.
+R202016H   Fix MAILER007E RC=0002 during RELOAD processing.
+R202014    Make MAILBLOK globally available to all code
+*          This will remove dependence on Waterloo AUX file usage for
+*          increased portability of C code
+R200009    Allow multiple Rscs-Domains.
+R200008    Allow multiple Local-Hosts.

@@ -1,0 +1,17 @@
+./ I 00029000          $ 29050 50                     10/12/88 13:30:44
+;**                                                                     00030000
+;** The following lines allow you to specify alternate RSCS network     00030000
+;** domains.  This is useful for mailers imbedded inside a domain
+;** that might receive mail with a specification other than the real
+;** domain identifier.
+;**
+RSCS-Domain1=.EARN
+RSCS-Domain2=.NETNORTH
+RSCS-Domain3=.LOCAL.EDU
+RSCS-Domain4=.LCL.EDU
+RSCS-Domain5=.DUMMY
+RSCS-Domain6=.DUMMY
+RSCS-Domain7=.DUMMY
+RSCS-Domain8=.DUMMY
+RSCS-Domain9=.DUMMY
+;**                                                                     00030000

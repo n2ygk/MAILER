@@ -1,0 +1,4 @@
+./ R 00031490          $ 31580 90                     12/05/90 11:44:41
+;** The node name for the node on which MAILER is running.  This value  00031490
+;** must be supplied or mailer will after initialization checking has
+;** been done.

@@ -1,0 +1,36 @@
+         MACRO                                                          00001000
+&NAME    SALOC &SIZE,&NOSTOR                                            00002000
+.*  SALOC will allocate storage from the common stack pointed to by     00003000
+.*  the MAILBLOK fields STACKP and STACKS.                              00004000
+.*                                                                      00005000
+.*  The address of the allocated storage is returned in R1.             00006000
+.*                                                                      00007000
+.*  ** WARNING ** SALOC will destroy the contents of registers 0, 1,    00008000
+.*  14 and 15..                                                         00009000
+.*                                                                      00010000
+         AIF   ('&SIZE' NE '').X010                                     00011000
+         MNOTE 8,'Request size not given'                               00012000
+         MEXIT                                                          00013000
+.*                                                                      00014000
+.X010    ANOP                                                           00015000
+         AIF   ('&NOSTOR' NE '').X020                                   00016000
+         MNOTE 8,'Not enough stack space error address not provided'    00017000
+         MEXIT                                                          00018000
+.*                                                                      00019000
+.X020    ANOP                                                           00020000
+         LM    R14,R15,STACKP      Pick up stack pointers               00021000
+         LA    R14,0(,R14)         Clear off garbage bits               00022000
+         LA    R1,7(,R14)          Round up to doubleword boundary      00023000
+         N     R1,=X'FFFFFFF8'     Block will start here                00024000
+         LR    R0,R1               Copy starting address                00025000
+         SR    R0,R14              Amount to compensate by              00026000
+         BZ    $&SYSNDX.A          ---> No compensation needed          00027000
+         SR    R15,R0              Fix up size of stack left            00028000
+$&SYSNDX.A EQU *                                                        00029000
+         L     R14,=A(&SIZE)       Want this much                       00030000
+         SR    R15,R14             Reduce amount left                   00031000
+         BNP   &NOSTOR             ---> Not enough space left           00032000
+         AR    R14,R1              New stack pointer value              00033000
+         STM   R14,R15,STACKP      Update MAILBLOK pointers             00034000
+         MEXIT ,                                                        00035000
+         MEND  ,                                                        00036000

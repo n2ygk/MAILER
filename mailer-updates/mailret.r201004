@@ -1,0 +1,3 @@
+./ R 00137880 00138870 $ 138770 890                   10/28/88 11:34:54
+         L     R6,DSTRL            Get domain length.                   00137880
+         L     R7,DSTRA            Get domain address.                  00138870

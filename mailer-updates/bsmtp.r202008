@@ -1,0 +1,4 @@
+./ I 00193980          $ 194580 600                   02/10/89 11:00:03
+         ICM   R4,B'1111',RSCSDOM Get the string pointer                00194380
+         BZ    NODEF              ---> No RSCS-domain, leave alone      00194780
+./ D 00200000                                         02/10/89 11:00:03

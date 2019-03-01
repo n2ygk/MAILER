@@ -1,0 +1,49 @@
+*---------------------------------------------------------------------* 00001000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00002000
+*    Program Property of the Trustees of Columbia University in the   * 00003000
+*    City of New York.                                                * 00004000
+*---------------------------------------------------------------------* 00005000
+* glue for C functions called with OS CALL macro linkage                00006000
+* uses Waterloo C global base register facility;  the address of        00007000
+* the MAILBLOK is popped into it (r10)                                  00008000
+         MACRO                                                          00009000
+         CFUNC &NAME,&ARGS                                              00010000
+         LCLC  &CNAME                                                   00011000
+&CNAME   SETC  '$&NAME'                                                 00012000
+         ENTRY &NAME                                                    00013000
+         EXTRN &CNAME                                                   00014000
+&NAME    DS    0H                 OS glue entry point                   00015000
+         STM   14,12,12(13)       save registers (13 saved by C)        00016000
+         BALR  15,0               in case we are called via BAL         00017000
+         USING *,15               est. addressability                   00018000
+         L     12,@C@STACK        set up a C stack.                     00019000
+         ST    13,0(,12)          save 13 on C stack                    00020000
+         LA    12,4(,12)          bump the stack pointer                00021000
+         AIF   (&ARGS EQ 0).SKIP                                 [1.24] 00021500
+         MVC   0(&ARGS*4,12),0(1) copy parameters onto the stack        00022000
+.SKIP    ANOP  ,                                                 [1.24] 00022500
+         L     11,R&SYSNDX        address of the c function             00023000
+         L     10,AMAILBLO        address of the MAILBLOK               00024000
+         DROP  15                 don't need addressability now         00025000
+         BALR  13,11              call the C function                   00026000
+         LR    15,11              move's C's return code into OS's reg  00027000
+         LA    1,4                amount to decrement stack by          00028000
+         SR    12,1               decrement the stack pointer           00029000
+         L     13,0(,12)          restore 13 from stack                 00030000
+         L     14,12(,13)         restore OS caller's regs              00031000
+         LM    0,12,20(13)        skip over r15                         00032000
+         BR    14                 return w/C rc in 15                   00033000
+R&SYSNDX DC    V(&CNAME)          address of C function                 00034000
+         MEND  ,                                                        00035000
+CGLUE    CSECT ,                                                        00036000
+         CFUNC TBLUKS,4                                                 00037000
+         CFUNC RDRFILT,1                                                00038000
+         CFUNC FNROUTD,2                                                00039000
+         CFUNC CNTRCVD,0                                         [1.24] 00039200
+         CFUNC RDHDR,2                                           [1.24] 00039400
+         CFUNC RDTXT,2                                           [1.24] 00039600
+         SPACE ,                                                        00040000
+AMAILBLO DC    V(MAILBLOK)        address of the MAILBLOK               00041000
+         ENTRY @C@STACK                                                 00042000
+@C@STACK DS    F                                                        00043000
+         END                                                            00044000

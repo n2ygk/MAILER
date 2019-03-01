@@ -1,0 +1,49 @@
+./ R 00001000 00030000 $ 1990 990                     11/30/90 11:59:05
+.fo off                                                                 00001990
+               (c) Copyright Princeton Univeristy, 1990.                00002980
+                                                                        00003970
+  Syntax specification of MAILER general user commands.  These commands 00004960
+  may be issued from either the MAILER console or as messages from the  00005950
+  network to the MAILER's userid.                                       00006940
+                                                                        00007930
+  Changes since the last version of this file are flagged with a '|'    00007930
+  (vertical bar) in column 1.
+
+  +--------------------------------------------------------------------+00001000
+  |  MAILER Priviledged Commands:                                      |00002000
+  |                                                                    |00003000
+  |  CP <cp-command>  - Issue a CP command.                            |00004000
+  |                                                                    |00005000
+  |  CMS <cms-command> - Issue any CMS SUBSET command.                 |00006000
+  |                                                                    |00007000
+  |                                                                    |00008000
+  |  FORWARD - Deliver mail to a userid other than the one specified   |00009000
+  |            in the headers.  It is legal to forward mail to more    |00010000
+  |            than 1 address.  If you want to continue to receive     |00011000
+  |            a copy of the mail at your userid, add a forward with   |00012000
+  |            an address of '<*>'.                                    |00013000
+  |                                                                    |00014000
+  |            The 'FOR' option allows an authorized user (anyone in   |00015000
+  |            the maintainers list) to issue the command 'for' some   |00016000
+  |            other userid.                                           |00017000
+  |                                                                    |00018000
+  |      FORWARD < FOR userid> ADD    destaddr                         |00019000
+  |                            DELETE destaddr | ALL                   |00020000
+  |                            LIST                                    |00021000
+  |                                                                    |00022000
+  |  QUIESCE - Disable reader file processing.                         |00023000
+  |                                                                    |00024000
+  |  ACTIVATE - Reactivate reader file processing.                     |00025000
+  |                                                                    |00026000
+  |  RELOAD - Reload routing table and user exits.                     |00027000
+  |                                                                    |00028000
+| |  SET <set-options> - Change Mailer internal values dynamically     |00028000
+| |                                                                    |00028000
+| |  set-options:                                                      |00028000
+| |                                                                    |00028000
+| |    BIT  bitname  True|False                                        |00028000
+| |     Change the value of bit flags that are normally set from the   |00028000
+| |     Mailer profile.                                                |00028000
+  |                                                                    |00028000
+  |  STOP - Stop Mailer (exit program).                                |00029000
+  +--------------------------------------------------------------------+00030000

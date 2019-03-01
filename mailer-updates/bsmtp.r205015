@@ -1,0 +1,19 @@
+./ R 00021000          $ 21490 490                    03/16/90 16:12:36
+*  MAIL FROM: <sender>            or   FILE FROM: <sender>              00021490
+./ R 00162300          $ 162310 10                    03/16/90 16:12:36
+         MVI   MAILFROM,C' '      blank it out                          00162320
+         MVC   MAILFROM+1(L'MAILFROM-1),MAILFROM propagate the blanks   00162340
+         MVC   MAILTYPE,=CL4'MAIL' Set default                          00162360
+         TM    MAILOPTS,MOPTFIOK   FILE FROM: allowed?
+         BNO   NOTFILE             ---> No
+         TM    MAILFLG2,MFLG2N82   FILE FROM: found?                    00162380
+         BNO   NOTFILE             ---> No                              00162400
+         MVC   MAILTYPE,=CL4'FILE' Indicate the correct type            00162420
+NOTFILE  EQU   *                                                        00162440
+         TM    MAILFLG2,MFLG2NLF  is it "FROM:<>"?                      00162460
+./ R 00213890          $ 213910 20                    03/16/90 16:12:36
+         MVC   MAILFROM(2),=CL2'<>'                                     00213910
+         PUNCHC MAIL,ERROR=PUNERR                                       00213930
+./ R 00332590          $ 332880 290                   03/16/90 16:12:36
+MAILTYPE DC    CL4'MAIL'          MAIL or FILE                          00332880
+         DC    CL6' FROM:'                                              00333170

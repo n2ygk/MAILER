@@ -1,0 +1,8 @@
+./ R 00084000          $ 84490 490                    08/16/89 13:58:41
+         S     R10,FSTLRECL  Compute stack space left                   00084490
+./ R 00087000 00088000 $ 87590 590                    08/16/89 13:58:41
+         LR    R7,R9         Allocate from bottom of stack              00087590
+         AR    R7,R10          so there will be no hole later           00088180
+./ I 00253000          $ 253500 500                   08/16/89 13:58:41
+         LA    R1,0(R3,R4)   ADDRESS OF END OF LINE IF NO ";"           00255000
+./ D 00255000                                         08/16/89 13:58:41

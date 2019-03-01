@@ -1,0 +1,48 @@
+./ R 00092000          $ 92490 490                    12/12/89 15:35:24
+      say 'Maillist:  Invalid combination'    /*                      */00092000
+./ R 00105000          $ 105490 490                   12/12/89 15:35:24
+say 'Maillist:  Cmd       = "'strip(original)'"'                        00105000
+./ R 00166000          $ 166490 490                   12/12/89 15:35:24
+if ^owner(requestor) & ^maintainer  then  do                            00166490
+./ I 00168000          $ 168300 300                   12/12/89 15:35:24
+   return 8                                                             00168300
+   end                                                                  00168600
+./ R 00191000          $ 191490 490                   12/12/89 15:35:24
+   call msg 'Maillist:  Added' destination                              00191000
+./ R 00272000          $ 272490 490                   12/12/89 15:35:24
+if ^owner(requestor) & ^maintainer  then  do                            00272490
+./ I 00274000          $ 274300 300                   12/12/89 15:35:24
+   return 8                                                             00274300
+   end                                                                  00274600
+./ R 00286000          $ 286490 490                   12/12/89 15:35:24
+   call msg 'Maillist:  Added' owners.0 'new list owner(s)'             00286000
+./ R 00414000          $ 414490 490                   12/12/89 15:35:24
+if ^owner(requestor) & ^maintainer  then  do                            00414490
+./ I 00416000          $ 416300 300                   12/12/89 15:35:24
+   return 8                                                             00416300
+   end                                                                  00416600
+./ R 00434000          $ 434490 490                   12/12/89 15:35:24
+   call msg 'Maillist: ' matches 'id(s) deleted'                        00434000
+./ R 00449000          $ 449490 490                   12/12/89 15:35:24
+   call msg 'Maillist:  No destinations match address requested'        00449000
+./ R 00476000          $ 476490 490                   12/12/89 15:35:24
+call msg 'Maillist: ' maillist.0-j 'id(s) deleted'                      00476000
+./ R 00547000          $ 547490 490                   12/12/89 15:35:24
+if ^owner(requestor) & ^maintainer  then  do                            00547490
+./ I 00549000          $ 549300 300                   12/12/89 15:35:24
+   return 8                                                             00549300
+   end                                                                  00549600
+./ R 00563000          $ 563490 490                   12/12/89 15:35:24
+   call msg 'Maillist:  Deleted' owners.0 'list owner(s)'               00563000
+./ R 00601000          $ 601490 490                   12/12/89 15:35:24
+   return 8                                                             00601490
+./ R 00641000          $ 641490 490                   12/12/89 15:35:24
+      say 'Maillist: ' listid 'distribution list'                       00641000
+./ R 00643000          $ 643490 490                   12/12/89 15:35:24
+      say 'Maillist:  End of forwarding distribution list'              00643000
+./ R 00673000 00675000 $ 673990 990                   12/12/89 15:35:24
+say msgstring                                /* Duplicate on console  */
+if ^console  then  do                                                   00673000
+./ I 00700000          $ 700300 300                   12/12/89 15:35:24
+if left(userid,1) <> '<'  then                                          00700300
+   userid = '<'userid'>'                                                00700600

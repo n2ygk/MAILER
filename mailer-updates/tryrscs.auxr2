@@ -1,0 +1,17 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R207007    Use VM30091 RSCS support to suppress transit messages
+R205018    Add flag to only trace a mail creating exit.
+*          When this flag is set, the exit should list the actions
+*          it would have performed, but *NOT* create the output file.
+R205015    Add control to allow acceptance of BSMTP streams with
+*          FILE FROM: header.
+R205012    Fixes for routeaddr processing
+*          These fixes do something more reasonable in routines that
+*          use default route delivery (DEFRT, TRYRSCS, LOCAL)
+R205004    Correction to processing of RSCS-Domains in TRYRSCS
+R203005    TRYRSCS should see if domain on node is one of the
+*          RSCS-Domainx values before giving up
+R202018    Remove PRINT NOGENs, make DSECTs honor SYSPARM(SUP)/SYSPARM(EXP)
+R201006    Create new default exit for outgoing table.  This exit will
+*          re-implement the Allow-Unknown-Nodes code without the
+*          cross network routing of the internet exit.

@@ -1,0 +1,140 @@
+*[1.22] Add test for sequential instead of sorted tables         [1.22] 00001290
+TBADD    TITLE 'TBADD - ADD AN ENTRY TO A TBLUK TABLE'                  00001580
+*---------------------------------------------------------------------* 00002000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00003000
+*    Program Property of the Trustees of Columbia University in the   * 00004000
+*    City of New York.                                                * 00005000
+*---------------------------------------------------------------------* 00006000
+TBADD    CSECT                                                          00007000
+* TBADD    -  ADD AN ENTRY TO A TBLUK TABLE.  THIS FUNCTION             00008000
+* IS BASED ON THE DEC TOPS-20 JSYS BY THE SAME NAME.                    00009000
+*                            EAC 8/81                                   00010000
+* LAST EDIT: 5/17/82 BY ALAN CROSSWELL                                  00011000
+*                                                                       00012000
+* CALLED VIA -                                                          00013000
+*   CALL TBADD,(TABLE,ENTRY,WORK)                                       00014000
+*                                                                       00015000
+PAB      DSECT ,                                                        00016000
+@TABLE   DS    A             ADDRESS OF KEYWORD TABLE                   00017000
+@ENTRY   DS    A             ADDRESS OF ENTRY TO ADD                    00018000
+@WORK    DS    A             ADDRESS OF WORK AREA                       00019000
+*                                                                       00020000
+* NOTE: THE WORK AREA IS USED TO CONSTRUCT A PLIST FOR TBLUK.           00021000
+*  IT IS ALSO USED BY TBLUK AS THE WORK AREA USED FOR CONVERTING        00022000
+*  THE TEST AND BASE STRINGS TO UPPER CASE.  IT SHOULD BE THE           00023000
+*  LENGTH OF THE LONGEST KEYWORD TIMES 2 WITH A MAXIMUM NEEDED          00024000
+*  OF 2*256 = 512 BYTES.                                                00025000
+*                                                                       00026000
+*                                                                       00027000
+* REGISTER USAGE -                                                      00028000
+R0  EQU  0 -                                                            00029000
+R1  EQU  1 -                                                            00030000
+R2  EQU  2 -                                                            00031000
+R3  EQU  3 -                                                            00032000
+R4  EQU  4 -                                                            00033000
+R5  EQU  5 -                                                            00034000
+R6  EQU  6 -                                                            00035000
+R7  EQU  7 - INDEX FOR TABLE INSERTION                                  00036000
+R8  EQU  8 - ADDRESS OF START OF TABLE IN INSERTION LOOP                00037000
+R9  EQU  9 - TBENTRY BASE                                               00038000
+R10 EQU 10 - TBTAB BASE                                                 00039000
+R11 EQU 11 - WORK AREA                                                  00040000
+R12 EQU 12 - PROGRAM BASE                                               00041000
+R13 EQU 13 - SAVE AREA                                                  00042000
+R14 EQU 14 - SUBROUTINE LINKAGE                                         00043000
+R15 EQU 15 - SUBROUTINE LINKAGE                                         00044000
+*                                                                       00045000
+         PRINT NOGEN                                                    00046000
+         TBENTRY ,                                                      00047000
+         TBTAB DSECT=YES                                                00048000
+         TBINI ,                                                        00049000
+         EJECT ,                                                        00050000
+TBADD    CSECT ,                                                        00051000
+         STM   R14,R12,12(R13)                                          00052000
+         LR    R12,R15                                                  00053000
+         USING TBADD,R12                                                00054000
+         LA    R15,SAVE                                                 00055000
+         ST    R13,4(R15)                                               00056000
+         LR    R13,R15                                                  00057000
+         USING PAB,R1        ADDRESS PARMS                              00058000
+         L     R9,@ENTRY     ADDRESS OF ENTRY                           00059000
+         L     R10,@TABLE    ADDRESS OF TABLE                           00060000
+         L     R11,@WORK     GET WORK AREA                              00061000
+         DROP  R1                                                       00062000
+         USING TBTAB,R10     ADDRESS THE TBTAB                          00063000
+         USING TBENTRY,R9    ADDRESS THE TBENTRY                        00064000
+         L     R1,TB$LEN     GET LENGTH OF TABLE                        00065000
+         C     R1,TB$MAX     COMPARE TO MAX LENGTH                      00066000
+         BL    ROOM          THERE IS ROOM                              00067000
+         LA    R15,4         INDICATE NO ROOM                           00068000
+         B     RET           AND RETURN                                 00069000
+ROOM     EQU   *                                                        00070000
+         L     R8,TBE$STR    ADDRESS OF TBS                             00071000
+         USING TBS,R8        ADDRESS IT                                 00072000
+         SR    R1,R1         GET ZERO                                   00073000
+         IC    R1,TBS$SIZ    STRING LENGTH                              00074000
+         LA    R8,TBS$STR    ADDRESS OF STRING                          00075000
+         DROP  R8                                                       00076000
+* BUILD TBLUK PLIST                                                     00077000
+         ST    R10,0(R11)    STORE TABLE ADDRESS                        00078000
+         ST    R8,4(R11)     STRING ADDRESS                             00079000
+         ST    R1,8(R11)     STORE LENGTH                               00080000
+         ST    R11,12(R11)   REUSE THIS WORK AREA                       00081000
+         LR    R1,R11        ADDRESS THE PLIST                          00082000
+         L     R15,=V(TBLUK)                                            00083000
+         BALR  R14,R15                                                  00084000
+         L     R15,CASE(R15) INDEX INTO CASE TABLE                      00085000
+         BR    R15           GO THERE                                   00086000
+CASE     DC    A(EXACT,SUBSTR,AMBIG,NOTFND)  CASE TABLE                 00087000
+         DS    0H                                                       00088000
+EXACT    EQU   *             EXACT MATCH                                00089000
+         LR    R9,R0         COPY ADDRESS OF MATCHING ENTRY             00090000
+         LR    R8,R9                                                    00091000
+         LA    R15,8         THIS IS AN ERROR                           00092000
+         B     RET                                                      00093000
+SUBSTR   EQU   *             IT'S A SUBSTRING                           00094000
+AMBIG    EQU   *             AMBIGUOUS                                  00095000
+NOTFND   EQU   *             NOT FOUND                                  00096000
+* INSERT IT BEFORE THE CURRENT ENTRY POINTED TO BY R0                   00097000
+* IN OTHER WORDS, MOVE EVERYTHING FROM (R0) TO END OF CURRENTLY         00098000
+* ACTIVE TABLE DOWN BY 1 ENTRY.                                         00099000
+         LR    R8,R0         MAKE A SAFE COPY                           00100000
+         L     R7,TB$LEN     CURRENT LENGTH IN ENTRIES                  00101000
+         MH    R7,=Y(TBE$LEN)      NUMBER OF BYTES CURRENTLY USED       00102000
+         A     R7,TB$ADR     ADDED TO ADDRESS OF TABLE                  00103000
+         TM    TB$FLG,TBT#SEQ is it a sequential table?          [1.22] 00103300
+         BNZ   INSEND        --> insert it at the end            [1.22] 00103600
+*                                      GIVES END OF CURRENT TABLE       00104000
+INLOOP   EQU   *             INSERTION LOOP                             00105000
+         SH    R7,=Y(TBE$LEN)      DECREMENT ONE UNIT                   00106000
+         CR    R7,R8         INDEX VS. TOP OF BLOCK                     00107000
+         BL    ENDLOOP       DONE MOVING BLOCK                          00108000
+         MVC   TBE$LEN(TBE$LEN,R7),0(R7)  MOVE DOWN ONE UNIT            00109000
+         B     INLOOP                                                   00110000
+ENDLOOP  EQU   *                                                        00111000
+* NOW INSERT THE NEW GUY                                                00112000
+         MVC   0(TBE$LEN,R8),0(R9) MOVE NEW ENTRY IN                    00113000
+         SR    R15,R15       FINE!                                      00114000
+         L     R1,TB$LEN     GET LENGTH                                 00115000
+         LA    R1,1(R1)      BUMP TABLE LENGTH BY 1                     00116000
+         ST    R1,TB$LEN     AND PUT IT BACK                            00117000
+         LR    R0,R8         POINT TO ENTRY                             00118000
+         B     RET                                                      00119000
+INSEND   EQU   *             <-- insert unsorted entry at end    [1.22] 00119100
+         MVC   0(TBE$LEN,R7),0(R9)  tack it on the end           [1.22] 00119200
+         L     R1,TB$LEN     number entries in table             [1.22] 00119300
+         LA    R1,1(R1)      add one to it                       [1.22] 00119400
+         ST    R1,TB$LEN     store it back                       [1.22] 00119500
+         LR    R0,R7         point to new entry                  [1.22] 00119600
+         SR    R15,R15       zero return code                    [1.22] 00119700
+* fall thru to RET                                               [1.22] 00119800
+RET      EQU   *                                                        00120000
+         L     R1,TBE$DSP    GET DISPATCH VALUE OF IT                   00121000
+         L     R13,4(R13)                                               00122000
+         L     R14,12(R13)                                              00123000
+         LM    R2,R12,28(R13)                                           00124000
+         BR    R14                                                      00125000
+*                                                                       00126000
+         LTORG ,                                                        00127000
+SAVE     DS    18F                                                      00128000
+         END       TBADD                                                00129000

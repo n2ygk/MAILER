@@ -1,0 +1,129 @@
+./ I 00015000          $ 15500 500                    02/21/90 14:11:55
+.*             DUMP     - Dump (list) the trace table on the console    00015500
+./ I 00028000          $ 28300 300                    02/21/90 14:11:55
+         LCLC  &TRCENT                                                  00028300
+.*                                                                      00028600
+./ R 00033000          $ 33090 90                     02/21/90 14:11:55
+         AIF   ('&NAME' EQ '').TRC00                                    00033090
+&NAME    EQU   *                   Label for trace entry address        00033180
+&TRCENT   SETC  '&NAME'                                                 00033270
+         AGO   .TRC02                                                   00033360
+.TRC00   ANOP                                                           00033450
+$&SYSNDX EQU   *                   Label for trace entry address        00033540
+&TRCENT  SETC  '$&SYSNDX'                                               00033630
+.TRC02   ANOP                                                           00033720
+./ I 00034000          $ 34500 500                    02/21/90 14:11:55
+         AIF   ('&TYPE' EQ 'DUMP').DUMP                                 00034500
+./ R 00050000          $ 50490 490                    02/21/90 14:11:55
+         MVC   TRCADDR,=A(&TRCENT)      Move in trace macro address     00050490
+./ I 00095000          $ 95009 9                      02/21/90 14:11:55
+.*                                                                      00095009
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   00095018
+.*       Generate code to dump (list) trace table on console            00095027
+.*       &ARG1 = Count of entries to list                               00095036
+.*               The end of the listing process will occur when this    00095045
+.*               many entries have been formatted or when we wrap       00095054
+.*               around to the starting table address or when the       00095063
+.*               table initialization entry is found.                   00095072
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   00095081
+.*                                                                      00095090
+.DUMP    ANOP                                                           00095099
+         STM   R14,R12,12(R13)     Save registers in our save area      00095108
+         AIF   ('&ARG1' EQ '').DUMP02                                   00095117
+         AIF   ('&ARG1'(1,1) EQ '(').DUMP04                             00095126
+         L     R6,=A(&ARG1)        Load count                           00095135
+         AGO   .DUMP09                                                  00095144
+.DUMP02  ANOP                                                           00095153
+         LA    R6,100              Dump 100 entries                     00095162
+         AGO   .DUMP09                                                  00095171
+.DUMP04  ANOP                                                           00095180
+         LR    R6,&ARG1            Load count                           00095189
+         AGO   .DUMP09                                                  00095198
+.DUMP09  ANOP                                                           00095207
+         LM    R2,R4,TRTBLST       Pick up table pointers               00095216
+         LR    R5,R3               Remember the starting point          00095225
+         LA    R5,TRCENTL(,R5)     Last entry to list if we wrap        00095234
+         WRTERM 'TRCTYPE$ TRCROUTN TRCADDR$ TRCDATA'                    00095243
+         B     $&SYSNDX.B          ---> Format first entry              00095252
+         SPACE 1                                                        00095261
+         USING TRCENT,R3           Tell assembler about base reg        00095270
+$&SYSNDX.A EQU *                                                        00095279
+         S     R3,=A(TRCENTL)      Back up 1 entry                      00095288
+         CR    R3,R2               Past start of table?                 00095297
+         BNL   $&SYSNDX.B          ---> No, still cool                  00095306
+         LR    R3,R4               Replace with table end address       00095315
+$&SYSNDX.B EQU *                                                        00095324
+         CLC   TRCTYPE,=CL8'CALL'  Call entry?                          00095333
+         BE    $&SYSNDX.C          ---> Yes                             00095342
+         CLC   TRCTYPE,=CL8'CREATE'  Create entry?                      00095351
+         BE    $&SYSNDX.D          ---> Yes                             00095360
+         CLC   TRCTYPE,=CL8'ENTER' Enter entry?                         00095369
+         BE    $&SYSNDX.E          ---> Yes                             00095378
+         CLC   TRCTYPE,=CL8'EXIT'  Exit entry?                          00095387
+         BE    $&SYSNDX.F          ---> Yes                             00095396
+         CLC   TRCTYPE,=CL8'INIT'  Init entry?                          00095405
+         BE    $&SYSNDX.E          ---> Yes                             00095414
+         CLC   TRCTYPE,=CL8'RETURN'  Return entry?                      00095423
+         BE    $&SYSNDX.D          ---> Yes                             00095432
+         SPACE 1                                                        00095441
+*  Unknown type, use default formatting                                 00095450
+         SPACE 1                                                        00095459
+         LINEDIT TEXT='........ ........ ........ .....................X00095468
+               .......................',                               X00095477
+               SUB=(CHARA,TRCTYPE,CHARA,TRCROUTN,HEX4A,TRCADDR,CHARA,  X00095486
+               TRCDATA),                                               X00095495
+               DOT=NO,COMP=NO,RENT=NO                                   00095504
+         B     $&SYSNDX.W          ---> Join common code                00095513
+         SPACE 1                                                        00095522
+*  Format entries with TRCDATA format: CL8'string'                      00095531
+*  Entry types formatted:  CALL                                         00095540
+         SPACE 1                                                        00095549
+$&SYSNDX.C EQU *                                                        00095558
+         LINEDIT TEXT='........ ........ ........ ........',           X00095567
+               SUB=(CHARA,TRCTYPE,CHARA,TRCROUTN,HEX4A,TRCADDR,CHARA,(TX00095576
+               RCDATA,8)),                                             X00095585
+               DOT=NO,COMP=NO,RENT=NO                                   00095594
+         B     $&SYSNDX.W          ---> Join common code                00095603
+         SPACE 1                                                        00095612
+*  Format entries with TRCDATA format: CL8'string' XL4'addr'            00095621
+*  Entry types formatted:  CREATE, RETURN                               00095630
+         SPACE 1                                                        00095639
+$&SYSNDX.D EQU *                                                        00095648
+         LINEDIT TEXT='........ ........ ........ ........ ........',  X00095657
+               SUB=(CHARA,TRCTYPE,CHARA,TRCROUTN,HEX4A,TRCADDR,CHARA,(TX00095666
+               RCDATA,8),HEX4A,(TRCDATA+8,4)),                         X00095675
+               DOT=NO,COMP=NO,RENT=NO                                   00095684
+         B     $&SYSNDX.W          ---> Join common code                00095693
+         SPACE 1                                                        00095702
+*  Format entries with TRCDATA format: none                             00095711
+*  Entry types formatted:  ENTER, INIT                                  00095720
+         SPACE 1                                                        00095729
+$&SYSNDX.E EQU *                                                        00095738
+         LINEDIT TEXT='........ ........ ........',                    X00095747
+               SUB=(CHARA,TRCTYPE,CHARA,TRCROUTN,HEX4A,TRCADDR),       X00095756
+               DOT=NO,COMP=NO,RENT=NO                                   00095765
+         B     $&SYSNDX.W          ---> Join common code                00095774
+         SPACE 1                                                        00095783
+*  Format entries with TRCDATA format: XL4'value'                       00095792
+*  Entry types formatted:  EXIT                                         00095801
+         SPACE 1                                                        00095810
+$&SYSNDX.F EQU *                                                        00095819
+         LINEDIT TEXT='........ ........ ........ ........',           X00095828
+               SUB=(CHARA,TRCTYPE,CHARA,TRCROUTN,HEX4A,TRCADDR,HEX4A,TRX00095837
+               CDATA),                                                 X00095846
+               DOT=NO,COMP=NO,RENT=NO                                   00095855
+         B     $&SYSNDX.W          ---> Join common code                00095864
+         SPACE 2                                                        00095873
+$&SYSNDX.W EQU *                                                        00095882
+         CLC   TRCTYPE,=CL8'INIT'  Is this initialization entry?        00095891
+         BE    $&SYSNDX.Z          ---> Yes, all done                   00095900
+         CR    R3,R5               Did we wrap?                         00095909
+         BE    $&SYSNDX.Z          ---> Yes, all done                   00095918
+         BCT   R6,$&SYSNDX.A       ---> Around again                    00095927
+$&SYSNDX.Z EQU *                                                        00095936
+         LM    R14,R12,12(R13)     Restore saved registers              00095945
+         MEXIT                                                          00095954
+./ R 00114000          $ 114490 490                   02/21/90 14:11:55
+         MVC   TRCADDR,=A(&TRCENT)      Move in trace macro address     00114490
+./ R 00152000          $ 152490 490                   02/21/90 14:11:55
+.*       &ARG1 = Routine name                                           00152490

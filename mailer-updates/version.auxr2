@@ -1,0 +1,17 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R208004    Handle RECFM=V mailer profile correctly
+R208002    Correct DISTSUB ASSEMBLE to properly handle long MAIL FROM:
+*          lines
+R208000    Change version to 2.08
+R207999    Change version to 2.08 Beta
+R207000    Change version to 2.07
+R206000    Change version to 2.06
+R205000    Change version to 2.05
+R204000    Change version to 2.04
+R203009    Change version to 2.03B
+R203007    Change version to 2.03A and fix up length of verion field
+*          problem (reported by Waterloo).
+R202020    Change MAILER version to 2.03
+R202002    Change MAILER version to 2.02A
+R201014    Change MAILER version to 2.02
+R200014    Change MAILER version to 2.01

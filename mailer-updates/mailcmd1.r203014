@@ -1,0 +1,72 @@
+./ R 00298000 00300000 $ 298290 290                   05/30/89 16:33:24
+*  Automatic mail forwarding is done by issuing the FORWARD command     00298290
+*  to tell the mailer where to forward a user's mail.  Unauthorized     00298580
+*  users may only set their own forwarding value.  Users listed as      00298870
+*  a maintainer may set values for other users.                         00299160
+*                                                                       00299450
+*  Since MAILER may be running disabled, FORWARD commands are added     00299740
+*  to the MAILCMDL chain for later processing by MAILCMD2.              00300030
+*                                                                       00300320
+./ R 00303490 00305000 $ 303520 30                    05/30/89 16:33:24
+         LA    R5,CMDSIZE*8(R8)    Size needed for DMSFREE              00303520
+         LA    R5,7(R5)            Round to a dword value               00303550
+         N     R5,=X'FFFFFFF8'                                          00303580
+         SRL   R5,3                Make into a dword quantity           00303610
+         LR    R0,R5               Set up for CMS macro                 00303640
+         DMSFREE DWORDS=(0)        Get the storage                      00303670
+         LR    R6,R1               Get into a better register           00303700
+         USING COMMAND,R6          Build a command block                00303730
+         MVC   CMDSNDR,SRCUSER     Pass along response userid           00303760
+         MVC   CMDNODE,MSGNODE        and nodename.                     00303790
+         MVC   CMDCODE,=A(CMDFWD)  Remember forward request             00303820
+         ST    R5,CMDLEN           Length of the block                  00303850
+         ST    R8,CMDDLEN          Data length                          00303880
+         XC    CMDNEXT,CMDNEXT     Keep our chain clean                 00303910
+         CLC   @CODE,=A(CMDCONS)   From console?                        00303940
+         BNE   $FWD1               ---> No                              00303970
+         MVC   CMDSNDR,=CL8'*'     Remember from console                00304000
+         B     $FWD4               ---> Continue on                     00304030
+$FWD1    EQU   *                                                        00304060
+         CLC   @CODE,=A(CMDSMSG)   From SMSG?                           00304090
+         BNE   RET                 ---> No, unknown code                00304120
+         TM    FLAG,SMSFLG         Want SMSG reply?                     00304150
+         BNO   $FWD3               ---> No                              00304180
+         MVC   CMDMSG,=CL18'SMSG'  Remember to use SMSG                 00304210
+         B     $FWD4               ---> Continue on                     00304240
+$FWD3    EQU   *                                                        00304270
+         MVC   CMDMSG,=CL18'MSGNOH'  Set reply type                     00304300
+$FWD4    EQU   *                                                        00304330
+         DROP  R6                  Done with command block (here)       00304360
+         BCTR  R8,0                -1 for executed                      00304390
+         EX    R8,MOVECMD          MVC CMDDATA(0),0(R9)                 00304420
+         SPACE ,                                                        00304450
+*--- Now add the command onto the MAILCMDL list ---                     00304480
+         SPACE ,                                                        00304510
+         CLC   @CODE,=A(CMDCONS)   From console?                        00304540
+         BNE   $FWD5               No, SMSG                             00304570
+         SSM   =X'FE'              Turn off external interrupts         00304600
+$FWD5    EQU   *                                                        00304630
+         LA    R2,MAILCMDL         Address of list                      00304660
+$FWDLOOP EQU   *                                                        00304690
+         ICM   R1,B'1111',0(R2)    Get next command pointer             00304720
+         BZ    $FWDOUT             Found end of chain                   00304750
+         USING COMMAND,R1                                               00304780
+         LA    R2,CMDNEXT          Chain along                          00304810
+         DROP  R1                                                       00304840
+         B     $CMSLOOP                                                 00304870
+$FWDOUT  EQU   *                                                        00304900
+         ST    R6,0(R2)            Add onto chain                       00304930
+         OI    MAILCMD,MCMDCMD2    Indicate there is work for MAILCMD2  00304960
+         OI    CMDECB,POSTED        and post the command ECB.           00304990
+         CLC   @CODE,=A(CMDCONS)   Console?                             00305020
+         BNE   $FWD6               No, smsg                             00305050
+         SSM   =X'FF'              Enable smsg again                    00305080
+$FWD6    EQU   *                                                        00305110
+         L     R1,=A(FWDMSG)       Get msg                              00305140
+         LA    R0,L'FWDMSG                                              00305170
+         BAL  R14,MESSAGE                                               00305200
+./ I 00801000          $ 801300 300                   05/30/89 16:33:24
+         DROP  R1
+         SPACE ,                                                        00801000
+./ R 00948120          $ 948130 10                    05/30/89 16:33:24
+FWDMSG   DC    C'FORWARD command accepted.'                             00948130

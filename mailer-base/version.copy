@@ -1,0 +1,3 @@
+*[1.22]new file:  contains mailer version number.                [1.22] VER00010
+         GBLC  &VERSION                                          [1.22] VER00020
+&VERSION SETC  'X2.00'                                           [2.00] VER00030

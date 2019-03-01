@@ -1,0 +1,13 @@
+./ I 00475000          $ 475500 500                   03/16/90 16:12:15
+         SPACE 1                                                        00475500
+./ I 00479930          $ 479950 20                    03/16/90 16:12:15
+MOPTFIOK EQU   X'01'         Accept FILE FROM:                          00479950
+         SPACE 1                                                        00479970
+./ I 00544000          $ 544500 500                   03/16/90 16:12:15
+         SPACE 1                                                        00544500
+./ I 00545560          $ 545561 1                     03/16/90 16:12:15
+MFLG2N82 EQU   X'02'         Don't look for 822 headers in BSMTP        00545562
+*                            When Allow-file-from=true (MOPTFIOK in     00545564
+*                            MAILOPTS = 1), and MFLG2N82=1, a
+*                            FILE FROM: was found in BSMTP file.        00545566
+         SPACE 1                                                        00545568

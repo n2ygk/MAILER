@@ -1,0 +1,292 @@
+./ R 00033270          $ 33280 10                     03/16/90 14:55:56
+.sr version = 2.05                                                      00033280
+./ R 00099410          $ 99440 30                     03/16/90 14:55:56
+10.7.^MAILLIST!&C1007                                                   00099440
+.br                                                                     00099470
+10.8.^QUIESCE!&C1008                                                    00099500
+./ R 00099790          $ 99870 80                     03/16/90 14:55:56
+10.9.^RELOAD!&C1009                                                     00099870
+./ R 00100170          $ 100250 80                    03/16/90 14:55:56
+10.10.^SHOW!&C1010                                                      00100250
+./ R 00100550          $ 100630 80                    03/16/90 14:55:56
+10.11.^SMSG!&C1011                                                      00100630
+./ R 00100930          $ 101020 90                    03/16/90 14:55:56
+10.12.^STOP!&C1012                                                      00101020
+./ R 00539950          $ 539951 1                     03/16/90 14:55:56
+.in -.33i                                                               00539951
+.sp 1                                                                   00539952
+If you want to support the FORWARD and/or  MAILLIST commands (you do not00539953
+have to do this), you will need to copy the following files.            00539954
+.us \If these files are not copied \MAILER\ will issue a message saying 00539955
+the commands are not implemented.                                       00539956
+.in +.33i                                                               00539957
+.sp 1                                                                   00539958
+./ I 00539960          $ 539970 10                    03/16/90 14:55:56
+.br                                                                     00539970
+MAILLIST MAILER                                                         00539980
+./ R 00540910          $ 540911 1                     03/16/90 14:55:56
+.in -.33i                                                               00540911
+.sp 1                                                                   00540912
+If you are supporting the FORWARD and/or MAILLIST commands issue the    00540913
+following commands:                                                     00540914
+.in +.33i                                                               00540915
+.sp 1                                                                   00540916
+./ I 00540920          $ 540930 10                    03/16/90 14:55:56
+.br                                                                     00540930
+.bd COPYFILE MAILLIST MAILER C = = Z (OLDD                              00540940
+./ R 00961200 00961600 $ 961210 10                    03/16/90 14:55:56
+The LOCAL exit is also responsible for handling several forms of        00961210
+mail forwarding.                                                        00961220
+Processing for the '%' kludge (user%node) is handled in local by        00961230
+changing the last (rightmost) '%' to an '@'.                            00961240
+Examples of this translation process are:                               00961250
+.in +.33i                                                               00961260
+.sp 1                                                                   00961270
+user%othennode@here --> user@othernode                                  00961280
+user%othernode%node2@here --> user@othernode@node2                      00961290
+.in -.33i                                                               00961300
+.sp 1                                                                   00961310
+After the address has been transformed, the mail is reprocessed for     00961320
+delivery.                                                               00961330
+.sp 1                                                                   00961340
+The second mail forwarding process that the LOCAL exits handles is      00961350
+for the FORWARD command.                                                00961360
+The FORWARD command allows mail that would normally be delivered to     00961370
+this node to be forwarded to a different user at this node or to a      00961380
+userid on some other node.                                              00961390
+.us \See section 10, \'MAILER Commands'\ for more information on the    00961400
+FORWARD command.                                                        00961410
+.sp 1                                                                   00961420
+The LOCAL exit also handles forwarding for mailing lists.               00961430
+Mailing lists are established using the MAILLIST command.               00961440
+MAILLIST creates a forwarding list similar to the FORWARD command.      00961450
+.us \See section 10, \'MAILER Commands'\ for more information on the    00961460
+MAILLIST command.                                                       00961470
+.sp 1                                                                   00961480
+In all these cases, the mail is rerouted (forwarded) by building a      00961490
+./ I 01056570          $ 1056770 200                  03/16/90 14:55:56
+The DISTLIST exit's function has been superceded by the support for     01056770
+the MAILLIST command.                                                   01056970
+.us \See section 10, \'MAILER Commands'\ for more information on the    01057170
+MAILLIST command.                                                       01057370
+.sp 1                                                                   01057570
+./ R 01150000          $ 1150490 490                  03/16/90 14:55:56
+Replies are sent back to the issuer via CP MSGNOH if the                01150490
+./ R 01159000 01160000 $ 1159590 590                  03/16/90 14:55:56
+These are designed for control of priviliged facilites, debugging and   01159590
+general maintenance.                                                    01160180
+./ I 01161240          $ 1161245 5                    03/16/90 14:55:56
+A response message giving the return code from the command is returned. 01161245
+./ R 01161310          $ 1161311 1                    03/16/90 14:55:56
+Issue a CP command.                                                     01161311
+The command must be valid for the privilege class(es) assigned to the   01161312
+.us \MAILER\ DVM in the CP directory.                                   01161313
+A response message giving all the lines returned (as output) and the    01161314
+return code from the command is given.                                  01161315
+./ I 01161360          $ 1161362 2                    03/16/90 14:55:56
+The FORWARD command is used to reroute mail for a user to a userid      01161362
+or userid@node that is different from that specified in the headers.    01161364
+One use for this would be routing the mail for several userids to       01161366
+a single id.                                                            01161368
+It is also possible to reroute mail for a single id to multiple ids.    01161370
+.sp 1                                                                   01161372
+.cc 6                                                                   01161374
+./ R 01161485 01161520 $ 1161486 1                    03/16/90 14:55:56
+ADD will add 1 address to the forwarding file.                          01161486
+By adding the special address '<*>' it is possible to tell mailer to    01161487
+deliver a copy of the mail to the original delivery address.            01161488
+.sp 1                                                                   01161489
+For example the following command sequence (issued from "myid"):        01161490
+.in +.33i                                                               01161491
+.sp 1                                                                   01161492
+.bd \\TELL\ mailerid \FORWARD ADD\ userid1                              01161493
+.br                                                                     01161494
+.bd \\TELL\ mailerid \FORWARD ADD\ userid2@loc2                         01161495
+.br                                                                     01161496
+.bd \\TELL\ mailerid \FORWARD ADD\ userid3@loc3                         01161497
+.br                                                                     01161498
+.bd \\TELL\ mailerid \FORWARD ADD <*>                                   01161499
+.sp 1                                                                   01161500
+.in -.33i                                                               01161501
+will cause mail for "myid" to be delivered to 4 addresses:              01161502
+.in +.33i                                                               01161503
+.sp 1                                                                   01161504
+userid1@thisnode                                                        01161505
+.br                                                                     01161506
+userid2@loc2                                                            01161507
+.br                                                                     01161508
+userid3@loc3                                                            01161509
+.br                                                                     01161510
+myid@thisnode                                                           01161511
+.in -.33i                                                               01161512
+.sp 1                                                                   01161513
+DELETE will delete 1 address (or all the addresses if ALL is used).     01161514
+Address comparisons are done in a case insensitive fashion.             01161515
+This means that addresses for a case sensitive system may provide       01161516
+difficulties.                                                           01161517
+.sp 1                                                                   01161518
+.cc 6                                                                   01161519
+The privileged command syntax is:                                       01161520
+.in +.33i                                                               01161521
+.sp 1                                                                   01161522
+.fo off                                                                 01161523
+./ I 01161570          $ 1161572 2                    03/16/90 14:55:56
+.sp 1                                                                   01161572
+The additional operand of 'FOR userid' allows a privileged user         01161574
+(someone listed in the MAINTUSER#@MAINTNODE# list) to make changes      01161576
+to the forwarding list of another user.                                 01161578
+./ R 01161670 01161720 $ 1161671 1                    03/16/90 14:55:56
+.subhead 10.7. MAILLIST                                                 01161671
+.sr c1007 = &syspage                                                    01161672
+.in +.33i                                                               01161673
+The MAILLIST command is used to build and maintain mailing lists.       01161674
+A mailing list provides a way to distribute mail addressed to a common  01161675
+(local) userid to many addresses located throughout the network.        01161676
+Unlike FORWARD (which is designed to be controlled by the user for whom 01161677
+the forwarding is being done), a mailling list can be controlled        01161678
+(changed) by multiple users.                                            01161679
+The users are the owners of the list and their network addresses are    01161680
+maintained within the body of the forwarding file as comments so that   01161681
+command authorization checking can be performed.                        01161682
+.sp 1                                                                   01161683
+Command authorization occurs on 3 levels.                               01161684
+The creation or destruction (erasure) of a mailling list can only be    01161685
+done by a mail maintainer.                                              01161686
+The command syntax is:                                                  01161687
+.in +.33i                                                               01161688
+.sp 1                                                                   01161689
+.fo off                                                                 01161690
+MAILLIST  CREATE   listid  < listowner < listowner <...>>>              01161691
+          DESTROY  listid                                               01161692
+.fo on                                                                  01161693
+.in -.33i                                                               01161694
+.sp 1                                                                   01161695
+If a listowner is not provided it will default to the maintiner who     01161696
+issues the CREATE request.                                              01161697
+.sp 1                                                                   01161698
+Once a list is created, it may be modified by either a maintainer or by 01161699
+one of the specified list owners.                                       01161700
+The command syntax is:                                                  01161701
+.in +.33i                                                               01161702
+.sp 1                                                                   01161703
+.fo off                                                                 01161704
+          ADD      listid  destid                                       01161705
+          DELETE   listid  destid                                       01161706
+MAILLIST                                                                01161707
+          ADDOWNER listid  listowner  < listowner <...>>                01161708
+          DELOWNER listid  listowner  < listowner <...>>                01161709
+                             ALL                                        01161710
+.fo on                                                                  01161711
+.in -.33i                                                               01161712
+.sp 1                                                                   01161713
+ADDOWNER and DELOWNER allow the list of owners to be changed.           01161714
+It is possible to delete all owners of a list by using the keyword      01161715
+ALL for the listowner id.                                               01161716
+If this is done, list changes can only be made by a maintainer.         01161717
+Note, it is possible for a listowner to delete his/her self.            01161718
+.sp 1                                                                   01161719
+ADD and DELETE allow a maintainer or listowner to change the list of    01161720
+destinations that will receive copies of the mail directed to 'listid'. 01161721
+'Listid' may be a userid that exists on your system, but it is not      01161722
+required to exist (unlike the LISTSERV implementation of mailling       01161723
+lists).                                                                 01161724
+If the userid exists and its owner creates a forwarding file (using the 01161725
+FORWARD command), the forwarding file will supersede the mailing list.  01161726
+.in -.33i                                                               01161727
+.subhead 10.8. QUIESCE                                                  01161728
+.sr c1008 = &syspage                                                    01161729
+.in +.33i                                                               01161730
+Quiesce the mailer.                                                     01161731
+This disables all reader file processing (but does not disable          01161732
+./ R 01161760 01161770 $ 1161766 6                    03/16/90 14:55:56
+.subhead 10.9. RELOAD                                                   01161766
+.sr c1009 = &syspage                                                    01161772
+./ R 01161840 01161850 $ 1161846 6                    03/16/90 14:55:56
+.subhead 10.10. SHOW                                                    01161846
+.sr c1010 = &syspage                                                    01161852
+./ R 01161920 01161930 $ 1161926 6                    03/16/90 14:55:56
+.subhead 10.11. SMSG                                                    01161926
+.sr c1011 = &syspage                                                    01161932
+./ R 01162000 01162010 $ 1162006 6                    03/16/90 14:55:56
+.subhead 10.12. STOP                                                    01162006
+.sr c1012 = &syspage                                                    01162012
+./ D 01496960 01497450                                03/16/90 14:55:56
+./ I 01782640          $ 1782642 2                    03/16/90 14:55:56
+.sp 2                                                                   01782645
+MAILER076W Copyright (c) 1989 Princeton University                      01782650
+.in +4                                                                  01782655
+.sp 1                                                                   01782660
+This is the Princeton University copyright notice.                      01782665
+.in -4                                                                  01782670
+.sp 2                                                                   01782645
+.us \MAILER077X Forwarding mail for \localid\                           01782650
+.in +4                                                                  01782655
+.sp 1                                                                   01782660
+This indicates that a "userid FORWARD file was found for the destination01782665
+user.
+.in -4                                                                  01782670
+./ R 02433000          $ 2433090 90                   03/16/90 14:55:56
+.bd \\"FORWARD  MAILER"\       REXX code implementing the FORWARD       02433090
+command.                                                                02433180
+.sp 1                                                                   02433270
+.hi 24                                                                  02433360
+.bd \\"MAILLIST MAILER"\       REXX code implementing the MAILLIST      02433450
+command.                                                                02433540
+.sp 1                                                                   02433630
+.hi 24                                                                  02433720
+.bd \\"MAILER   MACLIB"\       Macros for writing exits in assembler    02433810
+./ R 02468490          $ 2468680 190                  03/16/90 14:55:56
+.tb 15                                                                  02468680
+./ I 02495000          $ 2495500 500                  03/16/90 14:55:56
+BSMTP!R204006                                                           02495500
+./ I 02530100          $ 2530130 30                   03/16/90 14:55:56
+DISTSUB!AUXR2                                                           02530130
+DISTSUB!R204002                                                         02530160
+./ I 02530200          $ 2530250 50                   03/16/90 14:55:56
+FORWARD!AUXR2                                                           02530250
+./ I 02530300          $ 2530350 50                   03/16/90 14:55:56
+FORWARD!R204002                                                         02530350
+./ I 02530800          $ 2530900 100                  03/16/90 14:55:56
+GENMAIL!R204004                                                         02530900
+./ I 02551800          $ 2551860 60                   03/16/90 14:55:56
+LOCAL!R204004                                                           02551860
+LOCAL!R204008                                                           02551920
+./ I 02562600          $ 2562800 200                  03/16/90 14:55:56
+MAILBLOK!R205000                                                        02562800
+./ I 02570600          $ 2570800 200                  03/16/90 14:55:56
+MAILCMD1!R204004                                                        02570800
+./ I 02573500          $ 2573700 200                  03/16/90 14:55:56
+MAILCMD2!R204004                                                        02573700
+./ R 02598000          $ 2598090 90                   03/16/90 14:55:56
+MAILEXEC!AUXEXCR2                                                       02598090
+MAILEXEC!CNTRL                                                          02598180
+MAILEXEC!EXEC                                                           02598270
+MAILEXEC!R204001                                                        02598360
+MAILEXEC!R204004                                                        02598450
+./ I 02608500          $ 2608700 200                  03/16/90 14:55:56
+MAILGEN!R204001                                                         02608700
+./ I 02611000          $ 2611500 500                  03/16/90 14:55:56
+MAILLIST!$MAILER                                                        02611500
+./ I 02625600          $ 2625800 200                  03/16/90 14:55:56
+MAILMACS!R204004                                                        02625800
+./ I 02661600          $ 2661800 200                  03/16/90 14:55:56
+MG!R205000                                                              02661800
+./ I 02669300          $ 2669350 50                   03/16/90 14:55:56
+MSGTEXT!R204008                                                         02669350
+./ I 02688500          $ 2688700 200                  03/16/90 14:55:56
+READINIT!R204005                                                        02688700
+./ I 02700000          $ 2700100 100                  03/16/90 14:55:56
+SENDMAIL!$EXEC                                                          02700100
+SENDMAIL!AUXEXCR2                                                       02700200
+SENDMAIL!EXEC                                                           02700300
+SENDMAIL!R203014                                                        02700400
+SENDMAIL!R204004                                                        02700500
+./ I 02724600          $ 2724700 100                  03/16/90 14:55:56
+SMTPIN!R204003                                                          02724700
+SMTPIN!R204007                                                          02724800
+./ I 02764500          $ 2764700 200                  03/16/90 14:55:56
+VERSION!R205000                                                         02764700
+./ R 02780490          $ 2780680 190                  03/16/90 14:55:56
+.tb 15                                                                  02780680
+./ R 02878490          $ 2878680 190                  03/16/90 14:55:56
+.tb 15                                                                  02878680

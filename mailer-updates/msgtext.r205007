@@ -1,0 +1,11 @@
+./ R 00010980          $ 10990 10                     12/11/89 14:24:51
+         DC    A(78)         HIGHEST MESSAGE NUMBER DEFINED      [1.24] 00010980
+./ R 00014990          $ 14995 5                      12/11/89 14:24:51
+         DC A(M77,M78)                                                  00014990
+./ R 00197940          $ 198930 990                   12/11/89 14:24:51
+         SPACE 1                                                        00198930
+T78      DC    AL1(LT78),C'MAILER078U Outgoing mail has multiple FROM:' 00199920
+         DC    C' or SENDER: fields.'                                   00200910
+LT78     EQU   *-T78-1                                                  00201900
+M78      DC    A(T78),AL1(3,3,0)                                        00202890
+         END   MSGTEXT                                                  00203880

@@ -1,0 +1,183 @@
+./ I 00072895          $ 72897 2                      02/01/90 15:33:02
+         MVI   TRAPTAB+C'%',1    Set '!' trap                           00072897
+./ R 00072920          $ 72922 2                      02/01/90 15:33:02
+         SR    R1,R1             Be sure high order byte is clear       00072922
+         EX    R15,TRAPIT        Any '%'s?                              00072924
+         MVI   TRAPTAB+C'%',0    Clear '%' trap                         00072926
+./ D 00072960 00072970                                02/01/90 15:33:02
+./ I 00073050          $ 73052 2                      02/01/90 15:33:02
+         TM    DBGFLG7,DBGLOCAL    Tracing?                             00073052
+         BNO   PCTLOOP             ---> No                              00073054
+         WRTERM DBGMSG01,L'DBGMSG01                                     00073056
+./ I 00073140          $ 73142 2                      02/01/90 15:33:02
+         TM    DBGFLG7,DBGLOCAL    Tracing?                             00073142
+         BNO   DBG0001             ---> No                              00073144
+         WRTERM DBGMSG02,L'DBGMSG02                                     00073146
+DBG0001  EQU   *                                                        00073148
+./ D 00073160 00073210                                02/01/90 15:33:02
+./ R 00073228 00073290 $ 73229 1                      02/01/90 15:33:02
+         TM    DBGFLG7,DBGLOCAL    Tracing?                             00073229
+         BNO   DBG0010             ---> No                              00073230
+         WRTERM DBGMSG03,L'DBGMSG03                                     00073231
+DBG0010  EQU   *                                                        00073232
+         MVI   TRAPTAB+C'!',1    Set '!' trap                           00073233
+         LR    R15,R4            Copy length value                      00073234
+         BCTR  R15,0             Decrement for EX                       00073235
+         SR    R1,R1             Be sure high order byte is clear       00073236
+         EX    R15,TRAPIT        Any '%'s?                              00073237
+         MVI   TRAPTAB+C'!',0    Clear '!' trap                         00073238
+         BC    B'0100',DOBANG    ---> Found '!' in address              00073239
+         B     NOBANG            ---> No '!' in address or              00073240
+*                                    '!' is last character              00073241
+         SPACE 1                                                        00073242
+TRAPIT   TRT   0(1,R3),TRAPTAB   Executed                               00073243
+         SPACE 1                                                        00073244
+*--------------------------------------------------------------------   00073245
+*    Process address containing a '!'                                   00073246
+*--------------------------------------------------------------------   00073247
+         SPACE 1                                                        00073248
+DOBANG   DS    0H                                                       00073249
+         TM    DBGFLG7,DBGLOCAL    Tracing?                             00073250
+         BNO   DBG0020             ---> No                              00073251
+         ST    R1,DBGR01           Save R1 over WRTERM                  00073252
+         WRTERM DBGMSG04,L'DBGMSG04                                     00073253
+         L     R1,DBGR01           Restore R1                           00073254
+DBG0020  EQU   *                                                        00073255
+         SR    R1,R3             Length of string to '!'                00073256
+         BZ    NOBANG            ---> Was first character               00073257
+         LA    R15,1(,R1)        Length including '!'                   00073258
+         LR    R14,R3            Save since R3 will be destroyed        00073259
+         BCTR  R1,0              Decrement for EX                       00073260
+         LA    R2,TEMPSAVE       Save string here                       00073261
+         EX    R1,COPY           Copy string before '!'                 00073262
+         SPACE 1                                                        00073263
+         LR    R2,R3             Want to copy to here                   00073264
+         LA    R3,0(R15,R3)      Copy from here                         00073265
+         LR    R1,R4             Original length of string              00073266
+         SR    R1,R15            Length of rest of string               00073267
+         BCTR  R1,0              Decrement for EX                       00073268
+         EX    R1,COPY           Copy string after '!'                  00073269
+         SPACE 1                                                        00073270
+         LA    R2,1(R1,R2)       Where the '@' goes                     00073271
+         MVI   0(R2),C'@'        Change to '@'                          00073272
+         SPACE 1                                                        00073273
+         LA    R2,1(,R2)         Copy rest to here                      00073274
+         LA    R3,TEMPSAVE       We saved it here                       00073275
+         S     R15,=F'2'         Decrement for EX                       00073276
+         EX    R15,COPY          Copy in node part                      00073277
+         SPACE 1                                                        00073278
+         LR    R3,R14            Restore R3                             00073279
+         B     RESEND            ---> Join common resend code           00073286
+         EJECT ,                                                        00073287
+*--------------------------------------------------------------------   00073288
+*  Resend an address containing '%' or '!'                              00073289
+*--------------------------------------------------------------------   00073290
+*  Building the following:                                              00073291
+*                                                                       00073292
+*        DC    A(MAILBLOK)              <--  R2                         00073293
+*        DC    A(FBLOCK)                                                00073294
+*                                                                       00073295
+*FBLOCK  DC    CL18' '                  <--  R3                         00073296
+./ R 00073396 00073400 $ 73397 1                      02/01/90 15:33:02
+         TM    DBGFLG7,DBGLOCAL    Tracing?                             00073398
+         BNO   DBG0030             ---> No                              00073400
+         WRTERM DBGMSG05,L'DBGMSG05                                     00073402
+DBG0030  EQU   *                                                        00073404
+         L     R2,LSTRL          Length of string                       00073160
+         LA    R2,FBLLENL+16(,R2)  + parameter list (8)                 00073170
+*                                  + fileblock length (FBLLENL)         00073180
+*                                  + pointer list (8)                   00073190
+         SALOC (R2),RET          Allocate stack space                   00073200
+         LR    R2,R1             Remember storage address               00073210
+         SPACE 1                                                        00073406
+*  Set up base pointers                                                 00073408
+./ I 00073860          $ 73880 20                     02/01/90 15:33:02
+         TM    DBGFLG7,DBGLOCAL    Tracing?                             00073880
+         BNO   DBG0040             ---> No                              00073900
+         WRTERM DBGMSG06,L'DBGMSG06                                     00073920
+DBG0040  EQU   *                                                        00073940
+./ I 00091000          $ 91200 200                    02/01/90 15:33:02
+         TM    DBGFLG7,DBGLOCAL    Tracing?                             00091200
+         BNO   DBG0044             ---> No                              00091400
+         WRTERM DBGMSG07,L'DBGMSG07                                     00091600
+DBG0044  EQU   *                                                        00091800
+./ I 00103000          $ 103200 200                   02/01/90 15:33:02
+         TM    DBGFLG7,DBGLOCAL    Tracing?                             00103200
+         BNO   DBG0050             ---> No                              00103400
+         WRTERM DBGMSG08,L'DBGMSG08                                     00103600
+DBG0050  EQU   *                                                        00103800
+./ I 00104100          $ 104101 1                     02/01/90 15:33:02
+         TM    DBGFLG7,DBGLOCAL    Tracing?                             00104101
+         BNO   DBG0052             ---> No                              00104102
+         WRTERM DBGMSG09,L'DBGMSG09                                     00104103
+DBG0052  EQU   *                                                        00104104
+./ R 00104245 00104254 $ 104246 1                     02/01/90 15:33:02
+         TM    DBGFLG7,DBGLOCAL    Tracing?                             00104246
+         BNO   DBG0054             ---> No                              00104247
+         WRTERM DBGMSG10,L'DBGMSG10                                     00104248
+DBG0054  EQU   *                                                        00104249
+         MVC   FWDFT,=CL8'MAILLIST'     Fill in filetype                00104250
+         MVC   EXECLDFT,=CL8'MAILLIST'                                  00104251
+         LA    R1,FWDSTAT          Point to EXECSTAT command            00104252
+         SVC   202                 Issue command                        00104253
+         DC    AL4(1)              Always return to next instruction    00104254
+         LTR   R15,R15             MAILLIST file exist?                 00104255
+         BZ    HAVEFWD             ---> No                              00104256
+         C     R15,=F'4'           Found on disk?                       00104257
+         BE    ONDISK              ---> Yes                             00104258
+         BNE   NOFWD               ---> No, no forward/distlist file    00104259
+./ I 00104360          $ 104368 8                     02/01/90 15:33:02
+         TM    DBGFLG7,DBGLOCAL    Tracing?                             00104368
+         BNO   DBG0056             ---> No                              00104376
+         WRTERM DBGMSG11,L'DBGMSG11                                     00104384
+DBG0056  EQU   *                                                        00104392
+./ I 00104580          $ 104581 1                     02/01/90 15:33:02
+         TM    DBGFLG7,DBGLOCAL    Tracing?                             00104581
+         BNO   DBG0057             ---> No                              00104582
+         WRTERM DBGMSG12,L'DBGMSG12                                     00104583
+         WRTERM DBGMSG13,L'DBGMSG13                                     00104584
+DBG0057  EQU   *                                                        00104585
+./ R 00104704 00104711 $ 104705 1                     02/01/90 15:33:02
+         TM    DBGFLG7,DBGLOCAL    Tracing?                             00104705
+         BNO   DBG0058             ---> No                              00104706
+         WRTERM DBGMSG14,L'DBGMSG14                                     00104707
+DBG0058  EQU   *                                                        00104708
+         MVC   EXECDRFT,=CL8'MAILLIST'  Drop MAILLIST files             00104709
+         LA    R1,EXECDROP         Point to EXECDROP command            00104710
+         SVC   202                 Go load forwarding file              00104711
+         DC    AL4(1)              Always return at next instruction    00104712
+         C     R15,=F'4'           Succesful?                           00104713
+         BNH   ONDISK              ---> Yes, try again                  00104714
+         BAL   R2,DIE              ---> No, big trouble                 00104715
+         DC    H'0'                Should never get here                00104716
+./ I 00104820          $ 104824 4                     02/01/90 15:33:02
+         TM    DBGFLG7,DBGLOCAL    Tracing?                             00104824
+         BNO   DBG0060             ---> No                              00104828
+         WRTERM DBGMSG05,L'DBGMSG05                                     00104832
+DBG0060  EQU   *                                                        00104836
+./ I 00105260          $ 105360 100                   02/01/90 15:33:02
+         TM    DBGFLG7,DBGLOCAL    Tracing?                             00105360
+         BNO   DBG0070             ---> No                              00105460
+         WRTERM DBGMSG15,L'DBGMSG15                                     00105560
+DBG0070  EQU   *                                                        00105660
+./ I 00303000          $ 303300 300                   02/01/90 15:33:02
+DBGR01   EQU   TWORK+0,4           Temporary save area                  00303300
+         SPACE 1                                                        00303600
+./ D 00331470 00331710                                02/01/90 15:33:02
+./ I 00331750          $ 331752 2                     02/01/90 15:33:02
+         SPACE 2                                                        00331752
+DBGMSG01 DC    C'LOCAL   :  Doing ''%'' processing'                     00331754
+DBGMSG02 DC    C'LOCAL   :  Changing ''%'' to ''@'''                    00331756
+DBGMSG03 DC    C'LOCAL   :  No ''%'' found'                             00331758
+DBGMSG04 DC    C'LOCAL   :  Doing ''!'' processing'                     00331760
+DBGMSG05 DC    C'LOCAL   :  Building BSMTP file to reprocess'           00331762
+DBGMSG06 DC    C'LOCAL   :  No ''!'' found'                             00331764
+DBGMSG07 DC    C'LOCAL   :  Found in SPECIALS table'                    00331766
+DBGMSG08 DC    C'LOCAL   :  Not found in SPECIALS table'                00331768
+DBGMSG09 DC    C'LOCAL   :  Checking for FORWARD file'                  00331770
+DBGMSG10 DC    C'LOCAL   :  Checking for MAILLIST file'                 00331772
+DBGMSG11 DC    C'LOCAL   :  Loading FORWARD/MAILLIST file'              00331774
+DBGMSG12 DC    C'LOCAL   :  Out of memory on EXECLOAD'                  00331776
+DBGMSG13 DC    C'LOCAL   :  Dropping FORWARD files'                     00331778
+DBGMSG14 DC    C'LOCAL   :  Dropping MAILLIST files'                    00331780
+DBGMSG15 DC    C'LOCAL   :  Sending file to local user'                 00331782

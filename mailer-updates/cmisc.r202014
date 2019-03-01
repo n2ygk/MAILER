@@ -1,0 +1,29 @@
+./ R 00025000          $ 25490 490                    02/15/89 17:14:58
+        if ((d = mailblok.upcase[*s1] - mailblok.upcase[*s2]))          00025000
+./ R 00167000          $ 167690 690                   02/15/89 17:14:58
+    if (mailblok.stackp[1] < amount)                                    00167000
+./ R 00169000 00171000 $ 169690 690                   02/15/89 17:14:58
+    mailblok.stackp[1] -= amount;                                       00169000
+    ptr = mailblok.stackp[0];                                           00170000
+    mailblok.stackp[0] += amount;                                       00171000
+./ R 00196000          $ 196490 490                   02/15/89 17:14:58
+        f->fscbfn[i] = mailblok.upcase[*n];                             00196000
+./ R 00199000          $ 199490 490                   02/15/89 17:14:58
+        f->fscbft[i] = mailblok.upcase[*n];                             00199000
+./ R 00203000          $ 203490 490                   02/15/89 17:14:58
+        f->fscbfm[i] = mailblok.upcase[*n];                             00203000
+./ R 00312000          $ 312490 490                   02/15/89 17:14:58
+        if (!(mailblok.mailflg1&MFLG1HDS)) /* no header was scanned */  00312000
+./ R 00314000          $ 314490 490                   02/15/89 17:14:58
+        if ((curfld = mailblok.mailfld) == 0) /* head of fieldd list */ 00314000
+./ R 00432000          $ 432490 490                   02/15/89 17:14:58
+        if (mailblok.mailflg2&MFLG2SMT) {       /* BSMTP */             00432000
+./ R 00435000          $ 435490 490                   02/15/89 17:14:58
+            fspoint(&fs, 0, mailblok.mailhrec+2); /* skip over header */00435000
+./ R 00441000 00442000 $ 441590 590                   02/15/89 17:14:58
+            for (i = 0; i < mailblok.mailhrec; i++)                     00441000
+              if (rdcard(inbuf,mailblok.mailsfb.sfbrecsz) < 0)          00442000
+./ R 00453000          $ 453490 490                   02/15/89 17:14:58
+        if (mailblok.mailflg2&MFLG2SMT) {  /* source is smtp data */    00453000
+./ R 00459000          $ 459490 490                   02/15/89 17:14:58
+            if ((resid = rdcard(inbuf,mailblok.mailsfb.sfbrecsz)) < 0) {00459000

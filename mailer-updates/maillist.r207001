@@ -1,0 +1,41 @@
+./ R 00063000          $ 63490 490                    05/15/90 14:49:23
+          cmdstring , msgcmd                 /*                       */00063490
+./ R 00072000          $ 72290 290                    05/15/90 14:49:23
+if msgcmd = ''  then                         /* Set msg cmd default   */00072290
+   msgcmd  = 'MSGNOH'                        /*    if none given      */00072580
+./ I 00107000          $ 107500 500                   05/15/90 14:49:23
+say '        :  Msgcmd    = "'msgcmd'"'                                 00107500
+./ R 00153000          $ 153490 490                   05/15/90 14:49:23
+      expose cmdstring console localnode maillist. maintainer msgcmd ,  00153000
+./ R 00203000          $ 203490 490                   05/15/90 14:49:23
+         expose maillist.                                               00203000
+./ R 00221000          $ 221490 490                   05/15/90 14:49:23
+              expose console localnode maillist. msgcmd requestor       00221000
+./ R 00253000 00254000 $ 253590 590                   05/15/90 14:49:23
+           expose cmdstring console localnode maillist. maintainer ,    00253000
+                  msgcmd requestor
+./ R 00334000          $ 334490 490                   05/15/90 14:49:23
+         expose cmdstring console localnode maintainer msgcmd requestor 00334000
+./ R 00401000 00402000 $ 401590 590                   05/15/90 14:49:23
+         expose cmdstring console localnode maillist. maintainer ,      00401000
+                msgcmd requestor
+./ R 00462000          $ 462290 290                   05/15/90 14:49:23
+            expose cmdstring console listid localnode maillist. msgcmd ,00462000
+                   requestor
+./ R 00493000          $ 493490 490                   05/15/90 14:49:23
+              expose maillist.                                          00493000
+./ R 00528000 00529000 $ 528590 590                   05/15/90 14:49:23
+           expose cmdstring console localnode maillist. maintainer ,    00528000
+                  msgcmd requestor
+./ R 00589000          $ 589490 490                   05/15/90 14:49:23
+          expose cmdstring console localnode maintainer msgcmd requestor00589000
+./ R 00625000          $ 625490 490                   05/15/90 14:49:23
+       expose cmdstring console localnode msgcmd requestor              00625000
+./ R 00669000          $ 669490 490                   05/15/90 14:49:23
+      expose console localnode msgcmd requestor                         00669000
+./ R 00677000          $ 677490 490                   05/15/90 14:49:23
+   if node = localnode  then  do             /* On local node         */00677490
+./ R 00680000          $ 680490 490                   05/15/90 14:49:23
+         msgcmd <> 'MSG'  then               /*    in MAILER          */00680490
+./ R 00736000          $ 736490 490                   05/15/90 14:49:23
+ScanOwners:  procedure  expose localnode msgcmd owners. requestor       00736000

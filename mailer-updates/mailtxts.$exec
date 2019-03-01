@@ -1,0 +1,11 @@
+ERASE MAILER TXTLIB                                                     00001000
+ERASE MAILGEN TXTLIB                                                    00002000
+&ERROR &EXIT &RETCODE                                                   00003000
+TXTLIB GEN MAILER UTSMAIL INTERNET VMMLOG DISTLIST PROFS                00004000
+*ERASE UTSMAIL TEXT *                                                   00005000
+*ERASE INTERNET TEXT *                                                  00006000
+*ERASE VMMLOG   TEXT *                                                  00007000
+TXTLIB GEN MAILGEN MAILER                                               00008000
+EXEC MAILMOD1 EXEC TXTADD                                               00009000
+EXEC MAILCS EXEC TXTADD                                                 00010000
+*EXEC MAILYS EXEC TXTADD                                                00011000

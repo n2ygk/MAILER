@@ -1,0 +1,90 @@
+./ R 00234000 00263000 $ 236990 2990                  06/30/89 16:01:47
+         LR    R0,R8               Copy data length                     00236990
+         LA    R1,CMD202           Command type                         00239980
+         BAL   R14,BLDCMDBL        Build a command block                00242970
+         B     RET                 ---> Error building block            00245960
+         LR    R6,R1               Copy address where expected          00248950
+         BCTR  R8,0                -1 for EX                            00251940
+         EX    R8,MOVECMD          MVC CMDDATA(0),0(R9)                 00254930
+./ R 00303520 00303670 $ 303540 20                    06/30/89 16:01:47
+         LR    R0,R8               Size of data field                   00303540
+         LA    R1,CMDFWD           Command type                         00303560
+         BAL   R14,BLDCMDBL        Build a command block                00303580
+         B     RET                 ---> Error building block            00303600
+./ D 00303730 00304360                                06/30/89 16:01:47
+./ R 00890000          $ 890690 690                   06/30/89 16:01:47
+         EJECT ,                                                        00890690
+./ R 00898000          $ 898010 10                    06/30/89 16:01:47
+         EJECT ,                                                        00898010
+*  Build a command block for passing to MAILCMD2                        00898020
+*                                                                       00898030
+*  Registers at entry:                                                  00898040
+*                                                                       00898050
+*      R0  - Length of data for inclusion in command block              00898060
+*      R1  - Command code                                               00898070
+*      R14 - Return address                                             00898080
+*                                                                       00898090
+*  Registers at exit:                                                   00898100
+*                                                                       00898110
+*      R1  - Address of command block                                   00898120
+*                                                                       00898130
+*      All other registers unchanged                                    00898140
+*                                                                       00898150
+         SPACE 2                                                        00898160
+BLDCMDBL DS    0H                                                       00898170
+         STM   R14,R12,12(R13)     Save the regs                        00898180
+         LM    R2,R3,20(R13)       R2 - data length                     00898190
+*                                  R3 - command type value              00898200
+         A     R0,=A(CMDSIZE*8+7)  Round size needed to                 00898210
+         N     R0,=X'FFFFFFF8'          doubleword                      00898220
+         SRL   R0,3                Make into a dword quantity           00898230
+         DMSFREE DWORDS=(0)        Get the storage                      00898240
+         LR    R6,R1               Get into a better register           00898250
+         USING COMMAND,R6          Build a command block                00898260
+         ST    R0,CMDLEN           Length of the block                  00898270
+         ST    R2,CMDDLEN          Data length                          00898280
+         MVC   CMDSNDR,SRCUSER     Pass along response userid           00898290
+         MVC   CMDNODE,MSGNODE        and nodename.                     00898300
+         ST    R3,CMDCODE          Set command type                     00898310
+         XC    CMDNEXT,CMDNEXT     Keep our chain clean                 00898320
+         CLC   @CODE,=A(CMDCONS)   From console?                        00898330
+         BNE   BLDCMD01            ---> No                              00898340
+BLDCMD00 EQU   *                                                        00898350
+         MVC   CMDSNDR,=CL8'*'     Put in special flag                  00898360
+         B     BLDCMD04                                                 00898370
+         SPACE 1                                                        00898380
+BLDCMD01 EQU   *                                                        00898390
+         CLC   @CODE,=A(CMDNET)    From network?                        00898400
+         BNE   BLDCMD02            ---> No                              00898410
+         MVC   CMDMSG,=CL18'SMSG rscsname MSG '                         00898420
+         MVC   CMDMSG+5(8),RSCSNAME                                     00898430
+         B     BLDCMD04                                                 00898440
+         SPACE 1                                                        00898450
+BLDCMD02 EQU   *                                                        00898460
+         CLC   @CODE,=A(CMDSMSG)   From SMSG?                           00898470
+         BNE   BLDCMD06            Unknown code                         00898480
+         TM    FLAG,SMSFLG         Want smsg reply?                     00898490
+         BNO   BLDCMD03            ---> No                              00898500
+         MVC   CMDMSG,=CL18'SMSG'  Remember SMSG                        00898510
+         B     BLDCMD04                                                 00898520
+         SPACE 1                                                        00898530
+BLDCMD03 EQU   *                                                        00898540
+         MVC   CMDMSG,=CL18'MSGNOH' Use MSGNOH                          00898550
+         SPACE 1                                                        00898560
+BLDCMD04 EQU   *                                                        00898570
+         LR    R1,R6               Copy address for return              00898580
+         DROP  R6                                                       00898590
+         LM    R14,R0,12(R13)      Restore R14, R15 and R0              00898600
+         LM    R2,R12,28(R13)      Restore R2 - R12                     00898610
+         B     4(,R14)             Take successful exit                 00898620
+         SPACE 2                                                        00898630
+*  Reply code not recognized                                            00898640
+         SPACE 1                                                        00898650
+BLDCMD06 EQU   *                                                        00898660
+         EJECT ,                                                        00898670
+*  Check if user authorized                                             00898680
+         SPACE 1                                                        00898690
+./ R 00913000          $ 913490 490                   06/30/89 16:01:47
+         EJECT ,                                                        00913490
+./ R 00937000          $ 937490 490                   06/30/89 16:01:47
+         EJECT ,                                                        00937490

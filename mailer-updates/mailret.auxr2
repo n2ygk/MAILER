@@ -1,0 +1,9 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R207033    Correctly format To: address in MAILRET when address contans
+*          a routd.  This fix necessary to correct problem of addresses
+*          arriving as '@internet.gateway.name:userid@internet.host.name
+*          (which is missing the '<' and '>').
+R202018    Remove PRINT NOGENs, make DSECTs honor SYSPARM(SUP)/SYSPARM(EXP)
+R201004    Correct userid in MAIRTS029I message
+R200005    MAILRET only accepts first token of user and node for return
+*          address.

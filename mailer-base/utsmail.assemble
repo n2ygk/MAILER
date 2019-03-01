@@ -1,0 +1,139 @@
+UTSMAIL TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - UTS MAIL EXIT'       00001000
+*---------------------------------------------------------------------* 00002000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00003000
+*    Program Property of the Trustees of Columbia University in the   * 00004000
+*    City of New York.                                                * 00005000
+*---------------------------------------------------------------------* 00006000
+UTSMAIL  CSECT ,                                                        00007000
+* UTSMAIL-                                                              00008000
+*  This routine performs the delivery of files to a UTS guest           00009000
+*  operating system.  This code will properly send mail to a            00010000
+*  user on a vanilla UTS release 2.0 system providing that the          00011000
+*  user exists.  No error is returned if the user doesn't exist         00012000
+*  although that is in the works.                                       00013000
+*                                                                       00014000
+* When invoked,  this routine requires the Mailer Profile               00015000
+* outgoing table that requests this exit to supply the VM               00016000
+* userid of the UTS guest.  If the parm is left blank,                  00017000
+* "UTS" is assumed.                                                     00018000
+*                                                                       00019000
+* LAST EDIT: 11/30/82 by Alan Crosswell                                 00020000
+PAB      DSECT ,                                                        00021000
+@MBLOK   DS    A             MAILBLOK BASE                              00022000
+@ACT     DS    A             ACTADR BASE                                00023000
+* REGISTER USAGE -                                                      00024000
+R0  EQU  0 -                                                            00025000
+R1  EQU  1 -                                                            00026000
+R2  EQU  2 -                                                            00027000
+R3  EQU  3 -                                                            00028000
+R4  EQU  4 -                                                            00029000
+R5  EQU  5 -                                                            00030000
+R6  EQU  6 -                                                            00031000
+R7  EQU  7 -                                                            00032000
+R8  EQU  8 -                                                            00033000
+R9  EQU  9 -                                                            00034000
+R10 EQU 10 - ACTADR BASE                                                00035000
+R11 EQU 11 - MAILBLOK BASE                                              00036000
+R12 EQU 12 - PROGRAM BASE                                               00037000
+R13 EQU 13 - SAVE AREA                                                  00038000
+R14 EQU 14 - SUBROUTINE LINKAGE                                         00039000
+R15 EQU 15 - SUBROUTINE LINKAGE                                         00040000
+         BLOCKS ,                                                       00041000
+         MAILBLOK ,                                                     00042000
+         EJECT ,                                                        00043000
+UTSMAIL  CSECT ,                                                        00044000
+         STM   R14,R12,12(R13)                                          00045000
+         BALR  R12,0                                                    00046000
+         USING *,R12                                                    00047000
+         LA    R14,SAVE                                                 00048000
+         ST    R13,4(R14)                                               00049000
+         ST    R14,8(R13)                                               00050000
+         LR    R13,R14                                                  00051000
+         USING PAB,R1        ADDRESS PARMS                              00052000
+         L     R11,@MBLOK    GET MAILBLOK BASE                          00053000
+         L     R10,@ACT      GET ACTADR BASE                            00054000
+         DROP  R1                                                       00055000
+         USING MAILBLOK,R11                                             00056000
+         USING ACTADR,R10                                               00057000
+         L     R1,ACTRT      get routd pointer                          00058000
+         USING ROUTD,R1                                                 00059000
+         MVC   UTSNODE,RTROUTE                                          00060000
+         MVC   UTSVMID,=CL8'UTS' default UTS id name                    00061000
+         CLC   RTPARM,=CL8' ' blank?                                    00062000
+         BE    DEFUTS        use default name                           00063000
+         MVC   UTSVMID,RTPARM set vmid                                  00064000
+DEFUTS   EQU   *                                                        00065000
+         DROP  R1                                                       00066000
+         L     R7,ACTMBOX    GET MBOX BLOCK                             00067980
+         USING MBOX,R7                                                  00068380
+         L     R7,MBXLCL         GET USER LIST                          00069070
+         USING NODE,R7     ADDRESS IT                                   00070590
+         L     R7,NODDOWN    GET DOWN POINTER                           00071180
+         USING TOKEND,R7     ADDRESS THE USER NAME TOKEN                00072000
+         L     R9,TOKPTR         GET STRING                             00073680
+         SR    R4,R4         GET ZERO                                   00074000
+         L     R4,TOKLEN     LENGTH OF USERID STRING                    00075490
+         C     R4,=F'8'      8 OR LESS?                                 00076000
+         BH    ILLEGAL                                                  00077000
+         MVI   UTSUSR,C' '   BLANK IT                                   00078000
+         MVC   UTSUSR+1(79-(UTSUSR-UTSHDR)),UTSUSR  PROPAGATE THEM      00079000
+         BCTR  R4,0          -1 FOR EX                                  00080000
+         EX    R4,MOVEIT     MVC UTSUSR(0),4(R9)                        00081000
+         EX    R4,UPIT       TR UTSUSR(0),UPTAB                         00082000
+         LA    R1,UTSUSR+8   POINT AFTER THE FIRST NAME FIELD           00083000
+         MVC   0(7,R1),=CL7' RMAIL:' REMOTE MAIL DAEMON                 00084000
+         LA    R1,7(R1)      POINT AFTER IT                             00085000
+         EX    R4,MOVEIT2    COPY USERNAME AGAIN                        00086000
+         LA    R1,SPUTS      spool punch command                        00087000
+         LA    R0,LSPUTS                                                00088000
+         DC    X'83100008'   POINT PUNCH AT UTS                         00089000
+         PUNCHC UTSHDR       PUNCH THE UTS HEADER CARD                  00090000
+         SPACE ,                                                        00091000
+         L     R15,APUNHDR                                              00092000
+         CALL  (15),((R11))  PUNCH THE HEADER                           00093000
+         LTR   R15,R15       ANY SCREW UPS?                             00094000
+         BNZ   RET                                                      00095000
+         L     R15,APUNTXT                                              00096000
+         CALL  (15),((R11))  PUNCH THE REST                             00097000
+         LTR   R15,R15      ANY ERRORS?                                 00098000
+         BNZ   RET           OH WEEELLL....                             00099000
+         L     R15,APUNCLS   ROUTINE TO CLOSE PUNCH                     00100000
+         CALL  (15),((R11))  CALL IT                                    00101000
+         LTR   R15,R15       ANY ERRORS?                                00102000
+         BNZ   RET           SORRY...                                   00103000
+         LOG   UTS034,(CA,UTSVMID,CA,UTSNODE)                           00104000
+RET      EQU   *                                                        00105000
+         L     R13,4(R13)                                               00106000
+         L     R14,12(R13)                                              00107000
+         LM    R0,R12,20(R13)                                           00108000
+         BR    R14                                                      00109000
+         SPACE ,                                                        00110000
+*--------------------------------------------------------------------   00111000
+*  ERROR/SPECIAL HANDLING                                               00112000
+*--------------------------------------------------------------------   00113000
+ILLEGAL  EQU   *                                                        00114000
+         LOG   LCL031,(CA,(R9))                                         00115000
+         LA    R15,4                                                    00116000
+         B     RET                                                      00117000
+         SPACE ,                                                        00118000
+*                                                                       00119000
+COPY     MVC   0(0,R2),0(R3)                                            00120000
+MOVEIT   MVC   UTSUSR(0),0(R9)                                          00121000
+MOVEIT2  MVC   0(0,R1),UTSUSR                                           00122000
+UPIT     TR    UTSUSR(0),UPCASE                                         00123000
+         SPACE ,                                                        00124000
+         LTORG ,                                                        00125000
+SAVE     DS    18F                                                      00126000
+TWORK    DS    64F                                                      00127000
+* UTS HEADER CARD FORMAT IS:                                            00128000
+* X'00000107',C'QX <USERID> RMAIL:<USERID>'                             00129000
+UTSHDR   DC    CL80' '                                                  00130000
+         ORG   UTSHDR ,                                                 00131000
+         DC    XL4'00000107',C'QX '                                     00132000
+UTSUSR   EQU   UTSHDR+7                                                 00133000
+         ORG   UTSHDR+80                                                00134000
+SPUTS    DC    C'SP PUN TO '                                            00135000
+UTSVMID  DC    CL8'UTS'                                                 00136000
+LSPUTS   EQU   *-SPUTS                                                  00137000
+UTSNODE  DC    CL8' '                                                   00138000
+         END   UTSMAIL                                                  00139000

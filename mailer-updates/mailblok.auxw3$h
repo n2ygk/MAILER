@@ -1,0 +1,5 @@
+* * * * * * * * * * * * * * * * AUXW3$H * * * * * * * * * * * * * * * * *
+* This auxfile contains changes that should only be applied if you are
+* using the Waterloo C 3.x compiler
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+R203013H   Fixes for Waterloo C 3.0

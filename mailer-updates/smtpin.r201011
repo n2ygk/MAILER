@@ -1,0 +1,22 @@
+./ R 00554000          $ 554390 390                   12/07/88 13:19:52
+    struct tokend *t;                                                   00554390
+    struct tokend  *faketoke;                                           00554780
+./ D 00555700                                         12/07/88 13:19:52
+./ R 00559590          $ 559600 10                    12/07/88 13:19:52
+    struct node *n;                                                     00559600
+    struct node *fakenode;                                              00559610
+./ I 00620800          $ 620802 2                     12/07/88 13:19:52
+                                                                        00620802
+    /* If address was just 'userid' fix it to be 'userid@local-host' */ 00620804
+                                                                        00620806
+    if (a->mbxdml == 0) {                                               00620808
+       fakenode = (struct node *)salloc(sizeof(*fakenode));             00620810
+       if (!fakenode) return s_nosp(st,s,l);                            00620812
+       faketoke = (struct tokend*)salloc(sizeof(*faketoke));            00620814
+       if (!faketoke) return s_nosp(st,s,l);                            00620816
+       a->mbxdml = fakenode;                                            00620818
+       fakenode->noddown = faketoke;                                    00620820
+       faketoke->tokptr = &cpustr[0];                                   00620822
+       faketoke->toklen = cpuslen;                                      00620824
+       faketoke->toktype = TOKATM;                                      00620826
+    }                                                                   00620828

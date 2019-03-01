@@ -1,0 +1,117 @@
+./ R 00956080 00959030 $ 956170 90                    09/19/89 16:53:30
+ *                                                                      00956170
+ * The search sequence proceeds in the following order until a          00956260
+ * match is found or the entire sequence fails:                         00956350
+ *                                                                      00956440
+ *   (1)  Look up full host string in MAILRTAB (OUTGOING table)         00956530
+ *                                                                      00956620
+ *   (2)  Strip any attached RSCS-Domain                                00956710
+ *        If any RSCS-domains have been coded, do a right to left       00956800
+ *        compare and strip on a match                                  00956890
+ *                                                                      00956980
+ *   (3)  Look for the (shorter) hostname in MAILRTAB (OUTGOING table)  00957070
+ *                                                                      00957160
+ *   (4)  Look for it in MAILDTAB (DOMAINS table)                       00957250
+ *                                                                      00957340
+ *   (5)  If MOPTAUN (Allow-Unknown-Nodes) true look for *DEFAULT*      00957430
+ *                                                                      00957520
+ *   (5A) If original string (the one used for the lookup in step 1)    00957610
+ *        has no dot in it (i.e. no domain name originally)  then       00957700
+ *        look for *DEFAULT* in MAILRTAB (OUTGOING table)               00957790
+ *                                                                      00957880
+ *   (5B) If original string (the one used for the lookup in step 1)    00957970
+ *        has a dot in it (i.e. a domain name originally)  then         00958060
+ *                                                                      00958150
+ *        (5B.1) If an RSCS-Domain match was found look for             00958240
+ *               *DEFAULT*ROUTE*.rscsdomain in MAILDTAB (DOMAINS table) 00958330
+ *                                                                      00958420
+ *        (5B.2) Look for *DEFAULT* in MAILDTAB (DOMAINS table)         00958510
+ *                                                                      00958600
+ *                                                                      00958690
+./ R 00972000          $ 972490 490                   09/19/89 16:53:30
+int l;                                                                  00972490
+./ I 00975000          $ 975030 30                    09/19/89 16:53:30
+    char defrt[255];         /* *DEFAULT*ROUTE* string */               00975030
+./ R 00975120          $ 975140 20                    09/19/89 16:53:30
+    char dbgmsg[133];                                                   00975140
+./ I 00975858          $ 975860 2                     09/19/89 16:53:30
+#ifdef DEBUG_FIND_ROUTD                                                 00975860
+        wrterm("==> find_routd: Checking MAILRTAB");                    00975862
+#endif                                                                  00975864
+./ D 00975921 00975984                                09/19/89 16:53:30
+./ R 00977790          $ 977880 90                    09/19/89 16:53:30
+    /* (2) see if it ends in .<RSCS-domain> */                          00977880
+#ifdef DEBUG_FIND_ROUTD                                                 00977970
+        wrterm("==> find_routd: Attempting RSCS domain removal");       00978060
+#endif                                                                  00978150
+./ I 00983470          $ 983540 70                    09/19/89 16:53:30
+#ifdef DEBUG_FIND_ROUTD                                                 00983540
+        bcopy("==> find_routd: >", dbgmsg, 17);                         00983610
+        bcopy(s, &dbgmsg[17], l);                                       00983680
+        bcopy("<", &dbgmsg[17+l], 2);                                   00983750
+        wrterm(dbgmsg);                                                 00983820
+#endif                                                                  00983890
+./ R 00986690          $ 986780 90                    09/19/89 16:53:30
+    /* (3) see if it is in MAILRTAB */                                  00986780
+#ifdef DEBUG_FIND_ROUTD                                                 00986870
+        wrterm("==> find_routd: Checking MAILRTAB");                    00986960
+#endif                                                                  00987050
+./ R 00990690          $ 990780 90                    09/19/89 16:53:30
+    /* (4) see if it is in MAILDTAB */                                  00990780
+#ifdef DEBUG_FIND_ROUTD                                                 00990870
+        wrterm("==> find_routd: Checking MAILDTAB");                    00990960
+#endif                                                                  00991050
+./ R 00994690 00997000 $ 994730 40                    09/19/89 16:53:30
+    /* (5) see if MOPTAUN and *DEFAULT* is in MAILDTAB/MAILRTAB */      00994730
+    if (mailblok.mailopts&MOPTAUN) {                                    00994770
+#ifdef DEBUG_FIND_ROUTD                                                 00994810
+        wrterm("==> find_routd: Allow unknown nodes set");              00994850
+#endif                                                                  00994890
+       if (strnindex(s, '.', ol) == 0) {                                00994930
+       /* (5A) No '.' in original address string */                     00994970
+#ifdef DEBUG_FIND_ROUTD                                                 00995010
+           wrterm("==> find_routd: Checking MAILRTAB with *DEFAULT*");  00995050
+#endif                                                                  00995090
+           if (ctbluk(&te, mailblok.mailrtab, "*DEFAULT*", 9)           00995130
+                                                   == TBMATCH) {        00995170
+#ifdef DEBUG_FIND_ROUTD                                                 00995210
+           wrterm("==> find_routd: Using *DEFAULT* in OUTGOING table"); 00995250
+#endif                                                                  00995290
+           return te->tbe_dsp;                                          00995330
+           }                                                            00995370
+       } else {                                                         00995410
+       /* (5B) Have a '.' in original address string */                 00995450
+#ifdef DEBUG_FIND_ROUTD                                                 00995490
+           wrterm("==> find_routd: Checking MAILDTAB with *DEFAULT*");  00995530
+#endif                                                                  00995570
+           if (l != ol) {                                               00995610
+               /* (5B.1)  Stripped an RSCS-Domain */                    00995650
+               bcopy("*DEFAULT*ROUTE*", defrt, 15);                     00995690
+               bcopy(s+l,defrt,ol-l);                                   00995730
+#ifdef DEBUG_FIND_ROUTD                                                 00995770
+               bcopy("==> find_routd: Using ", dbgmsg, 22);             00995810
+               bcopy(defrt, dbgmsg+22, ol-l+15);                        00995850
+               bcopy(" in DOMAINS table", dbgmsg+22+(ol-l+15), 18);     00995890
+               wrterm(dbgmsg);                                          00995930
+#endif                                                                  00995970
+               if (ctbluk(&te, mailblok.maildtab, defrt, ol-l+15)       00996010
+                                                       == TBMATCH) {    00996050
+#ifdef DEBUG_FIND_ROUTD                                                 00996090
+                   bcopy("==> find_routd: Using ", dbgmsg, 22);         00996130
+                   bcopy(defrt, dbgmsg+22, ol-l+15);                    00996170
+                   bcopy(" in DOMAINS table", dbgmsg+22+(ol-l+15), 18); 00996210
+                   wrterm(dbgmsg);                                      00996250
+#endif                                                                  00996290
+                   return te->tbe_dsp;                                  00996330
+               }                                                        00996370
+           }                                                            00996410
+           /* (5B.2) Try for *DEFAULT* */                               00996450
+           if (ctbluk(&te, mailblok.maildtab, "*DEFAULT*", 9)           00996490
+                                                       == TBMATCH) {    00996530
+#ifdef DEBUG_FIND_ROUTD                                                 00996570
+               wrterm(                                                  00996610
+                 "==> find_routd: Using *DEFAULT* in DOMAINS table");   00996650
+#endif                                                                  00996690
+               return te->tbe_dsp;                                      00996730
+           }                                                            00996770
+       }                                                                00996810

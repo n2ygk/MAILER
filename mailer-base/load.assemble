@@ -1,0 +1,135 @@
+LOAD     TITLE 'CUCCA VM NETWORK MAILER - VERSION 1 - LOADER'           00001000
+*---------------------------------------------------------------------* 00002000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00003000
+*    Program Property of the Trustees of Columbia University in the   * 00004000
+*    City of New York.                                                * 00005000
+*---------------------------------------------------------------------* 00006000
+LOAD     CSECT                                                          00007000
+* LOAD     -                                                            00008000
+*  LOADS THE NAMED TEXT DECK OR TXTLIB MEMBER VIA THE CMS LOAD          00009000
+*  COMMAND.  THE ROUTINE IS LOADED IN THE STACK SPACE PROVIDED          00010000
+*  AND A CHECK AFTER THE FACT IS MADE TO SEE IF THE STACK LIMIT         00011000
+*  HAS BEEN BYPASSED.  THIS MEANS THAT A STACK OVERFLOW WILL            00012000
+*  RESULT IN DATA PAST THE STACK BEING CLOBBERED (SORRY).               00013000
+*                                                                       00014000
+*  LAST EDIT: 2/2/82  BY  ALAN CROSSWELL                                00015000
+*                                                                       00016000
+*  INVOKED VIA CALL LOAD,(NAME,STACK)                                   00017000
+*        NAME - CL8 NAME OF EXIT TO LOAD                                00018000
+*        STACK - STACK POINTER DWORD                                    00019000
+PAB      DSECT ,                                                        00020000
+@NAME    DS    A             ADDRESS OF NAME                            00021000
+@STACK   DS    A             ADDRESS OF STACK                           00022000
+*  RETURNS                                                              00023000
+*        R1 - ADDRESS OF LOADED ROUTINE                                 00024000
+*        R15 - CMS LOADER RETURN CODE                                   00025000
+*  CALLS THE CMS LOADER VIA SVC202                                      00026000
+         SPACE ,                                                        00027000
+* REGISTER USAGE -                                                      00028000
+R0  EQU  0 -                                                            00029000
+R1  EQU  1 - WORK                                                       00030000
+R2  EQU  2 - WORK                                                       00031000
+R3  EQU  3 - WORK                                                       00032000
+R4  EQU  4 -                                                            00033000
+R5  EQU  5 -                                                            00034000
+R6  EQU  6 -                                                            00035000
+R7  EQU  7 -                                                            00036000
+R8  EQU  8 -                                                            00037000
+R9  EQU  9 - STACK POINTER                                              00038000
+R10 EQU 10 - STACK LENGTH                                               00039000
+R11 EQU 11 - PAB DSECT BASE                                             00040000
+R12 EQU 12 - PROGRAM BASE                                               00041000
+R13 EQU 13 - SAVE AREA                                                  00042000
+R14 EQU 14 - SUBROUTINE LINKAGE                                         00043000
+R15 EQU 15 - SUBROUTINE LINKAGE                                         00044000
+         SPACE ,                                                        00045000
+         PRINT NOGEN                                                    00046000
+         NUCON DSECT                                                    00047000
+         EJECT                                                          00048000
+LOAD     CSECT ,                                                        00049000
+         STM   R14,R12,12(R13)         SAVE CALLER'S REGS               00050000
+         BALR  R12,0                   GET ADDRESSABILITY               00051000
+         USING *,R12                                                    00052000
+         LA    R14,SAVE                MY SAVE AREA                     00053000
+         ST    R13,4(R14)              SAVE CALLER'S PTR                00054000
+         ST    R14,8(R13)              CHAIN MINE BACK                  00055000
+         LR    R13,R14                 SET MY SAVE PTR                  00056000
+         LA    R15,4                                                    00057000
+         LR    R11,R1        GET PARMS                                  00058000
+         USING PAB,R11       DSECT THEM                                 00059000
+         SPACE ,                                                        00060000
+         WAITT ,             [1.13]???                                  00061000
+*--------------------------------------------------------------------   00062000
+*        COPY ROUTINE NAME TO THE LOADER PLIST                          00063000
+*--------------------------------------------------------------------   00064000
+         L     R1,@NAME      GET ADDRESS OF NAME                        00065000
+         MVC   LOADNAME,0(R1)  COPY IT IN                               00066000
+         SPACE ,                                                        00067000
+*--------------------------------------------------------------------   00068000
+*        CONVERT STACK ADDRESS TO HEXADECIMAL CHARACTERS                00069000
+*        BUT FIRST MAKE IT DWORD ALIGNED                                00070000
+*--------------------------------------------------------------------   00071000
+         L     R9,@STACK     ADDRESS OF STACK POINTER                   00072000
+         L     R10,4(R9)     GET STACK LENGTH                           00073000
+         L     R9,0(R9)      AND STACK ADDRESS                          00074000
+         LR    R1,R9         COPY STACK PTR FOR A SEC                   00075000
+         LA    R9,7(R9)      BUMP IT  A BIT                             00076000
+         N     R9,=X'FFFFFFF8'  AND ZAP THE LOW 3 BITS                  00077000
+         SR    R1,R9         GET ANY DIFFERENCE                         00078000
+         AR    R10,R1        AND ADJUST STACK LENGTH                    00079000
+         LINEDIT TEXT='........',RENT=NO,DOT=NO,DISP=NONE,             *00080000
+               BUFFA=HEXCHARS,SUB=(HEX,(R9))                            00081000
+         MVC   LOADORG,HEXCHARS+1      GET RID OF THE LENGTH            00082000
+         SPACE ,                                                        00083000
+*--------------------------------------------------------------------   00084000
+*        NOW ISSUE THE LOAD                                             00085000
+*--------------------------------------------------------------------   00086000
+         LA    R1,LOADLIST   LOAD PARM LIST                             00087000
+         SVC   202           DO THE SVC                                 00088000
+         DC    AL4(LOADERR)  ERROR RETURN                               00089000
+         SPACE ,                                                        00090000
+*--------------------------------------------------------------------   00091000
+*        LOOK IN LOADER TABLES AND CALCULATE AMOUNT OF STACK USED       00092000
+*--------------------------------------------------------------------   00093000
+         USING NUCON,0       GRAB NUCON DSECT                           00094000
+         L     R3,LOCCNT     GET LOADER LOCATION COUNTER                00095000
+         SR    R3,R9         GET AMOUNT OF STACK USED                   00096000
+         SR    R10,R3        TAKE SPACE OF OF STACK LENGTH              00097000
+         BL    NOSPACE       OUT OF STACK SPACE                         00098000
+         L     R9,LOCCNT     GET NEW STACK POINTER                      00099000
+         SPACE ,                                                        00100000
+*--------------------------------------------------------------------   00101000
+*        RETURN LOAD ADDRESS IN R1 AND UPDATED STACKP IN @STACK         00102000
+*--------------------------------------------------------------------   00103000
+         L     R1,STRTADDR   GET MODULE START ADDRESS                   00104000
+         L     R2,@STACK     ADDRESS OF STACK                           00105000
+         STM   R9,R10,0(R2)  SET RETURNED STACK POINTER                 00106000
+         SR    R15,R15                                                  00107000
+         SPACE ,                                                        00108000
+RET      EQU   *                                                        00109000
+         L     R13,4(R13)              GET CALLER'S SAVE PTR            00110000
+         L     R14,12(R13)             GET R14                          00111000
+         L     R0,20(R13)    RESTORE 0                                  00112000
+         LM    R2,R12,28(R13)          GET R2-R12 (RETURN R1)           00113000
+         BR    R14                     RETURN                           00114000
+         SPACE ,                                                        00115000
+*--------------------------------------------------------------------   00116000
+*        ERROR RETURNS                                                  00117000
+*--------------------------------------------------------------------   00118000
+LOADERR  EQU   *                                                        00119000
+         SR    R1,R1                                                    00120000
+         B     RET                                                      00121000
+NOSPACE  EQU   *                                                        00122000
+         SR    R1,R1                                                    00123000
+         LA    R15,100       INDICATE FATAL ERROR                       00124000
+         BR    R14                                                      00125000
+         SPACE ,                                                        00126000
+         LTORG ,                                                        00127000
+SAVE     DS    18F                     SAVE AREA                        00128000
+LOADLIST DC    0D'0',CL8'LOAD'                                          00129000
+LOADNAME DS    CL8           NAME TO LOAD                               00130000
+         DC    CL8'(',CL8'NOMAP',CL8'ORIGIN'                            00131000
+LOADORG  DS    CL8                                                      00132000
+         DC    8X'FF'        FENCE                                      00133000
+HEXCHARS DS    CL9                                                      00134000
+         END   LOAD                                                     00135000

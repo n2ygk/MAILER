@@ -1,0 +1,37 @@
+./ I 00072000          $ 72200 200                    01/31/90 18:06:21
+         TM    DBGFLG7,DBGGETHD    Tracing?                             00072200
+         BNO   DBG0001             ---> No                              00072400
+         WRTERM 'GETHDR  :  Reading header records'                     00072600
+DBG0001  EQU   *                                                        00072800
+./ I 00076000          $ 76200 200                    01/31/90 18:06:21
+         TM    DBGFLG7,DBGGETHD    Tracing?                             00076200
+         BNO   RDLOOP              ---> No                              00076400
+         WRTERM 'GETHDR  :  Skipping initial :READ'                     00076600
+./ I 00098000          $ 98100 100                    01/31/90 18:06:21
+         TM    DBGFLG7,DBGGETHD    Tracing?                             00098100
+         BNO   DBG0010             ---> No                              00098200
+         LA    R15,1(,R2)          Original length                      00098300
+         WRTERM (R7),(R15)         Show the header line                 00098400
+DBG0010  EQU   *                                                        00098500
+./ I 00103000          $ 103200 200                   01/31/90 18:06:21
+         TM    DBGFLG7,DBGGETHD    Tracing?                             00103200
+         BNO   DBG0020             ---> No                              00103400
+         WRTERM 'GETHDR  :  End of header'                              00103600
+DBG0020  EQU   *                                                        00103800
+./ I 00114000          $ 114100 100                   01/31/90 18:06:21
+         TM    DBGFLG7,DBGGETHD    Tracing?                             00103200
+         BNO   DBG0025             ---> No                              00103400
+         LINEDIT TEXT='GETHDR  :  Header records = ......',            X00103600
+               SUB=(DEC,(R10)),DOT=NO,COMP=NO
+DBG0025  EQU   *                                                        00103800
+./ I 00121000          $ 121100 100                   01/31/90 18:06:21
+         BNO   DBG0030             ---> No                              00103400
+         LINEDIT TEXT='GETHDR  :  Scanning for NLs from ........ to ...X00103600
+               .....',                                                 X
+               SUB=(HEX,(R7),HEX,(R8)),DOT=NO,COMP=NO,RENT=NO
+DBG0030  EQU   *                                                        00103800
+./ I 00140000          $ 140200 200                   01/31/90 18:06:21
+         BNO   DBG0035             ---> No                              00103400
+         LINEDIT TEXT='GETHDR  :  Header lines = ......',              X00103600
+               SUB=(DEC,(R6)),DOT=NO,COMP=NO
+DBG0035  EQU   *                                                        00103800

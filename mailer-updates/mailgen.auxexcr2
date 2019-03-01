@@ -1,0 +1,20 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R207039    Copy appropriate CNTRL files to VMM2xx disk when creating
+*          new distribution
+R207017    Automatically rebuild module/maclib lists before doing
+*             processing.  This guarantees that the current file will
+*             always be used.
+*          Build some exec files using UPDATE so that user can use
+*             XEDIT/EXECUPDT to apply local mods
+*          Make sure that SAMPLE MAILLCL is regenerated
+*          Also various and sundry other code cleanups to make it
+*             prettier.
+R207012    Compatibility maclib
+R204001    MAILGEN should generate filetype MAILER execs also
+R203033    Rebuild SAMPPROF EXEC and SAMPLE MTPLATE during MAILGEN
+R203021    Fix MAILGEN to use full name for GENMOD command
+*          Generate both MAILER and MG in GENMAIL
+R202014    Make MAILBLOK globally available to all code
+*          This will remove dependence on Waterloo AUX file usage for
+*          increased portability of C code
+R200014    Change MAILER version to 2.01

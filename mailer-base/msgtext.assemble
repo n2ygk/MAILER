@@ -1,0 +1,271 @@
+MSG      TITLE     'MESSAGE TEXT DESCRIPTORS'                           00001490
+*---------------------------------------------------------------------* 00002000
+*      MAILER -- Copyright (c) 1982,1987 Columbia University.         * 00003490
+*    Program Property of the Trustees of Columbia University in the   * 00004000
+*    City of New York.                                                * 00005000
+*---------------------------------------------------------------------* 00006000
+MSGTEXT  CSECT                                                          00007000
+* ADDRESSES OF EACH MESSAGE DESCRIPTOR.  MULTIPLY MESSAGE NUMBER BY     00008000
+* 4 TO GET ADDRESS OF MESSAGE DESCRIPTOR POINTER.                       00009000
+         DC    A(69)         HIGHEST MESSAGE NUMBER DEFINED      [1.24] 00010860
+         DC    A(M0,M1,M2,M3,M4,M5,M6,M7,M8,M9,M10,M11,M12,M13,M14)     00011000
+         DC    A(M15,M16,M17,M18,M19,M20,M21,M22,M23,M24,M25,M26,M27)   00012000
+         DC A(M28,M29,M30,M31,M32,M33,M34,M35,M36,M37,M38,M39,M40)      00013000
+         DC A(M41,M42,M43,M44,M45,M46,M47,M48,M49,M50,M51,M52)   [1.24] 00014580
+         DC A(M53,M54,M55,M56,M57,M58,M59,M60,M61,M62,M63,M64)   [1.24] 00014670
+         DC A(M65,M66,M67,M68,M69)                               [1.24] 00014910
+* MESSAGE DESCIPTORS:                                                   00015000
+T0       DC    AL1(LT0),C'MAILER000E Unable to obtain file '''          00016000
+         DC    CL18' ',C''', RC=    '                                   00017000
+LT0      EQU   *-T0-1                                                   00018000
+M0       DC    A(T0),AL1(3,3,34,18,59,3,0)                              00019000
+T1 DC    AL1(LT1),C'MAILER001I CUCCA VM Network MAILER          '       00020000
+         DC    C'         ',X'15'                                [1.22] 00021000
+         DC    C'Copyright (c) 1982,1987 Columbia University'    [1.24] 00022490
+LT1      EQU   *-T1-1                                                   00023000
+M1       DC    A(T1),AL1(3,3,35,8,44,8,0)                        [1.22] 00024000
+T2       DC    AL1(LT2),C'MAILER002E Routing file not lrecl 80 and'     00025000
+         DC    C' recfm F.'                                             00026000
+LT2      EQU   *-T2-1                                                   00027000
+M2       DC    A(T2),AL1(3,3,0)                                         00028000
+T3       DC    AL1(LT3),C'MAILER003E Stack overflow in         '        00029000
+LT3      EQU   *-T3-1                                                   00030000
+M3       DC    A(T3),AL1(3,3,29,8,0)                                    00031000
+T4       DC   AL1(LT4),C'MAILER004I MAILER running on         '         00032000
+LT4      EQU  *-T4-1                                                    00033000
+M4       DC   A(T4),AL1(3,3,29,8,0)                                     00034000
+T5       DC   AL1(LT5),C'MAILER005I Initialization complete.'           00035000
+LT5      EQU  *-T5-1                                                    00036000
+M5       DC   A(T5),AL1(3,3,0)                                          00037000
+T6       DC   AL1(LT6),C'MAILER006I MAILER waiting for work.'           00038000
+LT6      EQU  *-T6-1                                                    00039000
+M6       DC   A(T6),AL1(3,3,0)                                          00040000
+T7       DC   AL1(LT7),C'MAILER007E MAILER stopping due to error     '  00041000
+LT7      EQU  *-T7-1                                                    00042000
+M7       DC   A(T7),AL1(3,3,40,4,0)                                     00043000
+T8       DC   AL1(LT8),C'MAILER008E DIAG 14 RC=     '                   00044000
+LT8      EQU  *-T8-1                                                    00045000
+M8       DC   A(T8),AL1(3,3,22,4,0)                                     00046000
+T9       DC   AL1(LT9),C'MAILER009I Received file      sender: '        00047000
+         DC   CL8' ',C' from: ',CL16' '                                 00048000
+LT9      EQU  *-T9-1                                                    00049000
+M9       DC   A(T9),AL1(3,3,25,4,38,8,53,16,0)                          00050000
+T10      DC   AL1(LT10),C'MAILER010E RDCARD RC=     '                   00051000
+LT10     EQU  *-T10-1                                                   00052000
+M10      DC   A(T10),AL1(3,3,22,4,0)                                    00053000
+T11      DC    AL1(LT11),C'MAILER011I          bytes of stack space.'   00054000
+LT11     EQU   *-T11-1                                                  00055000
+M11      DC    A(T11),AL1(3,3,11,8,0)                                   00056000
+T12      DC    AL1(LT12),C'MAILER012I ''        '' not in routing '     00057000
+         DC    C'table.'                                                00058000
+LT12     EQU   *-T12-1                                                  00059000
+M12      DC    A(T12),AL1(3,3,12,8,0)                                   00060000
+T13      DC    AL1(LT13),C'MAILER013W Distrib exit ''        '''        00061000
+         DC    C' RC=    '                                              00062000
+LT13     EQU   *-T13-1                                                  00063000
+M13      DC    A(T13),AL1(3,3,25,8,38,4,0)                              00064000
+T14      DC    AL1(LT14),C'MAILER014W Invalid entry in '''              00065000
+         DC    CL18' ',C''' line 0000'                                  00066000
+LT14     EQU   *-T14-1                                                  00067000
+M14      DC    A(T14),AL1(3,3,29,18,54,4,0)                             00068000
+T15      DC    AL1(LT15),C'MAILER015W Table add error 00, line 00000'   00069000
+LT15     EQU   *-T15-1                                                  00070000
+M15      DC    A(T15),AL1(3,3,27,2,36,5,0)                              00071000
+T16      DC    AL1(LT16),C'MAILER016E          table is empty'          00072000
+LT16     EQU   *-T16-1                                                  00073000
+M16      DC    A(T16),AL1(3,3,11,8,0)                                   00074000
+T17      DC    AL1(LT17),C'MAILER017E User exit ''        '' load'      00075000
+         DC    C' error 00'                                             00076000
+LT17     EQU   *-T17-1                                                  00077000
+M17      DC    A(T17),AL1(3,3,22,8,43,2,0)                              00078000
+T18      DC    AL1(LT18),C'MAILER018I User exit ''        '' '          00079000
+         DC    C'loaded at         '                                    00080000
+LT18     EQU   *-T18-1                                                  00081000
+M18      DC    A(T18),AL1(3,3,22,8,42,8,0)                              00082000
+T19      DC    AL1(LT19),C'MAILER019U Unknown network sender: '         00083000
+         DC    CL17' '                                                  00084000
+LT19     EQU   *-T19-1                                                  00085000
+M19      DC    A(T19),AL1(3,3,35,8,44,8,0)                              00086000
+T20      DC    AL1(LT20),C'MAILER020U Outgoing mail has no FROM: or '   00087000
+         DC    C'SENDER: field.'                                        00088000
+LT20     EQU   *-T20-1                                                  00089000
+M20      DC    A(T20),AL1(3,3,0)                                        00090000
+T21      DC    AL1(LT21),C'MAILER021U FROM: or SENDER: inconsistent'    00091000
+         DC    C' with spool file origin.'                              00092000
+LT21     EQU   *-T21-1                                                  00093000
+M21      DC    A(T21),AL1(3,3,0)                                        00094000
+T22      DC    AL1(LT22),C'MAILER022E Invalid exit type ''  '' for '''  00095000
+         DC    C'        '''                                            00096000
+LT22     EQU   *-T22-1                                                  00097000
+M22      DC    A(T22),AL1(3,3,30,2,39,8,0)                              00098000
+T23      DC    AL1(LT23),C'MAILER023U Required DATE is not present.'    00099000
+LT23     EQU   *-T23-1                                                  00100000
+M23      DC    A(T23),AL1(3,3,0)                                        00101000
+T24      DC    AL1(LT24),C'MAILER024U Validity check failed.'           00102000
+LT24     EQU   *-T24-1                                                  00103000
+M24      DC    A(T24),AL1(3,3,0)                                        00104000
+T25      DC    AL1(LT25),C'MAILER025U Message syntax is '               00105000
+         DC    C'unrecognizable.'                                       00106000
+LT25     EQU   *-T25-1                                                  00107000
+M25      DC    A(T25),AL1(3,3,0)                                        00108000
+T26      DC    AL1(LT26),C'MAILER026U Internal error in         '       00109000
+LT26     EQU   *-T26-1                                                  00110000
+M26      DC    A(T26),AL1(3,3,29,8,0)                                   00111000
+T27      DC    AL1(LT27),C'MAILER027U Unknown host:          '   [1.24] 00112290
+         DC    C'...'                                            [1.24] 00112580
+LT27     EQU   *-T27-1                                                  00113000
+M27      DC    A(T27),AL1(3,3,25,8,0)                                   00114000
+T28      DC    AL1(LT28),C'MAILER028U Error loop detected.'             00115000
+LT28     EQU   *-T28-1                                                  00116000
+M28      DC    A(T28),AL1(3,3,0)                                        00117000
+T29      DC    AL1(LT29),C'MAILER029I Returning file to         '       00118000
+         DC    C' AT         '                                          00119000
+LT29     EQU   *-T29-1                                                  00120000
+M29      DC    A(T29),AL1(3,3,29,8,42,8,0)                              00121000
+T30      DC    AL1(LT30),C'MAILER030U Syntax error in field- '          00122000
+         DC    CL20' '                                                  00123000
+LT30     EQU   *-T30-1                                                  00124000
+M30      DC    A(T30),AL1(3,3,35,20,0)                                  00125000
+T31      DC    AL1(LT31),C'MAILER031U ''        ...'' is too long to'   00126000
+         DC    C' be a VM userid.'                                      00127000
+LT31     EQU   *-T31-1                                                  00128000
+M31      DC    A(T31),AL1(3,3,12,8,0)                                   00129000
+T32      DC    AL1(LT32),C'MAILER032U No such local user:         '     00130000
+LT32     EQU   *-T32-1                                                  00131000
+M32      DC    A(T32),AL1(3,3,31,8,0)                                   00132000
+T33    DC    AL1(LT33),C'MAILER033U Mail to          is not allowed.'   00133000
+LT33     EQU   *-T33-1                                                  00134000
+M33      DC    A(T33),AL1(3,3,19,8,0)                                   00135000
+T34      DC    AL1(LT34),C'MAILER034X Mail sent to         '            00136000
+         DC    C' at         '                                          00137000
+LT34     EQU   *-T34-1                                                  00138000
+M34      DC    A(T34),AL1(3,3,24,8,36,8,0)                              00139000
+T35      DC    AL1(LT35),C'MAILER035U File is not a PUNCH file.'        00140000
+LT35     EQU   *-T35-1                                                  00141000
+M35      DC    A(T35),AL1(3,3,0)                                        00142000
+T36      DC    AL1(LT36),C'MAILER036U RSCS rejected mail w/tag: '       00143590
+         DC    C'                .... Is the hostname misspelled?'      00144180
+LT36     EQU   *-T36-1                                                  00145000
+M36      DC    A(T36),AL1(3,3,37,16,0)                                  00146490
+T37      DC    AL1(LT37),C'MAILER037U Another network mailer '          00147000
+         DC    C'sent an invalid file.'                                 00148000
+LT37     EQU   *-T37-1                                                  00149000
+M37      DC    A(T37),AL1(3,3,0)                                        00150000
+T38      DC    AL1(LT38),C'MAILER038I Mailer stopping.'                 00151000
+LT38     EQU   *-T38-1                                                  00152000
+M38      DC    A(T38),AL1(3,3,0)                                        00153000
+T39      DC    AL1(LT39),C'MAILER039I Mailer reloading.'                00154000
+LT39     EQU   *-T39-1                                                  00155000
+M39      DC    A(T39),AL1(3,3,0)                                        00156000
+T40      DC    AL1(LT40),C'MAILER040X Mail sent to        node '        00157000
+         DC    CL8'        '                                            00158000
+LT40     EQU   *-T40-1                                                  00159000
+M40      DC    A(T40),AL1(3,3,24,6,36,8,0)                              00160000
+T41      DC    AL1(LT41),C'MAILER041U Mail service is not available'    00161000
+         DC    C' for         '                                         00162000
+LT41     EQU   *-T41-1                                                  00163000
+M41      DC    A(T41),AL1(3,3,45,8,0)                                   00164000
+T42      DC    AL1(LT42),C'MAILER042I Mail processing not active.'      00165000
+LT42     EQU   *-T42-1                                                  00166000
+M42      DC    A(T42),AL1(3,3,0)                                        00167000
+T43      DC    AL1(LT43),C'MAILER043I    0 recipient blocks.'           00168000
+LT43     EQU   *-T43-1                                                  00169000
+M43      DC    A(T43),AL1(3,3,11,4,0)                                   00170000
+T44      DC    AL1(LT44),C'MAILER044U No recipients for this node.'     00171000
+LT44     EQU   *-T44-1                                                  00172000
+M44      DC    A(T44),AL1(3,3,0)                                        00173000
+T45      DC    AL1(LT45),C'MAILER045E Can''t ready reader 00C.'         00174000
+         DC    C' CP RC=0000'                                           00175000
+LT45     EQU   *-T45-1                                                  00176000
+M45      DC    A(T45),AL1(3,3,41,4,0)                                   00177000
+T46      DC    AL1(LT46),C'MAILER046U Auto-forwarding error.'           00178000
+LT46     EQU   *-T46-1                                                  00179000
+M46      DC    A(T46),AL1(3,3,0)                                        00180000
+T47      DC    AL1(LT47),C'MAILER047X Mail for          auto-'          00181000
+         DC    C'forwarded to                       '                   00182000
+LT47     EQU   *-T47-1                                                  00183000
+M47      DC    A(T47),AL1(3,3,20,8,49,20,0)                             00184000
+T48      DC    AL1(LT48),C'MAILER048U Transferred files not allowed.'   00185590
+         DC    C' Was it a bad RSCS node or user CP TRANSFER?'          00186180
+LT48     EQU   *-T48-1                                                  00187000
+M48      DC    A(T48),AL1(3,3,0)                                        00188000
+T49      DC    AL1(LT49),C'MAILER049X File               rejected.'     00189000
+LT49     EQU   *-T49-1                                                  00190000
+M49      DC    A(T49),AL1(3,3,16,8,25,4,0)                              00191000
+T50      DC    AL1(LT50),C'MAILER050E          RC=   0'          [1.22] 00191200
+LT50     EQU   *-T50-1                                           [1.22] 00191400
+M50      DC    A(T50),AL1(3,3,11,8,23,4,0)                       [1.22] 00191600
+T51      DC    AL1(LT51),C'MAILER051U Unknown domain:          ' [1.24] 00191606
+         DC    C'...'                                            [1.24] 00191612
+LT51     EQU   *-T51-1                                           [1.24] 00191618
+M51      DC    A(T51),AL1(3,3,27,8,0)                            [1.24] 00191624
+T52      DC    AL1(LT52),C'MAILER052X Mail sent to    0 recipie' [1.24] 00191630
+         DC    C'nts in distribution list         '              [1.24] 00191636
+LT52     EQU   *-T52-1                                           [1.24] 00191642
+M52      DC    A(T52),AL1(3,3,24,4,61,8,0)                       [1.24] 00191648
+T53      DC    AL1(LT53),C'MAILER053U Error 00 processing distr' [1.24] 00191654
+         DC    C'ibution list         '                          [1.24] 00191660
+LT53     EQU   *-T53-1                                           [1.24] 00191666
+M53      DC    A(T53),AL1(3,3,17,2,49,8,0)                       [1.24] 00191672
+T54      DC    AL1(LT54),C'MAILER054I BSMTP request transaction' [1.24] 00191678
+         DC    C' start.'                                        [1.24] 00191684
+LT54     EQU   *-T54-1                                           [1.24] 00191690
+M54      DC    A(T54),AL1(3,3,0)                                 [1.24] 00191696
+T55      DC    AL1(LT55),C'MAILER055I BSMTP request transaction' [1.24] 00191702
+         DC    C' end.'                                          [1.24] 00191708
+LT55     EQU   *-T55-1                                           [1.24] 00191714
+M55      DC    A(T55),AL1(3,3,0)                                 [1.24] 00191720
+T56      DC    AL1(LT56),C'MAILER056I BSMTP reply sent to '      [1.24] 00191726
+         DC    C'                 '                              [1.24] 00191732
+LT56     EQU   *-T56-1                                           [1.24] 00191738
+M56      DC    A(T56),AL1(3,3,31,8,40,8,0)                       [1.24] 00191744
+T57      DC    AL1(LT57),C'MAILER057I BSMTP reply transaction'   [1.24] 00191750
+         DC    C' start.'                                        [1.24] 00191756
+LT57     EQU   *-T57-1                                           [1.24] 00191762
+M57      DC    A(T57),AL1(3,3,0)                                 [1.24] 00191768
+T58      DC    AL1(LT58),C'MAILER058I BSMTP reply transaction'   [1.24] 00191774
+         DC    C' end.'                                          [1.24] 00191780
+LT58     EQU   *-T58-1                                           [1.24] 00191786
+M58      DC    A(T58),AL1(3,3,0)                                 [1.24] 00191792
+T59      DC    AL1(LT59),C'MAILER059I Error mail sent.'          [1.24] 00191798
+LT59     EQU   *-T59-1                                           [1.24] 00191804
+M59      DC    A(T59),AL1(3,3,0)                                 [1.24] 00191810
+T60      DC    AL1(LT60),C'MAILER060E BSMTP reply syntax unreco' [1.24] 00191816
+         DC    C'gnizable.  Reply ignored.'                      [1.24] 00191822
+LT60     EQU   *-T60-1                                           [1.24] 00191828
+M60      DC    A(T60),AL1(3,3,0)                                 [1.24] 00191834
+T61      DC    AL1(LT61),C'MAILER061E BSMTP reply contains mult' [1.24] 00191840
+         DC    C'iple "050 MAIL FROM" lines.  Reply ignored.'    [1.24] 00191846
+LT61     EQU   *-T61-1                                           [1.24] 00191852
+M61      DC    A(T61),AL1(3,3,0)                                 [1.24] 00191858
+T62      DC    AL1(LT62),C'MAILER062E A-disk not writeable.'     [1.24] 00191864
+LT62     EQU   *-T62-1                                           [1.24] 00191870
+M62      DC    A(T62),AL1(3,3,0)                                 [1.24] 00191876
+T63      DC    AL1(LT63),C'MAILER063U Mail aborted.  Maximum '   [1.24] 00191882
+         DC    C'hop count exceeded.'                            [1.24] 00191888
+LT63     EQU   *-T63-1                                           [1.24] 00191894
+M63      DC    A(T63),AL1(3,3,0)                                 [1.24] 00191900
+T64      DC    AL1(LT64),C'MAILER064W Duplicate table entry '    [1.24] 00191906
+         DC    C'(line 0000) ignored.'                           [1.24] 00191912
+LT64     EQU   *-T64-1                                           [1.24] 00191918
+M64      DC    A(T64),AL1(3,3,39,4,0)                            [1.24] 00191924
+T65      DC    AL1(LT65),C'MAILER065U File is corrupt: '         [1.24] 00191930
+         DC    CL18' '                                           [1.24] 00191936
+LT65     EQU   *-T65-1                                           [1.24] 00191942
+M65      DC    A(T65),AL1(3,3,28,18,0)                           [1.24] 00191948
+T66      DC    AL1(LT66),C'MAILER066X Mail appended to         ' [1.24] 00191954
+         DC    C' bulletin board.'                               [1.24] 00191960
+LT66     EQU   *-T66-1                                           [1.24] 00191966
+M66      DC    A(T66),AL1(3,3,28,8,0)                            [1.24] 00191972
+T67      DC    AL1(LT67),C'MAILER067W BSMTP error mail from: '          00191980
+         DC    CL17' '                '                                 00191981
+LT67     EQU   *-T67-1                                                  00191982
+M67      DC    A(T67),AL1(3,3,34,8,43,8,0)                              00191983
+T68      DC    AL1(LT68),C'MAILER068W BSMTP reply not sent be'          00191984
+         DC    C'cause "MAIL FROM:<>"'                                  00191985
+LT68     EQU   *-T68-1                                                  00191986
+M68      DC    A(T68),AL1(3,3,0)                                        00191987
+T69      DC    AL1(LT69),C'MAILER069I Initializing trace table'         00191988
+LT69     EQU   *-T69-1                                                  00191989
+M69      DC    A(T69),AL1(3,3,0)                                        00191990
+         END   MSGTEXT                                                  00192000

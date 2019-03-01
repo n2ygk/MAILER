@@ -1,0 +1,6 @@
+./ R 00049000 00051500 $ 49490 490                    11/10/89 11:06:00
+   'EXEC SENDFILE MAILER   MODULE TO' userid                            00049490
+   'EXEC SENDFILE MAILER   TXTLIB TO' userid                            00049980
+   'EXEC SENDFILE MABNXIT  EXEC   TO' userid                            00050470
+   'EXEC SENDFILE FORWARD  MAILER TO' userid                            00051450
+   'EXEC SENDFILE MAILLIST MAILER TO' userid                            00050960

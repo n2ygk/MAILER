@@ -1,0 +1,151 @@
+./ I 00095000          $ 95090 90                     01/26/90 17:13:52
+         SPACE 1                                                        00095090
+         XC    DBGINFO,DBGINFO     Clear field                          00095180
+         TM    DBGFLG7,DBGHDRSC    Tracing?                             00095270
+         BNO   DBG0001             ---> No                              00095360
+         LINEDIT TEXT='HDRSCAN :  Allocating header table space',      X00095450
+               DOT=NO,COMP=NO                                           00095540
+         LINEDIT TEXT='HDRSCAN :  ...... header lines found',          X00095630
+               SUB=(DECA,MAILHLIN),DOT=NO,COMP=NO,RENT=NO               00095720
+DBG0001  EQU   *                                                        00095810
+         SPACE 1                                                        00095900
+./ R 00105000          $ 105490 490                   01/26/90 17:13:52
+         BNL   DBG0001A      ---> Yes                                   00105490
+         BAL   R14,NOSPACE   ---> No                                    00105980
+DBG0001A EQU   *                                                        00106470
+./ R 00108000          $ 108190 190                   01/26/90 17:13:52
+         BNL   DBG0001B      ---> Yes                                   00108190
+         BAL   R14,NOSPACE   ---> No                                    00108380
+DBG0001B EQU   *                                                        00108570
+./ R 00119000          $ 119190 190                   01/26/90 17:13:52
+         BNL   DBG0001C      ---> Yes                                   00119190
+         BAL   R14,NOSPACE   ---> No                                    00119380
+DBG0001C EQU   *                                                        00119570
+./ R 00126000          $ 126190 190                   01/26/90 17:13:52
+         BNL   DBG0001D      ---> Yes                                   00126190
+         BAL   R14,NOSPACE   ---> No                                    00126380
+DBG0001D EQU   *                                                        00126570
+./ I 00137000          $ 137100 100                   01/26/90 17:13:52
+         SPACE 1                                                        00137100
+         TM    DBGFLG7,DBGHDRSC    Tracing?                             00137200
+         BNO   DBG0010             ---> No                              00137300
+         LINEDIT TEXT='HDRSCAN :  Scanning header strings, start = ....X00137400
+               ...., end = ........',                                  X00137500
+               SUB=(HEX,(R5),HEX,(R6)),DOT=NO,COMP=NO,RENT=NO           00137600
+DBG0010  EQU   *                                                        00137700
+         SPACE 1                                                        00137800
+./ I 00140000          $ 140500 500                   01/26/90 17:13:52
+         MVC   DBGINFO,=A(DBGMSG01)    Point to debugging info          00140500
+./ R 00155000          $ 155490 490                   01/26/90 17:13:52
+         BE    HDRCONT0      YES, A PREV. LINE CONTINUED                00155000
+./ R 00157000          $ 157490 490                   01/26/90 17:13:52
+         BE    HDRCONT0      YES, SAME AS FOR BLANK                     00157000
+./ I 00159000          $ 159500 500                   01/26/90 17:13:52
+         MVC   DBGINFO,=A(DBGMSG02)                                     00159500
+./ I 00167000          $ 167500 500                   01/26/90 17:13:52
+         MVC   DBGINFO,=A(DBGMSG03)                                     00167500
+./ I 00193000          $ 193500 500                   01/26/90 17:13:52
+         MVC   DBGINFO,=A(DBGMSG02)                                     00193500
+./ R 00221000          $ 221190 190                   01/26/90 17:13:52
+         BNL   DBG0010A      ---> Yes                                   00221190
+         BAL   R14,NOSPACE   ---> No                                    00221380
+DBG0010A EQU   *                                                        00221570
+./ R 00231000          $ 231190 190                   01/26/90 17:13:52
+         BNL   DBG0010B      ---> Yes                                   00231190
+         BAL   R14,NOSPACE   ---> No                                    00231380
+DBG0010B EQU   *                                                        00231570
+./ R 00249100 00249200 $ 249120 20                    01/26/90 17:13:52
+         SPACE 1                                                        00249120
+         TM    DBGFLG7,DBGHDRSC    Tracing?                             00249140
+         BNO   DBG0020             ---> No                              00249160
+         L     R15,TOKLEN          Get length of string                 00249180
+         ST    R1,DEBUGR1          Save R1 across LINEDIT               00249200
+./ R 00249700          $ 249790 90                    01/26/90 17:13:52
+         L     R1,DEBUGR1          Restore R1                           00249790
+DBG0020  EQU   *                                                        00249880
+./ I 00301000          $ 301090 90                    01/26/90 17:13:52
+         SPACE 1                                                        00301090
+         TM    DBGFLG7,DBGHDRSC    Tracing?                             00301180
+         BNO   DBG0030             ---> No                              00301270
+         ST    R1,DEBUGR1          Save R1 across LINEDIT               00301360
+         LINEDIT TEXT='HDRSCAN : End of headers at ........',          +00301450
+               SUB=(HEX,(R5)),                                         +00301540
+               DOT=NO,COMP=NO,RENT=NO                                   00301630
+         L     R1,DEBUGR1          Restore R1                           00301720
+DBG0030  EQU   *                                                        00301810
+         SPACE 1                                                        00301900
+./ I 00307000          $ 307070 70                    01/26/90 17:13:52
+* Get here if the previous line is being continued.
+         SPACE 1
+HDRCONT0 EQU   *                                                        00308000
+         SPACE 1                                                        00310100
+         TM    DBGFLG7,DBGHDRSC    Tracing?                             00310200
+         BNO   DBG0040             ---> No                              00310300
+         ST    R1,DEBUGR1          Save R1 across LINEDIT               00310400
+         LINEDIT TEXT='HDRSCAN : Previous header line continued',      +00310500
+               DOT=NO,COMP=NO,RENT=NO                                   00310600
+         L     R1,DEBUGR1          Restore R1                           00310700
+DBG0040  EQU   *                                                        00310800
+         SPACE 1                                                        00310900
+./ R 00309000 00310000 $ 309290 290                   01/26/90 17:13:52
+         SPACE 1
+* Get here when continuing line scan after after a label or if line     00309000
+* is being continued.  Look for the next NEWLINE and go back to do it
+* all over again.
+         SPACE 1                                                        00310000
+./ I 00354000          $ 354100 100                   01/26/90 17:13:52
+         SPACE 1                                                        00354100
+         TM    DBGFLG7,DBGHDRSC    Tracing?                             00354200
+         BNO   DBG0050             ---> No                              00354300
+         LINEDIT TEXT='HDRSCAN : Header successfully scanned, parsing nX00354400
+               ext',                                                   X00354500
+               DOT=NO,COMP=NO,RENT=NO                                   00354600
+DBG0050  EQU   *                                                        00354700
+         SPACE 1                                                        00354800
+./ I 00356000          $ 356500 500                   01/26/90 17:13:52
+         MVC   DBGINFO,=A(DBGMSG04)                                     00356500
+./ I 00373000          $ 373100 100                   01/26/90 17:13:52
+         SPACE 1                                                        00373100
+         TM    DBGFLG7,DBGHDRSC    Tracing?                             00373200
+         BNO   DBG0060             ---> No                              00373300
+         LINEDIT TEXT='HDRSCAN : Parsing ..............................X00373400
+               ',                                                      X00373500
+               SUB=(CHARA,((11),(3))),                                 X00373600
+               DOT=NO,COMP=NO,RENT=NO                                   00373700
+DBG0060  EQU   *                                                        00373800
+         SPACE 1                                                        00373900
+./ I 00440000          $ 440070 70                    01/26/90 17:13:52
+         SPACE 1                                                        00440070
+         TM    DBGFLG7,DBGHDRSC    Tracing?                             00440140
+         BNO   DBG0900             ---> No                              00440210
+         ICM   R14,B'1111',DBGINFO Get message address                  00440280
+         BNZ   DBG0902             ---> Have a message                  00440350
+         LA    R14,DBGMSG99        Use default                          00440420
+DBG0902  EQU   *                                                        00440490
+         LINEDIT TEXT='HDRSCAN :  Syntax failure - ....................X00440560
+               ....................',                                  X00440630
+               SUB=(CHARA,(14)),DOT=NO,COMP=NO,RENT=NO                  00440700
+DBG0900  EQU   *                                                        00440770
+         SPACE 1                                                        00440840
+./ I 00447000          $ 447100 100                   01/26/90 17:13:52
+         TM    DBGFLG7,DBGHDRSC    Tracing?                             00447100
+         BNO   NOSPACE2            ---> No                              00447200
+         N     R14,=X'00FFFFFF'    Extract 370 address                  00447300
+         S     R14,=A(HDRSCAN)     Calculate offset to return           00447400
+         S     R14,=F'4'           Back up to BAL instruction           00447500
+         LINEDIT TEXT='HDRSCAN :  Stack overflow at offset ........',  X00447600
+               SUB=(HEX,(14)),DOT=NO,COMP=NO                            00447700
+NOSPACE2 EQU   *                                                        00447800
+./ I 00505000          $ 505070 70                    01/26/90 17:13:52
+         SPACE 1                                                        00505070
+DEBUGR1  DC    A(0)                Savearea for R1 during LINEDITs      00505140
+DBGINFO  DS    A(0)                PTR to debugging msg                 00505210
+         SPACE 1                                                        00505280
+*  Debugging messages                                                   00505350
+         SPACE 1                                                        00505420
+DBGMSG01 DC    CL40'Found initial x''15'', x''05'' or blank'            00505490
+DBGMSG02 DC    CL40'Missing '':'' on end of field name'                 00505560
+DBGMSG03 DC    CL40'No '':'' at end of field name'                      00505630
+DBGMSG04 DC    CL40'No header fields found'                             00505700
+DBGMSG99 DC    CL40'Unknown error cause'                                00505770
+         SPACE 3                                                        00505840

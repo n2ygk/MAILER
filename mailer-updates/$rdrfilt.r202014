@@ -1,0 +1,2 @@
+./ R 00044000          $ 44490 490                    12/08/88 17:18:11
+        if ((len = rdcard(rbuf, (int)mailblok.mailsfb.sfbrecsz)) < 0)   00044000

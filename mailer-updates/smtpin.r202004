@@ -1,0 +1,30 @@
+./ I 00507000          $ 507500 500                   02/02/89 16:55:26
+extern genlist();                                                       00544300
+./ I 00518000          $ 518070 70                    02/02/89 16:55:26
+    struct node *n;                                                     00518090
+    char *hs; int hl;                                                   00559000
+    char hoststring[256]; int hostlen;                                  00518180
+    char *hoststringptr;                                                00518270
+    struct {                                                            00518360
+      int *node;                                                        00518450
+      int *hs;                                                          00518540
+      int *hl;                                                          00518630
+      int *hoststringptr;                                               00518720
+      int *hostlen;                                                     00518810
+    } plist;                                                            00518900
+    int i;
+./ R 00528460 00529070 $ 528550 90                    02/02/89 16:55:26
+    n = MBOXRTL(a)->noddown;                                            00528550
+    plist.node = &n;                                                    00528640
+    plist.hs = &hs;                                                     00528730
+    plist.hl = &hl;                                                     00528820
+    for (i=0; i < sizeof(hoststring); hoststring[i] = ' ',i++);         00528910
+    hoststringptr = &hoststring[0];                                     00529000
+    plist.hoststringptr = &hoststringptr;                               00529090
+    hostlen = sizeof(hoststring);                                       00529180
+    plist.hostlen = &hostlen;                                           00529270
+    acall(genlist, 0, &plist);                                          00529360
+    if (hl > 8)                                                         00529450
+        hl = 8;                                                         00529540
+    if (hl > mailulen || xcmp(hs, mailuser, hl) != 0)                   00529630
+./ D 00544300                                         02/02/89 16:55:26

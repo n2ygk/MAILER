@@ -1,0 +1,67 @@
+./ I 00022180          $ 22184 4                      11/10/89 11:05:21
+*  If a "FORWARD" file is not found for this local destination, a       00022184
+*  check will be made for a "MAILLIST" (mailing list) file.             00022188
+*  Processing is similar to forwarding.                                 00022192
+*                                                                       00022196
+./ I 00102490          $ 102530 40                    11/10/89 11:05:21
+*--------------------------------------------------------------------   00102530
+*    Must be local userid                                               00102570
+*                                                                       00102610
+*    Verify 8 characters of less in length (VM limit)                   00102650
+*    See if user has set up mail forwarding (destid FORWARD file)       00102690
+*    See if id is really a mailing list (destid MAILLIST file)          00102730
+*    Otherwise must be a real local delivery attempt                    00102770
+*                                                                       00102810
+*--------------------------------------------------------------------   00102850
+         SPACE 1                                                        00102890
+./ I 00104080          $ 104084 4                     11/10/89 11:05:21
+         MVC   EXECLDFN,RECVR      Here also                            00104084
+         SPACE 1                                                        00104088
+*  Check for 'destid FORWARD' file                                      00104092
+         SPACE 1                                                        00104096
+./ I 00104100          $ 104106 6                     11/10/89 11:05:21
+         MVC   FWDFT,=CL8'FORWARD'      Fill in filetype                00104106
+         MVC   EXECLDFT,=CL8'FORWARD'                                   00104112
+./ R 00104240          $ 104241 1                     11/10/89 11:05:21
+         BE    ONDISK              ---> Yes                             00104241
+         SPACE 1                                                        00104242
+*  Check for 'destid MAILLIST' file                                     00104243
+         SPACE 1                                                        00104244
+         MVC   FWDFT,=CL8'MAILLIST'     Fill in filetype                00104245
+         MVC   EXECLDFT,=CL8'MAILLIST'                                  00104246
+         LA    R1,FWDSTAT          Point to EXECSTAT command            00104247
+         SVC   202                 Issue command                        00104248
+         DC    AL4(1)              Always return to next instruction    00104249
+         LTR   R15,R15             MAILLIST file exist?                 00104250
+         BZ    HAVEFWD             ---> No                              00104251
+         C     R15,=F'4'           Found on disk?                       00104252
+         BE    ONDISK              ---> Yes                             00104253
+         BNE   NOFWD               ---> No, no forward/distlist file    00104254
+./ R 00104280          $ 104290 10                    11/10/89 11:05:21
+*  FORWARD or MAILLIST file found on disk                               00104290
+./ D 00104380                                         11/10/89 11:05:21
+./ I 00104580          $ 104590 10                    11/10/89 11:05:21
+         MVC   EXECDRFT,=CL8'FORWARD'   Drop FORWARD files              00104590
+./ R 00104660 00104680 $ 104670 10                    11/10/89 11:05:21
+         C     R15,=F'4'           Succesful?                           00104670
+         BNH   TRYDROP2            ---> Yes, do another                 00104680
+./ I 00104700          $ 104701 1                     11/10/89 11:05:21
+         DC    H'0'                Should never get here                00104701
+         SPACE                                                          00104702
+TRYDROP2 EQU   *                                                        00104703
+         MVC   EXECDRFT,=CL8'MAILLIST'  Drop MAILLIST files             00104704
+         LA    R1,EXECDROP         Point to EXECDROP command            00104705
+         SVC   202                 Go load forwarding file              00104706
+         DC    AL4(1)              Always return at next instruction    00104707
+         C     R15,=F'4'           Succesful?                           00104708
+         BNH   ONDISK              ---> Yes, try again                  00104709
+         BAL   R2,DIE              ---> No, big trouble                 00104710
+         DC    H'0'                Should never get here                00104711
+./ R 00105220          $ 105230 10                    11/10/89 11:05:21
+         BNE   RET                 ---> No, error                       00105230
+./ R 00331402          $ 331403 1                     11/10/89 11:05:21
+FWDFT    DC    CL8'FORWARD'        FORWARD or MAILLIST                  00331403
+./ R 00331420          $ 331421 1                     11/10/89 11:05:21
+EXECLDFT DC    CL8'FORWARD'        FORWARD or MAILLIST                  00331421
+./ R 00331453          $ 331454 1                     11/10/89 11:05:21
+EXECDRFT DC    CL8'FORWARD'        FORWARD or MAILLIST                  00331454

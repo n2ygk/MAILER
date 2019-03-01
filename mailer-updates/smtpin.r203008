@@ -1,0 +1,19 @@
+./ R 00528550 00530000 $ 528640 90                    03/22/89 12:58:17
+
+    if (a->mbxrtl != 0) {
+        n = MBOXRTL(a)->noddown;                                        00528550
+        plist.node = &n;                                                00528640
+        plist.hs = &hs;                                                 00528730
+        plist.hl = &hl;                                                 00528820
+        for (i=0; i < sizeof(hoststring); hoststring[i] = ' ',i++);     00528910
+        hoststringptr = &hoststring[0];                                 00529000
+        plist.hoststringptr = &hoststringptr;                           00529090
+        hostlen = sizeof(hoststring);                                   00529180
+        plist.hostlen = &hostlen;                                       00529270
+        acall(genlist, 0, &plist);                                      00529360
+        if (hl > 8)                                                     00529450
+            hl = 8;                                                     00529540
+        if (hl > mailblok.mailulen ||                                   00529720
+            xcmp(hs, mailblok.mailuser, hl) != 0)
+            return 0;                                                   00530000
+    }

@@ -1,0 +1,32 @@
+./ R 00124888 00124912 $ 124889 1                     03/13/91 16:49:30
+*                                                                       00124889
+*        At the top of the loop (label LCHLOOP) register 15             00124890
+*        will point to the last lclhost entry used.  This is            00124891
+*        done to allow for checking for holes in the Local-Hostn        00124892
+*        list.  If a hole is found the return code will be set          00124893
+*        to stop execution of Mailer.                                   00124894
+*--------------------------------------------------------------------   00124895
+         SPACE 1                                                        00124896
+         LA    R3,LCLHOST          Address of LocalHost array.          00124897
+         LA    R4,L'LCLHOST/4      Number of entries in LCLHOST.        00124898
+         LR    R15,R3              Initial last entry ptr value         00124899
+LCHLOOP  DS    0H                                                       00124900
+         ICM   R1,B'0111',1(R3)    Is there a LocalHost ptr?            00124901
+         BZ    LCHNEXT             ---> No, keep looping.               00124902
+         CLC   1(3,R15),=XL3'0'    Was there a previous one?            00124903
+         BNE   LCHNOHOL            ---> Yes                             00124904
+         WTR   STI084              Tell user about hole                 00124905
+         MVC   EXITRC,=F'16'       Set error return code                00124906
+LCHNOHOL EQU   *                                                        00124907
+         SR    R6,R6               Get Local-Host                       00124908
+         ICM   R6,B'0001',0(R1)       length.                           00124909
+         BZ    LCHNEXT             ---> Zero length                     00124910
+         LA    R7,1(,R1)           Start of string                      00124911
+         L     R8,MAILRTAB         Point to OUTGOING table              00124912
+         CALL  TBLUK,((R8),(R7),(R6),TWORK)                             00124913
+./ R 00124938          $ 124939 1                     03/13/91 16:49:30
+         B     LCHNEXT             ---> Keep looping                    00124939
+./ I 00124944          $ 124945 1                     03/13/91 16:49:30
+         B     LCHNEXT             ---> Keep looping                    00124945
+./ I 00124948          $ 124949 1                     03/13/91 16:49:30
+         LR    R15,R3              Remember last pointer address        00124949

@@ -1,0 +1,52 @@
+./ R 00001000 00011000 $ 1990 990                     01/30/91 10:54:24
+/* ****************************************************************** */00001990
+/*  MAILTXTS - Drive TXTLIB rebuild process                           */00002980
+/* ****************************************************************** */00003970
+                                                                        00004960
+address command                                                         00005950
+                                                                        00006940
+txtlibs.0 = 2                                /* TXTLIB list           */00007930
+txtlibs.1 = 'MAILGEN'                                                   00008920
+txtlibs.2 = 'MAILER'                                                    00009910
+                                                                        00010900
+loadlist.0 = 2                               /* Loadlist names        */00011890
+loadlist.1 = 'MAILMOD1 MAILCS'                                          00012880
+loadlist.2 = 'MAILMOD2'                                                 00013870
+                                                                        00014860
+exitrc = 0                                                              00015850
+                                                                        00016840
+do i=1 to txtlibs.0                                                     00017830
+                                                                        00018820
+   'ERASE' txtlibs.i 'TXTLIB A'              /* Start from scratch    */00019810
+                                                                        00020800
+   'MAKEBUF'                                 /* Start a new stack     */00021790
+   onstack = queued()                        /* Remember current count*/00022780
+                                                                        00023770
+   do j=1 for words(loadlist.i)                                         00024760
+      loadlist = word(loadlist.i,j)                                     00025750
+      'EXEC' loadlist '&STACK'               /* Get loadlist names    */00026740
+      end                                                               00027730
+                                                                        00028720
+   name.0 = queued()-onstack                 /* Number on stack       */00029710
+   do j=1 for name.0                         /* Read into array       */00030700
+      parse upper pull name.j .                                         00031690
+      end                                                               00032680
+                                                                        00033670
+   if name.0 = 0  then  do                                              00034660
+      say 'No members defined for' txtlibs.i 'in' loadlist.i 'EXEC'     00035650
+      exitrc = 8                                                        00036640
+      iterate                                                           00037630
+      end                                                               00038620
+                                                                        00039610
+   say ' '                                                              00040600
+   say 'Rebuilding' txtlibs.i 'TXTLIB'                                  00041590
+   'TXTLIB GEN' txtlibs.i name.1                                        00042580
+   if rc > exitrc  then  exitrc = rc
+   do j=2 to name.0                                                     00043570
+      'TXTLIB ADD' txtlibs.i name.j                                     00044560
+      if rc > exitrc  then  exitrc = rc
+      end                                                               00045550
+                                                                        00046540
+   end                                                                  00047530
+                                                                        00048520
+exit exitrc                                                             00049510

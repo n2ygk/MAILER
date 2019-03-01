@@ -1,0 +1,17 @@
+The following changes will be incorporated into MAILER release 2.09
+
+ASM/C
+Changes    Description
+--------   --------------------------------------------------------------
+R208001    Documentation corrections
+
+R208002    Correct DISTSUB ASSEMBLE to properly handle long MAIL FROM:
+*          lines
+
+R208003    Fix FORWARD MAILER to always use the diskmode passed by
+*          Mailer
+
+R208004    Handle RECFM=V mailer profile correctly
+
+R208005    Update R207044 improperly coded in MAILER AUXEXCR2 file.
+*          No update ever existed.

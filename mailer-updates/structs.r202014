@@ -1,0 +1,9 @@
+./ I 00113000          $ 114000 1000                  12/08/88 17:25:12
+                                                                        00114000
+struct trcent {                                                         00115000
+    char trctype[8];         /* Entry type                           */ 00116000
+    char trcroutn[8];        /* Name of routine making entry         */ 00117000
+    int trcaddr;             /* Address at which entry made          */ 00118000
+    char trcdata[44];        /* Use defined by entry type            */ 00119000
+                                                                        00120000
+};                                                                      00121000

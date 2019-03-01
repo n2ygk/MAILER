@@ -1,0 +1,2 @@
+./ I 00546315          $ 546316 1                     02/21/90 14:56:30
+DBGSNDLS EQU   X'04'               Trace SENDLST processing

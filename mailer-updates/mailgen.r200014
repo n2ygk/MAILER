@@ -1,0 +1,12 @@
+./ R 00007000          $ 7070 70                      10/21/88 14:39:16
+'UPDATE VERSION COPY * MAILER CNTRL * (CTL OUTMODE A'                   00007070
+select                                                                  00007140
+   when rc = 0  then  do                                                00007210
+      'EXECIO * DISKR $VERSION COPY A (FINIS FIND /&VERSION SETC/'      00007280
+      address COMMAND 'ERASE $VERSION COPY A'                           00007350
+      end                                                               00007420
+   when rc = 40  then                                                   00007490
+      'EXECIO * DISKR VERSION COPY * (FINIS FIND /&VERSION SETC/'       00007560
+   otherwise  nop                                                       00007630
+   end                                                                  00007700
+                                                                        00007770

@@ -1,0 +1,6 @@
+* * * * * * * * * * * * * * * AUXEXCR2 * * * * * * * * * * * * * * * *
+R207045    Add Copyright statments into new code
+R207040    Add some comments in the MAILFWD PROFILE EXEC and the
+*          FORWARDX EXEC explaining options on how to run the code.
+R207038    Use REXX DIAG function to issue transfer commands so that
+*          '0001 file transferred' message does not appear in log

@@ -1,0 +1,6 @@
+./ R 00053000 00058000 $ 53990 990                    03/14/89 15:38:15
+        case ' '  :              /* Blank           */                  00053000
+        case '\t' :              /* Horizontal tab  */                  00054000
+        case '\f' :              /* Form feed       */                  00056000
+        case '\r' :              /* Return          */                  00057000
+        case '\n' :              /* Newline         */                  00058000

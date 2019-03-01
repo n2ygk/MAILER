@@ -1,0 +1,15 @@
+* * * * * * * * * * * * * * * AUXEXCR2 * * * * * * * * * * * * * * * *
+R207017    Automatically rebuild module/maclib lists before doing
+*          processing.  This guarantees that the current file will
+*          always be used.
+R207006    Add SET command
+R206001    Fix to MSG/SMSG handling
+R205019    Correct MAILMOD2 EXEC to match files needed in MAILER TXTLIB
+R203011    Support for '%' kludge
+R202019    Handle <@localnode,@localnode,...:userid@somenode> correctly
+R201006    Create new default exit for outgoing table.  This exit will
+*          re-implement the Allow-Unknown-Nodes code without the
+*          cross network routing of the internet exit.
+R201004    Make MAILBLOK globally available to all code
+*          This will remove dependence on Waterloo AUX file usage for
+*          (hopefully) increased portability of C code

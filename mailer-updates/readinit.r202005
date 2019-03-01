@@ -1,0 +1,3 @@
+./ I 00221000          $ 221300 300                   02/02/89 17:30:41
+         CLC   ARGC,=F'2'    More than 'keyword='?
+         BNH   PASS1         ---> No, ignore it.

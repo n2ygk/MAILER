@@ -1,0 +1,15 @@
+./ R 01770000          $ 1770590 590                  03/16/90 15:19:12
+.us \MAILER064W Duplicate table entry (line \nnnn\) ignored:            01770000
+./ I 01774000          $ 1774100 100                  03/16/90 15:19:12
+This message is followed by MAILER075W which displays the duplicate
+entry that is being ignored.
+./ I 01782360          $ 1782370 10                   03/16/90 15:19:12
+.br
+.us \MAILER075W \copy of profile line\                                  01782360
+./ R 01782480 01782520 $ 1782490 10                   03/16/90 15:19:12
+The first form of this message is used to display the values of         01782480
+important variables set in the profile.
+./ I 01782600          $ 1782610 10                   03/16/90 15:19:12
+.sp 1
+The second form of this message is used in conjunction with MAILER064W
+to display duplicate entries found in the profile.

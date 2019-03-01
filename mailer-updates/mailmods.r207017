@@ -1,0 +1,35 @@
+./ R 00001000 00005000 $ 1990 990                     11/30/90 12:08:29
+/* ****************************************************************** */00001990
+/*  MAILMODS - Update and excute mailer load lists                    */00002980
+/* ****************************************************************** */00003970
+                                                                        00004960
+address command                                                         00005950
+parse upper arg parms                                                   00006940
+                                                                        00007930
+ectl = 'MAILEXEC'                            /* EXEC control file     */00008920
+                                                                        00009910
+exitrc = 0                                   /* Default value         */00010900
+                                                                        00011890
+exec.0 = 2                                   /* Exec lists            */00012880
+exec.1 = 'MAILMOD1'                          /* MAILGEN TXTLIB code   */00013870
+exec.2 = 'MAILMOD2'                          /* MAILER  TXTLIB code   */00014860
+                                                                        00015850
+do i=1 for exec.0                            /* Process list          */00016840
+                                                                        00017830
+   say ' '
+   say 'Rebulding' exec.1 'EXEC'
+   'EXEC EXECUPDT' exec.i 'EXEC ( CTL' ectl  /* Update module list    */00018820
+   if rc <> 0  then  do                                                 00019810
+      if rc > exitrc  then  exitrc = rc                                 00020800
+      iterate                                                           00021790
+      end                                                               00022780
+                                                                        00023770
+   'ERASE' exec.i 'UPDLOG  A'               /* Discard logs          */ 00024760
+   'ERASE' exec.i 'UPDATES A'                                           00025750
+                                                                        00026740
+   say ' '
+   say 'Processing' exec.1 'entries'
+   'EXEC' exec.i parms                      /* Do some real work     */ 00027730
+   end                                                                  00028720
+                                                                        00029710
+exit exitrc                                                             00030700

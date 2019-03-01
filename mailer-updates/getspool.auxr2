@@ -1,0 +1,6 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R207023    Preserve the FORM value (if one exists) when processing mail
+*          from other mailers.  When punching mail from a local user
+*          set the form value to 'QUIET'.
+R202018    Remove PRINT NOGENs, make DSECTs honor SYSPARM(SUP)/SYSPARM(EXP)
+R202012    Add a CP ORDER to be sure we get the right file's data.

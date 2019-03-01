@@ -1,0 +1,30 @@
+./ R 00271000          $ 271290 290                   10/10/88 17:33:48
+    u_char *lcldp;                                                      00271290
+    int  lcldl;                                                         00271580
+./ R 00273000          $ 273490 490                   10/10/88 17:33:48
+    if (lclhost[0] == (char *)0) {  /* user didn't provide one */       00273490
+./ R 00280000 00281000 $ 280590 590                   10/10/88 17:33:48
+        lcldp = &lclhost[0][1];  /* pointer to lcl host name */         00280590
+        lcldl = lclhost[0][0];   /* 1st byte is string length */        00281180
+./ R 00383000          $ 383490 490                   10/10/88 17:33:48
+ *  3) If file is local, see if domain matches a Local-Host (LCLHOST*). 00383490
+./ I 00392000          $ 392500 500                   10/10/88 17:33:48
+    int ri;                                                             00392500
+./ R 00404000          $ 404490 490                   10/10/88 17:33:48
+        int rl = *rscsdom;                                              00404000
+./ R 00414000 00415000 $ 414490 490                   10/10/88 17:33:48
+    if (mailflg1&MFLG1LCL && lclhost[0] != 0)                           00414490
+        for (ri = 0; lclhost[ri] != 0 && ri < MAXLCLHOST; ri++)         00414980
+        if (*lclhost[ri] == l && xcmp(&lclhost[ri][1], s, l) == 0)      00415470
+./ R 00979000          $ 979490 490                   10/10/88 17:33:48
+        int rl = *rscsdom;                                              00979000
+./ R 01049000          $ 1049490 490                  10/10/88 17:33:48
+ *    Received: from <domain> by <lclhost1>(Mailer <mailvers>)          01049490
+./ R 01053000          $ 1053490 490                  10/10/88 17:33:48
+ *  Received: from <domain>(<mailuser>) by <lclhost1>(Mailer <mailvers>)01053490
+./ R 01058000          $ 1058490 490                  10/10/88 17:33:48
+ *     by <lclhost>(Mailer <mailvers>) with BSMTP id <mailftxt>;        01058490
+./ R 01088000 01089000 $ 1088490 490                  10/10/88 17:33:48
+    if (lclhost[0] != 0) {                                              01088490
+        bcopy(&lclhost[0][1],&buf[len],(int)lclhost[0][0]);             01088980
+        len += lclhost[0][0];                                           01089470

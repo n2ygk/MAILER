@@ -1,0 +1,53 @@
+./ R 00306070          $ 306075 5                     03/13/91 16:13:38
+        sprintf(dbgmsg, "s_input:  Line length is %d" , l);             00306075
+./ R 00306670          $ 306700 30                    03/13/91 16:13:38
+           wrterm("s_input:  Continue line being processed");           00306700
+./ R 00306840          $ 306845 5                     03/13/91 16:13:38
+               "s_input:  Continued line - new length is %d" , l);      00306845
+./ I 00376350          $ 376352 2                     03/13/91 16:13:38
+    if (mailblok.dbgflg[0] & TRACE_CHECK_LOCAL) {                       00376387
+       bcopy("check_local:  Comparison string <", dbgmsg , 33);         00376388
+       bcopy(s, &dbgmsg[33], l);                                        00376389
+       bcopy(">", &dbgmsg[33+l], 2);                                    00376390
+       wrterm(dbgmsg);                                                  00376391
+    }                                                                   00376392
+
+./ R 00376758          $ 376762 4                     03/13/91 16:13:38
+    } else {                                                            00376758
+        if (mailblok.dbgflg[0] & TRACE_CHECK_LOCAL)                     00376730
+           wrterm("No Local-Hostn values for comparison");
+    }
+./ R 00620580 00620585 $ 620582 2                     03/13/91 16:13:38
+          bcopy("s_rcpt:  Route address <", dbgmsg, 24);                00620582
+          bcopy(hs,&dbgmsg[24],hl);                                     00620584
+          bcopy(">",&dbgmsg[hl+24],2);                                  00620586
+./ I 00620590          $ 620591 1                     03/13/91 16:13:38
+          sprintf(dbgmsg, "s_rcpt:  Address length is %d" , hl);        00620591
+          wrterm(dbgmsg);                                               00620592
+./ R 00620779 00620780 $ 620782 3                     03/13/91 16:13:38
+             wrterm("s_rcpt:  Destination is not local host");          00620782
+          break;                                                        00620785
+./ R 00623841 00623850 $ 623845 4                     03/13/91 16:13:38
+       bcopy("s_rcpt:  Destination address <", dbgmsg, 30);             00623845
+       bcopy(hs,&dbgmsg[30],hl);                                        00623849
+       bcopy(">",&dbgmsg[hl+30],2);                                     00623853
+./ I 00624000          $ 624200 200                   03/13/91 16:13:38
+        if ((mailblok.dbgflg[0] & TRACE_S_RCPT) ||                      00624200
+            (mailblok.dbgflg[7] & DBGBLDLS))                            00624400
+           wrterm("s_rcpt:  Destination address not found");            00624600
+./ R 00627210 00627300 $ 627230 20                    03/13/91 16:13:38
+          bcopy("s_rcpt:  Destination address <", dbgmsg, 30);          00627230
+          bcopy(hs,&dbgmsg[30],hl);                                     00627250
+          bcopy(">",&dbgmsg[hl+30],2);                                  00627270
+./ I 00745000          $ 745300 300                   03/13/91 16:13:38
+            if (mailblok.dbgflg[0] & TRACE_S_GETDATA)                   00745300
+               wrterm("s_getdata:  Data file closed successfully");     00745600
+./ R 00755690          $ 755700 10                    03/13/91 16:13:38
+            if (mailblok.maxrcvd && count_received()>mailblok.maxrcvd) {00755700
+               if (mailblok.dbgflg[0] & TRACE_S_GETDATA)                00755710
+                   wrterm("s_getdata:  Too man Received: headers");     00755720
+./ I 00755800          $ 755900 100                   03/13/91 16:13:38
+            }                                                           00755900
+./ I 00772000          $ 772300 300                   03/13/91 16:13:38
+            if (mailblok.dbgflg[0] & TRACE_S_GETDATA)                   00772300
+               wrterm("s_getdata:  No MAIL FROM: found");               00772600

@@ -1,0 +1,22 @@
+./ R 00057000          $ 57190 190                    06/01/90 16:16:04
+*      A) If lengths are different and TBT#EXAC set then no match       00057190
+*         Get next entry (goto 2)                                       00057380
+*      B) IF TEST=BASE                                                  00057570
+./ R 00064000          $ 64490 490                    06/01/90 16:16:04
+*      C) IF TEST<BASE                                                  00064490
+./ R 00067000          $ 67490 490                    06/01/90 16:16:04
+*      D) IF TEST>BASE                                                  00067490
+./ R 00081000          $ 81690 690                    06/01/90 16:16:04
+R2  EQU  2 - Exact match flag                                           00081000
+./ I 00110000          $ 110080 80                    06/01/90 16:16:04
+         LA    R2,AMBLP0           Set default (ambigous allowed)       00110080
+         TM    TB$FLG,TBT#EXAC     Exact match required?                00110160
+         BNO   NOTEXACT            ---> No                              00110240
+         LA    R2,TRYLOW           Only allow exact match               00110320
+NOTEXACT EQU   *                                                        00110400
+./ R 00151010          $ 151400 390                   06/01/90 16:16:04
+BLONGER  DS    0H                  Here if TL <= BL                     00151010
+./ I 00157490          $ 157690 200                   06/01/90 16:16:04
+         BR    R2                  Exact match switch
+./ I 00157980          $ 158180 200                   06/01/90 16:16:04
+AMBLP0   DS    0H                  Here if ambigous match allowed       00159450

@@ -1,0 +1,179 @@
+./ R 00546317 00546327 $ 546320 3                     06/01/90 17:17:32
+         SPACE 1
+         DS    0F
+* Table of variables with significance to MAILER
+         SPACE 1
+PTABARR  DC    A(CPUSTR-MAILBLOK,STRTHIS)                               00358000
+         DC    A(RSCSNAME-MAILBLOK,STRRSCS)                             00359000
+         DC    A(RSCSALT-MAILBLOK,STRRALT)       [1.13]                 00360000
+         DC    A(MAINTID-MAILBLOK,STRMUSE)                              00361000
+         DC    A(MAINTNOD-MAILBLOK,STRMNOD)                             00361010
+         DC    A(MAINTID-MAILBLOK,STRMUSE1)     MAINTUSER1 = MAINTUSER  00361020
+         DC    A(MAINTNOD-MAILBLOK,STRMNOD1)    MAINTNODE1 = MAINTNODE  00361030
+         DC    A(MAINTID2-MAILBLOK,STRMUSE2)                            00361050
+         DC    A(MAINTNO2-MAILBLOK,STRMNOD2)                            00361100
+         DC    A(MAINTID3-MAILBLOK,STRMUSE3)                            00361150
+         DC    A(MAINTNO3-MAILBLOK,STRMNOD3)                            00361200
+         DC    A(MAINTID4-MAILBLOK,STRMUSE4)                            00361250
+         DC    A(MAINTNO4-MAILBLOK,STRMNOD4)                            00361300
+         DC    A(MAINTID5-MAILBLOK,STRMUSE5)                            00361350
+         DC    A(MAINTNO5-MAILBLOK,STRMNOD5)                            00361400
+         DC    A(MAINTID6-MAILBLOK,STRMUSE6)                            00361450
+         DC    A(MAINTNO6-MAILBLOK,STRMNOD6)                            00361500
+         DC    A(MAINTID7-MAILBLOK,STRMUSE7)                            00361550
+         DC    A(MAINTNO7-MAILBLOK,STRMNOD7)                            00361600
+         DC    A(MAINTID8-MAILBLOK,STRMUSE8)                            00361650
+         DC    A(MAINTNO8-MAILBLOK,STRMNOD8)                            00361700
+         DC    A(MAINTID9-MAILBLOK,STRMUSE9)                            00361750
+         DC    A(MAINTNO9-MAILBLOK,STRMNOD9)                            00361800
+PTABLEN  EQU   (*-PTABARR)/8                                            00363000
+         SPACE 2
+* Table of bit values of significance to MAILER
+         SPACE 1
+PBITARR  DC    A(MAILOPTS-MAILBLOK,STRALLOW,MOPTAUN)                    00364000
+         DC    A(MAILOPTS-MAILBLOK,STRSUPPL,MOPTDEF)                    00365000
+         DC    A(MAILOPTS-MAILBLOK,STRCHAR,MOPTAC)               [1.24] 00365300
+         DC    A(MAILOPTS-MAILBLOK,STRVL,MOPTVL)                 [1.24] 00365600
+         DC    A(MAILOPTS-MAILBLOK,STRALLM,MOPTALLM)                    00365800
+         DC    A(MAILOPTS-MAILBLOK,STRNO822,MOPTNO82)                   00365900
+         DC    A(MAILOPTS-MAILBLOK,STRFILOK,MOPTFIOK)                   00365950
+PBITLEN  EQU   (*-PBITARR)/12                                           00366000
+         SPACE 2
+* Table of ?
+         SPACE 1
+PPTRARR  DC    A(RSCSDOM1-MAILBLOK,STRDOMAI) RSCS-Domain =              00366216
+         DC    A(RSCSDOM1-MAILBLOK,STRDOM1)       RSCS-Domain1          00366222
+         DC    A(RSCSDOM2-MAILBLOK,STRDOM2)                             00366230
+         DC    A(RSCSDOM3-MAILBLOK,STRDOM3)                             00366240
+         DC    A(RSCSDOM4-MAILBLOK,STRDOM4)                             00366250
+         DC    A(RSCSDOM5-MAILBLOK,STRDOM5)                             00366260
+         DC    A(RSCSDOM6-MAILBLOK,STRDOM6)                             00366270
+         DC    A(RSCSDOM7-MAILBLOK,STRDOM7)                             00366280
+         DC    A(RSCSDOM8-MAILBLOK,STRDOM8)                             00366290
+         DC    A(RSCSDOM9-MAILBLOK,STRDOM9)                             00366300
+         DC    A(LCLHOST1-MAILBLOK,STRLCLDO) Local-Domain =             00366416
+         DC    A(LCLHOST1-MAILBLOK,STRLCLH1)      Local-Host1           00366422
+         DC    A(LCLHOST2-MAILBLOK,STRLCLH2)                            00366430
+         DC    A(LCLHOST3-MAILBLOK,STRLCLH3)                            00366440
+         DC    A(LCLHOST4-MAILBLOK,STRLCLH4)                            00366450
+         DC    A(LCLHOST5-MAILBLOK,STRLCLH5)                            00366460
+         DC    A(LCLHOST6-MAILBLOK,STRLCLH6)                            00366470
+         DC    A(LCLHOST7-MAILBLOK,STRLCLH7)                            00366480
+         DC    A(LCLHOST8-MAILBLOK,STRLCLH8)                            00366490
+         DC    A(LCLHOST9-MAILBLOK,STRLCLH9)                            00366500
+PPTRLEN  EQU   (*-PPTRARR)/8                                            00366600
+         SPACE 2                                                        00366620
+* The debugging flag bits                                               00366640
+         SPACE 1                                                        00366660
+DBITARR  DC    A(DBGFLG0-MAILBLOK,SMTPTR01,X'80')                       00366680
+         DC    A(DBGFLG0-MAILBLOK,SMTPTR02,X'40')                       00366700
+         DC    A(DBGFLG0-MAILBLOK,SMTPTR03,X'20')                       00366720
+         DC    A(DBGFLG0-MAILBLOK,SMTPTR04,X'10')                       00366740
+         DC    A(DBGFLG0-MAILBLOK,SMTPTR05,X'08')                       00366760
+         DC    A(DBGFLG0-MAILBLOK,SMTPTR06,X'04')                       00366780
+         DC    A(DBGFLG0-MAILBLOK,SMTPTR07,X'02')                       00366800
+         DC    A(DBGFLG0-MAILBLOK,SMTPTR08,X'01')                       00366820
+         DC    A(DBGFLG1-MAILBLOK,SMTPTR11,X'80')                       00366840
+         DC    A(DBGFLG1-MAILBLOK,SMTPTR12,X'40')                       00366860
+         DC    A(DBGFLG6-MAILBLOK,MAILTR61,DBGNOOUT)                    00366865
+         DC    A(DBGFLG6-MAILBLOK,MAILTR62,DBGPARSE)                    00366872
+         DC    A(DBGFLG7-MAILBLOK,MAILTR71,DBGBLDLS)                    00366880
+         DC    A(DBGFLG7-MAILBLOK,MAILTR72,DBGTBLUK)                    00366890
+         DC    A(DBGFLG7-MAILBLOK,MAILTR73,DBGHDRSC)                    00366892
+         DC    A(DBGFLG7-MAILBLOK,MAILTR74,DBGGETHD)                    00366894
+         DC    A(DBGFLG7-MAILBLOK,MAILTR75,DBGLOCAL)                    00366896
+         DC    A(DBGFLG7-MAILBLOK,MAILTR76,DBGSNDLS)                    00366898
+DBITLEN  EQU   (*-DBITARR)/12                                           00366900
+         SPACE ,                                                        00387703
+*--------------------------------------------------------------------   00387706
+*        Strings for searching for variable values                      00387709
+*--------------------------------------------------------------------   00387712
+         SPACE ,                                                        00387715
+*  Who we and the RSCS(es) are                                          00387718
+         SPACE 1                                                        00387721
+STRTHIS  DC    Y(8),C'THISNODE'                                         00387724
+STRRSCS  DC    Y(8),C'RSCSNAME'                                         00387727
+STRRALT  DC    Y(7),C'RSCSALT'                   [1.13]                 00387730
+         SPACE 1                                                        00387733
+*  Priviliged users list                                                00387736
+         SPACE 1                                                        00387739
+STRMUSE  DC    Y(9),C'MAINTUSER'                                        00387742
+STRMNOD  DC    Y(9),C'MAINTNODE'                                        00387745
+STRMUSE1 DC    Y(10),C'MAINTUSER1'                                      00387748
+STRMNOD1 DC    Y(10),C'MAINTNODE1'                                      00387751
+STRMUSE2 DC    Y(10),C'MAINTUSER2'                                      00387754
+STRMNOD2 DC    Y(10),C'MAINTNODE2'                                      00387757
+STRMUSE3 DC    Y(10),C'MAINTUSER3'                                      00387760
+STRMNOD3 DC    Y(10),C'MAINTNODE3'                                      00387763
+STRMUSE4 DC    Y(10),C'MAINTUSER4'                                      00387766
+STRMNOD4 DC    Y(10),C'MAINTNODE4'                                      00387769
+STRMUSE5 DC    Y(10),C'MAINTUSER5'                                      00387772
+STRMNOD5 DC    Y(10),C'MAINTNODE5'                                      00387775
+STRMUSE6 DC    Y(10),C'MAINTUSER6'                                      00387778
+STRMNOD6 DC    Y(10),C'MAINTNODE6'                                      00387781
+STRMUSE7 DC    Y(10),C'MAINTUSER7'                                      00387784
+STRMNOD7 DC    Y(10),C'MAINTNODE7'                                      00387787
+STRMUSE8 DC    Y(10),C'MAINTUSER8'                                      00387790
+STRMNOD8 DC    Y(10),C'MAINTNODE8'                                      00387793
+STRMUSE9 DC    Y(10),C'MAINTUSER9'                                      00387796
+STRMNOD9 DC    Y(10),C'MAINTNODE9'                                      00387799
+         SPACE 1                                                        00387802
+*  Run time operation                                                   00387805
+         SPACE 1                                                        00387808
+STRALLOW DC    Y(19),C'ALLOW-UNKNOWN-NODES'                             00387811
+STRCHAR  DC    Y(16),C'ALLOW-CHARLATANS'                         [1.24] 00387814
+STRVL    DC    Y(15),C'VERBOSE-LOGGING'                          [1.24] 00387817
+STRALLM  DC    Y(13),C'SHOW-ALL-MSGS'                                   00387820
+STRSUPPL DC    Y(21),C'SUPPLY-DEFAULT-FIELDS'                           00387823
+STRNO822 DC    Y(15),C'BSMTP-NO-RFC822'                                 00387824
+STRFILOK DC    Y(15),C'ALLOW-FILE-FROM'                                 00387825
+         SPACE 1                                                        00387826
+*  RSCS domain name(s)                                                  00387829
+         SPACE 1                                                        00387832
+STRDOMAI DC    Y(11),C'RSCS-DOMAIN'                              [1.22] 00387835
+STRDOM1  DC    Y(12),C'RSCS-DOMAIN1'                                    00387838
+STRDOM2  DC    Y(12),C'RSCS-DOMAIN2'                                    00387841
+STRDOM3  DC    Y(12),C'RSCS-DOMAIN3'                                    00387844
+STRDOM4  DC    Y(12),C'RSCS-DOMAIN4'                                    00387847
+STRDOM5  DC    Y(12),C'RSCS-DOMAIN5'                                    00387850
+STRDOM6  DC    Y(12),C'RSCS-DOMAIN6'                                    00387853
+STRDOM7  DC    Y(12),C'RSCS-DOMAIN7'                                    00387856
+STRDOM8  DC    Y(12),C'RSCS-DOMAIN8'                                    00387859
+STRDOM9  DC    Y(12),C'RSCS-DOMAIN9'                                    00387862
+         SPACE 1                                                        00387865
+*  Alternate local host name(s)                                         00387868
+         SPACE 1                                                        00387871
+STRLCLDO DC    Y(12),C'LOCAL-DOMAIN'                                    00387874
+STRLCLH1 DC    Y(11),C'LOCAL-HOST1'                                     00387877
+STRLCLH2 DC    Y(11),C'LOCAL-HOST2'                                     00387880
+STRLCLH3 DC    Y(11),C'LOCAL-HOST3'                                     00387883
+STRLCLH4 DC    Y(11),C'LOCAL-HOST4'                                     00387886
+STRLCLH5 DC    Y(11),C'LOCAL-HOST5'                                     00387889
+STRLCLH6 DC    Y(11),C'LOCAL-HOST6'                                     00387892
+STRLCLH7 DC    Y(11),C'LOCAL-HOST7'                                     00387895
+STRLCLH8 DC    Y(11),C'LOCAL-HOST8'                                     00387898
+STRLCLH9 DC    Y(11),C'LOCAL-HOST9'                                     00387901
+         SPACE 1                                                        00387919
+* The following variable names are related to debugging                 00387922
+         SPACE 1                                                        00387925
+SMTPTR01 DC    Y(18),C'SMTPIN-TRACE-CALLS'                              00387928
+SMTPTR02 DC    Y(24),C'SMTPIN-TRACE-CHECK-LOCAL'                        00387931
+SMTPTR03 DC    Y(23),C'SMTPIN-TRACE-FIND-ROUTD'                         00387934
+SMTPTR04 DC    Y(22),C'SMTPIN-TRACE-IS-MAILER'                          00387937
+SMTPTR05 DC    Y(23),C'SMTPIN-TRACE-REP-MAILER'                         00387940
+SMTPTR06 DC    Y(22),C'SMTPIN-TRACE-S-GETDATA'                          00387943
+SMTPTR07 DC    Y(20),C'SMTPIN-TRACE-S-INPUT'                            00387946
+SMTPTR08 DC    Y(19),C'SMTPIN-TRACE-S-RCPT'                             00387949
+SMTPTR11 DC    Y(19),C'SMTPIN-TRACE-S-MAIL'                             00387952
+SMTPTR12 DC    Y(30),C'SMTPIN-TRACE-PARSE-DATA-HEADER'                  00387955
+MAILTR61 DC    Y(18),C'TRACE-SEND-NO-MAIL'                              00387956
+MAILTR62 DC    Y(13),C'TRACE-PARSING'                                   00387957
+MAILTR71 DC    Y(14),C'BUILDLST-TRACE'                                  00387958
+MAILTR72 DC    Y(11),C'TBLUK-TRACE'                                     00387959
+MAILTR73 DC    Y(13),C'HDRSCAN-TRACE'                                   00387968
+MAILTR74 DC    Y(12),C'GETHDR-TRACE'                                    00387975
+MAILTR75 DC    Y(11),C'LOCAL-TRACE'                                     00387982
+MAILTR76 DC    Y(13),C'SENDLST-TRACE'                                   00387985
+         SPACE 2
+         DS    0D            Just for pretty                            00546317
+MAILBLEN EQU   *-MAILXXXX    LENGTH IN BYTES                            00546327

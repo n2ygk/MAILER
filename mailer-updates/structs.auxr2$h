@@ -1,0 +1,4 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R202014    Make MAILBLOK globally available to all code
+*          This will remove dependence on Waterloo AUX file usage for
+*          increased portability of C code

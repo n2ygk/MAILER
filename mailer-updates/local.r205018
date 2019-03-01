@@ -1,0 +1,17 @@
+./ I 00063000          $ 63300 300                    01/10/90 15:13:05
+         SPACE 1
+         TM    DBGFLG6,DBGNOOUT    Sending mail?
+         BZ    SKIP001             ---> No
+         WRTERM 'LOCAL:  Trace-send-no-mail set'
+SKIP001  EQU   *
+         SPACE 1
+./ I 00172500          $ 172600 100                   01/10/90 15:13:05
+         TM    DBGFLG6,DBGNOOUT    Sending mail?
+         BO    NOMAIL              ---> No
+./ I 00184000          $ 184500 500                   01/10/90 15:13:05
+NOMAIL   EQU   *
+./ I 00197000          $ 197300 300                   01/10/90 15:13:05
+         TM    DBGFLG6,DBGNOOUT    Sending mail?
+         BO    NOMAIL2             ---> No, no msg either
+./ I 00267000          $ 267200 200                   01/10/90 15:13:05
+NOMAIL2  EQU   *

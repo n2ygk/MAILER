@@ -1,0 +1,257 @@
+./ R 00015000 00016000 $ 15590 590                    07/14/89 12:01:44
+R0  EQU  0 - Work reg                                                   00015590
+R1  EQU  1 - Work reg                                                   00016180
+./ R 00019000 00020000 $ 19590 590                    07/14/89 12:01:44
+R4  EQU  4 - Console message processing                                 00019590
+R5  EQU  5 - Cmd length, return code                                    00020180
+./ R 00024000 00025000 $ 24590 590                    07/14/89 12:01:44
+R9  EQU  9 - COMMAND block base                                         00024590
+R10 EQU 10 - Internal subroutine linkage                                00025180
+./ R 00073000 00074000 $ 73190 190                    07/14/89 12:01:44
+         CLC   CMDCODE,=A(CMDFWD) Is it forward?                        00073190
+         BE    $CMDFWD            ---> Yes                              00073380
+         CLC   CMDCODE,=A(CMD202) Is it CMS (SVC202)?                   00073570
+         BE    $CMD202            ---> Yes,                             00073760
+         B     DONE               ---> No, just throw it away           00073950
+         EJECT ,                                                        00074140
+./ I 00075000          $ 75300 300                    07/14/89 12:01:44
+         SPACE 1                                                        00075300
+$CMD202  DS    0H                                                       00075600
+./ R 00091000 00123000 $ 91490 490                    07/14/89 12:01:44
+         B     RCMSG                                                    00091490
+         EJECT ,                                                        00091980
+* FORWARD command:                                                      00092470
+         SPACE 1                                                        00092960
+$CMDFWD  DS    0H                                                       00093450
+         MVC   $FWDRID,CMDSNDR     Copy requestor's userid              00093940
+         MVC   $FWDRNOD,CMDNODE    Copy requestor's node                00094430
+         MVI   $FWDMNT,C'0'        Assume not maintainer                00094920
+         LR    R1,R9               Copy COMMAND block pointer           00095410
+         BAL   R14,CHKAUTH         Is user authorized?                  00095900
+         B     $FWD0010            ---> No                              00096390
+         MVI   $FWDMNT,C'1'        Yes, pass it along                   00096880
+$FWD0010 EQU   *                                                        00097370
+         MVC   $FWDREQ,$FWDREQ-1   Blank out field                      00097860
+         ICM   R5,B'1111',CMDDLEN  Get data length                      00098350
+         BZ    $FWD0100            ---> No data                         00098840
+         C     R5,=A(L'$FWDREQ)    Enough space?                        00099330
+         BNH   $FWD0020            ---> Yes                             00099820
+         LA    R5,L'$FWDREQ        No, truncate                         00100310
+$FWD0020 EQU   *                                                        00100800
+         BCTR  R5,0                Decrement for execute                00101290
+         EX    R5,MOVEFWD          Move in command arguments            00101780
+$FWD0100 EQU   *                                                        00102270
+         LA    R1,$FWDPL           Point to tokenized plist             00102760
+         ICM   R1,B'1000',=X'01'   Tell REXX using extended plist       00103250
+         LA    R0,$FWDEPL          Point to extended plist              00103740
+         SVC   202                 Run the FORWARD exec                 00104230
+         DC    AL4(1)              Continue with next instruction       00104720
+         C     R15,=F'10001'       Is it exec not found?                00105210
+         BNE   RCMSG               ---> No                              00105700
+         MVC   $NOFWD,$FWDNONE     Move in message                      00106190
+         LA    R5,L'$NOFWD         Length of message                    00106680
+         BAL   R10,SENDMSG         Send message                         00107170
+         L     R15,=F'10001'       Restore return code                  00107660
+         B     RCMSG                                                    00108150
+         SPACE 1                                                        00108640
+$FWDNONE DC    C'FORWARD command not implemented'                       00109130
+         EJECT ,                                                        00109620
+RCMSG    DS    0H                  Report on result of operation        00110110
+         MVC   MSGC(14),=C'R(     ) for: '   Initialize                 00110600
+         LR    R5,R15              Get the return code                  00111090
+         CVD   R5,DWORD            Convert it to something readable     00111580
+         UNPK  MSGRETC,DWORD       Unpack it                            00112070
+         OI    MSGRETC+L'MSGRETC-1,X'F0' Kill the zone                  00112560
+         MVC   MSGDATA,MSGDATA-1   Clear buffer                         00113050
+         L     R5,CMDDLEN          Get data length                      00113540
+         C     R5,=A(L'MSGDATA)    Enough space?                        00114030
+         BNH   RCMSG010            ---> Yes                             00114520
+         LA    R5,L'MSGDATA        No, truncate                         00115010
+RCMSG010 EQU   *                                                        00115500
+         BCTR  R5,0                Decrement for execute                00115990
+         EX    R5,MOVEMSG          Move in message                      00116480
+         LA    R5,MSGDATA-MSGC+1(,R5)   Total length                    00116970
+         BAL   R10,SENDMSG              Send the message                00117460
+         B     DONE                                                     00117950
+         EJECT ,                                                        00118440
+*---- Done with this command.  Return the DMSFREE storage ----          00118930
+         SPACE 2                                                        00119420
+./ R 00135000          $ 135010 10                    07/14/89 12:01:44
+         EJECT ,                                                        00135010
+*        Internal subroutines                                           00135020
+         SPACE 2                                                        00135030
+*********************************************************************** 00135040
+*  SENDMSG - Send a message already formatted in the message buffer   * 00135050
+*            (MSGDATAX)                                               * 00135060
+*                                                                     * 00135070
+*  Entry    R5  - Length of data in MSGDATAX                          * 00135080
+*           R10 - Return address                                      * 00135090
+*                                                                     * 00135100
+*  This routine destroys registers 1, 4 and 5.                        * 00135110
+*                                                                     * 00135120
+*********************************************************************** 00135130
+         SPACE 2                                                        00135140
+SENDMSG  DS    0H                                                       00135150
+         CLC   CMDSNDR,=CL8'*'     Reply to console?                    00135160
+         BE    CONSOLE             ---> Yes                             00135170
+         SPACE 1                                                        00135180
+*        Reply via CP MSG/SMSG                                          00135190
+         SPACE 1                                                        00135200
+         MVC   MSGUSER,CMDSNDR     Else use CP (S)MSG command           00135210
+         MVC   MSGNODE,CMDNODE     Don't forget the nodename.           00135220
+         MVC   MSGTYPE,CMDMSG                                           00135230
+         LA    R1,MSG              Address of the message               00135240
+         LA    R4,MSGLEN(R5)       Total message length                 00135250
+         DC    X'83140008'         Issue the message                    00135260
+         C     R4,=F'1'            MSGNOH not recognized?               00135270
+         BNER  R10                 Done with this command               00135280
+         CLC   =C'MSGNOH ',MSGTYPE Was it a MSGNOH command?             00135290
+         BNER  R10                 No  : no retry then.                 00135300
+         MVC   MSGTYPE(8),=CL8'MSG' Use good old MSG instead            00135310
+         LA    R4,MSGLEN(R5)                                            00135320
+         DC    X'83140008'                                              00135330
+         BR    R10                 ---> Return to caller                00135340
+         SPACE 3                                                        00135350
+CONSOLE  DS    0H                  Do it with a WRTERM                  00135360
+         WRTERM MSGC,(R5)                                               00135370
+         BR    R10                 ---> Return to caller                00135380
+         SPACE ,                                                        00135390
+./ I 00136000          $ 136500 500                   07/14/89 12:01:44
+MOVEFWD  MVC   $FWDREQ(0),CMDDATA                                       00136500
+./ I 00137000          $ 137200 200                   07/14/89 12:01:44
+         EJECT ,                                                        00137200
+*        Data areas                                                     00137400
+         SPACE 2                                                        00137600
+./ I 00138000          $ 138500 500                   07/14/89 12:01:44
+         SPACE 2                                                        00138500
+./ R 00141000          $ 141290 290                   07/14/89 12:01:44
+         SPACE 1                                                        00141290
+MSG      DS    0C                  Buffer for msg subroutine            00141580
+./ R 00143000          $ 143690 690                   07/14/89 12:01:44
+MSGUSER  DS    CL8                 Sending user's userid                00143690
+./ R 00145000          $ 145090 90                    07/14/89 12:01:44
+MSGLEN   EQU   *-MSG                                                    00145090
+MSGDATAX DC    CL114' '            Your message goes here               00145180
+         SPACE 1                                                        00145270
+         ORG   MSGDATAX            Format for return code message       00145360
+MSGC     DS    C'R('                                                    00145450
+./ R 00147000 00149000 $ 147990 990                   07/14/89 12:01:44
+         DS    C') for: '                                               00147990
+./ I 00150000          $ 150100 100                   07/14/89 12:01:44
+         SPACE 1                                                        00150100
+         ORG   MSGDATAX            Forward not implemented msg          00150200
+$NOFWD   DS    CL(L'$FWDNONE)                                           00150300
+         SPACE 1                                                        00150400
+         ORG   ,                                                        00150500
+         SPACE 3                                                        00150600
+./ I 00154000          $ 154009 9                     07/14/89 12:01:44
+         SPACE 2                                                        00154009
+*  Data areas for FORWARD command processing                            00154018
+         SPACE 2                                                        00154027
+         DS    0D                                                       00154036
+$FWDPL   DC    CL8'EXEC'           Tokenized plist                      00154045
+         DC    CL8'FORWARD'                                             00154054
+         DC    8X'FF'              Fence for pretty                     00154063
+         SPACE 1                                                        00154072
+$FWDEPL  DC    A($FWDPL)           Point to 'EXEC'                      00154081
+         DC    A($FWDARGS)         Start of arguments                   00154090
+         DC    A($FWDARGE)         End of arguments                     00154099
+         DC    A($FWDFBLK)         File block pointer                   00154108
+         SPACE 1                                                        00154117
+$FWDFBLK DS    0F                                                       00154126
+         DC    CL8'FORWARD'        FN = FORWARD                         00154135
+         DC    CL8'MAILER'         FT = MAILER                          00154144
+         DC    CL2'*'              FM = *                               00154153
+         DC    H'0'                No extension                         00154162
+         SPACE 1                                                        00154171
+$FWDARGS DS    0C                  Arguments start here                 00154180
+         DC    C'REQUESTOR ('      Wrapping for id@host                 00154189
+$FWDRID  DC    CL8' '              Requestor's id                       00154198
+         DC    C'@'                                                     00154207
+$FWDRNOD DC    CL8' '                   and node                        00154216
+         DC    C')'                Wrapping for id@host                 00154225
+         DC    C' '                                                     00154234
+$FWDMNT  DC    C'0'                Is requestor a maintainer?           00154243
+         DC    C' '                Used to blank $FWDREQ                00154252
+$FWDREQ  DC    CL256' '            Original forward command arguments   00154261
+$FWDARGE EQU   *                   End of arguments                     00154270
+         EJECT ,                                                        00154279
+*********************************************************************** 00154288
+*                                                                     * 00154297
+*  CHKAUTH - Check if user is authorized                              * 00154306
+*                                                                     * 00154315
+*  Regs on entry:                                                     * 00154324
+*                                                                     * 00154333
+*     R9   - COMMAND block base                                       * 00154342
+*     R14  - Return address                                           * 00154351
+*                                                                     * 00154360
+*  Regs on entry:                                                     * 00154369
+*                                                                     * 00154378
+*     Unchanged                                                       * 00154387
+*                                                                     * 00154396
+*  Exit made to:    R14+0  - Not authorized                           * 00154405
+*                   R14+4  - Authorized user                          * 00154414
+*                                                                     * 00154423
+*                                                                     * 00154432
+*********************************************************************** 00154441
+         SPACE 1                                                        00154450
+CHKAUTH  EQU   *                   Check authorization                  00154459
+         SPACE 1                                                        00154468
+         USING COMMAND,R9                                               00154477
+         SPACE 1                                                        00154486
+         STM   R14,R12,12(R13)     Save regs                            00154495
+         CLC   CMDSNDR,=CL8'*'     Command from console?                00154504
+         BE    CHKOK                                                    00154513
+         MVC   AUTHUSER,=CL8' '    Blank out local field                00154522
+         LA    R14,AUTHUSER        Point to our local field             00154531
+         LA    R15,CMDSNDR         Point to source                      00154540
+         LA    R1,8                Max to move                          00154549
+CHKSMS02 DS    0H                                                       00154558
+         CLI   0(R15),C' '         Is it a blank?                       00154567
+         BNE   CHKSMS04            ---> No, first character             00154576
+         LA    R15,1(,R15)                                              00154585
+         BCT   R1,CHKSMS02         ---> Keep trying                     00154594
+         B     CHKNOTOK            ---> All blanks                      00154603
+         SPACE 1                                                        00154612
+CHKSMS04 DS    0H                                                       00154621
+         MVC   0(1,R14),0(R15)     Copy 1 character                     00154630
+         LA    R14,1(,R14)         Bump output pointer                  00154639
+         LA    R15,1(,R15)         Bump input pointer                   00154648
+         BCT   R1,CHKSMS04         ---> More to move                    00154657
+         SPACE 1                                                        00154666
+         LA    R15,MAINTID         Point to first entry of table        00154675
+CHKSMS10 DS    0H                                                       00154684
+         CLI   0(R15),X'FF'                    At end of list?          00154693
+         BE    CHKNOTOK                   ---> Yes, SMSG is illegal     00154702
+         CLC   MAINTNOD-MAINTID(,R15),=8X'00'  No cpu specified?        00154711
+         BE    CHKSMS30                   ---> Yes, accept any          00154720
+         CLC   CMDNODE,=CL8' '                 Command from network?    00154729
+         BNE   CHKSMS20                   ---> Yes, node id present     00154738
+         CLC   MAINTNOD-MAINTID(,R15),CPUSTR   Maintainer on this cpu?  00154747
+         BNE   CHKSMS40                   ---> No, go try next          00154756
+         B     CHKSMS30                   ---> Yes, go check id         00154765
+         SPACE 1                                                        00154774
+CHKSMS20 DS    0H                                                       00154783
+         CLC   MAINTNOD-MAINTID(,R15),CMDNODE  Maintainer node match?   00154792
+         BNE   CHKSMS40                   ---> No, go try next          00154801
+         SPACE 1                                                        00154810
+CHKSMS30 DS    0H                                                       00154819
+         CLC   MAINTID-MAINTID(,R15),AUTHUSER  Sender on the list?      00154828
+         BE    CHKOK                      ---> Yes                      00154837
+         SPACE 1                                                        00154846
+CHKSMS40 DS    0H                                                       00154855
+         LA    R15,MAINTID2-MAINTID(R15)  To the next entry             00154864
+         B     CHKSMS10                                                 00154873
+         SPACE 1                                                        00154882
+CHKNOTOK EQU   *                                                        00154891
+         LM    R14,R12,12(R13)     Restore regs                         00154900
+         B     0(,R14)                                                  00154909
+         SPACE 1                                                        00154918
+CHKOK    EQU   *                                                        00154927
+         LM    R14,R12,12(R13)     Restore regs                         00154936
+         B     4(,R14)                                                  00154945
+         SPACE 2                                                        00154954
+         LTORG ,                                                        00154963
+         SPACE 2                                                        00154972
+AUTHUSER DC    CL8' '              Used to left justify user id         00154981
+         SPACE 3                                                        00154990

@@ -1,0 +1,4 @@
+./ I 00366865          $ 366872 7                     03/12/90 09:02:23
+         DC    A(DBGFLG6-MAILBLOK,MAILTR62,DBGPARSE)                    00366865
+./ I 00387956          $ 387957 1                     03/12/90 09:02:23
+MAILTR62 DC    Y(13),C'TRACE-PARSING'                                   00387956

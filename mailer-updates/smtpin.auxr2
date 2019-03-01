@@ -1,0 +1,60 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R207999    Change version id to 2.08 Beta
+R207034    Additional debugging code in SMTPIN
+R207028    Support both newline and '<' as BSMTP continuation characters
+R207023    Preserve the FORM value (if one exists) when processing mail
+*          from other mailers.  When punching mail from a local user
+*          set the form value to 'QUIET'.
+R207019    Don't send BSMTP files into black hole if missing '.'
+R207016    Handle null BSMTP addresses better
+*          Correct flag byte used for trace flag in S_MAIL
+R207015    New trace flags:
+*              smtpin-trace-check_sender
+*              smtpin-trace-check_domain
+R207014    Fix for improper processing of host info on MAIL FROM:
+R205024    Update MAILRTOT during BSMTP buildlst processing
+*          Produce output trace when BUILDLST tracing requested
+R205021    Fix invalid length in CP command closing RDR when return
+*          BSMTP error mail
+R205017    BSMTP streams not returning error file when number of
+*          recipients is zero
+R205015    Add control to allow accpetance of BSMTP streams with
+*          FILE FROM: header.
+R205014    Add control to turn off looking for RFC822 headers inside
+*          the BSMTP envelope
+R205013    Move debugging controls to variables
+R205003    Correction to processing of *DEFAULT*ROUTE*
+R204007    Fix is_mailer processing in SMTPIN
+*          This caused bug in return of mail to maintainer?
+*          Additional (compile time controlled) debugging code added
+R204003    Fix bug in use of strnindex
+R203017    Support for *default* in DOMAIN table.
+R203016    Look for full host destination name before stripping RSCS
+*          domains.
+R203008    Fix for BSMTP addressing problem in call to genlist from
+*          check_sender
+R203002    SMTPIN debugging code
+*          First step to dynamic debugging info in BSMTP support
+R202019    Handle <@localnode,@localnode,...:userid@somenode> correctly
+R202017    More changes to make C code compatible with ANSI
+R202014    Make MAILBLOK globally available to all code
+*          This will remove dependence on Waterloo AUX file usage for
+*          increased portability of C code
+R202009    Support userid aliases in INCOMING table.  This allows a
+*          well known userid (such as MAILER) to be represented by 1
+*          entry instead of 1 entry per node.  The format for these
+*          entries will be a node of '*default*' and a userid of the
+*          specific userid
+R202007    Correct call to error msg routine for msg
+*          "Mailer problem: can't read error log"
+R202006    Correction for continued MAIL FROM: lines in BSMTP
+R202004    Correctly handle comparison of userids (with dots) and
+*          NJE userid for BSMTP
+R201011    Handle BSMTP addresses without '@' correctly
+R201010    Handle TICK with no tick-id correctly
+R201002    Correct deletion of routeaddr when processing headers
+R200009    Allow multiple Rscs-Domains.
+R200008    Allow multiple Local-Hosts.
+R200004    Run the "accept the mail" code for properly identified
+*          untrusted sources
+R200003    BSMTP errors not being returned

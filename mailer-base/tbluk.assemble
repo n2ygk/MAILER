@@ -1,0 +1,240 @@
+*[1.22]Add test for sequential/right-adjusted lookup             [1.22] 00001290
+TBLUK    TITLE     'STRING TABLE LOOKUP'                                00001580
+*---------------------------------------------------------------------* 00002000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00003000
+*    Program Property of the Trustees of Columbia University in the   * 00004000
+*    City of New York.                                                * 00005000
+*---------------------------------------------------------------------* 00006000
+TBLUK    CSECT                                                          00007000
+* TBLUK    -  STRING TABLE LOOKUP. MODELLED AFTER DEC TOPS-20           00008000
+* JSYS BY THE SAME NAME.  THIS VERSION IS REENTRANT.                    00009000
+*                                                                       00010000
+* LAST EDIT: 5/17/82 BY ALAN CROSSWELL                                  00011000
+*                                                                       00012000
+* CALLED VIA -                                                          00013000
+*   CALL TBLUK,(TABLE,STRING,LENGTH,WORK)                               00014000
+*                                                                       00015000
+PAB      DSECT ,                                                        00016000
+@TABLE   DS    A             ADDRESS OF KEYWORD TABLE                   00017000
+@STRING  DS    A             ADDRESS OF TEST STRING                     00018000
+@LENGTH  DS    F             LENGTH OF TEST STRING                      00019000
+@WORK    DS    A             WORK BUFFER                                00020000
+*                                                                       00021000
+* NOTE: THE WORK BUFFER IS USED TO TRANSLATE THE TEST AND               00022000
+*   BASE STRINGS TO UPPER CASE.  NO LENGTH CHECKING IS DONE,            00023000
+*   SO THE BUFFER SHOULD BE AS LONG AS THE LONGEST TEST                 00024000
+*   STRING AND THE LONGEST BASE STRING.  THIS HAS A MAXIMUM             00025000
+*   OF 2*256 = 512.                                                     00026000
+*                                                                       00027000
+*                                                                       00028000
+* RETURNS -                                                             00029000
+*        IN R1 - DISPATCH VALUE                                         00030000
+*        IN R0 - ADDRESS OF TABLE ENTRY                                 00031000
+*        IN R15 - RETURN CODE                                           00032000
+RETMATCH EQU       0                   EXACT MACTH                      00033000
+RETSUBST EQU       4                   UNIQUE SUBSTRING                 00034000
+RETAMB   EQU       8                   AMBIGUOUS SUBSTRING              00035000
+RETNOT   EQU       12                  NOT MATCHED                      00036000
+*                                                                       00037000
+* TBTAB FORMAT -                                                        00038000
+         SPACE                                                          00039000
+         TBTAB     DSECT=YES                                            00040000
+         SPACE                                                          00041000
+* BIT DEFINITIONS -                                                     00042000
+         SPACE                                                          00043000
+         COPY      TBBITS                                               00044000
+         SPACE                                                          00045000
+* TABLE ENTRY AND STRING FORMAT -                                       00046000
+         SPACE                                                          00047000
+         TBENTRY                                                        00048000
+         SPACE                                                          00049000
+*                                                                       00050000
+* FUNCTION -                                                            00051000
+*   1) TRANSLATE TEST STRING TO UPPERCASE                               00052000
+*   2) GET A TABLE ENTRY                                                00053000
+*   3) TRANSLATE THE ENTRY TO UPPERCASE                                 00054000
+*   4) FIND MINIMUM OF TEST AND BASE STRING LENGTHS.                    00055000
+*   5) COMPARE THE STRINGS USING THE MINIMUM LENGTH FOUND.              00056000
+*      A) IF TEST=BASE                                                  00057000
+*         1) IF TEST LENGTH <= BASE LENGTH THEN A MATCH IS              00058000
+*            FOUND. RETURN SUCCESFULLY (GOTO 6).                        00059000
+*         2) IF TEST LENGTH > BASE LENGTH THEN A MATCH IS               00060000
+*            NOT FOUND. GO ON TO TRY AGAIN TO SEE IF THE                00061000
+*            NEXT ENTRY WILL WORK. (GOTO 2)                             00062000
+*                                                                       00063000
+*      B) IF TEST<BASE                                                  00064000
+*         TRY AGAIN. GET NEXT ENTRY (GOTO 2)                            00065000
+*                                                                       00066000
+*      C) IF TEST>BASE                                                  00067000
+*         RETURN NOT FOUND.                                             00068000
+*                                                                       00069000
+*   6) A MATCH HAS BEEN FOUND.  CHECK THE ENTRY OPTION BITS             00070000
+*      TO SEE HOW TO RETURN.                                            00071000
+*      A) TB#NOM - RETURN NOMATCH EVEN THOUGH THERE WAS A MATCH         00072000
+*      B) TB#AMB - RETURN AMBIGUOUS EVEN THOUGH THE MATCH WAS           00073000
+*         NOT AMBIGOUS. (GOOD WAY TO FORCE MINIMUM ABBREVIATIONS        00074000
+*         OF DANGEROUS KEYWORDS)                                        00075000
+*      C) NO FLAGS SET - RETURN SUCCESFULLY WITH POINTER IN R0          00076000
+*         AND DISPATCH VALUE IN R1.                                     00077000
+* REGISTER USAGE -                                                      00078000
+R0  EQU  0 -                                                            00079000
+R1  EQU  1 -                                                            00080000
+R2  EQU  2 - WORK: USED AS A FLAG                                       00081000
+R3  EQU  3 -                                                            00082000
+R4  EQU  4 - MAXIMUM TABLE ENTRY ADDRESS                                00083000
+R5  EQU  5 - WORK AND MINIMUM OF TEST AND BASE LENGTHS - 1              00084000
+BL  EQU  6 - LENGTH OF CURRENT BASE STRING - 1                          00085000
+R7  EQU  7 - TBS DSECT BASE                                             00086000
+R8  EQU  8 - TABLE ENTRY POINTER                                        00087000
+TL  EQU  9 - LENGTH OF TEST STRING - 1 (FOR EXECUTE)                    00088000
+R10 EQU 10 - WORK REGISTER                                              00089000
+R11 EQU 11 - WORK AREA 1 (TEST STRING)                                  00090000
+R12 EQU 12 - PROGRAM BASE                                               00091000
+R13 EQU 13 - CALLER'S SAVE AREA                                         00092000
+R14 EQU 14 - WORK AREA 2 (BASE STRING)                                  00093000
+R15 EQU 15 - SUBROUTINE LINKAGE                                         00094000
+*                                                                       00095000
+         PRINT     NOGEN                                                00096000
+         EJECT                                                          00097000
+TBLUK    CSECT ,                                                        00098000
+         STM   R14,R12,12(R13)                                          00099000
+         LR    R12,R15       GET MY ADDRESS                             00100000
+         USING TBLUK,R12                                                00101000
+         USING PAB,R1        ADDRESS THE PAB                            00102000
+         L     R10,@STRING   GET STRING POINTER                         00103000
+         L     TL,@LENGTH    TEST STRING LENGTH                         00104000
+         L     R11,@WORK     WORK AREA                                  00105000
+         L     R1,@TABLE     TABLE POINTER                              00106000
+         DROP  R1                                                       00107000
+         LA    R14,0(TL,R11) WORK AREA 2                                00108000
+         USING TBTAB,R1      ADDRESS THE TABLE                          00109000
+         TM    TB$FLG,TBT#SEQ sequential?                        [1.22] 00109300
+         BO    CALLSEQ       call the sequential version         [1.22] 00109600
+         L     R8,TB$ADR     ADDRESS OF TABLE START                     00110000
+         C     TL,=F'256'    MORE THAN 256 LONG?                        00111000
+         BH    EMPTY         IT'S TOO LONG                              00112000
+         LTR   TL,TL         MORE THAN ZERO LENGTH?                     00113000
+         BNH   EMPTY                                                    00114000
+         ICM   R4,B'1111',TB$LEN   # OF GOOD ENTRIES                    00115000
+         BNZ   NOTEMPTY      IT'S NOT EMPTY                             00116000
+         DROP  R1                                                       00117000
+EMPTY    EQU   *                                                        00118000
+         LR    R0,R8         ADDRESS OF TABLE START                     00119000
+         SR    R1,R1         A ZERO DISPATCH VALUE                      00120000
+         LA    R15,RETNOT    INDICATE NOT FOUND                         00121000
+         B     RET           AND RETURN                                 00122000
+NOTEMPTY EQU   *                                                        00123000
+         MH    R4,=Y(TBE$LEN)  TABLE LENGTH (BYTES)                     00124000
+         AR    R4,R8         ADDR OF TABLE END                          00125000
+         BCTR  TL,0          -1 FOR EXECUTE                             00126000
+         EX    TL,COPY1      COPY IN TESTSTR                            00127000
+         EX    TL,TRANS1     TRANSLATE TO UPPERCASE                     00128000
+         SPACE 2                                                        00129000
+* DONE WITH SET UP, NOW FOR THE SEARCH:                                 00130000
+         SPACE 2                                                        00131000
+SEARCH   EQU   *             TOP OF SEARCH LOOP                         00132000
+         SR    R2,R2         ZERO THE FLAG                              00133000
+         USING TBENTRY,R8    ADDRESS THE CURRENT ENTRY                  00134000
+         L     R7,TBE$STR    ADDRESS OF A BASE STRING                   00135000
+         USING TBS,R7        ADDRESS THE STRING                         00136000
+         SR    BL,BL         GET A ZERO                                 00137000
+         IC    BL,TBS$SIZ    LENGTH OF BASE STRING                      00138000
+         BCTR  BL,0          -1 FOR EXECUTE                             00139000
+         EX    BL,COPY2      COPY INTO BASESTR BUFFER                   00140000
+         EX    BL,TRANS2     TRANSLATE TO UPPERCASE                     00141000
+         CR    TL,BL         COMAPARE TEST LENGTH TO BASE L             00142000
+         BH    TLONGER       TEST IS LONGER, THEY WON'T                 00143000
+         LR    R5,TL         USE SHORTER LENGTH                         00144000
+         B     TESTEM        AND GO TEST                                00145000
+TLONGER  EQU   *                                                        00146000
+         LR    R5,BL         USE SHORTER BASE LENGTH                    00147000
+         LA    R2,1          TEST IS LONGER; SET FLAG                   00148000
+TESTEM   EQU   *                                                        00149000
+         EX    R5,COMPARE    COMPARE THE STRINGS                        00150000
+         BL    NOTFND        NOT FOUND                                  00151000
+         BH    DONEXT        TRY NEXT ENTRY                             00152000
+         LTR   R2,R2         TEST STRING LONGER?                        00153000
+         BNZ   DONEXT        NO MATCH; TRY NEXT                         00154000
+         LR    R0,R8         REMEMBER R8 IN R0.                         00155000
+         CR    BL,TL         LENGTHS MATCH EXACTLY?                     00156000
+         BE    EXACT         YES, SUCCESS                               00157000
+         LA    R8,TBE$LEN(R8)  BUMP TO NEXT ENTRY                       00158000
+         CR    R8,R4         PAST END OF TABLE?                         00159000
+         BNL   UNIQ          NO MORE ENTRIES, SO IT                     00160000
+*                            IS A UNIQUE MATCH                          00161000
+         L     R7,TBE$STR    ADDRESS OF STRING                          00162000
+         SR    BL,BL         GET A ZERO                                 00163000
+         IC    BL,TBS$SIZ    GET STRING LENGTH                          00164000
+         BCTR  BL,0          -1 FOR EXECUTE.                            00165000
+         EX    BL,COPY2      MOVE IT INTO BUFFER                        00166000
+         EX    BL,TRANS2     UPPERCASE IT                               00167000
+         CR    TL,BL         TEST LEN VS BASE LEN                       00168000
+         BH    UNIQ          NO WAY THAT TEST CAN MATCH                 00169000
+         EX    TL,COMPARE    COMPARE THEM                               00170000
+         BNE   UNIQ          NO MATCH --> UNIQUE ABBREV                 00171000
+* NOT A UNIQUE ABBREVIATION...                                          00172000
+         LA    R15,RETAMB    LOAD AMBIGUOUS RETURN CODE                 00173000
+         B     UNIQ2         AND LEAVE                                  00174000
+EXACT    EQU   *             EXACT MATCH                                00175000
+         LA    R15,RETMATCH  EXACT MATCH                                00176000
+         B     UNIQ1                                                    00177000
+UNIQ     EQU   *                                                        00178000
+* NOW SEE IF THE ENTRY HAS ANY FUNNY BITS SET TO CAUSE A DIFFERENT      00179000
+* RETURN CODE THAN EXPECTED...                                          00180000
+         LA    R15,RETSUBST  PROBABLY WILL BE THIS                      00181000
+UNIQ1    EQU   *                                                        00182000
+         TM    TBS$FLG,TB#NOM+TB#AMB  AMBIG. OR NOMATCH FLAGS?          00183000
+         BZ    UNIQ2         NOPE, ALL CLEAR                            00184000
+         TM    TBS$FLG,TB#NOM  NOMATCH  BIT?                            00185000
+         BNO   TRY2          NOPE, TRY AGAIN                            00186000
+         LA    R15,RETNOT    SET NO MATCH RETCODE                       00187000
+         B     UNIQ2                                                    00188000
+TRY2     EQU   *                                                        00189000
+         TM    TBS$FLG,TB#AMB      AMBIG. BIT?                          00190000
+         BNO   TRY3          TRY AGAIN                                  00191000
+         LA    R15,RETAMB    SET AMBIG RETCODE                          00192000
+         B     UNIQ2                                                    00193000
+TRY3     EQU   *                                                        00194000
+         SR    R15,R15       INDICATE UNIQUE MATCH FOUND                00195000
+UNIQ2    EQU   *                                                        00196000
+*        R0 ALREADY HAS THE ENTRY ADDRESS IN IT                         00197000
+         LR    R8,R0         GET IT HERE FOR DSECT                      00198000
+         USING TBENTRY,R8                                               00199000
+         L     R1,TBE$DSP    DISPATCH VALUE                             00200000
+         DROP  R8                                                       00201000
+         B     RET           AND RETURN                                 00202000
+         SPACE ,                                                        00203000
+NOTFND   EQU   *                                                        00204000
+         LA    R15,RETNOT    INDICATE NOT FOUND                         00205000
+         LR    R0,R8         RETURN ENTRY AT WHICH FAILED               00206000
+         SR    R1,R1         BUT NO DISPATCH VALUE                      00207000
+         B     RET                                                      00208000
+         SPACE ,                                                        00209000
+DONEXT   EQU   *             SAME THING                                 00210000
+         LA    R8,TBE$LEN(R8) BUMP POINTER                              00211000
+         CR    R8,R4         PAST END OF TABLE?                         00212000
+         BL    SEARCH        GO DO IT AGAIN....                         00213000
+* RAN OUT OF SPACE                                                      00214000
+         LR    R0,R8         RETURN ENTRY WE FAILED AT                  00215000
+         SR    R1,R1         BUT NO DISPATCH VAULE                      00216000
+         LA    R15,RETNOT    INDICATE NOT FOUND                         00217000
+RET      EQU   *                                                        00218000
+         L     R14,12(R13)                                              00219000
+         LM    R2,R12,28(R13)                                           00220000
+         BR    R14                                                      00221000
+         SPACE ,                                                 [1.22] 00221100
+CALLSEQ  DS    0H            here to call TBLUKS                 [1.22] 00221200
+         L     R15,=V(TBLUKS) address of TBLUKS                  [1.22] 00221300
+         L     R14,12(,R13)  restore regs to make it look like   [1.22] 00221400
+         LM    R0,R12,20(R13) we were never called               [1.22] 00221500
+         BR    R15           XCTL to TBLUKS and return from there[1.22] 00221600
+*                                                                       00222000
+* READ-ONLY (PURE) DATA -                                               00223000
+LOWUP    LOWUP     ,                   UPPER CASE TRANSLATE TABLE       00224000
+COPY1    MVC   0(0,R11),0(R10)   COPY TEST STRING INTO BUFFER           00225000
+TRANS1   TR    0(0,R11),LOWUP TRANSLATE TO UPPERCASE                    00226000
+COPY2    MVC   0(0,R14),TBS$STR  COPY BASE STRING INTO BUFFER           00227000
+TRANS2   TR    0(0,R14),LOWUP    TRANSLATE TO UPPERCASE                 00228000
+COMPARE  CLC   0(0,R11),0(R14)  COMPARE THE TWO STRINGS                 00229000
+         LTORG ,                                                        00230000
+         END   TBLUK                                                    00231000

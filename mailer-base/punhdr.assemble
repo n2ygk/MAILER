@@ -1,0 +1,573 @@
+* Remove SMTP check. Check for MFLG2NOR.                         [1.24] 00001290
+*[1.20] "at" ==> "@", trim some blanks, add orig userid and vers#       00001580
+*[1.17] handle PUNCHC error                                             00002000
+*[1.14] add Received: field to header.                                  00003000
+PUNHDR   TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - PUNCH HEADER'       00004000
+*---------------------------------------------------------------------* 00005000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00006000
+*    Program Property of the Trustees of Columbia University in the   * 00007000
+*    City of New York.                                                * 00008000
+*---------------------------------------------------------------------* 00009000
+PUNHDR   CSECT                                                          00010000
+* PUNHDR   -                                                            00011000
+*  This routine punches the message header.  It chains through          00012000
+*  the various FIELDD's and TOKEND's to generate an output header       00013000
+*  that reflects any editing that may have been done to the header      00014000
+*  during processing (such as removal of names in a BCC list).          00015000
+*  Clearly this seems like a lot of work to do when odds are that       00016000
+*  the input message header in the reader will probably not be          00017000
+*  modified.  Only testing will tell if this work is worth it.          00018000
+*  Perhaps an option will be to punch the header this way only          00019000
+*  if it has been edited.                                               00020000
+*                                                                       00021000
+*  Note that this routine will toss certain fields such as              00022000
+*  "*destination:"  since they are not really part of the message       00023000
+*  header.  Also, fields that have extensions (FIEXTN) will be          00024000
+*  compressed together to present only one occurence of the field       00025000
+*  name.                                                                00026000
+*                                                                       00027000
+*  LAST EDIT: 7/12/82 BY ALAN CROSSWELL                                 00028000
+*                                                                       00029000
+* CALLED VIA -                                                          00030000
+*  CALL PUNHDR,(MAILBLOK)                                               00031000
+         SPACE                                                          00032000
+PAB      DSECT ,             PARMS                                      00033000
+@MBLOK   DS    F             ADDRESS OF MAILBLOK                        00034000
+         SPACE                                                          00035000
+* REGISTER USAGE -                                                      00036000
+R0  EQU  0 -                                                            00037000
+R1  EQU  1 -                                                            00038000
+R2  EQU  2 -                                                            00039000
+R3  EQU  3 -                                                            00040000
+R4  EQU  4 -                                                            00041000
+R5  EQU  5 -                                                            00042000
+R6  EQU  6 -                                                            00043000
+R7  EQU  7 -                                                            00044000
+R8  EQU  8 - OUTPUT BUFFER COUNTER                                      00045000
+R9  EQU  9 - CURRENT TOKEND BASE                                        00046000
+R10 EQU 10 - CURRENT FIELDD BASE                                        00047000
+R11 EQU 11 - MAILBLOK BASE                                              00048000
+R12 EQU 12 - PROGRAM BASE                                               00049000
+R13 EQU 13 - SAVE AREA                                                  00050000
+R14 EQU 14 - SUBROUTINE LINKAGE                                         00051000
+R15 EQU 15 - SUBROUTINE LINKAGE                                         00052000
+         SPACE                                                          00053000
+         PRINT NOGEN                                                    00054000
+         BLOCKS ,                                                       00055000
+         MAILBLOK ,                                                     00056000
+         EJECT                                                          00057000
+PUNHDR   CSECT ,                                                        00058000
+         USING PUNHDR,R15    TEMPORARY ADDRESSABILITY                   00059000
+         B     EYESKIP       BRANCH OVER EYESKIP                        00060000
+MYNAME   DC    CL8'PUNHDR',CL8'&SYSDATE'                                00061000
+EYESKIP  DS    0H                                                       00062000
+         DROP  R15                                                      00063000
+         STM   R14,R12,12(R13) SAVE CALLER'S REGS                       00064000
+         LR    R12,R15       PERMANENT ADDRESSABILITY                   00065000
+         USING PUNHDR,R12                                               00066000
+         LA    R14,SAVE      MY SAVE AREA                               00067000
+         ST    R13,4(R14)    SAVE CALLER'S PTR                          00068000
+         ST    R14,8(R13)    CHAIN MINE BACK                            00069000
+         LR    R13,R14       SET MY SAVE PTR                            00070000
+         USING PAB,R1        ADDRESS PARMS                              00071000
+         L     R11,@MBLOK    GET MAILBLOK BASE                          00072000
+         USING MAILBLOK,R11                                             00073000
+         DROP  R1                                                       00074000
+         SPACE ,                                                        00075000
+         TM    MAILFLG2,MFLG2NOR  don't want a Received:         [1.24] 00075300
+         BO    NORCVD        -> skip over this:                  [1.24] 00075600
+*[1.14] Add Received: line in front of all the other junk.              00076000
+         MVI   OUTBUF,C' '                                              00077000
+         MVC   OUTBUF+1(L'OUTBUF-1),OUTBUF                              00078000
+         LA    R2,OUTBUF     point to output buffer                     00079000
+         MVC   0(L'RCVD,R2),RCVD    "Received:"                         00080000
+         LA    R2,L'RCVD(R2) bump ptr                                   00081000
+         TM    MAILFLG1,MFLG1LCL  is the mail local?                    00082000
+         BO    SKPFROM       skip the From part                         00083000
+         MVC   0(L'RFROM,R2),RFROM " from "                             00084000
+         MVC   L'RFROM(L'MAILNODE,R2),MAILNODE copy remote node name    00085000
+         LA    R2,L'RFROM+L'MAILNODE-1(R2) [1.20] bump ptr              00086000
+TRIM01   EQU   *             [1.20] trim trailing blanks                00087000
+         CLI   0(R2),C' '    [1.20] is it a space?                      00088000
+         BNE   TRIM02        [1.20] done.                               00089000
+         BCTR  R2,0          [1.20] decrement                           00090000
+         B     TRIM01        [1.20] loop                                00091000
+TRIM02   EQU   *             [1.20]                                     00092000
+         MVI   1(R2),C'('    [1.20] " from NODE("                       00093000
+         MVC   2(L'MAILUSER,R2),MAILUSER [1.20] ORIGIN USERID           00094000
+         LA    R2,L'MAILUSER+1(R2) [1.20]                               00095000
+TRIM03   EQU   *                                                        00096000
+         CLI   0(R2),C' '    [1.20] trim trailing blanks                00097000
+         BNE   TRIM04        [1.20]                                     00098000
+         BCTR  R2,0          [1.20]                                     00099000
+         B     TRIM03        [1.20]                                     00100000
+TRIM04   EQU   *             [1.20]                                     00101000
+         MVI   1(R2),C')'    [1.20] " from NODE(USER)"                  00102000
+         LA    R2,2(R2)      [1.20]                                     00103000
+SKPFROM  EQU   *                                                        00104000
+         MVC   0(L'RBY,R2),RBY " by "                                   00105000
+         MVC   L'RBY(L'CPUSTR,R2),CPUSTR  local node name               00106000
+         LA    R2,L'RBY+L'CPUSTR-1(R2) [1.20]                           00107000
+TRIM05   EQU   *             [1.20] trim trailing blanks                00108000
+         CLI   0(R2),C' '    [1.20]                                     00109000
+         BNE   TRIM06        [1.20]                                     00110000
+         BCTR  R2,0          [1.20]                                     00111000
+         B     TRIM05        [1.20]                                     00112000
+TRIM06   EQU   *             [1.20]                                     00113000
+         LA     R2,1(R2)     [1.20]                                     00114000
+         MVC    0(9,R2),=CL9' (Mailer ' [1.20] "by NODE( Mailer "       00115000
+         MVC    9(8,R2),MAILVERS [1.20] "by NODE(mailer version"        00116000
+         LA     R2,16(R2)     [1.20]                                    00117000
+TRIM07   EQU    *            [1.20] trim trailers from version #        00118000
+         CLI    0(R2),C' '   [1.20]                                     00119000
+         BNE    TRIM08       [1.20] end of version #                    00120000
+         BCTR   R2,0         [1.20]                                     00121000
+         B      TRIM07       [1.20]                                     00122000
+TRIM08   EQU    *            [1.20]                                     00123000
+         MVI    1(R2),C')'   [1.20] "by NODE(version)"                  00124000
+         LA     R2,2(R2)     [1.20]                                     00125000
+         MVC   0(L'RID,R2),RID    " id "                                00126000
+         MVC   L'RID(L'MAILFTXT,R2),MAILFTXT  spool file number         00127000
+         MVC   L'RID+L'MAILFTXT(L'RSEMI,R2),RSEMI "; "                  00128000
+         LA    R2,L'RID+L'MAILFTXT+L'RSEMI(R2)                          00129000
+         LA    R1,29(R2)     [1.20]plus length of date field            00130490
+         C     R1,=A(OUTBUF+80) [1.20]if > 80 then wrap line            00131000
+         BL    NOWRAP        [1.20]No wrap needed                       00132000
+         LR    R8,R2         [1.20] get current pointer                 00133000
+         S     R8,=A(OUTBUF) [1.20] get length                          00134000
+         BAL   R14,NEWLINE   [1.20]dump the line out                    00135000
+         LA    R2,OUTBUF+10  [1.20] Updated outbuf pointer              00136000
+NOWRAP   EQU   *             [1.20]fall thru to non-wrap case           00137000
+         LR    R1,R2         point to place to put data                 00138000
+         L     R15,AARPADAT  arpa format date routine                   00139000
+         BALR  R14,R15       call it                                    00140000
+         S     R1,=A(OUTBUF) get final length                           00141000
+         LR    R8,R1         into global register                       00142000
+         BAL   R14,NEWLINE   and write it out.                          00143000
+*[1.14]end                                                              00144000
+NORCVD   EQU   *             <- here when skipping Received junk.[1.24] 00144590
+*--------------------------------------------------------------------   00145000
+*  CHAIN DOWN FIELDD CHAIN STARTING AT MAILFLD, THE ANCHOR.             00146000
+*--------------------------------------------------------------------   00147000
+         MVI   TRAPTAB+X'15',X'FF'  TRAP SOME NEWLINES LATER            00148000
+         SR    R8,R8         START W/ZERO IN OUTPUT BUFFER              00149000
+         SR    R15,R15       START W/ZERO RC                            00150000
+*        TM    MAILFLG1,MFLG1HDS Header scanned properly?        [1.24] 00150300
+*        BNO   RET           nope                                [1.24] 00150600
+         ICM   R10,B'1111',MAILFLD  GET THE FIELD LIST                  00151000
+         BZ    RET           EMPTY!                                     00152000
+         MVI   OUTBUF,C' '   INIT BUFFER TO BLANKS                      00153000
+         MVC   OUTBUF+1(79),OUTBUF                                      00154000
+LOOP1    EQU   *                                                        00155000
+         USING FIELDD,R10    ADDRESS THE FIELD DESCRIPTOR               00156000
+         TM    FIFLG1,FIINVFLG IS THIS AN 'INVISIBLE' FIELD?            00157000
+         BO    NOFIELD       YES, DON'T OUTPUT IT                       00158000
+         TM    FIFLG1,FIEDIFLG HAS FIELD BEEN EDITED?               EAC 00159000
+         BNO   NONEDIT       NO, DON'T DO ALL THIS EXTRA WORK           00160000
+         SPACE 1                                                        00161080
+*---------------------------------------------------------------------- 00161160
+* Header line has been edited                                           00161240
+*                                                                       00161320
+* We will now build a new header line of undetermined length on the     00161400
+* stack and then break that long line up into segments of MAXWIDE       00161480
+* width.                                                                00161560
+*---------------------------------------------------------------------- 00161640
+         SPACE 1                                                        00161720
+         MVC   LCLSTK,STACKP       Copy stack pointers                  00161800
+         ICM   R9,B'1111',FITOK GRAB THE TOKEN LIST                     00162000
+         BZ    NOFIELD             No tokens for this field             00163490
+         USING TOKEND,R9                                                00164000
+         MVI   PUTFLAG,0           Make sure this is clean              00164890
+         L     R0,TOKLEN           Get length                           00165280
+         L     R1,TOKPTR              and address                       00165670
+         MVI   PUTTAIL,C':'        First token gets a ':' after it      00166060
+         BAL   R14,PUTTOK          Start the long line                  00166450
+         B     NOROOM              ---> Stack full                      00166840
+         MVI   PUTTAIL,C' '        Default tail is ' '                  00167230
+         LM    R14,R15,STACKP      Calculate correct location for 1st   00167620
+         LA    R14,INDENT(,R14)        character after after id         00168010
+         C     R14,LCLSTK          Id long enough?                      00168400
+         BNH   LOOP2               ---> Yes                             00168790
+         S     R15,=A(INDENT)      Correct the length                   00169180
+         BNH   LOOP2               ---> Will have an error soon         00169570
+         L     R1,LCLSTK           Get current position                 00169960
+         STM   R14,R15,LCLSTK      Update stack pointer/length          00170350
+LOOP1B   DS    0H                                                       00170740
+         CR    R1,R14              Enough blanks yet                    00171130
+         BE    LOOP2               ---> Yes, done                       00171520
+         MVI   0(R1),C' '          Put a blank here                     00171910
+         LA    R1,1(,R1)           Bump pointer                         00172300
+         B     LOOP1B              ---> Keep going                      00172690
+         SPACE 1                                                        00173080
+LOOP2    EQU   *                                                        00174000
+         ICM   R9,B'1111',TOKNEXT  To next token                        00175880
+         BZ    LOOP3               ---> No more tokens                  00176270
+         CLI   TOKTYPE,TOKAT       Is it the "AT" token?                00176660
+         BNE   LOOP2A              ---> No                              00177050
+         CLC   TOKLEN,=F'1'        Length of 1?                         00177440
+         BE    LOOP2A99            ---> Yes                             00177830
+         LM    R0,R1,ATTOKEN       Use the correct version              00178220
+         B     LOOP2B              ---> Put into output line            00178610
+         SPACE 1                                                        00179720
+LOOP2A   DS    0H                                                       00179750
+         CLI   TOKTYPE,TOKLTB      '<'?                                 00179760
+         BNE   LOOP2A90            ---> No                              00179790
+         OI    PUTFLAG,PUTINADD    Remember address started             00179800
+         B     LOOP2A99                                                 00179820
+         SPACE 1                                                        00179840
+LOOP2A90 DS    0H                                                       00179860
+         CLI   TOKTYPE,TOKRTB      '>'?                                 00179880
+         BNE   LOOP2A99            ---> No                              00179910
+         NI    PUTFLAG,X'FF'-PUTINADD   Address done                    00179920
+         B     LOOP2A99                                                 00179940
+         SPACE 1                                                        00179960
+LOOP2A99 DS    0H                                                       00179980
+         L     R0,TOKLEN           Get token length                     00180990
+         L     R1,TOKPTR           Token string address                 00181980
+LOOP2B   EQU   *                                                        00183000
+         TM    PUTFLAG,PUTINADD    In an address?                       00183200
+         BZ    LOOP2B02            ---> No                              00183400
+         OI    PUTFLAG,PUTNTAIL    No tail character wanted             00183600
+LOOP2B02 DS    0H                                                       00183800
+         BAL   R14,PUTTOK          Put a token in output buffer         00184190
+         B     NOROOM              ---> Stack full                      00184380
+         NI    PUTFLAG,X'FF'-(PUTNTAIL+PUTNOIND)  Turn off flags        00184700
+         B     LOOP2               ---> Around and around we go         00185500
+         SPACE 1                                                        00185510
+* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 00185520
+*  Line now exists as 1 long string on stack.  Break it up into         00185530
+*  pieces that will fit on cards                                        00185540
+* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 00185550
+         SPACE 1                                                        00185560
+LOOP3    DS    0H                                                       00185570
+         MVI   PUTFLAG,0           Turn off all flags                   00185580
+         LA    R8,0                Initial output buffer offset is 0    00185590
+         L     R1,STACKP           Current starting point               00185600
+         SPACE 1                                                        00185610
+LOOP3A   DS    0H                                                       00185620
+         L     R2,LCLSTK           Calculate Current length             00185630
+         SR    R2,R1                                                    00185640
+LOOP3A10 DS    0H                  Remove leading blanks                00185650
+         CLI   0(R1),C' '          Is this one?                         00185660
+         BNE   LOOP3A20            ---> No                              00185670
+         LA    R1,1(,R1)           Bump output ptr                      00185680
+         BCT   R2,LOOP3A10         ---> Keep looking                    00185690
+         B     NOTOKEN             ---> It was only blanks              00185700
+         SPACE 1                                                        00185710
+LOOP3A20 DS    0H                                                       00185720
+         LR    R6,R1               Remember starting point              00185730
+         BAL   R14,FIND15          Find first newline                   00185740
+         C     R0,=A(MAXWIDE)      Result longer than MAX?              00185750
+         BNH   LOOP3D              ---> No, all set                     00185760
+         SPACE 1                                                        00185770
+*  No x'15' within maximum width, find a reasonable break point         00185780
+         SPACE 1                                                        00185790
+         LA    R1,MAXWIDE(,R6)     Starting point for search            00185800
+LOOP3B   DS    0H                                                       00185810
+         CLI   0(R1),C' '          Found a blank?                       00185820
+         BE    LOOP3C              ---> Yes                             00185830
+         BCTR  R1,0                Back up 1                            00185840
+*** Warning *** This doesn't handle case of no blanks in string         00185850
+         B     LOOP3B              ---> Round and round we go           00185860
+         SPACE 1                                                        00185870
+LOOP3C   DS    0H                  Found a blank                        00185880
+         LA    R1,1(,R1)           Next line will start here            00185890
+         LR    R0,R1               Compute length                       00185900
+         SR    R0,R6                   of string                        00185910
+         L     R2,LCLSTK           Recalculate                          00185920
+         SR    R2,R1                   length remaining                 00185930
+         SPACE 1                                                        00185940
+LOOP3D   DS    0H                                                       00185950
+         LTR   R3,R0               Length of 0?                         00185960
+         BNP   LOOP3A              ---> Yes, drop from header           00185970
+         BCTR  R3,0                Decrement for EX                     00185980
+         LA    R15,OUTBUF(R8)      Stuff goes here                      00185990
+         EX    R3,MOVEBUF3         Move into output line                00186000
+         LA    R8,1(R3,R8)         Update buffer count                  00186010
+         LTR   R2,R2               Any more stuff left?                 00186020
+         BNP   NOTOKEN             ---> No                              00186030
+         BAL   R14,NEWLINE         Do a newline                         00186040
+         LA    R8,INDENT           Start at indent point                00186050
+         B     LOOP3A                                                   00186060
+         SPACE 1                                                        00186070
+NOTOKEN  EQU   *             NO TOKENS LEFT                             00187000
+         BAL   R14,NEWLINE   START A NEW LINE                           00188000
+         SPACE 1                                                        00188500
+NOFIELD  EQU   *                                                        00189000
+         ICM   R10,B'1111',FINEXT  GET NEXT FIELDD                      00190000
+         BNZ   LOOP1         GO DO IT                                   00191000
+         SPACE ,                                                        00192000
+         BAL   R14,NEWLINE   ADD EXTRA NEWLINE                          00193000
+         SR    R15,R15       ALL DONE                                   00194000
+RET      EQU   *                                                        00195000
+         MVI   TRAPTAB+X'15',0  RESET THE TRAP TABLE                    00196000
+         L     R13,4(R13)              GET CALLER'S SAVE PTR            00197000
+         L     R14,12(R13)             GET R14                          00198000
+         LM    R0,R12,20(R13)          GET R0-R12                       00199000
+         BR    R14                     RETURN                           00200000
+         SPACE ,                                                        00201000
+*--------------------------------------------------------------------   00202000
+*  HERE IF HEADER HASN'T BEEN EDITED. JUST DUMP THE DATA POINTED        00203000
+*  TO BY FISTR TO FIEND.                                                00204000
+*--------------------------------------------------------------------   00205000
+NONEDIT  EQU   *                                                        00206000
+         ICM   R9,B'1111',FITOK GRAB THE TOKEN LIST                     00207000
+         BZ    NOTOKEN       NO TOKENS FOR THIS FIELD                   00208000
+         USING TOKEND,R9                                                00209000
+* THE FIRST TOKEN GETS A ':' AFTER IT...                                00210000
+         SR    R2,R2         GET ZERO                                   00211000
+         L     R2,TOKLEN     GET LENGTH                                 00212590
+         L     R1,TOKPTR            STRING ADDRESS                      00213570
+         DROP  R9                                                       00214000
+         LA    R6,OUTBUF     OUTPUT BUFFER                              00215000
+         BCTR  R2,0          -1 FOR EXECUTE                             00216000
+         EX    R2,MOVEBUF    MOVE TOKEN INTO BUFFER                     00217000
+         LA    R6,1(R6,R2)   DROP OFF A ':' NOW                         00218000
+         MVI   0(R6),C':'                                               00219000
+         LA    R8,2(R2)      OFFSET FROM OUTPUT BUFFER                  00220000
+         L     R1,FISTR      START OF FIELD TO COPY                     00221000
+         L     R2,FIEND      END OF FIELD                               00222000
+         SR    R2,R1         LENGTH TO COPY                             00223000
+NONED1   EQU   *                                                        00224000
+         LR    R7,R1         HANG ON TO STRING START ADDRESS            00225000
+         BAL   R14,FIND15    LOOK FOR END OF LINE                       00226000
+         LTR   R3,R0         LENGTH OF STRING                           00227000
+         BZ    NOTOKEN       EMPTY...                                   00228000
+         BCTR  R3,0          -1 FOR EXECUTE                             00229000
+         LA    R6,OUTBUF(R8)                                            00230000
+         LR    R5,R1         REMEMBER THIS FOR A SEC                    00231000
+         LR    R1,R7         GET STRING START ADDRESS                   00232000
+         EX    R3,MOVEBUF    MOVE INTO BUFFER                           00233000
+         LR    R1,R5         GET BACK THE R1 WE LOST BEFORE             00234000
+         LA    R8,1(R8,R3)                                              00235000
+         LTR   R2,R2         ANY MORE LINES LEFT?                       00236000
+         BNH   NOTOKEN       NOPE....                                   00237000
+         BAL   R14,NEWLINE   YUP, DO A NEWLINE                          00238000
+         B     NONED1        AND DO IT UP                               00239000
+         SPACE ,                                                        00240000
+*--------------------------------------------------------------------   00241000
+* FIND15 -                                                              00242000
+*  FINDS NEXT NEWLINE IN A STRING                                       00243000
+*  THE STRING IS ASSUMED TO HAVE A NEWLINE APPEAR WITHIN THE NEXT       00244000
+*  256 CHARACTERS.  THIS IS A SAFE ASSUMPTION SINCE WE ARE DEALING      00245000
+*  WITH PUNCHED RECORDS -- SO UNLESS THERE IS A BUG,  THE MAX. SHOULD   00246000
+*  BE 80 CHARACTERS.                                                    00247000
+* ENTRY -                                                               00248000
+*  R1 - ADDRESS OF STRING                                               00249000
+*  R2 - LENGTH OF STRING                                                00250000
+* EXIT -                                                                00251000
+*  R0 - LENGTH OF SUBSTRING                                             00252000
+*  R1 - UPDATED TO POINTER AFTER X'15'                                  00253000
+*  R2 - REMAINING STRING LENGTH                                         00254000
+*--------------------------------------------------------------------   00255000
+FIND15   EQU   *                                                        00256000
+         STM   R4,R6,12(R13) SAVE ONLY THESE 3                          00257000
+         LR    R4,R1         GET STRING POINTER                         00258000
+         LTR   R5,R2         GET STRING LENGTH                          00259000
+         BNH   FZERO         ZERO LENGTH STRING                         00260000
+         BCTR  R5,0          -1 FOR EXECUTE                             00261000
+         LR    R6,R5         MAKE A SAFETY COPY                         00262000
+         C     R5,=F'255'    MORE THAN AN EXECUTES WORTH?               00263000
+         BNH   F2            NOPE -- IT'S OK                            00264000
+         LA    R5,255        TRUNC THE TEST                             00265000
+F2       EQU   *                                                        00266000
+         LA    R1,1(R4,R5)   POINT TO END OF STRING                     00267000
+         EX    R5,TRAP15     TRAP THE X'15'                             00268000
+         LR    R0,R1         GET END POINTER                            00269000
+         SR    R0,R4         LENGTH = END-START                         00270000
+         LA    R1,1(R1)      POINT PAST THE X'15'                       00271000
+         LR    R2,R6         GET LENGTH BACK                            00272000
+         SR    R2,R0         REMAINDER LENGTH                           00273000
+         LM    R4,R6,12(R13)                                            00274000
+         BR    R14           RETURN                                     00275000
+FZERO    EQU   *                                                        00276000
+         LM    R4,R6,12(R13)                                            00277000
+         SR    R0,R0         ZERO LENGTH                                00278000
+         BR    R14                                                      00279000
+         SPACE ,                                                        00280000
+*--------------------------------------------------------------------   00281000
+*  NEWLINE -                                                            00282000
+*   STARTS A NEW LINE BY PUNCHING THE CURRENT OUTPUT BUFFER AND         00283000
+*   RESETTING THE BUFFER LENGTH COUNTER.                                00284000
+*--------------------------------------------------------------------   00285000
+NEWLINE  EQU   *                                                        00286000
+         STM   R0,R1,12(R13) ONLY SAVE THESE 2                          00287000
+         LTR   R8,R8         BUFFER EMPTY?                              00288000
+         BZR   R14           YES, JUST RETURN                           00289000
+         PUNCHC OUTBUF,ERROR=FATAL [1.17]punch the buffer               00290000
+         SR    R8,R8         CLEAR THE BUFFER COUNTER                   00291000
+         MVI   OUTBUF,C' '   INIT TO BLANKS                             00292000
+         MVC   OUTBUF+1(79),OUTBUF                                      00293000
+         LM    R0,R1,12(R13)                                            00294000
+         BR    R14           AND RETURN                                 00295000
+*[1.17]----- Fatal punch error.  Log off for lack of a better answer    00296000
+FATAL    EQU   *                                                        00297000
+         LA    R1,=C'LOGOFF'           just log off                     00298000
+         LA    R0,6                    length                           00299000
+         DIAG  R1,R0,X'0008'           bye bye                          00300000
+         DC    F'0'                    cause operation exception if     00301000
+*                                      the logoff fails                 00302000
+         EJECT ,                                                        00303490
+*--------------------------------------------------------------------   00304000
+*  PUTTOK -                                                             00305000
+*   WRITES A TOKEN INTO THE OUTPUT BUFFER FOLLOWED BY A BLANK.          00306000
+*  ENTRY -                                                              00307000
+*   R0 - LENGTH                                                         00308000
+*   R1 - ADDRESS                                                        00309000
+*  PUTTAIL - FILL CHARACTER TO OUTPUT AFTER THE TOKEN                   00310000
+*                                                                       00311190
+*  Exit:  R14+0 - Stack overflow                                        00311380
+*         R14+4 - Successful                                            00311570
+*--------------------------------------------------------------------   00312000
+PUTTOK   EQU   *                                                        00313000
+         STM   R14,R12,12(R13)     Save some regs                       00314590
+         ST    R13,PSAVE+4                                              00315180
+         LA    R13,PSAVE                                                00315770
+         LTR   R0,R0               Zero length?                         00316360
+         BZ    PRET                Just return                          00316950
+PUTTOK05 DS    0H                                                       00317540
+         LM    R8,R9,LCLSTK        Get stack pointer/length             00318130
+         LR    R2,R0               Save length here                     00318720
+         TM    PUTFLAG,PUTNTAIL    Want tail character?                 00320180
+         BO    PUTTOK10            ---> No                              00320270
+         LA    R2,1(,R2)           Include tail in count                00320360
+         CLI   PUTTAIL,C' '        Is tail character blank?             00320380
+         BE    PUTTOK10            ---> Yes                             00320400
+         LA    R2,1(,R2)           Include an additional blank          00320420
+PUTTOK10 DS    0H                                                       00320450
+         SR    R9,R2               Is there room on stack?              00321490
+         BP    PUTNOW              ---> Yes                             00321980
+         L     R13,4(R13)          Get return pointer                   00322470
+         LM    R14,R12,12(R13)     Restore regs                         00322960
+         B     0(,R14)             Return to caller                     00323450
+         SPACE 1                                                        00323940
+PUTNOW   EQU   *                                                        00325000
+         LR    R2,R0               Get length again                     00326060
+         BCTR  R2,0                -1 for EX                            00326120
+         LR    R6,R8               Probable address for MVC             00326180
+         C     R0,=F'1'            Is string only 1 char?               00326240
+         BNE   PUTNOWB0            ---> No                              00326300
+         CLI   0(R1),C'@'          Is it '@'?                           00326360
+         BE    PUTNOWA0            ---> Yes                             00326420
+         CLI   0(R1),C'.'          Is it '.'?                           00326480
+         BNE   PUTNOWB0            ---> No                              00326540
+         SPACE 1                                                        00326600
+* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 00326660
+* This token is an '@' or '.' which seperates the parts of an address.  00326720
+* If PUTINADD is not set, then we are not in the middle of a machine    00326780
+* address and need to drop out the blanks                               00326840
+* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 00326900
+         SPACE 1                                                        00326960
+PUTNOWA0 DS    0H                                                       00327020
+         TM    PUTFLAG,PUTINADD    In an address?                       00327080
+         BO    PUTNOWA8            ---> Yes, all done                   00327140
+         OI    PUTFLAG,PUTSPEC     Remember for future reference        00327200
+PUTNOWA2 DS    0H                                                       00327260
+         BCTR  R6,0                Backup 1 char                        00327320
+         CLI   0(R6),C' '          Is it a blank?                       00327380
+         BE    PUTNOWA2            ---> Yes                             00327440
+         LA    R6,1(,R6)           Back to last blank                   00327500
+         LR    R15,R8              Old location                         00327560
+         SR    R15,R6              New location                         00327620
+         BZ    PUTNOWA8            ---> No movement                     00327680
+         LR    R8,R6               Update stack pointer                 00327740
+         AR    R9,R15              Correct size left                    00327800
+PUTNOWA8 DS    0H                                                       00327860
+         B     PUTNOW05                                                 00327920
+         SPACE 1                                                        00327980
+* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 00328040
+* This token is not an '@' or '.'.  If PUTINADD is not set, then we     00328100
+* are not in the middle of a machine address and may need to squish     00328160
+* out the blanks if the last token was an '@' or '.'.                   00328220
+* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 00328280
+         SPACE 1                                                        00328340
+PUTNOWB0 DS    0H                                                       00328400
+         TM    PUTFLAG,PUTINADD    In an address?                       00328460
+         BO    PUTNOWB8            ---> Yes, all done                   00328520
+         TM    PUTFLAG,PUTSPEC     Was the last token an '@' or '.'?    00328580
+         BO    PUTNOWB8            ---> Yes                             00328640
+         CLC   R0,=F'1'            Length of 1?                         00328700
+         BNE   PUTNOWB8            ---> No                              00328760
+         CLI   0(R1),C','          Is it a ','?                         00328820
+         BE    PUTNOWB2            ---> Yes, suppress blanks            00328880
+         B     PUTNOWB8            ---> No                              00328940
+         SPACE 1                                                        00329000
+PUTNOWB1 DS    0H                                                       00329060
+         NI    PUTFLAG,X'FF'-PUTSPEC    Forget about last token         00329120
+PUTNOWB2 DS    0H                                                       00329180
+         BCTR  R6,0                Backup 1 char                        00329240
+         CLI   0(R6),C' '          Is it a blank?                       00329300
+         BE    PUTNOWB2            ---> Yes                             00329360
+         LA    R6,1(,R6)           Back to last blank                   00329420
+         LR    R15,R8              Old location                         00329480
+         SR    R15,R6              New location                         00329540
+         BZ    PUTNOWB8            ---> No movement                     00329600
+         LR    R8,R6               Update stack pointer                 00329660
+         AR    R9,R15              Correct stack size left              00329720
+PUTNOWB8 DS    0H                                                       00329780
+         B     PUTNOW05                                                 00329840
+         SPACE 1                                                        00329900
+* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 00329960
+* Done positioning token pointer.  R8 points at stack location          00330020
+* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 00330080
+         SPACE 1                                                        00330140
+PUTNOW05 DS    0H                                                       00330200
+         EX    R2,MOVEBUF2         Move to stack                        00330260
+         LA    R8,1(R2,R8)         Update stack pointer                 00330320
+         TM    PUTFLAG,PUTNTAIL    Tail character wanted?               00331300
+         BO    PUTNOW10            ---> No                              00331600
+         MVC   0(1,R8),PUTTAIL     Add tail (usually a ' ' or ':')      00332990
+         LA    R8,1(R8)            Bump stack pointer                   00333980
+         CLI   PUTTAIL,C' '        If not ' ', then add an extra blank  00334970
+         BE    PUTNOW10            It's a ' '                           00335960
+         MVI   0(R8),C' '          Add a blank                          00336950
+         LA    R8,1(R8)            Bump the stack pointer               00337940
+PUTNOW10 DS    0H                                                       00340500
+         STM   R8,R9,LCLSTK        Update local stack pointers          00340700
+PRET     EQU   *                                                        00341000
+         L     R13,4(R13)          Get return pointer                   00342290
+         LM    R14,R12,12(R13)     Restore regs                         00342580
+         B     4(,R14)             Return to caller                     00342870
+         EJECT ,                                                        00343160
+NOROOM   DS    0H                                                       00343450
+         WTR   PUH003,(C,PUNHDR)                                        00343740
+         LM    R1,R2,=A(VMDUMP,L'VMDUMP)                                00344030
+         DIAG  R1,R2,X'0008'       Issue VMDUMP command                 00344320
+         LA    R1,=C'LOGOFF'       Logoff command                       00344610
+         LA    R0,6                    length                           00344900
+         DIAG  R1,R0,X'0008'       LOGOFF now                           00345190
+         DC    F'0'                Cause operation exception if         00345480
+*                                      the logoff fails                 00345770
+         EJECT ,                                                        00346060
+TRAP15   TRT   0(0,R4),TRAPTAB         EXECUTED TRT                     00347000
+MOVEBUF  MVC   0(0,R6),0(R1)      EX'D MVC                              00348000
+MOVEBUF2 MVC   0(0,R8),0(R1)      EX'D MVC                              00348100
+MOVEBUF3 MVC   0(0,R15),0(R6)     EXecuted MVC                          00348200
+         SPACE 1                                                        00348300
+VMDUMP   DC    C'VMDUMP 0-END TO * FORMAT CMS DSS * STACK OVERFLOW'     00348400
+         SPACE 1                                                        00348500
+ATTOKEN  DC    A(L'ATSIGN,ATSIGN)                                       00349000
+ATSIGN   DC    CL1'@'        [1.20]REPLACE 'AT' OR '@' WITH THIS ONE    00350000
+RCVD     DC    C'Received:'  [1.14]                                     00351000
+RFROM    DC    C' from '     [1.14]                                     00352000
+RBY      DC    C' by '       [1.14]                                     00353000
+RID      DC    C' id '       [1.14]                                     00354000
+RSEMI    DC    C'; '         [1.14]                                     00355000
+         LTORG ,                                                        00356000
+SAVE     DS    18F                     SAVE AREA                        00357000
+PSAVE    DS    18F                                                      00358000
+         SPACE 1                                                        00358200
+LCLSTK   DC    D'0'                Local stack pointers                 00358400
+*                                  Used by PUTTOK                       00358600
+         SPACE 1                                                        00358800
+OUTBUF   DS    CL80          OUTPUT BUFFER                              00359000
+MAXBUF   DC    A(L'OUTBUF)                                              00360000
+MAXWIDE  EQU   66                  Nice looking lines are 66 chars wide 00361390
+INDENT   EQU   8                   Indent to column 8 with first token  00361780
+PUTFLAG  DC    X'0'                Flag for output control              00362200
+PUTNTAIL EQU   X'80'               No tail character                    00362400
+PUTINADD EQU   X'40'               Currently in an address              00362600
+PUTNOIND EQU   X'20'               Do not indent at start of new line   00362800
+PUTSPEC  EQU   X'10'               Last token was an '@' or '.'         00362900
+PUTTAIL  DS    C                                                        00363000
+         END   PUNHDR                                                   00364000

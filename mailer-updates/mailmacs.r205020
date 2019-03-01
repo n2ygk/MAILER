@@ -1,0 +1,4 @@
+./ I 00546312          $ 546313 1                     02/01/90 11:37:35
+DBGHDRSC EQU   X'20'               Trace HDRSCAN processing             00546313
+DBGGETHD EQU   X'10'               Trace GETHDR processing              00546314
+DBGLOCAL EQU   X'08'               Trace LOCAL processing               00546314

@@ -1,0 +1,2 @@
+./ R 00067000          $ 67490 490                    12/08/88 17:32:15
+        *dst++ = mailblok.upcase[*src++];  /* translate to upper case */00067000

@@ -1,0 +1,3 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R207004    Handle a partial match as doesn't exist when building
+*          OUTGOING tables

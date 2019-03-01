@@ -1,0 +1,84 @@
+./ I 00025000          $ 25100 100                    10/18/89 18:13:02
+/*  FORWARD uses the first line of the file on disk to retain the     */00025100
+/*  following information:                                            */00025200
+/*                                                                    */00025300
+/*       Creation date         When first forward created             */00025400
+/*       Update date           When forwards last changed             */00025500
+/*                                                                    */00025600
+/*                                                                    */00025700
+./ I 00172000          $ 172500 500                   10/18/89 18:13:02
+   call chkheader                            /*                       */00172500
+./ R 00181000          $ 181290 290                   10/18/89 18:13:02
+else  do                                     /*                       */00181290
+   forward.0 = 0                             /*                       */00181580
+./ I 00182000          $ 182500 500                   10/18/89 18:13:02
+   end                                                                  00182500
+./ R 00191000          $ 191490 490                   10/18/89 18:13:02
+         expose console foruser forward. requestor                      00191490
+./ R 00193000 00194000 $ 193090 90                    10/18/89 18:13:02
+parse arg destination                        /* New destination       */00193090
+last = forward.0 + 1                         /* New number of lines   */00193180
+if last = 1  then  do                        /* Brand new file        */00193270
+   forward.1 = '*  Created:' date('U') time() , /* Create header line */00193360
+               '   Updated:' date('U') time()                           00193450
+   last = 2                                  /* Fix up count          */00193540
+   end                                                                  00193630
+else  call updatehdr                         /* Existing file         */00193720
+                                                                        00193810
+forward.last = destination                   /* Put in new dest.      */00193900
+forward.0 = last                             /* Update count          */00193990
+                                                                        00194080
+'ERASE' foruser 'FORWARD A'                  /* Erase old file        */00194170
+'EXECIO' forward.0  'DISKW' foruser 'FORWARD A (FINIS STEM FORWARD.'    00194260
+./ I 00221000          $ 221300 300                   10/18/89 18:13:02
+   matching.i = 0                            /* Set default value     */00221300
+   if left(word(forward.i,1),1) = '*'  then  iterate                    00221600
+./ R 00226000 00228000 $ 226990 990                   10/18/89 18:13:02
+   end                                                                  00226990
+./ I 00230000          $ 230040 40                    10/18/89 18:13:02
+                                                                        00230040
+                                                                        00230080
+/* *****************************************************************  */00230120
+/*                                                                    */00230160
+/*  ChkHeader is used to check an already existing FORWARD file       */00230200
+/*  for the header line.  If one does not exist, a dummy line is      */00230240
+/*  created.  This allows migration from the original format.         */00230280
+/*                                                                    */00230320
+/* *****************************************************************  */00230360
+                                                                        00230400
+ChkHeader:  procedure , /* Check for existence of header line */        00230440
+            expose forward.                                             00230480
+                                                                        00230520
+if left(word(forward.1,1),1) = '*'  then  return                        00230560
+do i=forward.0+1 to 2 by -1                  /* Slip all lines up 1   */00230600
+   j = i-1                                   /*   slot to make room   */00230640
+   forward.i = forward.j                     /*   for header line     */00230680
+   end                                                                  00230720
+forward.0 = forward.0 +1                     /* Fix up count          */00230760
+forward.1 = '*  Created: ??/??/?? ??:??:??' ,/* Don't know original   */00230800
+            '   Updated: ??/??/?? ??:??:??'  /*   dates               */00230840
+return                                       /*                       */00230880
+./ R 00249000          $ 249490 490                   10/18/89 18:13:02
+/*  An address of '<*>' will be taken to mean the local user.         */00249490
+./ I 00279000          $ 279500 500                   10/18/89 18:13:02
+      call chkheader                         /*                       */00279500
+./ I 00281000          $ 281500 500                   10/18/89 18:13:02
+         call updatehdr                      /* Set update date       */00281500
+./ R 00311000 00312000 $ 311390 390                   10/18/89 18:13:02
+   if left(word(forward.1,1),1) = '*'  then  delta=1                    00311390
+   else delta=0                              /*                       */00311780
+   call msg 'Forward: ' forward.0-delta 'forwarding id(s) deleted'      00312170
+   do i=1+delta to forward.0                 /*                       */00312560
+./ I 00426000          $ 426070 70                    10/18/89 18:13:02
+                                                                        00426070
+/* *****************************************************************  */00426140
+/*                                                                    */00426210
+/*  UpDateHdr will set the Update date/time field in the header       */00426280
+/*                                                                    */00426350
+/* *****************************************************************  */00426420
+UpDateHdr:  procedure  expose  forward.                                 00426490
+                                                                        00426560
+parse var forward.1 oldpart 'Updated:' .     /* Get creation date     */00426630
+forward.1 = oldpart || 'Updated:' date('U') time()                      00426700
+                                                                        00426770
+return                                                                  00426840

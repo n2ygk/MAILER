@@ -1,0 +1,71 @@
+./ I 00117000          $ 117100 100                   01/11/90 08:37:34
+         MVC   TICKID,MAILFTXT    message id number                     00117100
+         TM    DBGFLG6,DBGNOOUT   Sending mail?                         00117200
+         BZ    SKIP0102           ---> Yes                              00117300
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,HELO),                      X00117400
+               DOT=NO,COMP=NO                                           00117500
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,TICK),                      X00117600
+               DOT=NO,COMP=NO                                           00117700
+         B     SKIP0104                                                 00117800
+SKIP0102 EQU   *                                                        00117900
+./ D 00119000                                         01/11/90 08:37:34
+./ I 00120000          $ 120500 500                   01/11/90 08:37:34
+SKIP0104 EQU   *                                                        00120500
+./ I 00143000          $ 143100 100                   01/11/90 08:37:34
+         TM    DBGFLG6,DBGNOOUT   Sending mail?                         00143100
+         BZ    SKIP0112           ---> Yes                              00143200
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,MAIL),                      X00143300
+               DOT=NO,COMP=NO                                           00143400
+         B     SKIP0114                                                 00143500
+SKIP0112 EQU   *                                                        00143600
+./ I 00144000          $ 144500 500                   01/11/90 08:37:34
+SKIP0114 EQU   *                                                        00144500
+./ I 00148000          $ 148100 100                   01/11/90 08:37:34
+         TM    DBGFLG6,DBGNOOUT   Sending mail?                         00148100
+         BZ    SKIP0122           ---> Yes                              00148200
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,(MAIL,79)),                 X00148300
+               DOT=NO,COMP=NO                                           00148400
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,(MAIL+79,80)),              X00148500
+               DOT=NO,COMP=NO                                           00148600
+         B     SKIP0124                                                 00148700
+SKIP0122 EQU   *                                                        00148800
+./ I 00153000          $ 153500 500                   01/11/90 08:37:34
+SKIP0124 EQU   *                                                        00153500
+./ I 00201000          $ 201100 100                   01/11/90 08:37:34
+         TM    DBGFLG6,DBGNOOUT   Sending mail?                         00201100
+         BZ    SKIP0132           ---> Yes                              00201200
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,RCPT),                      X00201300
+               DOT=NO,COMP=NO                                           00201400
+         B     SKIP0134                                                 00201500
+SKIP0132 EQU   *                                                        00201600
+./ I 00202000          $ 202500 500                   01/11/90 08:37:34
+SKIP0134 EQU   *                                                        00202500
+./ I 00205000          $ 205100 100                   01/11/90 08:37:34
+         TM    DBGFLG6,DBGNOOUT   Sending mail?                         00205100
+         BZ    SKIP0142           ---> Yes                              00205200
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,(RCPT,79)),                 X00205300
+               DOT=NO,COMP=NO                                           00205400
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,(RCPT+79,80)),              X00205500
+               DOT=NO,COMP=NO                                           00205600
+         B     SKIP0144                                                 00205700
+SKIP0142 EQU   *                                                        00205800
+./ I 00210000          $ 210500 500                   01/11/90 08:37:34
+SKIP0144 EQU   *                                                        00210500
+./ I 00226000          $ 226090 90                    01/11/90 08:37:34
+         TM    DBGFLG6,DBGNOOUT   Sending mail?                         00226090
+         BZ    SKIP0152           ---> Yes                              00226180
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,DATA),                      X00226270
+               DOT=NO,COMP=NO                                           00226360
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,ENDDATA),                   X00226450
+               DOT=NO,COMP=NO                                           00226540
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,QUIT),                      X00226630
+               DOT=NO,COMP=NO                                           00226720
+         B     SKIP0154                                                 00226810
+SKIP0152 EQU   *                                                        00226900
+./ I 00240000          $ 240500 500                   01/11/90 08:37:34
+SKIP0154 EQU   *                                                        00240500
+./ I 00280000          $ 280200 200                   01/11/90 08:37:34
+         SPACE 1                                                        00280200
+LINESKEL DC      AL1(90)                                                00280400
+         DC      CL10'DISTSUB:'                                         00280600
+         DC      80C'.'                                                 00280800

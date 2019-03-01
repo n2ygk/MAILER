@@ -1,0 +1,645 @@
+*Fix logic for type 2/3 exits in addchn/srcchn.                  [1.24] 00001370
+*[1.22]Add DOMAINS table and type 3 exits                        [1.22] 00001450
+*[1.21]Fixed incorrect *default* handling w/*destination.               00001580
+*[1.16] added support for RESENT- fields                                00002000
+BUILDLST TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - BUILD LIST OF MAIL *00003000
+               RECIPIENTS'                                              00004000
+*---------------------------------------------------------------------* 00005000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00006000
+*    Program Property of the Trustees of Columbia University in the   * 00007000
+*    City of New York.                                                * 00008000
+*---------------------------------------------------------------------* 00009000
+BUILDLST CSECT ,                                                        00010000
+* BUILDLST -                                                            00011000
+* This routine builds a list of recipients for the current mail         00012000
+* file.  Those addresses in the To:, Cc:, and Bcc: lists that are       00013000
+* decided upon as recipients are treated differently depending          00014000
+* on the following conditions:                                          00015000
+*        1) Source of file - from local user, network, or gateway       00016000
+*        2) Existence of "*destination:" field in the header.           00017000
+*                                                                       00018000
+* E. Alan Crosswell                              CUCCA 4/82             00019000
+*                                                                       00020000
+* LAST EDIT: 5/23/82 BY ALAN CROSSWELL                                  00021000
+*                                                                       00022000
+*  CALLED VIA -                                                         00023000
+*  CALL BUILDLST,(MAILBLOK)                                             00024000
+         SPACE ,                                                        00025000
+PAB      DSECT ,                                                        00026000
+@MBLOK   DS    A             ADDRESS OF MAILBLOK                        00027000
+         SPACE ,                                                        00028000
+* A. Files containing the "*destination:" header                        00029000
+*    ===========================================                        00030000
+*                                                                       00031000
+*    Only addresses containing a host name identical to the             00032000
+*    one supplied after the "*destination" keyword are to               00033000
+*    receive a copy of the file.  This is treated as a seperate         00034000
+*    case so that it may be easily removed when a better method         00035000
+*    is developed.                                                      00036000
+*                                                                       00037000
+* B. Files from a local user                                            00038000
+*    =======================                                            00039000
+*                                                                       00040000
+*    All addresses in the lists are to receive copies of the            00041000
+*    file. Unrecognized hosts will be assumed to be RSCS nodes          00042000
+*    that have not been added to the Mailer Profile yet.                00043000
+*                                                                       00044000
+* C. Files from a network user                                          00045000
+*    =========================                                          00046000
+*                                                                       00047000
+*    All hosts that are served by this mailer will receive copies       00048000
+*    of the file.  This includes all aliases for the node that          00049000
+*    this Mailer is running on.                                         00050000
+*                                                                       00051000
+* D. Files from a network gateway user                                  00052000
+*    =================================                                  00053000
+*                                                                       00054000
+*    These files are treated like a local user in that all addresses    00055000
+*    are to be acted upon subject to the limitations imposed by a       00056000
+*    *destination list.                                                 00057000
+*                                                                       00058000
+         SPACE                                                          00059000
+* REGISTER USAGE -                                                      00060000
+R0  EQU  0 -                                                            00061000
+R1  EQU  1 -                                                            00062000
+R2  EQU  2 -                                                            00063000
+R3  EQU  3 -                                                            00064000
+R4  EQU  4 -                                                            00065000
+R5  EQU  5 -                                                            00066000
+R6  EQU  6 -                                                            00067000
+R7  EQU  7 -                                                            00068000
+R8  EQU  8 -                                                            00069000
+R9  EQU  9 - STACK POINTER                                              00070000
+R10 EQU 10 - STACK LENGTH                                               00071000
+R11 EQU 11 - MAILBLOK BASE                                              00072000
+R12 EQU 12 - PROGRAM BASE                                               00073000
+R13 EQU 13 - SAVE AREA                                                  00074000
+R14 EQU 14 - SUBROUTINE LINKAGE                                         00075000
+R15 EQU 15 - SUBROUTINE LINKAGE                                         00076000
+         SPACE                                                          00077000
+         PRINT NOGEN                                                    00078000
+         BLOCKS ,                                                       00079000
+         MAILBLOK ,                                                     00080000
+         SPACE 1                                                        00080300
+         COPY  DEBUG                                                    00080600
+         EJECT                                                          00081000
+BUILDLST CSECT ,                                                        00082000
+         USING BUILDLST,R15  TEMPORARY ADDRESSABILITY                   00083000
+         B     EYESKIP       BRANCH OVER EYESKIP                        00084000
+MYNAME   DC    CL8'BUILDLST',CL8'&SYSDATE'                              00085000
+EYESKIP  DS    0H                                                       00086000
+         DROP  R15                                                      00087000
+         STM   R14,R12,12(R13) SAVE CALLER'S REGS                       00088000
+         LR    R12,R15       PERMANENT ADDRESSABILITY                   00089000
+         USING BUILDLST,R12                                             00090000
+         LA    R14,SAVE      MY SAVE AREA                               00091000
+         ST    R13,4(R14)    SAVE CALLER'S PTR                          00092000
+         ST    R14,8(R13)    CHAIN MINE BACK                            00093000
+         LR    R13,R14       SET MY SAVE PTR                            00094000
+         USING PAB,R1        ADDRESS PARM                               00095000
+         L     R11,@MBLOK    GET MAILBLOK BASE                          00096000
+         DROP  R1                                                       00097000
+         USING MAILBLOK,R11  ADDRESSABILITY                             00098000
+         LM    R9,R10,STACKP GET STACK POINTER                          00099000
+         SPACE ,                                                        00100000
+*--------------------------------------------------------------------   00101000
+*  CHECK FOR EXISTENCE OF "*DESTINATION" FIELD (MFLGDEST ON)            00102000
+*--------------------------------------------------------------------   00103000
+         TM    MAILFLG1,MFLGDEST                                        00104000
+         BNO   NODEST        NO DESTINATION JUNK                        00105000
+         L     R5,MAILKTAB   GET KEYWORD TABLE                          00106000
+         CALL  TBLUK,((R5),DEST,L'DEST,TWORK)                           00107000
+         LTR   R15,R15       IT BETTER FIND IT!!!                       00108000
+         BNZ   DESTERR       WAAAA!!!                                   00109000
+         USING FIELDD,R1     ADDRESS THE FIELDD                         00110000
+         MVC   DESTLST,FIPARS  GET THE DESTINATION LIST                 00111000
+         DROP  R1                                                       00112000
+         SPACE ,                                                        00113000
+NODEST   EQU   *                                                        00114000
+*--------------------------------------------------------------------   00115000
+*  LOOKUP PARSE LIST FOR EACH ADDRESS LIST (TO, CC, BCC).               00116000
+*--------------------------------------------------------------------   00117000
+         XC    PTRS(#NAMES*4),PTRS   ZERO SOME POINTERS                 00118000
+         LA    R5,#NAMES     NUMBER OF ADDRESS LIST FIELDS              00119000
+         SR    R4,R4         GET A ZERO                                 00120000
+PARSEM   EQU   *                                                        00121000
+         TM    MAILFLG1,MFLG1RES [1.16]resent?                          00122000
+         BNO   P#1           [1.16] no do the regular stuff             00123000
+         L     R7,RNAMES(R4) [1.16]get RESENT- names table              00124000
+         L     R3,RLENS(R4)  [1.16]and lengths                          00125000
+         B     P#2           [1.16]and go do it                         00126000
+P#1      EQU   *             [1.16]here for regular fields              00127000
+         L     R7,NAMES(R4)  GET THE STRING POINTER                     00128000
+         L     R3,LENS(R4)   GET LENGTH                                 00129000
+P#2      EQU   *             [1.16]here for resent-fields               00130000
+         L     R8,MAILKTAB   GET FIELD TABLE ADDRESS                    00131000
+         CALL  TBLUK,((R8),(R7),(R3),TWORK)                             00132000
+         LTR   R15,R15       NOT THERE                                  00133000
+         BNZ   NEXTONE       GET THE NEXT ONE                           00134000
+         LR    R6,R1         GET THE FIELDD POINTER                     00135000
+         USING FIELDD,R6     ADDRESS IT                                 00136000
+         TM    MAILFLG1,MFLG1RES [1.16]doing resent fields?             00137000
+         BNO   P#5           [1.16]nope                                 00138000
+* find last extension in list of resent fields (multiple resends)       00139000
+P#3      EQU   *             [1.16]loop to find last extn               00140000
+         CLC   FIEXTN,=F'0'  [1.16]is this the last one?                00141000
+         BE    P#4           [1.16]yup                                  00142000
+         ICM   R6,B'0111',FIEXTN [1.16]chain along                      00143000
+         B     P#3           [1.16]iterate                              00144000
+P#4      EQU   *             [1.16]here w/r6->fieldd                    00145000
+         CLC   FIECNT,RESCNT [1.16]is this group at the right level?    00146000
+         BH    NODATE        [1.16]too many RESENT-to's (i.e. not       00147000
+*                            enough Resent-dates)                       00148000
+         C     R6,MAILDFLD   [1.16]this field must appear AFTER the     00149000
+*                            last date field.                           00150000
+         BH    P#5           [1.16]it's OK to use then                  00151000
+         SR    R1,R1         [1.16]don't use this field's addresses     00152000
+         B     P#6           [1.16]skip over the load                   00153000
+P#5      EQU   *             [1.16]here when not doing resent stuff     00154000
+         L     R1,FIPARS     GET PARSE LIST POINTER                     00155000
+P#6      EQU   *             [1.16]Here when wrong group level          00156000
+         ST    R1,PTRS(R4)   REMEMBER IT                                00157000
+         ST    R6,FIELDDPS(R4)     Remember associated fieldd address   00157500
+NEXTONE  EQU   *                                                        00158000
+         LA    R4,4(R4)      BUMP THE NAME ARRAY POINTER                00159000
+         BCT   R5,PARSEM     GO PARSE THE NEXT LIST                     00160000
+         SPACE ,                                                        00161000
+         DROP  R6                                                       00162000
+*--------------------------------------------------------------------   00163000
+*  PARSE LISTS BUILT.  NOW GO THRU ADDRESS BY ADDRESS AND BUILD         00164000
+*  AN ACTION LIST (ACTADR BLOCKS)                                       00165000
+*--------------------------------------------------------------------   00166000
+         XC    MAILCHN,MAILCHN         CLEAR THE CHAIN POINTER          00167000
+         XC    MAILRCNB,MAILRCNB  COUNT OF RECIPIENT BLOCKS             00168000
+         XC    MAILRCNT,MAILRCNT  COUNT OF RECIPIENTS                   00169000
+         SR    R7,R7         GET A ZERO FOR THE INDEX                   00170000
+         LA    R8,#NAMES     NUMBER OF ADDRESS LISTS                    00171000
+DO1      EQU   *                                                        00172000
+         L     R1,PTRS(R7)   GET AN ADDRESS LIST POINTER                00173000
+         LTR   R1,R1                                                    00174000
+         BZ    DONEXT        THIS SLOT IS EMPTY, KEEP TRUCKIN           00175000
+         BAL   R14,BLDACT    BUILD SOME ACTADR BLOCKS                   00176000
+         TM    BLDFLAG,BLDFLMOD    Any MBOX mods done?                  00176100
+         BZ    DONEXT              ---> No                              00176200
+         L     R1,FIELDDPS(R7)     Get assocaited FIELDD address        00176300
+         USING FIELDD,R1                                                00176400
+         OI    FIFLG1,FIEDIFLG     Remember it was changed              00176500
+         DROP  R1                                                       00176600
+DONEXT   EQU   *                                                        00177000
+         LA    R7,4(R7)                                                 00178000
+         BCT   R8,DO1        GET THE NEXT PARSE LIST                    00179000
+DODONE   EQU   *                                                        00180000
+         ICM   R5,B'1111',MAILRCNB  GET NUMBER FOR RECIPIENT BLOCKS     00181000
+         BZ    NORECPT       NO RECIPIENTS?                             00182000
+         WTR   BLS043,(D,(R5))                                          00183000
+         A     R5,MAILRTOT   ADD TO TOTAL                               00184000
+         ST    R5,MAILRTOT                                              00185000
+         SR    R15,R15                                                  00186000
+RET      EQU   *                                                        00187000
+         L     R13,4(R13)              GET CALLER'S SAVE PTR            00188000
+         L     R14,12(R13)             GET R14                          00189000
+         LM    R0,R12,20(R13)          GET R0-R12                       00190000
+         BR    R14                     RETURN                           00191000
+         SPACE ,                                                        00192000
+*--------------------------------------------------------------------   00193000
+*  ERROR RETURNS                                                        00194000
+*--------------------------------------------------------------------   00195000
+DESTERR  EQU   *                                                        00196000
+         WTR   BLS026,(CA,MYNAME)                                       00197000
+         LA    R15,4                                                    00198000
+         B     RET                                                      00199000
+         SPACE ,                                                        00200000
+NOSPACE  EQU   *                                                        00201000
+         WTR   BLS003,(CA,MYNAME)                                       00202000
+         LA    R15,12                                                   00203000
+         B     RET                                                      00204000
+         SPACE ,                                                        00205000
+NORECPT  EQU   *                                                        00206000
+         WTR   BLS044                                                   00207000
+         LA    R15,4                                                    00208000
+         B     RET                                                      00209000
+         SPACE ,                                                        00210000
+NODATE   EQU   *             [1.16] too many resent addresses           00211000
+         WTR   BLS023        [1.16]say date is missing                  00212000
+         LA    R15,4         [1.16]                                     00213000
+         B     RET           [1.16]                                     00214000
+         SPACE ,             [1.16]                                     00215000
+*--------------------------------------------------------------------   00216000
+*  BLDACT -                                                             00217000
+*   BUILD LIST OF ACTADR BLOCKS. (CHECKS IF FILE IS LOCAL/NET/DEST)     00218000
+*                                                                       00218500
+*  ENTRY -                                                              00219000
+*   R1      - PARSE LIST ADDRESS                                        00220690
+*   R9,R10  - STACK POINTERS                                            00221380
+*   R11     - MAILBLOK BASE                                             00222070
+*   MAILCHN - ACTADR LIST ANCHOR                                        00223000
+*   R14     - RETURN ADDRESS                                            00224290
+*                                                                       00224580
+*--------------------------------------------------------------------   00225000
+         SPACE 1                                                        00225500
+BLDACT   EQU   *                                                        00226000
+         STM   R14,R12,12(R13)         SAVE CALLER'S REGS               00227000
+         ST    R13,BLDSAVE+4                                            00228000
+         LA    R13,BLDSAVE                                              00229000
+         XC    BLDFLAG,BLDFLAG     Clear communication flag             00229500
+         LR    R8,R1         GET A BETTER HANDLE ON PARSE LIST          00230000
+         USING MBOX,R8       Address the MBOX                           00231490
+         SPACE 1                                                        00231690
+BLDLOOP1 EQU   *                                                        00232000
+         CLC   MBXLCNT,=F'0' NULL BLOCK? **********************         00233680
+         BE    BLDEND        END OF LIST **********************         00234000
+         ICM   R7,B'1111',MBXRTL   Point to route list                  00238260
+         BZ    BLDNORTE            ---> No route list                   00238450
+         USING NODE,R7                                                  00238640
+         ICM   R1,B'1111',NODDOWN  Down to node chain for routeaddr     00238830
+*        BZ    ????                ---> What should be done here?       00239020
+         LR    R7,R1               Copy into expected register          00239210
+         B     BLDHOK                                                   00239400
+         SPACE 1                                                        00239590
+BLDNORTE DS    0H                                                       00239780
+         ICM   R7,B'1111',MBXDML  Point to node                         00239970
+         USING NODE,R7            Address it                            00240160
+         BNZ   BLDHOK             Host list exists                      00240350
+         SPACE 1                                                        00240540
+*        ADDRESS IS LACKING A HOSTNAME,  DEFAULT THE HOST               00240730
+*        NAME TO MATCH THE SENDER'S HOSTNAME.                           00240920
+         SPACE 1                                                        00241110
+         ICM   R1,B'1111',MAILSFLD     GET SENDER FIELDD            1.6 00242000
+         BZ    BLDSKP1        CAN'T DEFAULT FROM NOTHING....        1.6 00243000
+         USING FIELDD,R1     ADDRESS IT                             1.6 00244000
+         ICM   R1,B'1111',FIPARS GET PARSE LIST POINTER             1.6 00245000
+         BZ    BLDSKP1        NO LIST                               1.6 00246000
+         DROP  R1                                                   1.6 00247000
+         ICM   R1,B'1111',MBXDML-MBOX(R1) GET SENDER HOST NAME          00248680
+         BZ    BLDSKP1                                              1.6 00249000
+         ST    R1,MBXDML            PATCH THE HOST LIST                 00250680
+         LR    R7,R1         FAKE OUT THIS POINTER TOO              1.6 00251000
+         DROP  R7                  Done with addressability             00251500
+         SPACE 1                                                        00251700
+BLDHOK   EQU   *                                                    1.6 00252000
+         ST    R7,GNODE            Save address of TOKEND               00253970
+         MVC   GSTKADDR,=A(LCLSTACK) GENLIST breaks stk addr            00254070
+         MVC   GSTKLEN,=A(L'LCLSTACK)   Update stack length             00254170
+         CALL  GENLIST,(GNODE,FAKETOKA,FAKETOKL,GSTKADDR,GSTKLEN)       00254550
+         LTR   R15,R15             Successful?                          00254750
+         BNZ   BLDSKP1             No, skip this address                00255040
+         LA    R7,FAKETOK          Point R7 at internal TOKEND          00255330
+         USING TOKEND,R7           Address the TOKEND                   00255620
+         SPACE ,                                                        00256000
+* -- TEST FOR *DESTINATION JUNK --                                      00257000
+         TM    MAILFLG1,MFLGDEST       IS IT THERE?                     00258000
+         BNO   BLDND         NO, GOOD                                   00259000
+         LR    R1,R7         GET FIELDD POINTER                         00260000
+         BAL   R14,INLIST    SEE IF THIS NAME IS IN THE DEST LIST       00261000
+         LTR   R15,R15       SEE IF IT WAS MATCHED                      00262000
+         BNZ   BLDSKP1       NO MATCH, SKIP THIS ADDRESS                00263000
+* -- END OF TEST FOR *DESTINATION JUNK --                               00264000
+BLDND    EQU   *                                                        00265000
+         SR    R2,R2         GET A ZERO                                 00266000
+         L     R2,TOKLEN     LENGTH OF STRING                           00267890
+         L     R3,TOKPTR                                                00269370
+         CALL  FNROUTD,((R3),(R2)) find routd                    [1.22] 00269990
+         LTR   R1,R15        FIND IT?                            [1.22] 00270980
+         BZ    BLDNF1        NOT FOUND                           [1.22] 00271970
+BLDCHN1  EQU   *                                                        00273000
+         LR    R4,R1         GET A BETTER HANDLE ON THE ROUTD           00274000
+* -- MORE *DESTINATION JUNK                                             00275000
+         TM    MAILFLG1,MFLGDEST                                        00276000
+         BO    BLDLCL        BUILD AS IF FOR A LOCAL USER               00277000
+* --                                                                    00278000
+         TM    MAILFLG1,MFLG1LCL  FILE LOCALLY GENERATED OR FROM NET?   00279000
+         BO    BLDLCL        IT'S LOCALLY GENERATED, TAKE ALL ACTADRS   00280000
+         TM    MAILFLG1,MFLG1GTW FILE FROM A GATEWAY?                   00281000
+         BO    BLDLCL        BUILD AS IF FROM A LOCAL USER              00282000
+         USING ROUTD,R4      ADDRESS THE ROUTD                          00283000
+         CLC   RTROUTE,CPUSTR AM I THE ROUTER FOR THIS ALIAS?           00284000
+         BNE   BLDSKP1       NOPE, SKIP THIS ACTADR                     00285000
+         DROP  R4                                                       00286000
+         SPACE 1                                                        00286500
+BLDLCL   EQU   *                                                        00287000
+         LR    R2,R8         GET MBOX POINTER                           00288490
+         BAL   R14,ADDCHN    ADD ONTO CHAIN                             00289000
+         ICM   R1,B'1111',MBXRTL   Did we use route addr?               00289100
+         BZ    BLDUPCNT            ---> No                              00289200
+         ST    R8,DELRMBX          MBOX address into PLIST              00289300
+         CALL  DELROUTE,(DELRMBX)  Delete first route from list         00289400
+         LTR   R15,R15             Successful?                          00289500
+         BNZ   BLDUPCNT            ---> No                              00289600
+         OI    BLDFLAG,BLDFLMOD    Remember MBOX mod done               00289700
+         SPACE 1                                                        00289800
+BLDUPCNT DS    0H                                                       00289900
+         L     R1,MAILRCNT   GET RECIPIENT COUNT                        00290000
+         LA    R1,1(R1)      ADD ONE                                    00291000
+         ST    R1,MAILRCNT                                              00292000
+         C     R1,MAILRMAX   COMPARE TO MAX                             00293000
+         BNH   *+8                                                      00294000
+         ST    R1,MAILRMAX   SET NEW MAX                                00295000
+BLDSKP1  EQU   *                                                        00296000
+         ICM   R8,B'1111',MBXNEXT      GET THE NEXT ONE                 00297680
+         BNZ   BLDLOOP1                                                 00298000
+BLDEND   EQU   *                                                        00299000
+         SR    R15,R15                                                  00300000
+         L     R13,4(R13)                                               00301000
+         L     R14,12(R13)                                              00302000
+         LM    R0,R8,20(R13)                                            00303000
+         BR    R14                                                      00304000
+         SPACE ,                                                        00305000
+BLDNF1   EQU   *                                                        00306000
+*----------------------------------------------------------------[1.22] 00309990
+* Whole mess here deleted due to use of new FNROUTD, above.      [1.22] 00312980
+*----------------------------------------------------------------[1.22] 00315970
+         WTR BLS027,(CA,(R3))          UNKNOW HOST OR ALIAS             00321000
+         B     BLDSKP1       SKIP THIS ADDRESS                          00322000
+         SPACE ,                                                        00323000
+DELRMBX  DC    A(0)                Addr of MBOX for DELROUTE call       00323300
+         EJECT ,                                                        00323600
+*--------------------------------------------------------------------   00324000
+*  ADDCHN -                                                             00325000
+*   BUILD AND ADD AN ACTADR BLOCK ONTO MAILCHN.                         00326000
+*  BLOCKS ARE ADDED ACCORDING TO THE FOLLOWING RULES:                   00327000
+*   1) IF THE RTPROG IS TYPE 1, ALWAYS CREATE AND ADD AN ACTADR         00328000
+*   2) IF THE RTPROG IS TYPE 2, ONLY CREATE AND ADD AN ACTADR           00329000
+*      IF THERE ISN'T ALREADY ONE FOR THE SAME NODE, user, exit, [1.24] 00330090
+*      and parm. (see SRCCHN)                                    [1.24] 00330180
+*   3) If the RTPROG is type 3, create a subchain of ACTADR's    [1.22] 00330300
+*      anchored by the ACTCHN (similar to type 2)                [1.22] 00330600
+*                                                                       00331000
+*  ENTRY -                                                              00332000
+*   R1 - ROUTD ADDRESS                                                  00333000
+*   R2 - MBOX ADDRESS                                                   00334490
+*   R9,R10 - STACK POINTER                                              00335000
+*   R11 - MAILBLOK BASE                                                 00336000
+*   R12 - PROGRAM BASE                                                  00337000
+*   R14 - RETURN ADDRESS                                                00338000
+*   MAILCHN - CHAIN POINTER                                             00339000
+*--------------------------------------------------------------------   00340000
+ADDCHN   EQU   *                                                        00341000
+         STM   R14,R12,12(R13)         SAVE CALLER'S REGS               00342000
+         ST    R13,ADDSAVE+4           SAVE 13                          00343000
+         LA    R13,ADDSAVE   GET MY SAVE AREA                           00344000
+         LR    R6,R2                                                    00345000
+         LR    R5,R1         GET ROUTD POINTER                          00346000
+         USING ROUTD,R5      ADDRESS THE ROUTD                          00347000
+         TM    RTFLAGS,RTP1  IS IT TYPE 1?                              00348000
+         BO    ADD1          ADD IT ON                                  00350000
+         TM    RTFLAGS,RTP2  is it type 2?                       [1.22] 00350040
+         BO    ADD$2         more dumb code                      [1.22] 00350080
+         DROP  R5                                                       00350120
+* Type 3 routing exits-                                          [1.22] 00350160
+ADD$3    EQU   *                                                 [1.22] 00350200
+         LR    R1,R5         point to routd                      [1.22] 00350240
+         BAL   R14,SRCCHN    search chain for a matching one     [1.22] 00350280
+         LTR   R15,R15       see if one is found                 [1.22] 00350320
+         BZ    ADD1          not found,  add onto the chain      [1.22] 00350360
+* address of found ACTADR is returned in R15...                  [1.22] 00350400
+         LR    R7,R15        move it into r7 for consistency     [1.22] 00350440
+ADD$3A   EQU   *             top of search for chn end loop      [1.22] 00350480
+         USING ACTADR,R7     chain along to end                  [1.22] 00350520
+         ICM   R3,B'1111',ACTCHN get next pointer                [1.22] 00350560
+         BZ    ADD$3B        found end of chain -- go add it     [1.22] 00350600
+         LR    R7,R3         chain merrilly along...             [1.22] 00350640
+         B     ADD$3A        back to top looking for end of chn  [1.22] 00350680
+ADD$3B   EQU   *             at end of chain.  R15->actadr       [1.22] 00350720
+         S     R10,=A(ACTLEN) make room for new ACTADR           [1.22] 00350760
+         BL    NOSPACE       life sucks and then you die         [1.22] 00350800
+         ST    R9,ACTCHN     set curr chain ptr to new space     [1.22] 00350840
+         LR    R7,R9         point to the new guy                [1.22] 00350880
+         B     ADD$3C        and go to common add code below     [1.22] 00350920
+         DROP  R7            don't need that using anymore       [1.22] 00350960
+* TYPE 2 ROUTING EXITS-                                                 00351000
+ADD$2    EQU   *                                                 [1.22] 00351500
+         LR    R1,R5         POINT TO ROUTD                             00352000
+         BAL   R14,SRCCHN    SEARCH CHAIN TO SEE IF ONE IS ALREADY      00353000
+         LTR   R15,R15                 THERE.                           00354000
+         BNZ   ADDRET        FOUND ONE, NO NEED TO ADD THIS ONE  [1.22] 00355490
+* TYPE 1 ROUTING EXITS-                                                 00356000
+ADD1     EQU   *                                                        00357000
+         LA    R7,MAILCHN    ADDRESS OF CHAIN POINTER                   00358000
+ADD2     EQU   *                                                        00359000
+         ICM   R8,B'1111',0(R7) GET NEXT POINTER                        00360000
+         BZ    ADD3          GO ADD IT ON                               00361000
+         USING ACTADR,R8     ADDRESS THE ACTADR                         00362000
+         LA    R7,ACTNEXT    GET NEXT POINTER ADDRESS                   00363000
+         DROP  R8                                                       00364000
+         B     ADD2          CHAIN ALONG                                00365000
+ADD3     EQU   *             ADD ON HERE                                00366000
+         S     R10,=A(ACTLEN)  MAKE ROOM FOR A NEW ACTADR BLOCK         00367000
+         BL    NOSPACE       SHIT!                                      00368000
+         ST    R9,0(R7)      SET NEXT POINTER IN PREVIOUS ONE           00369000
+         LR    R7,R9         POINT TO CURRENT ONE                       00370000
+ADD$3C   EQU   *             common code entry for type 3 above  [1.22] 00370500
+         LA    R9,ACTLEN(R9) BUMP STACK'                                00371000
+         STM   R9,R10,STACKP Update save stack pointer values           00371500
+         USING ACTADR,R7     ADDRESS IT                                 00372000
+         XC    ACTNEXT,ACTNEXT  CLE NEXT POINTER                        00373000
+         XC    ACTCHN,ACTCHN clear chain pointer                 [1.22] 00373500
+         ST    R5,ACTRT      SET ROUTD POINTER                          00374000
+         ST    R6,ACTMBOX    SET MBOX POINTER                           00375680
+         DROP  R7            DONE WITH IT                               00376000
+         L     R1,MAILRCNB   GET RECIPIENT COUNT                        00377000
+         LA    R1,1(R1)      BUMP IT ONE                                00378000
+         ST    R1,MAILRCNB   PUT IT BACK                                00379000
+ADDRET   EQU   *                                                        00380000
+         SR    R15,R15                                                  00381000
+         L     R13,4(R13)                                               00382000
+         L     R14,12(R13)                                              00383000
+         LM    R0,R8,20(R13)                                            00384000
+         BR    R14                                                      00385000
+         SPACE ,                                                        00386000
+*--------------------------------------------------------------------   00387000
+*  SRCCHN -                                                             00388000
+*   SEARCH MAILCHN FOR AN ACTADR THAT HAS A ROUTD WHOSE RTROUTE IS      00389000
+*   THE SAME AS THE RTROUTE IN THE ROUTD POINTED TO BY R1 ON ENTRY.     00390000
+*   For type 2 exits,  these must match:                         [1.24] 00390060
+*        RTROUTE, RTUSER, RTPROG, RTPARM                         [1.24] 00390120
+*   For type 3 exits,  only these must match:                    [1.24] 00390180
+*        RTROUTE, RTUSER, RTPROG                                 [1.24] 00390240
+*   The reason for the difference is that a type 2 exit is called[1.24] 00390300
+*   for all recipients and whichever ROUTD happens to be the 1st [1.24] 00390360
+*   one on the chain is the one that gets used.  If the ROUTDs   [1.24] 00390420
+*   have the same program but different parameter,  then the     [1.24] 00390480
+*   order of recipients will result in different actions.        [1.24] 00390540
+*                                                                [1.24] 00390600
+*   For a type 3 exit,  the exit named in RTPROG gets called,    [1.24] 00390660
+*   but has all the ROUTDs available to it on ACTCHN.  So,  it   [1.24] 00390720
+*   is assumed that the exit will explicitly check for differing [1.24] 00390780
+*   RTPARMs.                                                     [1.24] 00390840
+*                                                                [1.24] 00390900
+*   RETURN R15 = 0 IF FOUND, ELSE NON-ZERO.                             00391000
+*  ENTRY -                                                              00392000
+*   R1 - ADDRESS OF ROUTD TO CHECK                                      00393000
+*  EXIT -                                                               00394000
+*   R15 - zero = not found;  non-zero = found; value is address  [1.22] 00395290
+*                                       of the matched ACTADR    [1.22] 00395580
+*--------------------------------------------------------------------   00396000
+SRCCHN   EQU   *                                                        00397000
+         STM   R14,R12,12(R13)         SAVE CALLER'S REGISTERS          00398000
+         ST    R13,SRCSAVE+4           SAVE HIS R13                     00399000
+         LA    R13,SRCSAVE                                              00400000
+         LR    R5,R1         GET A BETTER HANDLE ON THE ROUTD           00401000
+         LA    R7,MAILCHN    POINT TO CHAIN POINTER                     00402000
+SRC1     EQU   *                                                        00403000
+         SR    R15,R15       INITIALLY NOT FOUND                 [1.22] 00404490
+         ICM   R8,B'1111',0(R7)        GET NEXT POINTER                 00405000
+         BZ    SRCRET        RETURN NOT FOUND                           00406000
+         USING ACTADR,R8     ADDRESS THE ACTADR BLOCK                   00407000
+         ICM   R6,B'1111',ACTRT GET ROUTD POINTER                       00408000
+         BZ    SRCSKP        SKIP THIS ACTADR                           00409000
+         CLC   RTROUTE-ROUTD(8,R6),RTROUTE-ROUTD(R5)                    00410000
+         BNE   SRCSKP        NOT FOUND                                  00411000
+         CLC   RTUSER-ROUTD(8,R6),RTUSER-ROUTD(R5)                      00412000
+         BNE   SRCSKP        not found                           [1.24] 00413090
+         CLC   RTPROG-ROUTD(8,R6),RTPROG-ROUTD(R5)               [1.24] 00413180
+         BNE   SRCSKP        not found                           [1.24] 00413270
+         TM    RTFLAGS-ROUTD(R5),RTP3 if type 3                  [1.24] 00413360
+         BO    SRCFND                 we have found it.          [1.24] 00413450
+         CLC   RTPARM-ROUTD(8,R6),RTPARM-ROUTD(R5)               [1.24] 00413540
+         BE    SRCFND        found it for a type 2.              [1.24] 00413630
+SRCSKP   EQU   *                                                        00414000
+         LA    R7,ACTNEXT    POINT TO NEXT POINTER                      00415000
+         DROP  R8                                                       00416000
+         B     SRC1          AND LOOP BACK                              00417000
+SRCFND   EQU   *                                                        00418000
+         LR    R15,R8        address of the matched ACTADR       [1.22] 00419490
+SRCRET   EQU   *                                                        00420000
+         L     R13,4(R13)    RESTORE R13                                00421000
+         L     R14,12(R13)                                              00422000
+         LM    R0,R12,20(R13)                                           00423000
+         BR    R14                                                      00424000
+         SPACE ,                                                        00425000
+*--------------------------------------------------------------------   00426000
+* INLIST                                                                00427000
+*  CHECK TO SEE IF THE GIVEN HOSTNAME IS IN THE LIST HOST NAMES         00428000
+*  SUPPLIED IN THE *DESTINATION FIELD.                                  00429000
+* ENTRY                                                                 00430000
+*  R1 - TOKEND FOR HOST NAME                                            00431000
+*  DESTLST - LIST OF TOKENDS FROM *DESTINATION FIELD                    00432000
+* EXIT                                                                  00433000
+*  R15 = 0 FOR MATCH,  NON-ZERO FOR NO MATCH                            00434000
+*--------------------------------------------------------------------   00435000
+INLIST   EQU   *                                                        00436000
+         STM   R14,R12,12(R13) SAVE CALLER'S REGS                       00437000
+         ST    R13,INSAVE+4                                             00438000
+         LA    R13,INSAVE                                               00439000
+         USING TOKEND,R1     GRAB THE TEST TOKEN                        00440000
+         SR    R3,R3         GET ZERO                                   00441000
+         L     R3,TOKLEN     GET TOKEN LENGTH                           00442590
+         L     R4,TOKPTR         AND ADDRESS                            00443570
+         DROP  R1                                                       00444000
+         LA    R15,4         SET ERROR CODE IN CASE                     00445000
+         ICM   R10,B'1111',DESTLST GET THE TOKEND                       00446000
+         BZ    INRET         NO  MATCH                                  00447000
+INLOOP   EQU   *                                                        00448000
+         USING TOKEND,R10                                               00449000
+         SR    R1,R1         GET A ZERO                                 00450000
+         L     R1,TOKLEN     LENGTH OF STRING                           00451590
+         L     R2,TOKPTR          ADDRESS OF IT                         00452570
+         BAL   R14,STRCMP                                               00453000
+         LTR   R15,R15       TEST RETCODE                               00454000
+         BZ    INRET         MATCH FOUND, RETURN                        00455000
+         ICM   R10,B'1111',TOKNEXT GET NEXT TOKEN                       00456490
+         BNZ   INLOOP        LOOP BACK FOR NEXT TOKEN                   00457000
+         LA    R15,4         NON-ZERO RETCODE                           00458000
+INRET    EQU   *                                                        00459000
+         L     R13,4(R13)                                               00460000
+         L     R14,12(R13)                                              00461000
+         LM    R0,R12,20(R13)                                           00462000
+         BR    R14                                                      00463000
+         SPACE ,                                                        00464000
+*--------------------------------------------------------------------   00465000
+* STRCMP                                                                00466000
+*   CASE INDEPENDENT COMPARISON OF STRINGS.                             00467000
+* ENTRY-                                                                00468000
+*  R1 - STRING1 LENGTH                                                  00469000
+*  R2 - STRING1 ADDRESS                                                 00470000
+*  R3 - STRING2 LENGTH                                                  00471000
+*  R4 - STRING2 ADDRESS                                                 00472000
+* EXIT-                                                                 00473000
+*  R15 - 0=MATCH   NON-ZERO=NO MATCH                                    00474000
+*--------------------------------------------------------------------   00475000
+STRCMP   EQU   *                                                        00476000
+         STM   R14,R12,12(R13)                                          00477000
+         ST    R13,CMPSAVE+4                                            00478000
+         LA    R13,CMPSAVE                                              00479000
+         CR    R1,R3         NO MATCH IF LENGTHS DIFFER                 00480000
+         BNE   STRNOM        RETURN NO MATCH                            00481000
+         SR    R5,R5         INDEX                                      00482000
+STRLP    EQU   *                                                        00483000
+         LTR   R3,R3         END OF STRING YET                          00484000
+         BNH   STRMAT        FOUND A MATCH                              00485000
+         SR    R1,R1         GET A ZERO                                 00486000
+         IC    R1,0(R5,R2)                                              00487000
+         O     R1,=XL4'00000040'  FORCE UPPER CASE                      00488000
+         SR    R6,R6                                                    00489000
+         IC    R6,0(R5,R4)   GET OTHER ONE                              00490000
+         O     R6,=XL4'00000040'                                        00491000
+         CR    R1,R6         COMPARE                                    00492000
+         BNE   STRNOM        NO MATCH                                   00493000
+         LA    R5,1(R5)      BUMP INDEX                                 00494000
+         BCTR  R3,0          -1 FROM COUNT                              00495000
+         B     STRLP                                                    00496000
+STRNOM   EQU   *                                                        00497000
+         LA    R15,4         NO MATCH                                   00498000
+         B     STRET                                                    00499000
+STRMAT   EQU   *                                                        00500000
+         SR    R15,R15                                                  00501000
+STRET    EQU   *                                                        00502000
+         L     R13,4(R13)                                               00503000
+         L     R14,12(R13)                                              00504000
+         LM    R0,R12,20(R13)                                           00505000
+         BR    R14                                                      00506000
+         SPACE ,                                                        00507000
+*--------------------------------------------------------------------   00508000
+*  READ-ONLY DATA                                                       00509000
+*--------------------------------------------------------------------   00510000
+COPY     MVC   0(0,R2),0(R3)                                            00511000
+         SPACE 1                                                        00511500
+NAMES    DC    A(NTO,NCC,NBCC)                                          00512000
+#NAMES   EQU   (*-NAMES)/4                                              00512500
+LENS     DC    A(L'NTO,L'NCC,L'NBCC)                                    00513000
+         SPACE 1                                                        00514490
+PTRS     DS    (#NAMES)F                                                00515000
+FIELDDPS DS    (#NAMES)F                                                00515300
+         SPACE 1                                                        00515600
+NTO      DC    C'TO'                                                    00516000
+NCC      DC    C'CC'                                                    00517000
+NBCC     DC    C'BCC'                                                   00518000
+         SPACE 1                                                        00518500
+RNAMES   DC    A(RNTO,RNCC,RNBCC)      [1.16]                           00519000
+RLENS    DC    A(L'RNTO,L'RNCC,L'RNBCC) [1.16]                          00520000
+         SPACE 1                                                        00520500
+RNTO     DC    C'RESENT-TO'            [1.16]                           00521000
+RNCC     DC    C'RESENT-CC'            [1.16]                           00522000
+RNBCC    DC    C'RESENT-BCC'           [1.16]                           00523000
+         SPACE 1                                                        00523500
+DEST     DC    C'*DESTINATION'                                          00524000
+DEFAULT  DC    C'*DEFAULT*'  SPECIAL ALIAS FOR DEFAULTS                 00525000
+         LTORG ,                                                        00526000
+SAVE     DS    18F                     SAVE AREA                        00527000
+TWORK    DS    64F                                                      00528000
+BLDSAVE  DS    18F                                                      00529000
+ADDSAVE  DS    18F                                                      00530000
+SRCSAVE  DS    18F                                                      00531000
+CMPSAVE  DS    18F                                                      00532000
+INSAVE   DS    18F                                                      00533000
+DESTLST  DS    F                                                        00534000
+         SPACE 1                                                        00534010
+BLDFLAG  DS    X'0'                Flag for BLDACT routine              00534020
+BLDFLMOD EQU   X'80'               MBOX addresses modified              00534030
+         SPACE 1                                                        00534050
+GNODE    DC    A(0)                NODE address for GENLIST call        00534110
+GSTKADDR DC    A(LCLSTACK)         Stack address for GENLIST call       00534150
+GSTKLEN  DC    A(0)                Stack length for GENLIST call        00534200
+         SPACE 1                                                        00534250
+FAKETOK  DS    0F                  Fake TOKEND                          00534300
+         DC    A(0)                No forward pointer                   00534350
+         DC    A(0)                No backward pointer                  00534400
+FAKETOKA DC    A(LCLSTACK)         Address of string                    00534450
+FAKETOKL DC    A(0)                Length of string                     00534500
+*                                     filled in by GENLIST call         00534550
+         DC    AL1(TOKATM)         Type                                 00534600
+         SPACE 1                                                        00534650
+         DS    0F                                                       00534700
+LCLSTACK DC    CL256' '                                                 00534750
+         SPACE 1                                                        00534800
+         END   BUILDLST                                                 00535000

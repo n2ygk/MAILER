@@ -1,0 +1,6 @@
+./ I 00076000          $ 77000 1000                   01/20/89 22:52:11
+*
+*        EQUates for use with Event Control Blocks.
+*
+WAITING  EQU  X'80'                ECB is being WAITed on.
+POSTED   EQU  X'40'                ECB has been POSTed.

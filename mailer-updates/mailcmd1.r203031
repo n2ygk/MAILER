@@ -1,0 +1,21 @@
+./ R 00080000 00087000 $ 81990 1990                   09/28/89 14:35:39
+         CLC   =CL8' ',0(R4)       Was one supplied
+         BE    NOUSER              ---> No
+         MVC   SRCUSER,0(R4)       Copy it in
+./ R 00088280 00088600 $ 88360 80                     09/28/89 14:35:39
+         CLC   =CL8' ',0(R4)       Anything there?
+         BE    NONODE              ---> No
+         MVC   SRCNODE,0(R4)       Copy it in
+./ R 00088810 00088820 $ 88811 1                      09/28/89 14:35:39
+         LA    R4,SRCUSER          Get sending userid.                  00079490
+         LA    R1,8(R4)            End of string                        00080000
+         TRT   0(8,R4),TRTAB       Look for blank at end of id          00081000
+         LA    R3,8(R4)            Address of end                       00082000
+         SR    R3,R1               Minus length gives leading blanks    00083000
+         LA    R3,WORKBUF+05(R3)   Start here                           00084000
+         SR    R1,R4               Length of the userid                 00085000
+         BZ    NOUSER2             No userid.                           00085500
+         BCTR  R1,0                -1 for executed move                 00086000
+         EX    R1,MOVEIT           MVC 0(0,R3),0(R4)                    00087000
+NOUSER2  DS    0H                                                       00088040
+         MVC   WORKBUF+14(8),MSGNODE                                    00088820

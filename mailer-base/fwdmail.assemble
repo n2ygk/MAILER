@@ -1,0 +1,264 @@
+FWDMAIL TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - mail forwarding'     00001000
+*---------------------------------------------------------------------* 00002000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00003000
+*    Program Property of the Trustees of Columbia University in the   * 00004000
+*    City of New York.                                                * 00005000
+*---------------------------------------------------------------------* 00006000
+FWDMAIL  CSECT ,                                                        00007000
+* FWDMAIL-                                                              00008000
+*  This routine forwards mail to the user named indirectly thru         00009000
+*  the parm.  The parm is used to find the entry in MAILPTAB that       00010000
+*  has the actual address(es) in it.  A new mail file is built          00011000
+*  and punched back to my reader that contains a header saying          00012000
+*  that automatic forwarding has been performed followed by the         00013000
+*  original file.                                                       00014000
+*                                                                       00015000
+*  LAST EDIT: 8/12/83 by Alan Crosswell                                 00016000
+*                                                                       00017000
+PAB      DSECT ,                                                        00018000
+@MBLOK   DS    A             MAILBLOK BASE                              00019000
+@ACT     DS    A             ACTADR BASE                                00020000
+* REGISTER USAGE -                                                      00021000
+R0  EQU  0 -                                                            00022000
+R1  EQU  1 -                                                            00023000
+R2  EQU  2 -                                                            00024000
+R3  EQU  3 -                                                            00025000
+R4  EQU  4 -                                                            00026000
+R5  EQU  5 -                                                            00027000
+R6  EQU  6 -                                                            00028000
+R7  EQU  7 -                                                            00029000
+R8  EQU  8 -                                                            00030000
+R9  EQU  9 -                                                            00031000
+R10 EQU 10 - ACTADR BASE                                                00032000
+R11 EQU 11 - MAILBLOK BASE                                              00033000
+R12 EQU 12 - PROGRAM BASE                                               00034000
+R13 EQU 13 - SAVE AREA                                                  00035000
+R14 EQU 14 - SUBROUTINE LINKAGE                                         00036000
+R15 EQU 15 - SUBROUTINE LINKAGE                                         00037000
+         BLOCKS ,                                                       00038000
+         MAILBLOK ,                                                     00039000
+         EJECT ,                                                        00040000
+FWDMAIL  CSECT ,                                                        00041000
+         STM   R14,R12,12(R13)                                          00042000
+         BALR  R12,0                                                    00043000
+         USING *,R12                                                    00044000
+         LA    R14,SAVE                                                 00045000
+         ST    R13,4(R14)                                               00046000
+         ST    R14,8(R13)                                               00047000
+         LR    R13,R14                                                  00048000
+         USING PAB,R1        ADDRESS PARMS                              00049000
+         L     R11,@MBLOK    GET MAILBLOK BASE                          00050000
+         L     R10,@ACT      GET ACTADR BASE                            00051000
+         DROP  R1                                                       00052000
+         USING MAILBLOK,R11                                             00053000
+         USING ACTADR,R10                                               00054000
+         L     R1,ACTRT      get routd pointer                          00055000
+         USING ROUTD,R1                                                 00056000
+         MVC   LOCUSER,RTPARM Copy for later use                        00057000
+*--------------------------------------------------------------------   00058000
+*        Look up the parm in the mailer parameter table and see if      00059000
+*        it's been defined.  If so,  use the string definition          00060000
+*        as the name of the recipient of the forwarded mail.            00061000
+*--------------------------------------------------------------------   00062000
+         LA    R4,RTPARM                                                00063000
+         DROP  R1                                                       00064000
+         LA    R1,8(R4)      end of parm                                00065000
+         MVI   TRAPTAB+C' ',X'FF' trap blanks                           00066000
+         TRT   0(8,R4),TRAPTAB find end of string                       00067000
+         MVI   TRAPTAB+C' ',0                                           00068000
+         SR    R1,R4         get length of string                       00069000
+         LR    R5,R1         get into a better register                 00070000
+         L     R6,MAILPTAB   address of parm table                      00071000
+         L     R15,ATBLUK                                               00072000
+         CALL  (15),((R6),(R4),(R5),TWORK) find the parm                00073000
+         LTR   R15,R15       nope -- die                                00074000
+         BNZ   NOFWD         sorry...                                   00075000
+         LR    R5,R1         get a better handle on string              00076000
+         IC    R1,0(R5)      length                                     00077000
+         BCTR  R1,0          -1 for execute                             00078000
+         MVI   HTO,C' '      init to blanks                             00079000
+         MVC   HTO+1(LHTO-1),HTO                                        00080000
+         EX    R1,MOVETO     fill in the to field                       00081000
+*--------------------------------------------------------------------   00082000
+*        Fill in the date for the new memo.                             00083000
+*--------------------------------------------------------------------   00084000
+         LA    R1,HDATE      date to be filled in                       00085000
+         L     R15,AARPADAT                                             00086000
+         BALR  R14,R15       fill the arpa format date in               00087000
+*--------------------------------------------------------------------   00088000
+*        Fill in the sender id (my id)                                  00089000
+*--------------------------------------------------------------------   00090000
+         MVI   TRAPTAB+C' ',X'FF' trap on blank                         00091000
+         LA    R4,MAILVMID   address of my vmid                         00092000
+         LA    R1,8(R4)      point to end of vmid                       00093000
+         TRT   0(8,R4),TRAPTAB get trailing blank                       00094000
+         SR    R1,R4         length of the vmid                         00095000
+         LR    R0,R4         address of it                              00096000
+         LA    R6,HSEND      where to move it                           00097000
+         LR    R7,R1         length to move                             00098000
+         MVCL  R6,R0         copy the id                                00099000
+         MVI   0(R6),C'@'    now stick in the atsign                    00100000
+         LA    R6,1(R6)      point past the @                           00101000
+         LA    R4,CPUSTR     address of my node                         00102000
+         LA    R1,8(R4)      point to end of node                       00103000
+         TRT   0(8,R4),TRAPTAB get trailing blank                       00104000
+         SR    R1,R4         length of the node                         00105000
+         LR    R0,R4         address of it                              00106000
+         LR    R7,R1         length to move                             00107000
+         MVCL  R6,R0         copy the node                              00108000
+         MVI   0(R6),C'>'    now stick in the closing >                 00109000
+         MVI   TRAPTAB+C' ',0 back to initial state                     00110000
+*--------------------------------------------------------------------   00111000
+*        Fill in the from field.  This is taken from the original       00112000
+*        from field found in the fields table so the recipient          00113000
+*        of forward mail can reply easily.                              00114000
+*--------------------------------------------------------------------   00115000
+         MVI   HFROM,C' '    blank out the buffer                       00116000
+         MVC   HFROM+1(LHFROM-1),HFROM                                  00117000
+         ICM   R7,B'1111',MAILSFLD  from/sender field                   00118000
+         BZ    NOFROM        hmmm?                                      00119000
+         USING FIELDD,R7     address the field description              00120000
+         LA    R2,HFROM      where to copy it                           00121000
+         LA    R3,LHFROM     max. length to copy                        00122000
+         TM    FIFLG1,FIEDIFLG   has it been edited                     00123000
+         BO    DOMOD           the hard way(field was modified)         00124000
+         L     R4,FISTR      the fieldd string                          00125000
+         L     R5,FIEND      end of it                                  00126000
+         SR    R5,R4         length of it                               00127000
+         ICM   R5,B'1000',=C' ' pad with blanks                         00128000
+         MVCL  R2,R4         move it in                                 00129000
+         B     PUNCHIT       now go punch it                            00130000
+DOMOD    EQU   *             <- fieldd was modified                     00131000
+         ICM   R5,B'1111',FITOK get 1st tokend pointer                  00132000
+         BZ    NOFWD         that's a bug!                              00133000
+         USING TOKEND,R5     the first token is "from"; toss it         00134000
+         LA    R4,TOKNEXT    set the next pointer and drop into loop    00135000
+DOMOD1   EQU   *                                                        00136000
+         ICM   R5,B'0111',0(R4) get next tokend pointer                 00137000
+         BZ    DOMODX        done outputing them                        00138000
+         LA    R4,TOKNEXT    point to next one                          00139000
+         CLI   TOKTYPE,TOKATM is the token an atom?                     00140490
+         BE    DOMODA        do the atom                                00141000
+         CLI   TOKTYPE,TOKQSTR or a quoted string                       00142490
+         BE    DOMODA        do it like an atom                         00143000
+         CLI   TOKTYPE,0     empty token?                               00144490
+         BE    DOMOD1        this is a bug                              00145000
+         CLI   TOKTYPE,TOKLTP left paren?                               00146490
+         BE    DOMOD1A                                                  00147000
+         CLI   TOKTYPE,TOKLTB or left bracket?                          00148490
+         BNE   DOMOD2                                                   00149000
+DOMOD1A  EQU   *                                                        00150000
+         MVI   0(R2),C' '    first insert a blank                       00151000
+         MVC   1(1,R2),TOKTYPE then the character                       00152490
+         LA    R2,2(R2)      and bump the pointer                       00153000
+         B     DOMOD1                                                   00154000
+DOMOD2   EQU   *                                                        00155000
+         CLI   TOKTYPE,TOKRTP right paren                               00156490
+         BE    DOMOD2A                                                  00157000
+         CLI   TOKTYPE,TOKRTB or right bracket                          00158490
+         BNE   DOMOD3                                                   00159000
+DOMOD2A  EQU   *                                                        00160000
+         MVC   0(1,R2),TOKTYPE move in the character                    00161490
+         MVI   1(R2),C' '    then a blank                               00162000
+         LA    R2,2(R2)      and bump the pointer                       00163000
+         B     DOMOD1                                                   00164000
+DOMOD3   EQU   *                                                        00165000
+         MVC   0(1,R2),TOKTYPE just use the code                        00166490
+         LA    R2,1(R2)      bump the pointer                           00167000
+         B     DOMOD1        loop on the next token                     00168000
+DOMODA   EQU   *             do an atom                                 00169000
+         L     R8,TOKPTR         point to the token                     00170680
+         SR    R9,R9                                                    00171000
+         L     R9,TOKLEN     get the length                             00172490
+         LR    R3,R9                                                    00173000
+         MVCL  R2,R8         move in the atom                           00174000
+         B     DOMOD1        loop on some more                          00175000
+DOMODX   EQU   *             <-- done copying the sucker                00176000
+         DROP    R5                                                     00177000
+         DROP  R7                                                       00178000
+         SPACE ,                                                        00179000
+*--------------------------------------------------------------------   00180000
+*        Finally,  punch the file back to myself!                       00181000
+*--------------------------------------------------------------------   00182000
+PUNCHIT  EQU   *                                                        00183000
+         LA    R1,=C'TAG DEV PUN --- returned mail file ---'            00184000
+         LA    R0,38                                                    00185000
+         DC    X'83100008'                                              00186000
+         LA    R1,=C'SP PUN TO *'                                       00187000
+         LA    R0,11                                                    00188000
+         DC    X'83100008'   aim the punch                              00189000
+         LA    R3,H0         point to header                            00190000
+         LA    R4,NUMHDR     number of records in new header            00191000
+HDRLOOP  EQU   *                                                        00192000
+         PUNCHC (R3)                                                    00193000
+         LA    R3,80(R3)                                                00194000
+         BCT   R4,HDRLOOP                                               00195000
+         SPACE ,                                                        00196000
+         L     R15,APUNHDR                                              00197000
+         CALL  (15),((R11))  PUNCH THE HEADER                           00198000
+         LTR   R15,R15       ANY SCREW UPS?                             00199000
+         BNZ   RET                                                      00200000
+         L     R15,APUNTXT                                              00201000
+         CALL  (15),((R11))  PUNCH THE REST                             00202000
+         LTR   R15,R15      ANY ERRORS?                                 00203000
+         BNZ   RET           OH WEEELLL....                             00204000
+         L     R15,APUNCLS   ROUTINE TO CLOSE PUNCH                     00205000
+         CALL  (15),((R11))  CALL IT                                    00206000
+         LTR   R15,R15       ANY ERRORS?                                00207000
+         BNZ   RET           SORRY...                                   00208000
+         LOG   FWD047,(CA,LOCUSER,CA,HTO)                               00209000
+RET      EQU   *                                                        00210000
+         L     R13,4(R13)                                               00211000
+         L     R14,12(R13)                                              00212000
+         LM    R0,R12,20(R13)                                           00213000
+         BR    R14                                                      00214000
+         SPACE ,                                                        00215000
+*--------------------------------------------------------------------   00216000
+*  ERROR/SPECIAL HANDLING                                               00217000
+*--------------------------------------------------------------------   00218000
+NOFWD    EQU   *                                                        00219000
+         LOG   FWD046                                                   00220000
+         LA    R15,4                                                    00221000
+         B     RET                                                      00222000
+         SPACE ,                                                        00223000
+NOFROM   EQU   *                                                        00224000
+         LOG   FWD046                                                   00225000
+         LA    R15,4                                                    00226000
+         B     RET                                                      00227000
+         SPACE ,                                                        00228000
+*                                                                       00229000
+MOVETO   MVC   HTO(0),1(R5)                                             00230000
+         SPACE ,                                                        00231000
+         LTORG ,                                                        00232000
+SAVE     DS    18F                                                      00233000
+TWORK    DS    64F                                                      00234000
+LOCUSER  DS    CL8                                                      00235000
+H0       DS    0C                                                       00236000
+H1       DC    CL80' '                                                  00237000
+         ORG   H1                                                       00238000
+H1T      DC    C'Date: '                                                00239000
+HDATE    DS    0C                                                       00240000
+LHDATE   EQU   L'H1-L'H1T                                               00241000
+         ORG   ,                                                        00242000
+H2       DC    CL80' '                                                  00243000
+         ORG   H2                                                       00244000
+H2T      DC    C'From: '                                                00245000
+HFROM    DS    0C                                                       00246000
+LHFROM   EQU   L'H2-L'H2T                                               00247000
+         ORG   ,                                                        00248000
+H3       DC    CL80' '                                                  00249000
+         ORG   H3                                                       00250000
+H3T      DC    C'Sender: Network Mailer <'                              00251000
+HSEND    DS    0C                                                       00252000
+LHSEND   EQU   L'H3-L'H3T                                               00253000
+         ORG   ,                                                        00254000
+H4       DC    CL80'Comment: forwarded mail'                            00255000
+H5       DC    CL80' '                                                  00256000
+         ORG   H5                                                       00257000
+H5T      DC    C'To: '                                                  00258000
+HTO      DS    0C                                                       00259000
+LHTO     EQU   L'H5-L'H5T                                               00260000
+         ORG   ,                                                        00261000
+         DC    CL80' '       blank line to end header                   00262000
+NUMHDR   EQU   (*-H0)/80                                                00263000
+         END   FWDMAIL                                                  00264000

@@ -1,0 +1,46 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R207999    Change version id to 2.08 Beta
+*          This requires changes in some messages to display entire
+*          string
+R207036    Add debug tracing to VALIDATE
+R207023    Preserve the FORM value (if one exists) when processing mail
+*          from other mailers.  When punching mail from a local user
+*          set the form value to 'QUIET'.
+R207019    Don't send BSMTP files into black hole if missing '.'
+R207015    New trace flags:
+*              smtpin-trace-check_sender
+*              smtpin-trace-check_domain
+R207006    Add SET command
+R206001    Fix to MSG/SMSG handling
+R205027    Change existing parse tracing code from assembly time
+*          switches to runtime switches.  This adds 'Trace-Parsing'
+*          to the debugging variables
+R205023    More tracing controls.  This adds keywords for:
+R205020    Add tracing code to HDRSCAN
+R205018    Add flag to only trace a mail creating exit.
+*          When this flag is set, the exit should list the actions
+*          it would have performed, but *NOT* create the output file.
+R205016    Add tracing code to TBLUK
+R205015    Add control to allow accpetance of BSMTP streams with
+*          FILE FROM: header.
+R205014    Add control to turn off looking for RFC822 headers inside
+*          the BSMTP envelope
+R205013    Move debugging controls to variables
+R205006    Provide support to turn on listing of all msgs received
+*          This is meant to be used for debugging
+R204004    Support for DISTLIST command
+R203026    Interim speedup of TBLUK service, using binary search.
+R203014    Support for FORWARD command
+R203007    Change version to 2.03A and fix up length of verion field
+*          problem (reported by Waterloo).
+R202018    Remove PRINT NOGENs, make DSECTs honor SYSPARM(SUP)/SYSPARM(EXP)
+R202016    Fix MAILER007E RC=0002 during RELOAD processing.
+R202014    Make MAILBLOK globally available to all code
+*          This will remove dependence on Waterloo AUX file usage for
+*          increased portability of C code
+R202010    Command processing enhancements.
+R201008    Report errors for mail not sent when multiple destinations
+*          given and only some destinations are bad
+R200010    Improve version identification
+R200009    Allow multiple Rscs-Domains.
+R200008    Allow multiple Local-Hosts.

@@ -1,0 +1,9 @@
+./ I 00366890          $ 366892 2                     02/01/90 11:37:31
+         DC    A(DBGFLG7-MAILBLOK,MAILTR73,DBGHDRSC)                    00366893
+         DC    A(DBGFLG7-MAILBLOK,MAILTR74,DBGGETHD)                    00366896
+         DC    A(DBGFLG7-MAILBLOK,MAILTR75,DBGLOCAL)                    00366896
+./ R 00387961          $ 387968 7                     02/01/90 11:37:31
+MAILTR73 DC    Y(13),C'HDRSCAN-TRACE'                                   00387970
+MAILTR74 DC    Y(12),C'GETHDR-TRACE'                                    00387979
+MAILTR75 DC    Y(11),C'LOCAL-TRACE'                                     00387979
+         SPACE 2                                                        00387988

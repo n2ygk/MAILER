@@ -1,0 +1,25 @@
+./ R 00010990          $ 10995 5                      01/25/90 16:05:03
+         DC    A(82)         HIGHEST MESSAGE NUMBER DEFINED      [1.24] 00010995
+./ R 00014995          $ 14997 2                      01/25/90 16:05:03
+         DC A(M77,M78,M79,M80,M81,M82)                                  00014997
+./ I 00202890          $ 202930 40                    01/25/90 16:05:03
+         SPACE 1                                                        00202930
+T79      DC    AL1(LT79),C'MAILER079E **** MAILER PROFILE coding error' 00202970
+         DC    C' ***** : LOCAL exit destination not'                   00203010
+LT79     EQU   *-T79-1                                                  00203050
+M79      DC    A(T79),AL1(3,3,0)                                        00203090
+         SPACE 1                                                        00203130
+T80      DC    AL1(LT80),C'MAILER080E found in RSCS-Domains or Local-H' 00203170
+         DC    C'osts: ..............................'                  00203210
+LT80     EQU   *-T80-1                                                  00203250
+M80      DC    A(T80),AL1(3,3,49,30,0)                                  00203290
+         SPACE 1                                                        00203330
+T81      DC    AL1(LT81),C'MAILER081U Host in routeaddress does not su' 00203370
+         DC    C'pport mail forwarding, try a different path'           00203410
+LT81     EQU   *-T81-1                                                  00203450
+M81      DC    A(T81),AL1(3,3,0)                                        00203490
+         SPACE 1                                                        00203530
+T82      DC    AL1(LT82),C'MAILER082U Host to change: ................' 00203570
+         DC    C'..................................'                    00203610
+LT82     EQU   *-T82-1                                                  00203650
+M82      DC    A(T82),AL1(3,3,27,50,0)                                  00203690

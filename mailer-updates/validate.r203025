@@ -1,0 +1,16 @@
+./ R 00337600          $ 337610 10                    07/06/89 15:05:37
+         EX    R1,TLD$MVC1         Copy and
+         EX    R1,TLD$TR1             upcase supplied string.
+         EX    R1,TLD$MVC2         Copy and
+         EX    R1,TLD$TR2             upcase Local-Host.
+         EX    R1,TLD$CLC          Are they the same?
+./ R 00337840 00338000 $ 338330 490                   07/06/89 15:05:37
+TLD$CLC  CLC   TLDWORK1,TLDWORK2   *** Executed ***
+TLD$MVC1 MVC   TLDWORK1(*-*),0(R2) *** Executed ***
+TLD$MVC2 MVC   TLDWORK2(*-*),1(R3) *** Executed ***
+TLD$TR1  TR    TLDWORK1(*-*),UPCASE *** Executed ***
+TLD$TR2  TR    TLDWORK2(*-*),UPCASE *** Executed ***
+         SPACE ,
+./ I 00488000          $ 488500 500                   07/06/89 15:05:37
+TLDWORK1 DS    CL256               Work area for TRYLDOM.
+TLDWORK2 DS    CL256               Work area for TRYLDOM.

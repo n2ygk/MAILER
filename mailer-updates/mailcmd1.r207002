@@ -1,0 +1,31 @@
+./ I 00839000          $ 839200 200                   05/16/90 14:29:23
+         LA    R15,WRITSAVE        Point to our save                    00564200
+         ST    R15,8(,R13)         Chain forward                        00564400
+         ST    R13,4(,R15)         Chain back                           00564600
+         LR    R13,R15             Point to the new save area           00564800
+./ I 00859660          $ 859665 5                     05/16/90 14:29:23
+         L     R14,MAILPTAB        Parameter table                      00859665
+         L     R15,ATBLUK          TBLUK routine                        00859670
+         CALL  (15),((R14),MSGCMD,L'MSGCMD,TWORK)                       00859675
+         LTR   R15,R15             Found MSGCMD?                        00859680
+         BNZ   MSGCOMM             ---> No                              00859685
+         MVC   MSGBUF,=CL18' '     Clear all blanks                     00859690
+         IC    R15,0(R1)           Get length                           00859695
+         C     R15,=F'8'           Longer than 8?                       00859700
+         BH    MSGCOMM             ---> Yes, can't use it               00859705
+         BCTR  R15,0               Decrement for EX                     00859710
+         EX    R15,MSGCMDMV        Move in the command                  00859715
+./ I 00859720          $ 859730 10                    05/16/90 14:29:23
+         SPACE 1                                                        00859730
+MSGCMDMV MVC   MSGBUF(1),1(R1)     Executed                             00859740
+         SPACE 1                                                        00859750
+./ R 00879190 00879380 $ 879280 90                    05/16/90 14:29:23
+         CLC   =CL4'MSG ',MSGBUF   Was it MSG?                          00879190
+         BE    MSGRET              --> Yes, can't fix it up then.       00879380
+./ I 00886000          $ 886500 500                   05/16/90 14:29:23
+         L     R13,4(,R13)         Back to previous save area           00621500
+./ I 00948810          $ 949010 200                   05/16/90 14:29:23
+         SPACE 1                                                        00949010
+MSGCMD   DC    C'Msgcmd'           For TBLUK lookup                     00949210
+./ I 00950180          $ 950580 400                   05/16/90 14:29:23
+WRITSAVE DS    18F                 WRITEMSG save area                   00638500

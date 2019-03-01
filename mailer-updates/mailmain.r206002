@@ -1,0 +1,4 @@
+./ I 00068000          $ 68200 200                    04/17/90 17:33:32
+         LA    R15,0               Set default rc
+         CLI   MAILCMD,0           Any commands received?
+         BNE   RET                 ---> Yes, do them first

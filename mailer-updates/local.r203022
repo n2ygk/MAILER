@@ -1,0 +1,6 @@
+./ I 00050000          $ 50100 100                    06/08/89 16:34:42
+         USING *,R15               Temp addressability                  00050100
+         B     EYESKIP             Skip over eye catcher                00050200
+MYNAME   DC    CL8'LOCAL   ',CL8'&SYSDATE'                              00050300
+EYESKIP  DS    0H                                                       00050400
+         DROP  R15                 Done with R15 for now                00050500

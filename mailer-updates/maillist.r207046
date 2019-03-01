@@ -1,0 +1,4 @@
+./ I 00608000          $ 608300 300                   04/19/91 14:56:48
+'EXECSTAT' listid 'MAILLIST'
+if rc = 0  then  'EXECDROP' listid 'MAILLIST'
+

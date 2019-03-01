@@ -1,0 +1,17 @@
+         MACRO                                                          00001000
+&LABEL   MPEND &NORET                                                   00002000
+.* Define end of procedure started with MENTRY.                         00003000
+.* Drop USINGs for code, variables and branch to return address         00004000
+.* if &NORET is null.                                                   00005000
+         GBLC  &RETURN                                                  00006000
+         GBLB  &STACK                                                   00007000
+         AIF   ('&NORET' NE '').NORET                                   00008000
+&LABEL   B     &RETURN       return                                     00009000
+.NORET   ANOP                                                           00010000
+         LTORG ,                                                        00011000
+         DROP  R12                                                      00012000
+         AIF   (&STACK).D13                                             00013000
+         MEXIT ,                                                        00014000
+.D13     ANOP                                                           00015000
+         DROP  R13                                                      00016000
+         MEND  ,                                                        00017000

@@ -1,0 +1,166 @@
+/* ****************************************************************** */00001000
+/*  SAMPPROF - Sample profile for MAILER disconnected server          */00002000
+/* ****************************************************************** */00003000
+                                                                        00004000
+address 'COMMAND'                            /*                       */00005000
+                                                                        00006000
+'SET RDYMSG SMSG'                                                       00007000
+'SET BLIP OFF'                                                          00008000
+'CP SET EMSG ON'                                                        00009000
+'CP SPOOL RDR NOH'                                                      00010000
+                                                                        00011000
+/*  The following line assumes the standard disk configuration as     */00012000
+/*  described in the Mailer Installation and Maintenance Guide        */00013000
+                                                                        00014000
+'ACCESS 193 C/A'                                                        00015000
+                                                                        00016000
+if disc()  then  'EXEC MAILER'               /*                       */00017000
+exit                                                                    00018000
+                                                                        00019000
+/* ******************* */                                               00020000
+/*  Internal Routines  */                                               00021000
+/* ******************* */                                               00022000
+                                                                        00023000
+Disc:  procedure /* Determine if running disconnected */                00024000
+parse value diag(8,'QUERY V CONS') with ,    /*                       */00025000
+   . . status .                              /*                       */00026000
+if status = 'DISCONNECTED'  then             /*                       */00027000
+   disc = 1                                  /*                       */00028000
+else                                         /*                       */00029000
+   disc = 0                                  /*                       */00030000
+return disc                                  /*                       */00031000
+                                                                        00032000
+                                                                        00033000
+                                                                        00034000
+                                                                        00035000
+                                                                        00036000
+/* ****************************************************************** */00037000
+/*  MAILER - VM Mailer driver EXEC                                    */00038000
+/* ****************************************************************** */00039000
+/*                                                                    */00040000
+/*  Command format:    MAILER  mailerid                               */00041000
+/*                                                                    */00042000
+/*  This is a sample profile for driving the MAILER program.          */00043000
+/*                                                                    */00044000
+/*                                                                    */00045000
+/*                                                                    */00046000
+/*                                                                    */00047000
+/*                                                                    */00048000
+/*                                                                    */00049000
+/*                                                                    */00050000
+/* ****************************************************************** */00051000
+                                                                        00052000
+parse upper arg mailer . '(' options ')' ./* Get command line args    */00053000
+if mailer = ''  then  mailer = 'MAILER'   /* Set default if none given*/00054000
+                                                                        00055000
+address COMMAND                          /*  set command environment  */00056000
+                                                                        00057000
+/* ****************************************************************** */00058000
+/*  Local variables                                                   */00059000
+/*  These are values you need to change                               */00060000
+/* ****************************************************************** */00061000
+                                                                        00062000
+/*  Ids for error reporting                                           */00063000
+/*  Specify 1 or more as 'userid AT node'.  Do NOT use userid@node    */00064000
+/*  since mail to these ids will be sent using the CMS NOTE command.  */00065000
+                                                                        00066000
+errids = 'maintid1 AT node1  maintid2 AT node2'                         00067000
+                                                                        00068000
+logid   = 'userid@node1'                 /* Where to send console logs*/00069000
+                                                                        00070000
+smartnodes = 'node1 node2'               /* Nodes at which VMSMART is */00071000
+                                         /* monitoring mailer         */00072000
+                                                                        00073000
+/* ****************************************************************** */00074000
+/*  End of local variables                                            */00075000
+/* ****************************************************************** */00076000
+                                                                        00077000
+'IDENTIFY ( LIFO'                                                       00078000
+parse upper pull . . nodeid . via .                                     00079000
+                                                                        00080000
+parse var logid loguid '@' lognode .     /*                           */00081000
+if lognode = ''  then                    /* No logging node given     */00082000
+   lognode = nodeid                      /*   so it must be here      */00083000
+upper loguid lognode                     /* Make them VM consistent   */00084000
+                                                                        00085000
+'CP CHANGE RDR CLASS T NOH'              /*  A little error recovery  */00086000
+                                                                        00087000
+if nodeid = lognode  then                                               00088000
+   'CP TRANSFER RDR CLASS T TO' loguid 'RDR' /*                       */00089000
+else                                                                    00090000
+   'CP TRANSFER RDR CLASS T TO' via 'RDR'   /*                        */00091000
+                                                                        00092000
+if nodeid = lognode  then                 /* Have local VMJESLOG      */00093000
+   'CP SPOOL CONSOLE START TO' loguid                                   00094000
+else  do                                  /* Running on RSCS remote   */00095000
+   'CP TAG DEV CONSOLE' lognode loguid                                  00096000
+   'CP SPOOL CONSOLE START TO' via                                      00097000
+   end                                                                  00098000
+                                                                        00099000
+'CP SET EMSG ON'                                                        00100000
+'CP SPOOL PUNCH FORM QUIET'                                             00101000
+                                                                        00102000
+do forever                                                              00103000
+   'ACCESS 193 C/A'                     /* Access system files        */00104000
+   'CP CHANGE RDR ALL NOH'              /* Clean up any hold problems */00105000
+   if mailer = 'MAILER'  then                                           00106000
+      'GLOBAL TXTLIB MAILLCL MAILER'    /* Mailer library             */00107000
+   else                                                                 00108000
+      'GLOBAL TXTLIB' mailer'LCL' mailer                                00109000
+   ''mailer nodeid 'PROFILE *'          /* Start mailer               */00110000
+   mailrc = rc                                                          00111000
+   if mailrc ^= 0  then  say 'MAILER rc =' mailrc                       00112000
+   select                                                               00113000
+      when mailrc=0  &  disc()  then  nop                               00114000
+      when mailrc=0  & ^disc()  then  leave                             00115000
+      when mailrc=12 & ^disc()  then  leave                             00116000
+      otherwise  do                                                     00117000
+         if disc()  then  do                                            00118000
+            call errmail('Mailer failed with RC='mailrc)                00119000
+            if find(smartnodes,nodeid) = 0  then  /* Not monitored    */00120000
+               'CP LOGOFF'                                              00121000
+            else                             /*                       */00122000
+               'CP'                          /* Go to CP so SMART will*/00123000
+                                             /* notice and MSG op     */00124000
+            end                                                         00125000
+         else  leave                                                    00126000
+         end                                                            00127000
+      end                                                               00128000
+   end                                                                  00129000
+exit mailrc                                                             00130000
+                                                                        00131000
+/* ******************* */                                               00132000
+/*  Internal Routines  */                                               00133000
+/* ******************* */                                               00134000
+                                                                        00135000
+Disc:  procedure /* Determine if running disconnected */                00136000
+parse value diag(8,'QUERY V CONS') with ,    /*                       */00137000
+   . . status .                              /*                       */00138000
+if status = 'DISCONNECTED'  then             /*                       */00139000
+   disc = 1                                  /*                       */00140000
+else                                         /*                       */00141000
+   disc = 0                                  /*                       */00142000
+return disc                                  /*                       */00143000
+                                                                        00144000
+ErrMail:  procedure , /* Send error mail to maintainers */              00145000
+          expose errids                                                 00146000
+parse upper arg errmsg                                                  00147000
+'ERASE MAILMNT NOTE A1'                                                 00148000
+mailfile.0 = 10                                                         00149000
+mailfile.1 = 'OPTIONS: NOACK    LOG    SHORT     NOTEBOOK MAILERR'      00150000
+mailfile.2 = ' '                                                        00151000
+mailfile.3 = ' '                                                        00152000
+mailfile.4 = ' '                                                        00153000
+mailfile.5 = ' '                                                        00154000
+parse value diag(8,'QUERY TIME') with 'TIME IS' . timezone .            00155000
+mailfile.6 = 'Date:' date()',' time() timezone                          00156000
+'IDENTIFY (LIFO'                                                        00157000
+parse pull userid . node .                                              00158000
+mailfile.7 = 'From:' userid 'at' node                                   00159000
+mailfile.8 = 'To:  ' errids                                             00160000
+mailfile.9 = ' '                                                        00161000
+mailfile.10 = errmsg                                                    00162000
+'EXECIO' mailfile.0 'DISKW MAILMNT NOTE A1 (FINIS STEM MAILFILE.'       00163000
+'EXEC SENDFILE MAILMNT NOTE A1 (NOTE'                                   00164000
+'ERASE MAILMNT NOTE A1'                                                 00165000
+return                                                                  00166000

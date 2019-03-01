@@ -1,0 +1,10 @@
+*---------------------------------------------------------------------* 00001000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00002000
+*    Program Property of the Trustees of Columbia University in the   * 00003000
+*    City of New York.                                                * 00004000
+*---------------------------------------------------------------------* 00005000
+DPARSE   CSECT                                                          00006000
+         USING DPARSE,15                                                00007000
+         L     15,=V(DEFPARS)          DEFAULT PARSER FOR NOW           00008000
+         BR    15            'XCTL' TO IT                               00009000
+         END   DPARSE                                                   00010000

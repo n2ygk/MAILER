@@ -1,0 +1,102 @@
+./ R 00030000 00031490 $ 30490 490                    12/06/90 14:42:51
+    seendata,                     /* 3: DATA command seen */            00030490
+    error,                        /* 4: error */                        00030980
+    final                         /* 5: final */                        00031470
+./ R 00033000          $ 33490 490                    12/06/90 14:42:51
+#define NSTATE 5                                                        00033490
+./ I 00046560          $ 46580 20                     12/06/90 14:42:51
+    char seenmail;               /* MAIL FROM: has been processed */    00046580
+./ I 00070000          $ 70020 20                     12/06/90 14:42:51
+    if (mailblok.dbgflg[1] & TRACE_SMTPIN) {                            00396280
+        wrterm("smtpin:  End of file or error");                        00070020
+        switch (S.state) {                                              00070040
+        case 0:                                                         00070060
+            wrterm("      :  Current state = Initial");                 00070080
+            break;                                                      00070100
+        case 1:                                                         00070120
+            wrterm("      :  Current state = Seen HELO");               00070140
+            break;                                                      00070160
+        case 2:                                                         00070180
+            wrterm("      :  Current state = Seen MAIL");               00070200
+            break;                                                      00070220
+        case 3:                                                         00070240
+            wrterm("      :  Current state = Seen DATA");               00070260
+            break;                                                      00070280
+        case 4:                                                         00070300
+            wrterm("      :  Current state = Error");                   00070320
+            break;                                                      00070340
+        case 5:                                                         00070360
+            wrterm("      :  Current state = Final");                   00070380
+            break;                                                      00070400
+        default:                                                        00070420
+            wrterm("      :  Current state = Undefined");               00070440
+            break;                                                      00070460
+        }                                                               00070480
+    }
+    if (S.state == seendata) {                                          00070500
+        if (S.in_data) {                    /* End of file but no '.' */00070520
+            if (mailblok.dbgflg[1] & TRACE_SMTPIN) {                    00396280
+                wrterm("smtpin:  End of file but no end of data found");00070540
+                wrterm("smtpin:  Processing dummy end of data line");   00070620
+            }
+            rlen = 1;                       /* Dummy up an ending     */00070580
+            bcopy(".",rbuf,1);              /*   record               */00070600
+            s_input(rbuf, rlen);            /* Process it             */00070640
+        }                                                               00070660
+    }                                                                   00070820
+./ R 00199000 00208600 $ 199690 690                   12/06/90 14:42:51
+/* command   initial  seenhelo seenmail seendata error   */             00199690
+    "HELO",  s_helo , s_oseq , s_oseq , s_oseq , s_errr ,               00200380
+    "MAIL",  s_oseq , s_mail , s_oseq , s_mail , s_errr ,               00201070
+    "FILE",  s_oseq , s_mail , s_oseq , s_mail , s_errr ,               00201760
+    "RCPT",  s_oseq , s_oseq , s_rcpt , s_rcpt , s_errr ,               00202450
+    "DATA",  s_data , s_data , s_data , s_oseq , s_data ,               00203140
+    "RSET",  s_rset , s_rset , s_rset , s_rset , s_rset ,               00203830
+    "NOOP",  s_noop , s_noop , s_noop , s_noop , s_noop ,               00204520
+    "QUIT",  s_quit , s_oseq , s_oseq , s_quit , s_quit ,               00205210
+    "VERB",  s_verb , s_verb , s_verb , s_verb , s_verb ,               00205900
+    "TICK",  s_tick , s_tick , s_tick , s_tick , s_tick ,               00206590
+    "RPLY",  s_rply , s_rply , s_rply , s_rply , s_rply ,               00207280
+    ":REA",  s_read , s_read , s_read , s_read , s_read ,               00207970
+./ I 00252690          $ 253090 400                   12/06/90 14:42:51
+    S.seenmail = 0;                                                     00253090
+./ D 00494240                                         12/06/90 14:42:51
+./ I 00494630          $ 494730 100                   12/06/90 14:42:51
+                S.seenmail = 1;                                         00494730
+                S.fakefrom = 1;                                         00494830
+./ I 00497930          $ 497940 10                    12/06/90 14:42:51
+            S.seenmail = 1;                                             00497940
+./ I 00500090          $ 500190 100                   12/06/90 14:42:51
+        S.seenmail = 1;                                                 00500190
+./ R 00718000          $ 718490 490                   12/06/90 14:42:51
+    return seendata;                                                    00718490
+./ I 00742000          $ 742300 300                   12/06/90 14:42:51
+       if (mailblok.dbgflg[0] & TRACE_S_GETDATA)                        00742300
+           wrterm("s_getdata:  End of data ('.') found");               00742600
+./ R 00754000          $ 754490 490                   12/06/90 14:42:51
+        if (S.seenmail) {                                               00754490
+./ R 00755200          $ 755220 20                    12/06/90 14:42:51
+            if (mailblok.dbgflg[0] & TRACE_S_GETDATA)                   00755220
+                wrterm("s_getdata:  Processing data headers");          00755240
+            if (st = parse_data_hdr(st,s,l) == error) {                 00755260
+              if (mailblok.dbgflg[0] & TRACE_S_GETDATA)                 00755280
+                  wrterm("s_getdata:  Errors found in data headers");   00755300
+./ I 00755400          $ 755470 70                    12/06/90 14:42:51
+            }                                                           00755470
+            if (mailblok.dbgflg[0] & TRACE_S_GETDATA)                   00755540
+                wrterm("s_getdata:  No errors found in data headers");  00755610
+./ R 00758770          $ 758860 90                    12/06/90 14:42:51
+                wrterm("s_getdata:  Calling sendlst");                  00758860
+./ R 00760300 00760400 $ 760350 50                    12/06/90 14:42:51
+                       wrterm("s_getdata:  No errors from sendlst");    00760350
+                       wrterm("s_getdata:  Errors in RCPT list");       00760400
+./ R 00763580          $ 763770 190                   12/06/90 14:42:51
+                    wrterm("s_getdata:  RC=12 from sendlst");           00763770
+./ R 00766570          $ 766760 190                   12/06/90 14:42:51
+                    wrterm("s_getdata:  Errors from sendlst");          00766760
+./ I 00771000          $ 771500 500                   12/06/90 14:42:51
+            S.seenmail = 0;                                             00771500
+./ R 00782280 00782460 $ 782330 50                    12/06/90 14:42:51
+            bcopy("s_getdata:  >", dbgmsg, 13);                         00782330
+            bcopy(s, &dbgmsg[13], l);                                   00782380
+            bcopy("<", &dbgmsg[13+l], 2);                               00782430

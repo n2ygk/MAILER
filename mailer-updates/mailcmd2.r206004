@@ -1,0 +1,28 @@
+./ R 00098890 00099160 $ 98980 90                     04/20/90 16:39:18
+         L     R15,@MESSAGE        Original msg start                   00098890
+         A     R15,@MSGLEN         + Total length                       00098980
+         SR    R15,R1              - Token start = length left          00099070
+         C     R15,=A(L'$EXCREQ)   Enough space?                        00099160
+./ R 00100590          $ 100680 90                    04/20/90 16:39:18
+         LA    R15,L'$EXCREQ       No, truncate                         00100590
+./ R 00101580 00101870 $ 101770 190                   04/20/90 16:39:18
+         BCTR  R15,0               Decrement for execute                00101580
+         EX    R15,MOVEFWD         Move in command arguments            00101870
+./ R 00105700          $ 105990 290                   04/20/90 16:39:18
+         BNE   $FWD0120            ---> No                              00105990
+./ I 00107660          $ 107860 200                   04/20/90 16:39:18
+$FWD0120 EQU   *                                                        00107860
+./ R 00118168 00118177 $ 118170 2                     04/20/90 16:39:18
+         L     R15,@MESSAGE        Original msg start                   00118168
+         A     R15,@MSGLEN         + Total length                       00118171
+         SR    R15,R1              - Token start = length left          00118174
+         C     R15,=A(L'$EXCREQ)   Enough space?                        00118177
+./ R 00118195          $ 118197 2                     04/20/90 16:39:18
+         LA    R15,L'$EXCREQ       No, truncate                         00118195
+./ R 00118216 00118222 $ 118220 4                     04/20/90 16:39:18
+         BCTR  R15,0               Decrement for execute                00118216
+         EX    R15,MOVEMLS         Move in command arguments            00118222
+./ R 00118300          $ 118308 8                     04/20/90 16:39:18
+         BNE   $MLS0120            ---> No                              00118308
+./ I 00118340          $ 118346 6                     04/20/90 16:39:18
+$MLS0120 EQU   *                                                        00118346

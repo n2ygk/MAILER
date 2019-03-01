@@ -1,0 +1,51 @@
+./ R 00035490          $ 35680 190                    12/31/90 15:21:03
+          cmdstring , msgcmd , diskmode .    /*                       */00035680
+./ I 00043000          $ 43300 300                    12/31/90 15:21:03
+if diskmode = ''  then  diskmode = 'A'       /* Disk mode on which    */00043300
+                                             /*    to write files     */00043600
+./ I 00081500          $ 81700 200                    12/31/90 15:21:03
+say '       :  Diskmode  = "'diskmode'"'                                00081700
+./ R 00159490          $ 159580 90                    12/31/90 15:21:03
+      expose cmdstring console diskmode foruser localnode msgcmd ,      00159580
+             requestor                                                  00159670
+./ R 00171000 00172000 $ 171590 590                   12/31/90 15:21:03
+if exists(foruser 'FORWARD' diskmode)  then  do                         00171590
+   'EXECIO * DISKR' foruser 'FORWARD' diskmode '(FINIS STEM FORWARD.'   00172180
+./ R 00191490          $ 191680 190                   12/31/90 15:21:03
+         expose diskmode foruser                                        00191680
+./ R 00194000          $ 194490 490                   12/31/90 15:21:03
+'EXECIO 1 DISKW' foruser 'FORWARD' diskmode '(FINIS VAR DESTINATION'    00194490
+./ R 00258490          $ 258580 90                    12/31/90 15:21:03
+         expose cmdstring console diskmode foruser localnode msgcmd ,   00258580
+                requestor                                               00258670
+./ R 00273000 00274000 $ 273590 590                   12/31/90 15:21:03
+if exists(foruser 'FORWARD' diskmode)  then  do                         00273590
+   'EXECIO * DISKR' foruser 'FORWARD' diskmode '(FINIS STEM FORWARD.'   00274180
+./ R 00282000          $ 282490 490                   12/31/90 15:21:03
+         'ERASE' foruser 'FORWARD' diskmode  /* Erase old file        */00282000
+./ R 00288000          $ 288490 490                   12/31/90 15:21:03
+               'EXECIO 1 DISKW' foruser 'FORWARD' diskmode '(FINIS' ,   00288490
+./ R 00306490          $ 306580 90                    12/31/90 15:21:03
+            expose cmdstring console diskmode foruser localnode msgcmd ,00306580
+                   requestor                                            00306670
+./ R 00308000 00310000 $ 308690 690                   12/31/90 15:21:03
+if exists(foruser 'FORWARD' diskmode)  then  do                         00308590
+   'EXECIO * DISKR' foruser 'FORWARD' diskmode '(FINIS STEM FORWARD.'   00309180
+   'ERASE' foruser 'FORWARD' diskmode        /* Erase old file        */00310000
+./ R 00351490          $ 351580 90                    12/31/90 15:21:03
+       expose cmdstring console diskmode foruser localnode msgcmd ,     00351580
+              requestor                                                 00351670
+./ R 00360000          $ 360490 490                   12/31/90 15:21:03
+if ^exists(foruser 'FORWARD' diskmode)  then  do                        00360490
+./ R 00367000          $ 367490 490                   12/31/90 15:21:03
+      'TYPE' foruser 'FORWARD' diskmode      /*                       */00367000
+./ R 00372000          $ 372490 490                   12/31/90 15:21:03
+      'LISTFILE' foruser 'FORWARD' diskmode '(DATE STACK'               00372000
+./ R 00379000          $ 379490 490                   12/31/90 15:21:03
+            'EXEC SENDFILE' foruser 'FORWARD' diskmode 'TO' requestor   00379000
+./ R 00381490          $ 381580 90                    12/31/90 15:21:03
+            'EXEC SENDFILE' foruser 'FORWARD' diskmode 'TO' userid ,    00381490
+               'AT' node
+./ R 00384000          $ 384290 290                   12/31/90 15:21:03
+         'EXECIO * DISKR' foruser 'FORWARD' diskmode '(FINIS STEM' ,    00384290
+            'FORWARDS.'                                                 00384580

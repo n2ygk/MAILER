@@ -1,0 +1,137 @@
+./ R 00001000          $ 1490 490                     09/19/90 09:54:03
+NOMAIL   TITLE 'VM Network Mailer Release 2 - NOMAIL exit'              00001490
+./ I 00005000          $ 5500 500                     09/19/90 09:54:03
+*      MAILER -- Copyright (c) 1990 Princeton University              * 00005500
+./ I 00008000          $ 8100 100                     09/19/90 09:54:03
+*                                                                       00008100
+*  This type 2 exit logs a message for every destination for which      00008200
+*  service is explicitly not being provided.                            00008300
+*                                                                       00008400
+* CALLED VIA -                                                          00008500
+*   CALL NOMAIL,(MAILBLOK,ACTADR)                                       00008600
+./ R 00010000 00013000 $ 10790 790                    09/19/90 09:54:03
+PAB      DSECT ,                                                        00010790
+@MBLOK   DS    F             ADDRESS OF MAILBLOK                        00011580
+@ACT     DS    F             ADDRESS OF ACTADR BLOCK                    00012370
+*                                                                       00013160
+./ R 00024000 00026000 $ 24690 690                    09/19/90 09:54:03
+R9  EQU  9 - ROUTD base                                                 00024690
+R10 EQU 10 - ACTADR base                                                00025380
+R11 EQU 11 - MAILBLOK base                                              00026070
+./ R 00039000 00040000 $ 39990 990                    09/19/90 09:54:03
+         STM   R14,R12,12(R13)                                          00039990
+./ I 00041000          $ 41300 300                    09/19/90 09:54:03
+         SPACE 1                                                        00041300
+         DROP  R15                                                      00041600
+./ R 00043000 00049000 $ 43290 290                    09/19/90 09:54:03
+         SPACE 1                                                        00043290
+         LA    R14,SAVE                                                 00043580
+         ST    R13,4(R14)                                               00043870
+         ST    R14,8(R13)                                               00044160
+         LR    R13,R14                                                  00044450
+         SPACE 1                                                        00044740
+         USING PAB,R1              Parms base                           00045030
+         SPACE 1                                                        00045320
+         L     R11,@MBLOK          MAILBLOK base                        00045610
+         L     R10,@ACT            ACTADR base                          00045900
+         SPACE 1                                                        00046190
+         USING MAILBLOK,R11                                             00046480
+         USING ACTADR,R10                                               00046770
+         DROP  R1                                                       00047060
+         SPACE 1                                                        00047350
+         L     R9,ACTRT            ROUTD addr                           00047640
+         SPACE 1                                                        00047930
+         USING ROUTD,R9                                                 00048220
+         SPACE 1                                                        00048510
+./ I 00049600          $ 49700 100                    09/19/90 09:54:03
+         SPACE 1                                                        00049700
+./ R 00050000 00055000 $ 50070 70                     09/19/90 09:54:03
+         MVI   SERVICE,C' '        Clear message buffer                 00050060
+         MVC   SERVICE+1(L'SERVICE-1),SERVICE                           00050120
+         CLC   RTPARM,=CL8' '      Is there a parm?                     00050180
+         BE    NOPARM               ---> No                             00050240
+         SPACE 1                                                        00050300
+*  See if parm value supplied                                           00050360
+         SPACE 1                                                        00050420
+         CLC   RTPARM,=CL(L'RTPARM)'@'  Use hostid?                     00050480
+         BE    USEHOST                  ---> Yes                        00050540
+         MVC   SERVICE(L'RTPARM),RTPARM Assume using parm               00050600
+         LA    R1,RTPARM+L'RTPARM-1     End of parm                     00050660
+         MVI   TRAPTAB+C' ',X'FF'       Trap blanks                     00050720
+         TRT   RTPARM(L'RTPARM-1),TRAPTAB                               00050780
+         MVI   TRAPTAB+C' ',X'00'       Reset trap table                00050840
+         LA    R4,RTPARM           Start of parm field                  00050900
+         SR    R1,R4               Length of parm                       00050960
+         LR    R5,R1               Move to a better reg                 00051020
+         L     R6,MAILPTAB         Address of parm table                00051080
+         L     R15,ATBLUK          Address of table lookup              00051140
+         CALL  (15),((R6),(R4),(R5),TWORK) find the parm                00051200
+         LTR   R15,R15             Found it?                            00051260
+         BNZ   LOGMSG              ---> No, use parm for name           00051320
+         SPACE 1                                                        00051380
+*  Move parm value into service field                                   00051440
+         SPACE 1                                                        00051500
+         LR    R5,R1               Get a better copy of it              00051560
+         SR    R1,R1               Zero it for IC                       00051620
+         IC    R1,0(R5)            Length                               00051680
+         LA    R5,1(,R5)           Start of string                      00051740
+         C     R1,=A(L'SERVICE)    Too long?                            00051800
+         BNH   VALUEOK             ---> No                              00051860
+         L     R1,=A(L'SERVICE)    Use as much as possible              00051920
+VALUEOK  EQU   *                                                        00051980
+         BCTR  R1,0                Decrement for EX                     00052040
+         EX    R1,MVCVALUE         Move it into service field           00052100
+         B     LOGMSG              Go log msg                           00052160
+         SPACE 1                                                        00052220
+MVCVALUE MVC   SERVICE(0),0(R5)    Executed                             00052280
+         SPACE 1                                                        00052340
+         DROP  R9                                                       00052400
+         SPACE 1                                                        00052460
+USEHOST  EQU   *                                                        00052520
+         ICM   R7,B'1111',ACTMBOX  Mailbox ptr                          00052580
+         BZ    UNKNOWN             ---> Put something in msg            00052640
+         USING MBOX,R7                                                  00052700
+         ICM   R7,B'1111',MBXDML   Host name TOKEND addr                00052760
+         DROP  R7                                                       00052820
+         BZ    UNKNOWN             ---> Put something in msg            00052880
+         ST    R7,GENMBMBX         Save TOKEND address                  00052940
+         MVC   GENMBSTK,=A(SERVICE)     Address of build area           00053000
+         MVC   GENSTKSZ,=A(L'SERVICE)   Length of build area            00053060
+         LA    R4,L'SERVICE        Output string length                 00053120
+         CALL GENLIST,(GENMBMBX,GENMBSTR,GENMBSTL,GENMBSTK,GENSTKSZ)    00053180
+         B     LOGMSG                                                   00053240
+         SPACE 1                                                        00053420
+NOPARM   EQU   *                                                        00053480
+         ICM   R7,B'1111',ACTMBOX  Mailbox ptr                          00053540
+         BZ    UNKNOWN             ---> Put something in msg            00053600
+         USING MBOX,R7                                                  00053660
+         ST    R7,GENMBMBX         Save TOKEND address                  00053720
+         MVC   GENMBSTK,=A(SERVICE)     Address of build area           00053780
+         MVC   GENSTKSZ,=A(L'SERVICE)   Length of build area            00053840
+         LA    R4,L'SERVICE        Output string length                 00053900
+         CALL GENMBOX,(GENMBMBX,GENMBSTR,GENMBSTL,GENMBSTK,GENSTKSZ)    00053960
+         B     LOGMSG                                                   00054020
+         SPACE 1                                                        00054080
+         DROP  R7                                                       00054140
+         SPACE 1                                                        00054200
+UNKNOWN  EQU   *                                                        00054260
+         MVC   SERVICE(15),=CL15'UNKNOWN SERVICE'                       00054320
+         B     LOGMSG                                                   00054380
+         SPACE 1                                                        00054440
+LOGMSG   EQU   *                                                        00054500
+         LOG   NOM041,(CA,SERVICE)     ISSUE MESSAGE                    00054560
+./ I 00064000          $ 64060 60                     09/19/90 09:54:03
+         SPACE 2                                                        00064060
+*  The length of the SERVICE field must be coordinated with the length  00064120
+*  of the substitution area in msg 41 (see MSGTEXT).  If this length is 00064180
+*  changed, it must be changed in both places.                          00064240
+         SPACE 1                                                        00064300
+SERVICE  DC    CL40' '             Service name buffer                  00064360
+         SPACE 2                                                        00064420
+GENMBSTK DS    A(0)               Stack area for MBOX expansion         00064480
+GENSTKSZ DS    F'0'               Size of stack area                    00064540
+GENMBMBX DS    A(0)               Address of MBOX dsect                 00064600
+GENMBSTR DS    A(0)               Address of generated MBOX string      00064660
+GENMBSTL DS    F'0'               Length of generated string            00064720
+         SPACE 1                                                        00064780
+TWORK    DS    512C               For TBLUK subroutine                  00064840

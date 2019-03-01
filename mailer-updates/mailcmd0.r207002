@@ -1,0 +1,36 @@
+./ I 00564000          $ 564200 200                   05/16/90 14:29:25
+         LA    R15,WRITSAVE        Point to our save                    00564200
+         ST    R15,8(,R13)         Chain forward                        00564400
+         ST    R13,4(,R15)         Chain back                           00564600
+         LR    R13,R15             Point to the new save area           00564800
+./ R 00596000          $ 596060 60                    05/16/90 14:29:25
+         MVC   MSGBUF,=CL18'MSGNOH ' Set default value                  00596060
+         L     R14,MAILPTAB        Parameter table                      00596120
+         L     R15,ATBLUK          TBLUK routine                        00596180
+         CALL  (15),((R14),MSGCMD,L'MSGCMD,TWORK)                       00596240
+         LTR   R15,R15             Found MSGCMD?                        00596300
+         BNZ   MSGCOMM             ---> No                              00596360
+         MVC   MSGBUF,=CL18' '     Clear all blanks                     00596420
+         IC    R15,0(R1)           Get length                           00596480
+         C     R15,=F'8'           Longer than 8?                       00596540
+         BH    MSGCOMM             ---> Yes, can't use it               00596600
+         BCTR  R15,0               Decrement for EX                     00596660
+         EX    R15,MSGCMDMV        Move in the command                  00596720
+./ I 00597000          $ 597200 200                   05/16/90 14:29:25
+         SPACE 1                                                        00597200
+MSGCMDMV MVC   MSGBUF(1),1(R1)     Executed                             00597400
+         SPACE 1                                                        00597600
+./ R 00610000          $ 610490 490                   05/16/90 14:29:25
+         C     R0,=F'1'            Command unknown for this user?       00610000
+./ R 00612000 00613000 $ 612590 590                   05/16/90 14:29:25
+         CLC   =CL4'MSG ',MSGBUF   Was it MSG?                          00612590
+         BE    MSGRET              ---> Yes, can't fix it up then.      00613180
+./ I 00621000          $ 621500 500                   05/16/90 14:29:25
+         L     R13,4(,R13)         Back to previous save area           00621500
+./ I 00638000          $ 638500 500                   05/16/90 14:29:25
+WRITSAVE DS    18F                 WRITEMSG save area                   00638500
+./ I 00654000          $ 654200 200                   05/16/90 14:29:25
+         SPACE 1                                                        00654200
+TWORK    DS    64F                 TBLUK work area                      00654400
+MSGCMD   DC    C'Msgcmd'           For TBLUK lookup                     00654600
+         SPACE 1                                                        00654800

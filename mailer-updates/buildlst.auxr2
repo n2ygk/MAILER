@@ -1,0 +1,9 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R205013    Move debugging controls to variables
+R205012    Fixes for routeaddr processing
+R205011    Code clean-up in BUILDLST
+R202019    Handle <@localnode,@localnode,...:userid@somenode> correctly
+R202018    Remove PRINT NOGENs, make DSECTs honor SYSPARM(SUP)/SYSPARM(EXP)
+R201008    Report errors for mail not sent when multiple destinations
+*          given and only some destinations are bad
+R201002    Correct deletion of routeaddr when processing headers

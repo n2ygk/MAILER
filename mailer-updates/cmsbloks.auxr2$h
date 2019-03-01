@@ -1,0 +1,4 @@
+* * * * * * * * * * * * * * * * AUXR2$H * * * * * * * * * * * * * * * * *
+R207023H   Preserve the FORM value (if one exists) when processing mail
+*          from other mailers.  When punching mail from a local user
+*          set the form value to 'QUIET'.

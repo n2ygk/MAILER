@@ -1,0 +1,6 @@
+./ R 00500000 00501990 $ 500490 490                   10/05/88 18:13:33
+MAILVERS DC    0CL25' ',CL8'&VERSION',CL8'&SYSDATE',C' '
+         LCLC  &TIME
+&TIME    SETC  '&SYSTIME'(1,2).':'.'&SYSTIME'(4,2).':00'
+         DC    CL8'&TIME'
+         DC    CL7' '              Unused

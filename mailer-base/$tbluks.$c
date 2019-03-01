@@ -1,0 +1,98 @@
+/*-------------------------------------------------------------------*  00001000
+ *    MAILER -- Copyright (c) 1982,1985 Columbia University.         *  00002000
+ *  Program Property of the Trustees of Columbia University in the   *  00003000
+ *  City of New York.                                                *  00004000
+ *-------------------------------------------------------------------*/ 00005000
+/*                                                                      00006000
+ * _tbluks(table_ptr, test_str, test_len, work_ptr)                     00007000
+ *                                                                      00008000
+ * Sequential version of TBLUK.  Called from TBLUK when the table       00009000
+ * options flag indicates a sequential table (the usual table is        00010000
+ * sorted).  It should check the right-adjust match flag too,  but      00011000
+ * since that's the only reason this routine was written,  it doesn't   00012000
+ * for now.                                                             00013000
+ *                                                                      00013100
+ * Patched to check for exact match or "." at or just before            00013200
+ * start of match, to correct domain selection.                         00013300
+ * (Still assumes the right-adjust flag, plus domain use.)              00013400
+ * *** Code courtesy of Mark Williamson (MARK@RICE).                    00013500
+ *                                                                      00014000
+ * Since the assembler interface expects return values in R0 and R1     00015000
+ * we play some games with the stack:  On entry,  the value of the      00016000
+ * OS caller's R13 is on the stack immediately before the first         00017000
+ * parameter.  Use the address of the first parameter -4 to find        00018000
+ * R13 and then stuff the R0 and R1 values into the caller's save       00019000
+ * area:                                                                00020000
+ *        -4 |  R13  |---->OS save area: stm 14,12,12(13)               00021000
+ *           +-------+                                                  00022000
+ *         0 | arg 1 |                                                  00023000
+ *           +-------+                                                  00024000
+ *                                                                      00025000
+ * Alan Crosswell, 11/85                                                00026000
+ */                                                                     00027000
+#include "types.h"                                                      00028000
+#include "cglue.h"                                                      00029000
+#include "mailblok.h"                                                   00030000
+                                                                        00031000
+extern int bcmp();                                                      00032000
+                                                                        00033000
+_tbluks(tp, sp, sl, wp)                                                 00034000
+struct tbtab *tp;                                                       00035000
+char *sp;                                                               00036000
+int sl;                                                                 00037000
+struct {                                                                00038000
+    char tab[128];                /* place for upcase'd table entry */  00039000
+    char tst[128];                /* place for upcase'd test entry */   00040000
+} *wp;                            /* work area pointer */               00041000
+{                                                                       00042000
+    int i;                                                              00043000
+    register struct tbentry *te;                                        00044000
+    struct ossave **stack = (struct ossave **)&tp - 1;                  00045000
+                                                                        00046000
+    upcvt(sp,wp->tst,sl);         /* copy test string and upcase it */  00047000
+    for (i = 0,te = tp->tbt_adr; i < tp->tbt_len; i++,te++) {           00048000
+        register int tl = te->tbe_str->tbs_siz;                         00049000
+                                                                        00050000
+        if (tl > sl) continue;    /* table string must be a substring */00051000
+        upcvt(&te->tbe_str->tbs_str, wp->tab, tl);                      00052000
+        if (bcmp(&wp->tst[sl-tl],wp->tab, tl) == 0) {                   00053000
+          if ((wp->tab[0]=='.')  /* if table has dot */                 00053200
+           || (sl == tl)         /* or full-length match */             00053400
+           || (wp->tst[sl-tl-1]=='.')) { /*or addr has dot*/            00053600
+            (*stack)->r0 = te;      /* r0 gets address of tbentry */    00054000
+            (*stack)->r1 = te->tbe_dsp; /* dispatch value */            00055000
+            return TBMATCH;       /* found a match */                   00056000
+          }                                                             00056500
+        }                                                               00057000
+    }                                                                   00058000
+    return TBNOT;                                                       00059000
+}                                                                       00060000
+                                                                        00061000
+upcvt(src, dst, len)                                                    00062000
+char *src, *dst;                                                        00063000
+int len;                                                                00064000
+{                                                                       00065000
+    while (len--)                                                       00066000
+        *dst++ = upcase[*src++];  /* translate to upper case */         00067000
+}                                                                       00068000
+                                                                        00069000
+/*                                                                      00070000
+ * ctbadd:  Call assembler tbadd function from C.                       00071000
+ */                                                                     00072000
+extern tbadd();                                                         00073000
+ctbadd(tab_ptr, tbe_ptr)                                                00074000
+struct tbtab *tab_ptr;                                                  00075000
+struct tbentry *tbe_ptr;                                                00076000
+{                                                                       00077000
+    struct {                                                            00078000
+        struct tbtab *tabp;                                             00079000
+        struct tbentry *tbep;                                           00080000
+        char *workp;                                                    00081000
+    } pl;                                                               00082000
+    char workarea[512];                                                 00083000
+                                                                        00084000
+    pl.tabp = tab_ptr;                                                  00085000
+    pl.tbep = tbe_ptr;                                                  00086000
+    pl.workp = workarea;                                                00087000
+    return acall(tbadd,0,&pl);                                          00088000
+}                                                                       00089000

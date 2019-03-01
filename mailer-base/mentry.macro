@@ -1,0 +1,57 @@
+         MACRO                                                          00001000
+&LABEL   MENTRY &LOCALS=LOCALS, name of local vars dsect               *00002000
+               &LOCSIZE=LOCSIZE, size of LOCALS                        *00003000
+               &PARMS=PARMS, name of parameter list dsect              *00004000
+               &STK=@STK,    name of stack pointer address             *00005000
+               &SLEN=@SLEN,  name of stack length address              *00006000
+               &NOSPC=24     return code for no stack space.            00007000
+.* Macro for main entry to a module that is called with a stack         00008000
+.* to put local variables on.  Upon completion of the macro,            00009000
+.* R1 = A(PARMS), R2 = remaining stack size,  R15 = stack start.        00010000
+.*                                                                      00011000
+.* If you don't have a local variables dsect or parms,  code            00012000
+.* "NONE" as the value of &STK.                                         00013000
+         GBLC  &RETURN       return address                             00014000
+         GBLB  &STACK        if stack dsect is used                     00015000
+&RETURN  SETC  'RT&SYSNDX'   set name of return label                   00016000
+&STACK   SETB  ('&STK' NE 'NONE')                                       00017000
+         ENTRY &LABEL                                                   00018000
+&LABEL   DS    0H            Main entry point                           00019000
+         USING &LABEL,R15    temporary addressability                   00020000
+         B     EY&SYSNDX     jump over the eye-catcher                  00021000
+         DC    CL8'&LABEL'    name for dumps (only kidding)             00022000
+         DC    CL8'&SYSDATE' compilation date                           00023000
+EY&SYSNDX DS    0H            jump here                                 00024000
+         STM   R14,R12,12(R13) save callers registers                   00025000
+         DROP  R15           done with temp addressability              00026000
+         LR    R12,R15       use 12 as permanent base                   00027000
+         USING &LABEL,R12    tell the assembler                         00028000
+         AIF   (NOT &STACK).NOPARMS                                     00029000
+         USING &PARMS,R1     address the parameter list                 00030000
+         L     R15,&STK      get the stack pointer pointer              00031000
+         L     R15,0(R15)    get the actual stack address               00032000
+         L     R2,&SLEN      get stack length pointer                   00033000
+         L     R2,0(R2)      get the actual length                      00034000
+         S     R2,=A(&LOCSIZE) enuf room for the local variables?       00035000
+         BL    NO&SYSNDX     -> stack is too small                      00036000
+         LA    R3,0(R2,R15)  put the locals at the top of stack         00037000
+         ST    R13,4(R3)     save caller's save area pointer            00038000
+         ST    R3,8(R13)     and chain back                             00039000
+         LR    R13,R3        get the save area handle                   00040000
+         USING &LOCALS,R13   address the local variables                00041000
+         DROP  R1            done with PARMS                            00042000
+.NOPARMS  ANOP                                                          00043000
+         B     ST&SYSNDX     go to start of code                        00044000
+NO&SYSNDX EQU  *             here when stack too small                  00045000
+         LA    R15,&NOSPC    set error return code                      00046000
+         B     RE&SYSNDX     return                                     00047000
+&RETURN  EQU   *             here to return                             00048000
+         AIF   ('&STK' EQ 'NONE').NOR13                                 00049000
+         L     R13,4(R13)    restore ptr to caller's save area          00050000
+.NOR13   ANOP                                                           00051000
+RE&SYSNDX EQU   *             here when R13 was never changed           00052000
+         L     R14,12(R13)   restore caller's r13                       00053000
+         LM    R0,R12,20(R13) restore 0-12                              00054000
+         BR    R14           return to caller                           00055000
+ST&SYSNDX EQU  *             start                                      00056000
+         MEND                                                           00057000

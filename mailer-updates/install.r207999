@@ -1,0 +1,2218 @@
+./ R 00033287 00033290 $ 33292 5                      04/05/91 16:27:34
+.sr version = 2.08 Beta                                                 00033292
+.sr vmmlab2xx = VMM208                                                  00033297
+.sr vmm2xx = VMM208B                                                    00033302
+.sr mnt2xx = MNT208B                                                    00033307
+.sr contact = John Wagner (jwagner@PUCC.BITNET or jwagner@Princeton.EDU)00033312
+./ R 00037490          $ 37680 190                    04/05/91 16:27:34
+.bt ////                                                                00037680
+./ R 00039000          $ 39690 690                    04/05/91 16:27:34
+.sp 14                                                                  00039690
+./ R 00047990          $ 48980 990                    04/05/91 16:27:34
+.pa                                                                     00048980
+.bt ///Updated: &lastup/                                                00049970
+.sp 20                                                                  00050960
+./ R 00056530          $ 56820 290                    04/05/91 16:27:34
+of Computing and Information Technology - Systems, at                   00056820
+./ R 00067000          $ 67390 390                    04/05/91 16:27:34
+.pn 3                                                                   00067390
+./ R 00071490          $ 71680 190                    04/05/91 16:27:34
+.in +.33i                                                               00071680
+./ I 00074980          $ 74990 10                     04/05/91 16:27:34
+.sp                                                                     00074990
+.us \2.^^Overview of the \MAILER\ system!&c02                           00075000
+.in +.4i                                                                00075010
+.br                                                                     00075020
+.us \2.1^Overview of \MAILER\ Operation!&c0201                          00075030
+.br                                                                     00075040
+.us \2.2^Overview of the file forwarding operation!&c0202               00075050
+.in -.4i                                                                00075060
+./ R 00075280          $ 75360 80                     04/05/91 16:27:34
+.us \3.^^\MAILER\ Maintainer and Postmaster Job Description!&c03        00075360
+./ R 00075660          $ 75740 80                     04/05/91 16:27:34
+.us \4.^^Obtaining a copy of \MAILER\!&c04                              00075740
+./ R 00076040          $ 76120 80                     04/05/91 16:27:34
+5.^^Additional Files Needed for BITNET!&c05                             00076120
+./ R 00076420          $ 76510 90                     04/05/91 16:27:34
+.us \6.^^Your \MAILER\ subscription and registration!&c06               00076510
+./ R 00076800          $ 76880 80                     04/05/91 16:27:34
+6.1.^Subscription via LISTSERV!&c0601                                   00076880
+./ R 00077180          $ 77270 90                     04/05/91 16:27:34
+6.2.^Registration :mailer tag!&c0602                                    00077270
+./ R 00077750 00084850 $ 77840 90                     04/05/91 16:27:34
+7.^^Installation Procedure!&c07                                         00077840
+.br                                                                     00077930
+.in +.4i                                                                00078020
+.hi .6i                                                                 00078110
+7.1.^^Create the required userids!&c0701                                00078200
+.br                                                                     00078290
+7.2.^^Create the MAILMNT 'PROFILE EXEC'!&c0702                          00078380
+.br                                                                     00078470
+.us \7.3.^^Request the initial \MAILER\ distribution!&c0703             00078560
+.br                                                                     00078650
+7.4.^^Verify receipt of the files!&c0704                                00078740
+.br                                                                     00078830
+7.5.^^Link the disk read/write!&c0704                                   00078920
+.br                                                                     00079010
+7.6.^^Load files to disk!&c0706                                         00079100
+.br                                                                     00079190
+7.7.^^Erase extraneous files (source distributon only)!&c0707           00079280
+.br                                                                     00079370
+7.8.^^Link the disk read/only!&c0708                                    00079460
+.br                                                                     00079550
+7.9.^^Modify MTPLATE!&c0709                                             00079640
+.br                                                                     00079730
+7.10.^Modify MAILLCL!&c0710                                             00079820
+.br                                                                     00079910
+7.11.^Run MG!&c0711                                                     00080000
+.br                                                                     00080090
+7.12.^Modify the MABNXIT EXEC!&c0712                                    00080180
+.br                                                                     00080270
+7.13.^Modify SAMPPROF!&c0713                                            00080360
+.br                                                                     00080450
+7.14.^Modify the FORWARDX EXEC (optional)!&c0714                        00080540
+.br                                                                     00080630
+7.15.^Modify the FWD EXEC (optional)!&c0715                             00080720
+.br                                                                     00080810
+7.16.^Modifying other files (optional)!&c0716                           00080900
+.br                                                                     00080990
+.us \7.17.^Copy files to the \MAILER\ DVM 193 disk!&c0717               00081080
+.br                                                                     00081170
+.us \7.18.^Copy files to the \MAILER\ DVM 191 disk!&c0718               00081260
+.br                                                                     00081350
+7.19.^Copy files to the MAILFWD 191 disk (optional)!&c0719              00081440
+.br                                                                     00081530
+7.20.^Copy files to public disk(s) (optional)!&c0720                    00081620
+.hi 0i                                                                  00081710
+.in -.4i                                                                00081800
+./ R 00087630          $ 87710 80                     04/05/91 16:27:34
+.in -.4i                                                                00087710
+./ R 00097130          $ 97210 80                     04/05/91 16:27:34
+10.1.^^ACTIVATE!&c1001                                                  00097210
+./ R 00097510          $ 97590 80                     04/05/91 16:27:34
+10.2.^^CHECK!&c1002                                                     00097590
+./ R 00097890          $ 97970 80                     04/05/91 16:27:34
+10.3.^^CMS!&C1003                                                       00097970
+./ R 00098270          $ 98350 80                     04/05/91 16:27:34
+10.4.^^CP!&C1004                                                        00098350
+./ R 00098650          $ 98730 80                     04/05/91 16:27:34
+10.5.^^FORWARD!&C1005                                                   00098730
+./ R 00099030          $ 99110 80                     04/05/91 16:27:34
+10.6.^^HELP!&C1006                                                      00099110
+./ R 00099440          $ 99450 10                     04/05/91 16:27:34
+10.7.^^MAILLIST!&C1007                                                  00099450
+./ R 00099500          $ 99540 40                     04/05/91 16:27:34
+10.8.^^QUIESCE!&C1008                                                   00099540
+./ R 00099870          $ 99910 40                     04/05/91 16:27:34
+10.9.^^RELOAD!&C1009                                                    00099910
+./ R 00109050          $ 109060 10                    04/05/91 16:27:34
+Appendix^G.^Standard File Forwarding Server ID Definition!&appg         00109060
+./ R 00109410          $ 109430 20                    04/05/91 16:27:34
+Appendix^H.^Inventory of Files on &vmmlab2xx disk!&apph                 00109430
+./ R 00139000          $ 139490 490                   04/05/91 16:27:34
+.pa odd                                                                 00139490
+./ R 00199490          $ 199680 190                   04/05/91 16:27:34
+.hi .33i                                                                00199680
+./ R 00201490          $ 201680 190                   04/05/91 16:27:34
+1.^That Columbia include limitations on WATCOM's liability, limitations 00201680
+./ R 00205490          $ 205680 190                   04/05/91 16:27:34
+2.^Columbia must maintain records of all copies of the library object   00205680
+./ I 00245390          $ 245391 1                     04/05/91 16:27:34
+.pa                                                                     00245391
+.heading 2.0 Overview of the MAILER system                              00245392
+.sr c02 = &sysppage                                                     00245393
+.in +.33i                                                               00245394
+.sp 2                                                                   00245395
+The mailer system is composed of two components.                        00245396
+.us \A mail transfer agent (\MAILER\) and a file forwarding agent       00245397
+.us \(\FORWARDX\).                                                      00245398
+.sp 1                                                                   00245399
+The mail transfer agent accepts files from local users or the network   00245400
+and decides how to route them.                                          00245401
+This process is contolled by a set of tables created by the MG          00245402
+profile generator.                                                      00245403
+.sp 1                                                                   00245404
+The file forwarding agent looks at spool files in the user's reader     00245405
+and based on a set of criteria defined by the user either transfers     00245406
+them to a different userid or leave them in place.                      00245407
+One of the userids to which the files could be transferred is the       00245408
+.us \MAILER\.                                                           00245409
+This will occur when mail is delivered to the user by use of the CP TAG 00245410
+and SPOOL commands (or their equivalents for non-VM systems).           00245411
+.in -.33i                                                               00245412
+.subhead 2.1 Overview of MAILER Operation                               00245413
+.sr c0201 = &sysppage                                                   00245414
+.in +.33i                                                               00245415
+.us \This is a brief description of what \MAILER\ does.                 00245416
+When first started,                                                     00245417
+.us \\MAILER\ reads the profile, allocates various tables, and          00245418
+loads any user exits that are not built in.                             00245419
+It establishes an IUCV path and issues 'SET MSG IUCV' and 'SET SMSG     00245420
+IUCV' commands to allow messages to be trapped.                         00245421
+It then goes into a wait state, waiting for the arrival of a reader     00245422
+file, an IUCV interrupt, or a console interrupt.                        00245423
+.sp                                                                     00245424
+.sp                                                                     00245425
+If the interrupt was an IUCV or from console typein, the command        00245426
+parser is invoked to process the user command.                          00245427
+For reader interrupts, each file in the reader is read and processed,   00245428
+usually resulting in the generation of outgoing punch spool files.      00245429
+.sp                                                                     00245430
+A valid reader file can be one of:                                      00245431
+.in +.33i                                                               00245432
+.sp                                                                     00245433
+1. An RFC822 mail file.                                                 00245434
+.in +.33i                                                               00245435
+.sp                                                                     00245436
+A mail file is a PUNCH spool file containing a header separated by a    00245437
+blank record from the text of the message.                              00245438
+The syntax specification for the header format is derived from the      00245439
+.us \\Standard for the Format of ARPA Internet Text Messages,           00245440
+DARPA Request for Comments                                              00245441
+.footnote                                                               00245442
+The various Internet RFC's are available as                             00245443
+.bd \\"RFCxxx STANDARD"\ from LISTSERV@BITNIC.                          00245444
+.footend                                                                00245445
+.in -.33i                                                               00245446
+.sp                                                                     00245447
+.hi 3                                                                   00245448
+2.^A Batch Simple Mail Transfer Protocol (BSMTP) request.               00245449
+.hi 0                                                                   00245450
+.in +.33i                                                               00245451
+.sp                                                                     00245452
+A BSMTP request is differentiated from an RFC822 mail file by having the00245453
+first record start with the text "HELO ".                               00245454
+This is the first command of an SMTP dialog and looks sufficiently      00245455
+different from a mail file to be easily identified.                     00245456
+.sp 1                                                                   00245457
+SMTP is defined by RFC821.                                              00245458
+Batch SMTP extensions to SMTP are defined by CUVMB BSMTP available from 00245459
+LISTSERV@BITNIC.                                                        00245460
+.in -.33i                                                               00245461
+.sp                                                                     00245462
+3. A reply to a BSMTP request previously generated.                     00245463
+.in +.33i                                                               00245464
+.sp                                                                     00245465
+A BSMTP reply is identified by having the first record start with 3     00245466
+digits (e.g. "220").                                                    00245467
+.in -.33i                                                               00245468
+.sp                                                                     00245469
+.in -.33i                                                               00245470
+.sp                                                                     00245471
+For  both mail files and BSMTP requests,                                00245472
+.us \\MAILER\ does essentially the same thing.                          00245473
+The first step is to look for the origin userid in the ORIGINS table.   00245474
+The origin userid is the id that appears under the 'ORIGINID' heading   00245475
+when you issue a 'CP QUERY RDR ALL' command.                            00245476
+It is the local system id that put this file into the system spool.     00245477
+If an entry is found that matches the origin userid, the exit           00245478
+for that entry is run.                                                  00245479
+This exit may do anything it likes to the mail file (including purging  00245480
+it).                                                                    00245481
+This allows you to implement some control over who can actually use     00245482
+.us \\MAILER\.                                                          00245483
+.sp 1                                                                   00245484
+.us \Next, \MAILER\                                                     00245485
+parses the mail or BSMTP request to obtain the userid of the sender and 00245486
+a list of recipients.                                                   00245487
+In the case of BSMTP, this is simple -- the sender is given in the      00245488
+MAIL FROM command and each recipient is identified by                   00245489
+a RCPT TO command.                                                      00245490
+For RFC822 mail, it is a little more difficult to determine             00245491
+.us \\which\ addresses should be acted upon.                            00245492
+.us \This is one reason that BSMTP support was added to \MAILER\.       00245493
+Another reson is that BSMTP has become the de-facto standard for        00245494
+interoperation of various mail systems on BITNET.                       00245495
+.sp 1                                                                   00245496
+.us \\MAILER\ now looks up the NJE origin in the INCOMING table         00245497
+(see section 8.3 for a description of the entries in this table).       00245498
+The NJE origin is the originating userid and node from which the file   00245499
+was sent.                                                               00245500
+You can see the NJE origin by issuing a CP TAG QUERY FILE command for   00245501
+a file placed in your reader by RSCS.                                   00245502
+.sp 1                                                                   00245503
+The INCOMING table lists which other mailers your                       00245504
+.us \\MAILER\ knows about and will trust.                               00245505
+Anyone not listed in the INCOMING table must send a mail file with a    00245506
+Sender: or From: field that is consistent with the file's RSCS origin   00245507
+node and userid.                                                        00245508
+.sp 1                                                                   00245509
+.us \\MAILER\ first looks for NJEuserid@NJEnode in the INCOMING table   00245510
+.us \If that is not found, \MAILER\ searches for NJEuser@*DEFAULT*.     00245511
+.us \If that is not found (and the \Allow-Unknown-Nodes\ variable is    00245512
+set true) an entry of *DEFAULT*@*DEFAULT* is searched for.              00245513
+For mail with an RFC822 header (i.e not BSMTP) if no matching entry is  00245514
+found, the mail is rejected.                                            00245515
+.sp 1                                                                   00245516
+For mail delivered with a BSMTP envelope, if no matching entry is       00245517
+.us \found and \Allow-Charlatans\ is true, a message indicating that    00245518
+the sender is a charlatan will be added to the headers delivered to     00245519
+the final destination.                                                  00245520
+.us \If \Allow-Charlatans\ is false the mail will be rejected.          00245521
+.sp 1                                                                   00245522
+The OUTGOING and DOMAINS tables describe where to send mail that has    00245523
+been processed.                                                         00245524
+The mail may be sent locally (i.e. to a local recipient), to a local    00245525
+server, or to a remote recipient or server on BITNET.                   00245526
+.sp 1                                                                   00245527
+To determine how the mail for an individual recipient will be handled   00245528
+a table lookup is done for every addressee who has not yet received the 00245529
+mail.                                                                   00245530
+The key for the table lookup is the destination hostid.                 00245531
+This is the string to the right of the '@' in a user address (i.e.      00245532
+"hostid" in "userid@hostid") or the first host in the route address     00245533
+(i.e., "a" in "<@a,@b:userid@hostid>").                                 00245534
+.sp 1                                                                   00245535
+The table lookup is done in the following order until a match is found  00245536
+or the lookup process fails:                                            00245537
+.in +.33i                                                               00245538
+.sp 1                                                                   00245539
+.hi .33i                                                                00245540
+1.^Look up the full hostid in the OUTGOING table                        00245541
+.hi .33i                                                                00245542
+.sp 1                                                                   00245543
+2.^Compare each of the RSCS-Domain# strings against the right end       00245544
+(a right hand match)                                                    00245545
+of the host id and remove that value if a match is found.               00245546
+.hi .33i                                                                00245547
+.sp 1                                                                   00245548
+3.^Look for the resulting value in the OUTGOING table                   00245549
+.hi .33i                                                                00245550
+.sp 1                                                                   00245551
+4.^Look for the full host value (the one used in step 1) in the DOMAINS 00245552
+table.                                                                  00245553
+Searches in the domains table are done as a right hand match.           00245554
+.hi .33i                                                                00245555
+.sp 1                                                                   00245556
+5.^If Allow-Unknown-Nodes is 'true' then look for *DEFAULT*             00245557
+.in +.33i                                                               00245558
+.hi .4i                                                                 00245559
+.sp 1                                                                   00245560
+5A.^If the original hostid (the one used for the lookup in step 1)      00245561
+has no dot ('.') in it (i.e. the hostid is not expressed in domain      00245562
+name format) then look for the *DEFAULT* entry in the OUTGOING table.   00245563
+.hi .4i                                                                 00245564
+.sp 1                                                                   00245565
+5B.^If the original hostid has a dot in it (i.e. in domain name format) 00245566
+then:                                                                   00245567
+.in +.4i                                                                00245568
+.hi .6i                                                                 00245569
+.sp 1                                                                   00245570
+5B.1.^If an RSCS-Domain match was found (in step 2) look for            00245571
+*DEFAULT*ROUTE*.RSCS-Domain in the DOMAINS table (otherwise skip to     00245572
+step 5B.2).                                                             00245573
+.sp 1                                                                   00245574
+If the address was SOMENODE.BITNET (and BITNET is in the                00245575
+RSCS-Domain# strings) and SOMENODE was not found in the outgoing table, 00245576
+the DOMAINS table would be searched for *DEFAULT*ROUTE*.BITNET.         00245577
+This allows you to set default routings for domain names (such          00245578
+as .BITNET) which are on the NJE network.                               00245579
+.hi .6i                                                                 00245580
+.sp 1                                                                   00245581
+5B.2.^Look for *DEFAULT* in the DOMAINS table.                          00245582
+.in -.4i                                                                00245583
+.in -.33i                                                               00245584
+.hi 0                                                                   00245585
+.in -.33i                                                               00245586
+.sp                                                                     00245587
+.us \The function of \MAILER\ is described in further detail in the     00245588
+.us \\MAILER Program Logic Manual\, "PLM LISTING."                      00245589
+.in -.33i                                                               00245590
+.subhead 2.2 Overview of the file forwarding operation                  00245591
+.sr c0202 = &sysppage                                                   00245592
+.in +.33i                                                               00245593
+.sp 2                                                                   00245594
+The file forwarding process is broken in two pieces; maintenance of     00245595
+control information (where to forward what) and the actual forwarding   00245596
+operation.                                                              00245597
+The control information is processed by the Mailer's FORWARD command.   00245598
+The user interface to this is the FWD command (try HELP FWD for more    00245599
+information).                                                           00245600
+The Mailer FORWARD command (FORWARD MAILER) creates a file              00245601
+.us \(\userid\ FORWARD) on the Mailer DVM's 191 disk for each user      00245602
+requesting forwarding of mail or files.                                 00245603
+The Mailer does not use any of the file forwarding information stored   00245604
+in this file.                                                           00245605
+It simply acts as a middleman for processing and storing of the         00245606
+information.                                                            00245607
+.sp 1                                                                   00245608
+The file forwarding server runs in a disconnected virtual machine that  00245609
+can be autologged when your system is ipled (just like the              00245610
+.us Mailer\ DVM) or can be periodically autologged by some other        00245611
+time driven server (such as SMART).                                     00245612
+The installation instructions tell you how to modify the server for     00245613
+either mode of operation.                                               00245614
+.sp 1                                                                   00245615
+The file forwarding code is found in the FORWARDX EXEC.                 00245616
+This code divides the world into two classes of files; mail and         00245617
+everything else.                                                        00245618
+The classification is controlled in a subroutine (ismail) so you can    00245619
+modify it to meet your site's needs.                                    00245620
+.sp 1                                                                   00245621
+Any files classified as mail are processed by transferring them to the  00245622
+mailer for further processing.                                          00245623
+The Mailer knows about any mail forwardings established by the user     00245624
+and FORWARDX does not need to be involved.                              00245625
+The only mail files that are not transferred are those with an          00245626
+origination userid found in the serverids list (in particular, those    00245627
+from the Mailer DVM).                                                   00245628
+.sp 1                                                                   00245629
+Forwarding of non-mail files is controlled by class.                    00245630
+It is not necessary to forward all files to the same userid.            00245631
+File in classes 'A', 'B' and 'C' can be forwarded to one userid, files  00245632
+in class 'T' can be forwarded to a different userid, and the remaining  00245633
+files can be left untouched.                                            00245634
+.sp 1                                                                   00245635
+Since it is disconcerting to some users to see files arrive in the      00245636
+reader and then not be able to find them later in a session, the file   00245637
+forwarding code can be told to only remove the file when the user       00245638
+is logged off.                                                          00245639
+For those users who don't mind, it is possible to say the files may be  00245640
+removed at any time.                                                    00245641
+.sp 1                                                                   00245642
+There is one limitation on file forwarding that does not exist for      00245643
+mail forwarding.                                                        00245644
+Files may only be forwarded to destinations with NJE addresses.         00245645
+.in -.33i                                                               00245646
+./ R 00246550 00247340 $ 246740 190                   04/05/91 16:27:34
+.heading 3.^MAILER Maintainer and Postmaster Job Descriptions           00246740
+.sr c03 = &sysppage                                                     00246930
+.hi 0                                                                   00247120
+./ R 00257690 00258490 $ 258080 390                   04/05/91 16:27:34
+.hi .33i                                                                00258080
+.us \1.^Installation and configuration of the initial \MAILER\          00258470
+./ R 00260780 00261490 $ 261170 390                   04/05/91 16:27:34
+.hi .33i                                                                00261170
+.us \2.^Occasional installation of \MAILER\ software updates (typically 00261560
+./ R 00263580 00264000 $ 263970 390                   04/05/91 16:27:34
+.hi .33i                                                                00263970
+3.^Monthly acquisition and installation of the BITNET database used     00264360
+./ R 00285490 00286000 $ 285980 490                   04/05/91 16:27:34
+.hi .33i                                                                00285980
+1.^Answering local users' questions about the mail system.              00286470
+./ R 00288490 00289000 $ 288980 490                   04/05/91 16:27:34
+.hi .33i                                                                00288980
+2.^Responding to queries from outsiders (typically requesting help      00289470
+./ R 00292490 00293000 $ 292980 490                   04/05/91 16:27:34
+.hi .33i                                                                00292980
+3.^Diagnosing miscellaneous mail system errors.                         00293470
+./ R 00313360 00313960 $ 313850 490                   04/05/91 16:27:34
+.heading 4. Obtaining a copy of MAILER                                  00313850
+.sr c04 = &sysppage                                                     00314340
+./ R 00353950 00354550 $ 354440 490                   04/05/91 16:27:34
+.heading 5. Additional Files Needed for BITNET                          00354440
+.sr c05 = &sysppage                                                     00354930
+./ I 00395490          $ 395690 200                   04/05/91 16:27:34
+This information is extracted from the BITEARN NODES file.              00395690
+./ R 00415180 00415680 $ 415570 390                   04/05/91 16:27:34
+.heading 6. Your MAILER subscription and registration                   00415570
+.sr c06 = &sysppage                                                     00415960
+./ R 00428990 00431980 $ 429980 990                   04/05/91 16:27:34
+.subhead 6.1. Subscription via LISTSERV                                 00429980
+.sr c0601 = &sysppage                                                   00430970
+./ R 00461790 00462780 $ 462180 390                   04/05/91 16:27:34
+.subhead 6.2. Registration :mailer tag                                  00462180
+.sr c0602 = &sysppage                                                   00462570
+./ R 00463950 00464730 $ 464000 50                    04/05/91 16:27:34
+The network is starting the process of converting from the old          00464000
+format BITEARN NODES file (described in OLDTAGS DESCRIPT) to the new    00464050
+format (described in NEWTAGS DESCRIPT).                                 00464100
+The documentation files are available from LISTSERV.                    00464150
+.sp 1                                                                   00464200
+One of the changes that will occur is how the mailer information is     00464250
+defined.                                                                00464300
+These instructions describe both the old and new way to do this.        00464350
+In the following instructions the phrase "old format" refers to how     00464400
+the process is done in the OLDTAGS DESCRIPT format.                     00464450
+The phrase "new format" describes how this is done in the NEWTAGS       00464500
+DESCRIPT file.                                                          00464550
+.sp 1                                                                   00464600
+To tell the network that you have a mailer, you need to set the         00464650
+mailer information field of your node entry in the BITEARN NODES file.  00464700
+This change can be done by your TECHREP.                                00464750
+./ R 00470480          $ 470500 20                    04/05/91 16:27:34
+.cc 6                                                                   00470500
+Old format                                                              00470520
+.bd .ce :mailer.\vmid\ DEFRT 1                                          00470540
+.sp 1                                                                   00470560
+New format                                                              00470580
+.sp 1                                                                   00470600
+.bd .ce :servers.\vmid\@\node\(MAIL,PU,M,OUTONLY\,P_contact\)           00470620
+./ R 00471560          $ 471610 50                    04/05/91 16:27:34
+.cc 3                                                                   00471610
+.us \where: \vmid\ is the userid of your \MAILER\ machine.              00471660
+.br                                                                     00471710
+.us \       \node\ is your node's NJE name.                             00471760
+.br                                                                     00471810
+.us \       \P_contact\ is the person tag for the postmaster.           00471860
+./ R 00485000          $ 485490 490                   04/05/91 16:27:34
+Keeping all sites current has become more and more of a problem as the  00485490
+size of the                                                             00485980
+./ R 00487770 00489440 $ 488260 490                   04/05/91 16:27:34
+.bd \of \"XMAILER NAMES"\ has increased.                                00488260
+.bd \As a temporary fix the initial \MAILER PROFILE\ that is generated  00488750
+by MG can be set up to bypass all other mailers.                        00489240
+./ R 00501780          $ 501820 40                    04/05/91 16:27:34
+.cc 6                                                                   00501820
+Old format                                                              00501860
+.bd .ce :mailer.\vmid                                                   00501900
+.sp 1                                                                   00501940
+New format                                                              00501980
+.sp 1                                                                   00502020
+.bd .ce :servers.\vmid\@\node\(MAIL,PU,M,BSMTP\,P_contact\)             00502060
+./ R 00506650 00506760 $ 506740 90                    04/05/91 16:27:34
+.heading 7. Installation Procedure                                      00506740
+.sr c07 = &sysppage                                                     00506830
+./ R 00508500          $ 508510 10                    04/05/91 16:27:34
+The third (optional) userid is where the file forwarding server         00508510
+./ R 00509080 00509100 $ 509087 7                     04/05/91 16:27:34
+The userid used for the file forwarding server in this document         00509087
+will be MAILFWD.                                                        00509094
+A skeleton directory entry for the forwarding server is defined in      00509101
+./ R 00513310 00513910 $ 514300 990                   04/05/91 16:27:34
+.subhead 7.1. Create the required userids                               00514300
+.sr c0701 = &sysppage                                                   00515290
+./ R 00517120          $ 517150 30                    04/05/91 16:27:34
+receiving and all the forwarding and mailing list information files.    00517150
+./ R 00518070 00518160 $ 518110 40                    04/05/91 16:27:34
+.subhead 7.2.  Create the MAILMNT 'PROFILE EXEC'                        00518110
+.sr c0702 = &sysppage                                                   00518150
+./ R 00519310          $ 519320 10                    04/05/91 16:27:34
+!C!&vmmlab2xx disk (the object code disk)                               00519320
+./ R 00520550 00520640 $ 520590 40                    04/05/91 16:27:34
+.subhead 7.3.  Request the initial MAILER distribution                  00520590
+.sr c0703 = &sysppage                                                   00520630
+./ I 00520720          $ 520727 7                     04/05/91 16:27:34
+If you received a copy of the MAILR2 INFO file and followed the         00520727
+instructions given there you can skip to step 7.4.                      00520734
+.sp 1                                                                   00520741
+The VM Network MAILER release 2 is available from the LISTSERV at PUCC. 00520748
+It is supplied in two different forms, OBJECT or SOURCE.                00520755
+.sp 1                                                                   00520762
+The OBJECT distribution contains all the files necessary to run MAILER  00520769
+and to write distribution exits for mailer (in either assembler or C).  00520776
+A number of distribution exits are included with MAILER and most sites  00520783
+do not need to write their own.                                         00520790
+.sp 1                                                                   00520797
+The SOURCE distribution contains the code necessary to run mailer as    00520804
+well as all source files for MAILER.                                    00520811
+If you will be modifying MAILER you will need a source distribution.    00520818
+If you will only be writing new distribution exits you do not need a    00520825
+source distribution.                                                    00520832
+.sp 1                                                                   00520839
+The source code for mailer is written in assembler and C.  The C code is00520846
+compatible with the Waterloo C 1.3 and 3.0 compilers.                   00520853
+.sp 1                                                                   00520860
+./ R 00521200          $ 521230 30                    04/05/91 16:27:34
+You will receive several files, one of which will be 'MAILR2 $PACKAGE'. 00521230
+./ R 00522400          $ 522430 30                    04/05/91 16:27:34
+You will receive several files, one of which will be 'MAILR2S $PACKAGE' 00522430
+./ R 00523360          $ 523390 30                    04/05/91 16:27:34
+.ce .bd Do NOT order both MAILR2S and MAILR2.                           00523390
+./ R 00523840 00524000 $ 523890 50                    04/05/91 16:27:34
+No matter which package you order, you will receive messages from the   00523890
+LISTSERV at PUCC informing you of the files it is sending to you.       00523940
+The order in which the files arrive is dependent on their size.         00523990
+./ R 00524440 00524480 $ 524470 30                    04/05/91 16:27:34
+.subhead 7.4. Verify receipt of the files                               00524470
+.sr c0704 = &sysppage                                                   00524500
+./ R 00524910 00524960 $ 524940 30                    04/05/91 16:27:34
+Look for the file 'MAILR2 $PACKAGE' (object code distribution) or       00524940
+'MAILR2S $PACKAGE' (source distribution) in your reader.                00524970
+./ R 00526310 00526380 $ 526350 40                    04/05/91 16:27:34
+.subhead 7.5. Link the disk read/write                                  00526350
+.sr c0705 = &sysppage                                                   00526390
+./ R 00526640 00526720 $ 526680 40                    04/05/91 16:27:34
+All the disks attached to MAILMNT must be made writable to load         00526680
+the files from LISTSERV.                                                00526720
+./ R 00526880          $ 526910 30                    04/05/91 16:27:34
+each disk and then issuing a new ACCESS command for it.                 00526910
+./ R 00527910 00527980 $ 527950 40                    04/05/91 16:27:34
+.subhead 7.6. Load files to disk                                        00527950
+.sr c0706 = &sysppage                                                   00527990
+./ I 00528880          $ 528885 5                     04/05/91 16:27:34
+Enter                                                                   00528885
+./ R 00528910          $ 528915 5                     04/05/91 16:27:34
+.bd \\RECEIVE / = = A\                                                  00528915
+./ I 00528920          $ 528930 10                    04/05/91 16:27:34
+.sp 1                                                                   00528930
+on the line describing the $PACKAGE file.                               00528940
+./ R 00529040 00529120 $ 529080 40                    04/05/91 16:27:34
+.bd \Receive any other files that do \not\ have a filename matching a   00529080
+disk label (&vmmlab2xx, V2-MNT, V2-SRC or V2-DST).                      00529120
+./ R 00529760          $ 529790 30                    04/05/91 16:27:34
+.in +.33i                                                               00529790
+./ R 00530000          $ 530030 30                    04/05/91 16:27:34
+.in -.33i                                                               00530030
+./ R 00530240          $ 530270 30                    04/05/91 16:27:34
+.in +.33i                                                               00530270
+./ R 00530480          $ 530510 30                    04/05/91 16:27:34
+.in -.33i                                                               00530510
+./ R 00530960          $ 530990 30                    04/05/91 16:27:34
+.in +.33i                                                               00530990
+./ R 00531200          $ 531230 30                    04/05/91 16:27:34
+.in -.33i                                                               00531230
+./ R 00531630          $ 531640 10                    04/05/91 16:27:34
+.bd \\C\ for \&vmmlab2xx\                                               00531640
+./ R 00532950 00533020 $ 532954 4                     04/05/91 16:27:34
+.subhead 7.7. Erase extraneous files (source distribution only)         00532954
+.sr c0707 = &sysppage                                                   00532958
+.in +.33i                                                               00532962
+.us \If you received an object distribution of \Mailer\ skip to step    00532966
+6.8.                                                                    00532970
+.sp 1                                                                   00532974
+It was necessary to duplicate some filenames on the &vmmlab2xx disk     00532978
+that also exist on the V2-MNT disk.                                     00532982
+This was done to make it possible for object code sites to use update to00532986
+maintain the local configuration changes.                               00532990
+.sp 1                                                                   00532994
+To remove these duplicated filenames from the &vmmlab2xx disk issue     00532998
+the following commands:                                                 00533002
+.sp 1                                                                   00533006
+.in +.33i                                                               00533010
+.bd ERASE * $EXEC C (TYPE                                               00533014
+.in -.33i                                                               00533018
+.sp 1                                                                   00533022
+This will remove FORWARDX $EXEC, FWD $EXEC, MABNXIT $EXEC, and          00533026
+SAMPPROF $EXEC.                                                         00533030
+.sp 1                                                                   00533034
+.in +.33i                                                               00533038
+.bd ERASE * $HELPCMS C (TYPE                                            00533042
+.in -.33i                                                               00533046
+.sp 1                                                                   00533050
+This will remove FWD $HELPCMS, MAILER $HELPCMS, and MAILERP $HELPCMS.   00533054
+.sp 1                                                                   00533058
+.in +.33i                                                               00533062
+.bd ERASE * $MTPLATE C (TYPE                                            00533066
+.in -.33i                                                               00533070
+.sp 1                                                                   00533074
+This will remove SAMPLE $MTPLATE.                                       00533078
+.in -.33i                                                               00533082
+.subhead 7.8. Link the disk read/only                                   00533086
+.sr c0708 = &sysppage                                                   00533090
+./ R 00534470 00534540 $ 534510 40                    04/05/91 16:27:34
+.subhead 7.9. Modify MTPLATE                                            00534510
+.sr c0709 = &sysppage                                                   00534550
+./ R 00535120          $ 535150 30                    04/05/91 16:27:34
+.in +.33i                                                               00535150
+./ R 00535280 00535390 $ 535320 40                    04/05/91 16:27:34
+.bd \\COPYFILE SAMPLE $MTPLATE C\ nodename \$MTPLATE A\                 00535320
+.in -.33i                                                               00535360
+./ R 00535520 00535600 $ 535560 40                    04/05/91 16:27:34
+.bd \The \MTPLATE\ file is used as a template to guide the generation   00535560
+.us \of the profile that will be used by \MAILER\ during initialization.00535600
+./ R 00536080 00536160 $ 536083 3                     04/05/91 16:27:34
+The MTPLATE cannot be used as distributed, it must be customized for    00536083
+your site.                                                              00536086
+The distributed file is designed to be modified using the XEDIT update  00536089
+facility and EXECUPDT.                                                  00536092
+For more information on the XEDIT update facility and the update        00536095
+process in general see the UPDATE, EXECUPDT and XEDIT command           00536098
+descriptions in the CMS command guide.                                  00536101
+.sp 1                                                                   00536104
+The first step is to create an auxiliary control file (to guide the     00536107
+application of updates) by copying the sample file:                     00536110
+.in +.33i                                                               00536113
+.sp 1                                                                   00536116
+.bd COPYFILE SAMPLE AUXLCL C \nodename\ AUXLCL A                        00536119
+.in -.33i                                                               00536122
+.sp 1                                                                   00536125
+You are now ready to make the changes necessary for your configuration. 00536128
+Enter the command:                                                      00536131
+.in +.33i                                                               00536134
+.sp 1                                                                   00536137
+.bd XEDIT \nodename\ $MTPLATE ( CTL MAILER'                             00536140
+.sp 1                                                                   00536143
+.in -.33i                                                               00536146
+This will place you in an XEDIT session using the update facility.      00536149
+The filetype of the file will be 'CONFIG0'.                             00536152
+Follow the instructions coded as comments in the MTPLATE file.          00536155
+Refer to Section 8 for additional descriptions of the variables and     00536158
+tables that make up the MTPLATE.                                        00536161
+.sp 1                                                                   00536164
+When you are done enter                                                 00536167
+.sp 1                                                                   00536170
+.in +.33i                                                               00536173
+.bd FILE = = A                                                          00536176
+.sp 1                                                                   00536179
+.in -.33i                                                               00536182
+This will create a file of your changes ('nodename CONFIG0') on disk.   00536185
+To generate an operational profile enter:                               00536188
+.sp 1                                                                   00536191
+.in +.33i                                                               00536194
+.bd EXECUPDT \nodename\ MTPLATE ( CTL MAILER                            00536197
+.sp 1                                                                   00536200
+.in -.33i                                                               00536203
+This will create the profile on your A disk as                          00536206
+.bd \"nodename\ MTPLATE\"                                               00536209
+./ R 00536390 00536460 $ 536430 40                    04/05/91 16:27:34
+.subhead 7.10. Modify MAILLCL                                           00536430
+.sr c0710 = &sysppage                                                   00536470
+./ R 00536720          $ 536750 30                    04/05/91 16:27:34
+Copy the sample MAILLCL (mailer local overrides) file to the A disk as  00536750
+./ R 00536880 00537040 $ 536930 50                    04/05/91 16:27:34
+'Nodename' must match the name of given to the MTPLATE file associated  00536930
+with this MAILLCL file.                                                 00536980
+.in +.33i                                                               00537030
+./ R 00537280          $ 537310 30                    04/05/91 16:27:34
+.in -.33i                                                               00537310
+./ R 00537750 00537820 $ 537790 40                    04/05/91 16:27:34
+.subhead 7.11. Run MG                                                   00537790
+.sr c0711 = &sysppage                                                   00537830
+./ R 00538640          $ 538670 30                    04/05/91 16:27:34
+.in +.33i                                                               00538670
+./ R 00538880          $ 538910 30                    04/05/91 16:27:34
+.in -.33i                                                               00538910
+./ R 00539044 00539048 $ 539046 2                     04/05/91 16:27:34
+.subhead 7.12. Modify the MABNXIT EXEC                                  00539046
+.sr c0712 = &sysppage                                                   00539048
+./ R 00539160          $ 539162 2                     04/05/91 16:27:34
+the failure and the associated MAILPROB file.                           00539162
+./ R 00539228 00541028 $ 539318 90                    04/05/91 16:27:34
+facility with a control file name of MAILEXEC.                          00539318
+Use the following commands to make your modifications:                  00539408
+.sp 1                                                                   00539498
+.in +.33i                                                               00539588
+.bd XEDIT MABNXIT $EXEC ( CTL MAILEXEC                                  00539678
+.sp 1                                                                   00539768
+.in -.33i                                                               00539858
+This will place you in XEDIT with a filetype of CONFIG0.                00539948
+Make your changes to the code and then enter                            00540038
+.sp 1                                                                   00540128
+.in +.33i                                                               00540218
+.bd FILE = = A                                                          00540308
+.sp 1                                                                   00540398
+.in -.33i                                                               00540488
+to save the file of your changes on disk.                               00540578
+.sp 1                                                                   00540668
+Create a new (modified) MABNXIT EXEC by entering                        00540758
+.sp 1                                                                   00540848
+.in +.33i                                                               00540938
+.bd EXECUPDT MABNXIT EXEC ( CTL MAILEXEC                                00541028
+.in -.33i                                                               00541118
+.in -.33i                                                               00541208
+.subhead 7.13. Modify SAMPPROF EXEC                                     00541298
+.sr c0713 = &sysppage                                                   00541388
+./ R 00542310          $ 542330 20                    04/05/91 16:27:34
+.bd \\SAMPPROF $EXEC\ contains a sample \PROFILE EXEC\ and a sample     00542330
+./ R 00542816 00542824 $ 542821 5                     04/05/91 16:27:34
+.bd \The \SAMPPROF $EXEC\ also contains a sample \PROFILE EXEC\ for     00542821
+the file forwarding server.                                             00542826
+./ R 00542848 00542960 $ 542849 1                     04/05/91 16:27:34
+.sp 1                                                                   00542849
+To modify these files for local use (you must modify them or Mailer     00542850
+will not function correctly), enter the following command:              00542851
+.in +.33i                                                               00542852
+.sp 1                                                                   00542853
+.bd XEDIT SAMPPROF $EXEC ( CTL MAILEXEC'                                00542854
+.sp 1                                                                   00542855
+.in -.33i                                                               00542856
+this will place you in XEDIT with an update identifier of CONFIG0.      00542857
+.in -.33i                                                               00542858
+.subhead 7.13.1.  Modify the Mailer DVM PROFILE EXEC                    00542859
+.sr c071301 = &sysppage                                                 00542860
+.in +.33i                                                               00542861
+You will find the PROFILE EXEC for the Mailer DVM at the top of the     00542862
+file.                                                                   00542863
+Look at the code and modify anything you feel is needed.                00542864
+For most sites no modifications will be needed.                         00542865
+.in -.33i                                                               00542866
+.subhead 7.13.2.  Modify the File Forwarding Sever PROFILE EXEC         00542867
+.sr c071302 = &sysppage                                                 00542868
+.in +.33i                                                               00542869
+If you do not want to implement the file forwarding server skip to      00542870
+step 7.13.3.                                                            00542871
+.sp 1                                                                   00542872
+You will find the PROFILE EXEC for the file forwarding server after the 00542873
+one for the Mailer DVM.                                                 00542874
+Look at the code and modify anything you feel is needed.                00542875
+The most likely modification would be to change the sleep time.         00542876
+.in -.33i                                                               00542877
+.subhead 7.13.3.  Modify the Mailer DVM Driver Exec                     00542878
+.sr c071303 = &sysppage                                                 00542879
+.in +.33i                                                               00542880
+You will find the driver exec for the Mailer DVM after the PROFILE EXEC 00542881
+for the file forwarding server.                                         00542882
+Follow the next few steps to modify the code.                           00542883
+.in -.33i                                                               00542884
+.subhead 7.13.3.1.  Modify the 'errids' value                           00542885
+.sr c07130301 = &sysppage                                               00542886
+.in +.33i                                                               00542887
+The users listed in 'errids' will receive mail about catastrophic       00542888
+.us \failures of \MAILER\.                                              00542889
+The addresses in this list must be in the 'userid AT node' format used  00542890
+by the NOTE command.                                                    00542891
+You may code more that one address in the list.                         00542892
+.in -.33i                                                               00542893
+.subhead 7.13.3.2.  Modify the 'smartnodes' value                       00542894
+.sr c07130302 = &sysppage                                               00542895
+.in +.33i                                                               00542896
+The 'smartnodes' value controls what will happen when a catastrophic    00542897
+failure occurs.                                                         00542898
+If your site runs the VM Real Time Monitor (aka SMART) you can request  00542899
+it to inform someone about machines that are disconnected and           00542900
+are in a wait state with a disabled PSW (i.e disconnected, waiting and  00542901
+non-dispatchable).                                                      00542902
+This would allow you to monitor the mailer DVM for failures.            00542903
+.sp 1                                                                   00542904
+To implement this support you must include the nodename of the node(s)  00542905
+on which you run SMART in the 'smartnodes' list and then ask the        00542906
+person responsible for maintaining SMART to include the mailer DVM in   00542907
+the list of ids to monitor.                                             00542908
+This will tend to decrease the amount of time it takes you to respond   00542909
+to severe mailer failures (because they are spotted more quickly).      00542910
+.sp 1                                                                   00542911
+If you do not have SMART at your node or you do not want to monitor     00542912
+the DVM then make sure the 'smartnodes' list does not contain           00542913
+the name of the node on which you will be running.                      00542914
+.in -.33i                                                               00542915
+.subhead 7.13.3.3.  Modifying the processing done after Mailer returns  00542894
+.sr c07130303 = &sysppage                                               00542895
+.in +.33i                                                               00542896
+.us \There is a select statment following the execution of \Mailer\.    00542897
+.us \This select controls what will happen after \Mailer\ execution
+ends.
+You may want to modify this select to meet local requirements.
+.sp 1
+The following processing occurs if you make no changes:
+.sp 1
+.us \Mailer\ running disconnected
+.sp 1
+.in +.33i
+.hi .88i
+RC^=^^0^will simply return to the top of the 'do forever' loop
+.us \automatically restarting \Mailer\.
+.us \This allows you to send a STOP command to \Mailer\ whenever
+the tables or the module are modified.
+The 193 disk (which normally contains the runtime files) will be
+.us \re-accessed and \Mailer\ restarted.
+.hi .88i
+RC^>^^0^will cause a mail notice announcing a
+.us Mailer\ failure to the userids in the 'errids' list.
+It will then either LOGOFF or go into a CP READ mode based on the
+setting of 'smartnodes'.
+.hi 0i
+.in -.33i
+.sp 1
+.us \Mailer\ running with a user at the console
+.sp 1
+.in +.33i
+.hi .88i
+RC^=^^0
+.br
+RC^=^^12^causes
+.us Mailer\ to exit the drive exec.
+Changes the 'leave' to 'nop' for RC=0 will give you a way to stop
+and recycle mailer (by issuing STOP) without it leaving the driver
+exec.
+Issuing a STOP 12 command will cause it to exit the driver.
+.hi .88i
+RC^=^^anything else
+.us \causes \Mailer\ to leave the driver exec.
+.hi 0i
+.in -.33i
+.in -.33i                                                               00542915
+.subhead 7.13.4.  Save your changes to the SAMPPROF $EXEC file          00542916
+.sr c071304 = &sysppage                                                 00542917
+.in +.33i                                                               00542918
+You are now done making changes to the SAMPPROF $EXEC file.             00542919
+Save your changes by entering                                           00542920
+.sp 1                                                                   00542921
+.in +.33i                                                               00542922
+.bd FILE = = A                                                          00542923
+.in -.33i                                                               00542924
+.in -.33i                                                               00542925
+.subhead 7.13.5.  Create the updated SAMPROF EXEC file                  00542926
+.sr c071305 = &sysppage                                                 00542927
+.in +.33i                                                               00542928
+Create the SAMPPROF EXEC file by updating SAMPPROF $EXEC using          00542929
+the EXECUPDT command                                                    00542930
+.sp 1                                                                   00542931
+.in +.33i                                                               00542932
+.bd EXECUPDT SAMPPROF EXEC ( CTL MAILEXEC                               00542933
+.in -.33i                                                               00542934
+.in -.33i                                                               00542935
+.subhead 7.13.6.  Extract the Mailer DVM PROFILE EXEC                   00542936
+.sr c071306 = &sysppage                                                 00542937
+.in +.33i                                                               00542938
+Using the editor, extract a copy of the "PROFILE EXEC" from             00542939
+"SAMPPROF EXEC" and save on the A disk as "PROFILE MAILER".             00542960
+./ R 00543360          $ 543390 30                    04/05/91 16:27:34
+created earlier (in section 7.2).                                       00543390
+./ R 00543460 00543470 $ 543466 6                     04/05/91 16:27:34
+.subhead 7.13.7.  Extract the Mailer driver exec                        00543466
+.sr c071307 = &sysppage                                                 00543472
+./ R 00543680 00543760 $ 543770 90                    04/05/91 16:27:34
+Save this file as 'MAILER EXEC' on the A disk.                          00543770
+./ R 00544070 00546824 $ 544078 8                     04/05/91 16:27:34
+.sr opt = (Optional)                                                    00544078
+.subhead 7.13.8.  Extract the file forwarding server PROFILE EXEC &opt  00544086
+.sr c071308 = &sysppage                                                 00544094
+.in +.33i                                                               00544102
+If you will be supporting file forwarding, use the editor to extract a  00544110
+copy of the file forwarding server "PROFILE EXEC" from "SAMPPROF EXEC"  00544118
+and save on the A disk as "PROFILE MAILFWD".                            00544126
+.sp 1                                                                   00544134
+.ce .bd Do not save the file as PROFILE EXEC or PROFILE MAILER          00544142
+.sp 1                                                                   00544150
+Saving the file as PROFILE EXEC will wipe out the PROFILE EXEC you      00544158
+created earlier (in section 7.2).                                       00544166
+Saving the file as PROFILE MAILER will wipe out the PROFILE MAILER you  00544174
+created earlier (in section 7.13.6).                                    00544182
+.in -.33i                                                               00544190
+.subhead 7.14. Modifying the FORWARDX EXEC (optional)                   00544198
+.sr c0714 = &sysppage                                                   00544206
+.in +.33i                                                               00544214
+FORWARDX EXEC is used only if you install the file forwarding           00544222
+support.                                                                00544230
+If you do not want to support file forwarding skip to section 7.17.     00544238
+.sp 1                                                                   00544246
+The FORWARDX EXEC contains the code to implement the file forwarding    00544254
+.us \function of \MAILER\.                                              00544262
+It is maintained using the EXECUPDT command.                            00544270
+To edit the file issue the following command:                           00544278
+.in +.33i                                                               00544286
+.sp 1                                                                   00544294
+.bd XEDIT FORWARDX $EXEC ( CTL MAILEXEC                                 00544302
+.sp 1                                                                   00544310
+.in -.33i                                                               00544318
+This will place you in XEDIT with a filetype of CONFIG0.                00544326
+Make the following changes:                                             00544334
+.in -.33i                                                               00544342
+.subhead 7.14.1 Remove "configuration not done" message                 00544350
+.sr c071401 = &sysppage                                                 00544358
+.in +.33i                                                               00544366
+Issue the following commands:                                           00544374
+.in +.33i                                                               00544382
+.sp 1                                                                   00544390
+/*** Note ***/                                                          00544398
+.br                                                                     00544406
+DELETE 4                                                                00544414
+.sp 1                                                                   00544422
+.in -.33i                                                               00544430
+This will delete 4 lines, the last of which is an 'exit 8' REXX         00544438
+statement                                                               00544446
+.in -.33i                                                               00544454
+.subhead 7.14.2 Set the spooled console destination                     00544462
+.sr c071402 = &sysppage                                                 00544470
+.in +.33i                                                               00544478
+If you want the console spooled (to retain a report of the actions      00544486
+performed by the file forwarder) you must set the 'consoleto' variable. 00544494
+Change the line to read:                                                00544502
+.in +.33i                                                               00544510
+.sp 1                                                                   00544518
+consoleto = 'userid'                                                    00544526
+.sp 1                                                                   00544534
+.in -.33i                                                               00544542
+where 'userid' is the local destination for the console log.            00544550
+.in -.33i                                                               00544558
+.subhead 7.14.3 Change the mailer userid                                00544566
+.sr c071403 = &sysppage                                                 00544574
+.in +.33i                                                               00544582
+If the userid of the Mailer DVM is not 'MAILER' you will need to        00544590
+change the 'mailerid' variable to the correct userid.                   00544598
+.in -.33i                                                               00544606
+.subhead 7.14.4 Set the MAILER 191 disk link address                    00544614
+.sr c071404 = &sysppage                                                 00544622
+.in +.33i                                                               00544630
+The forwarding code needs access to the * FORWARD files maintained by   00544638
+.us \\Mailer's\ FORWARD command on the Mailer DVM's 191 disk.           00544646
+If you have used the standard userid definition this address is 291.    00544654
+.sp 1                                                                   00544662
+Set the value of 'mailer191' to the appropriate disk address in the     00544670
+file forwarder's directory entry.                                       00544678
+.in -.33i                                                               00544686
+.subhead 7.14.5 Change the server exclusion list                        00544694
+.sr c071405 = &sysppage                                                 00544702
+.in +.33i                                                               00544710
+The 'serverids' variable provides a way to tell the forwarding server   00544718
+the userids of other servers for which forwarding should not be done.   00544726
+.sp 1                                                                   00544734
+There are some servers that produce files that should not be forwarded. 00544742
+.us \The \Mailer\ is one of these servers.                              00544750
+This occurs because a user may forward files to multiple destinations   00544758
+one of which can be the original userid.                                00544766
+.sp 1                                                                   00544774
+If your Mailer DVM's userid is not "MAILER" correct that value.         00544782
+Then add any additional server userids to the list.                     00544790
+.in -.33i                                                               00544798
+.subhead 7.14.6 Change the source inclusion list                        00544806
+.sr c071406 = &sysppage                                                 00544814
+.in +.33i                                                               00544822
+The "sources" variable holds a list of source userids for which         00544830
+forwarding will be done.                                                00544838
+If a file for a receiving user does not come from a source in this list 00544846
+it will not be transferred.                                             00544854
+You would use this variable if all you wanted to transfer was files     00544862
+delivered locally by RSCS(es).                                          00544870
+.sp 1                                                                   00544878
+If you set this variable to '*' files from any userid on the system may 00544886
+be forwarded (except for those listed in the "serverids" exclusion      00544894
+list).                                                                  00544902
+.in -.33i                                                               00544910
+.subhead 7.14.7 Changes for Single System Image sites                   00544918
+.sr c071407 = &sysppage                                                 00544926
+.in +.33i                                                               00544934
+If you do not know what Single System Image is you should skip this     00544942
+step.                                                                   00544950
+.sp 1                                                                   00544958
+If you are running a single system image complex you need to specify    00544966
+the cpu names and the cpu complex identifier letter in the              00544974
+cpu.n and cpuid.n variables.                                            00544982
+Remember to update the cpu.0 value to indicate how many machines are    00544990
+in the complex.                                                         00544998
+.in -.33i                                                               00545006
+.subhead 7.14.8 Set mode of operation                                   00545014
+.sr c071408 = &sysppage                                                 00545022
+.in +.33i                                                               00545030
+The sample PROFILE EXEC (found in SAMPPROF EXEC) has a little loop      00545038
+that drives FORWARDX and then does a CP SLEEP.                          00545046
+You do not have to use this mode of operation.                          00545054
+An alternative approach is to have another server (such a SMART)        00545062
+AUTOLOG the MAILFWD id whenever you want file forwarding run.           00545070
+.sp 1                                                                   00545078
+If you want to use the loop in the PROFILE EXEC to drive FORWARDX then  00545086
+you need to remove 1 line of code.                                      00545094
+Locate the line with                                                    00545102
+.in +.33i                                                               00545110
+.sp 1                                                                   00545118
+.bd /CP LOGOFF/                                                         00545126
+.sp 1                                                                   00545134
+.in -.33i                                                               00545142
+and delete it with                                                      00545150
+.in +.33i                                                               00545158
+.sp 1                                                                   00545166
+.bd DELETE 2                                                            00545174
+.sp 1                                                                   00545182
+.in -.33i                                                               00545190
+(this also removes the comments).                                       00545198
+.in -.33i                                                               00545206
+.subhead 7.14.9 Save the updates on disk                                00545214
+.sr c071409 = &sysppage                                                 00545222
+.in +.33i                                                               00545230
+To save the changes you have made issue the following command:          00545238
+.in +.33i                                                               00545246
+.sp 1                                                                   00545254
+.bd FILE = = A                                                          00545262
+.in -.33i                                                               00545270
+.in -.33i                                                               00545278
+.subhead 7.14.10 Create a new FORWARDX EXEC file                        00545286
+.sr c071410 = &sysppage                                                 00545294
+.in +.33i                                                               00545302
+To apply the update you have created and create a new FORWARDX EXEC file00545310
+issue the following command:                                            00545318
+.in +.33i                                                               00545326
+.sp 1                                                                   00545334
+.bd EXECUPDT FORWARDX EXEC ( CTL MAILEXEC                               00545342
+.sp 1                                                                   00545350
+.in -.33i                                                               00545358
+.in -.33i                                                               00545366
+.subhead 7.15 Modify the FWD EXEC (optional)                            00545374
+.sr c0715 = &sysppage                                                   00545382
+.in +.33i                                                               00545390
+If you are supporting file forwarding you may need to modify the        00545398
+user interface (FWD EXEC).                                              00545406
+To make changes to FWD issue the following command:                     00545414
+.in +.33i                                                               00545422
+.sp 1                                                                   00545430
+.bd XEDIT FWD $EXEC ( CTL MAILEXEC                                      00545438
+.sp 1                                                                   00545446
+.in -.33i                                                               00545454
+This will place you in XEDIT with an update filetype of CONFIG0.        00545462
+.in -.33i                                                               00545470
+.subhead 7.15.1 Modify the mailer id                                    00545478
+.sr c071501 = &sysppage                                                 00545486
+.in +.33i                                                               00545494
+Locate the mailer id variable by entering                               00545502
+.in +.33i                                                               00545510
+.sp 1                                                                   00545518
+.bd FIND mailerid                                                       00545526
+.sp 1                                                                   00545534
+.in -.33i                                                               00545542
+Change the value to match the userid used for your Mailer DVM.          00545550
+.sp 1                                                                   00545558
+Make any other changes you want to make.                                00545566
+When you are done, save your changes by entering                        00545574
+.in +.33i                                                               00545582
+.sp 1                                                                   00545590
+.bd FILE = = A                                                          00545598
+.in -.33i                                                               00545606
+.in -.33i                                                               00545614
+.subhead 7.15.2 Create a new FWD EXEC                                   00545622
+.sr c071502 = &sysppage                                                 00545630
+.in +.33i                                                               00545638
+To create a new FWD EXEC enter                                          00545646
+.in +.33i                                                               00545654
+.sp 1                                                                   00545662
+.bd EXECUPDT FWD EXEC ( CTL MAILEXEC                                    00545670
+.in -.33i                                                               00545678
+.in -.33i                                                               00545686
+.subhead 7.16. Modifying other files (optional)                         00545694
+.sr c0716 = &sysppage                                                   00545702
+.in +.33i                                                               00545710
+There are other files you may want to modify.                           00545718
+These include the support code for the FORWARD and MAILLIST             00545726
+.us \\Mailer\ commands (Rexx code with a filetype of MAILER),           00545734
+the FWD command (the user interface to FORWARD), and the help files.    00545742
+If you are happy with the default files then skip to step 7.17.         00545750
+.sp 1                                                                   00545758
+These instructions are somewhat generic because it is not clear what    00545766
+kinds of modifications would be desirable.  To make changes to          00545774
+either FORWARD or MAILLIST MAILER you should edit the files with the    00545782
+command                                                                 00545790
+.in +.33i                                                               00545798
+.sp 1                                                                   00545806
+.bd \\XEDIT \filename\ $MAILER ( CTL MAILEXEC                           00545814
+.sp 1                                                                   00545822
+.in -.33i                                                               00545830
+when you are done save your changes by entering                         00545838
+.in +.33i                                                               00545846
+.sp 1                                                                   00545854
+.bd FILE = = A                                                          00545862
+.sp 1                                                                   00545870
+.in -.33i                                                               00545878
+To create a new production version enter                                00545886
+.in +.33i                                                               00545894
+.sp 1                                                                   00545902
+.bd \\EXECUPDT \filename\ MAILER ( CTL MAILEXEC                         00545910
+.sp 1                                                                   00545918
+.in -.33i                                                               00545926
+The same command sequence for the FWD command would be                  00545934
+.in +.33i                                                               00545942
+.sp 1                                                                   00545950
+.bd XEDIT FWD $EXEC ( CTL MAILEXEC                                      00545958
+.sp 1                                                                   00545966
+.br                                                                     00545974
+Make changes                                                            00545982
+.br                                                                     00545990
+.bd FILE = = A                                                          00545998
+.br                                                                     00546006
+.bd EXECUPDT FWD EXEC ( CTL MAILEXEC                                    00546014
+.sp 1                                                                   00546022
+.in -.33i                                                               00546030
+The command sequence for the help files would be                        00546038
+.in +.33i                                                               00546046
+.sp 1                                                                   00546054
+.bd \\XEDIT \filename\ $HELPCMS ( CTL MAILHELP                          00546062
+.br                                                                     00546070
+Make changes                                                            00546078
+.br                                                                     00546086
+.bd FILE = = A                                                          00546094
+.br                                                                     00546102
+.bd \\EXECUPDT \filename\ HELPCMS ( CTL MAILHELP                        00546110
+.sp 1                                                                   00546118
+.in -.33i                                                               00546126
+.in -.33i                                                               00546134
+.subhead 7.17. Copy files to the MAILER DVM 193 disk                    00546142
+.sr c0717 = &sysppage                                                   00546150
+.in +.33i                                                               00546158
+Copy the following files from the A and C disks to the mailer DVM       00546166
+193 disk:                                                               00546174
+.sp 1                                                                   00546182
+.in +.33i                                                               00546190
+MAILER   EXEC                                                           00546198
+.br                                                                     00546206
+MAILER   MODULE                                                         00546214
+.br                                                                     00546222
+MAILER   TXTLIB                                                         00546230
+.br                                                                     00546238
+nodename PROFILE                                                        00546246
+.br                                                                     00546254
+MABNXIT  EXEC                                                           00546262
+.in -.33i                                                               00546270
+.sp 1                                                                   00546278
+If you want to support the FORWARD and/or  MAILLIST commands (you do not00546286
+have to do this), you will need to copy the following files.            00546294
+.us \If these files are not copied \MAILER\ will issue a message saying 00546302
+the commands are not implemented.                                       00546310
+.in +.33i                                                               00546318
+.sp 1                                                                   00546326
+FORWARD  MAILER                                                         00546334
+.br                                                                     00546342
+MAILLIST MAILER                                                         00546350
+.in -.33i                                                               00546358
+.sp 1                                                                   00546366
+If you want to implement file forwarding (you do not have to do this),  00546374
+you will need to copy the following files.                              00546382
+.in +.33i                                                               00546390
+.sp 1                                                                   00546398
+FORWARDX EXEC                                                           00546406
+.in -.33i                                                               00546414
+.sp 1                                                                   00546422
+To copy the files issue the following commands:                         00546430
+.in +.33i                                                               00546438
+.sp 1                                                                   00546446
+.bd \\CP LINK MAILER 193 111 W\ writepw                                 00546454
+.br                                                                     00546462
+.bd ACCESS 111 Z                                                        00546470
+.br                                                                     00546478
+.bd COPYFILE MAILER EXEC A = = Z (OLDD                                  00546486
+.br                                                                     00546494
+.bd COPYFILE MAILER MODULE C = = Z (OLDD                                00546502
+.br                                                                     00546510
+.bd COPYFILE MAILER TXTLIB C = = Z (OLDD                                00546518
+.br                                                                     00546526
+.bd \\COPYFILE\ nodename \PROFILE A = = Z (OLDD\                        00546534
+.br                                                                     00546542
+.bd COPYFILE MABNXIT EXEC C = = Z (OLDD                                 00546550
+.in -.33i                                                               00546558
+.sp 1                                                                   00546566
+If you are supporting the FORWARD and/or MAILLIST commands issue the    00546574
+following commands:                                                     00546582
+.in +.33i                                                               00546590
+.sp 1                                                                   00546598
+.bd COPYFILE FORWARD MAILER C = = Z (OLDD                               00546606
+.br                                                                     00546614
+.bd COPYFILE MAILLIST MAILER C = = Z (OLDD                              00546622
+.in -.33i                                                               00546630
+.sp 1                                                                   00546638
+If you are supporting file forwarding issue the following commands:     00546646
+.in +.33i                                                               00546654
+.sp 1                                                                   00546662
+.bd COPYFILE FORWARDX EXEC A = = Z (OLDD                                00546670
+.in -.33i                                                               00546678
+.sp 1                                                                   00546686
+Using the OLDD(ate) option allows you to verify that the file you have  00546694
+on the mailer DVM's 193 disk is the same as the file you have on your   00546702
+maintenance disks (because the date and time will match).               00546710
+Release the mailer DVM's 193 disk.                                      00546718
+.in +.33i                                                               00546726
+.sp 1                                                                   00546734
+.bd RELEASE Z (DET                                                      00546742
+.in -.33i                                                               00546750
+.sp 1                                                                   00546758
+You should always free up the disk after you are done.                  00546766
+.in -.33i                                                               00546774
+.subhead 7.18. Copy files to the MAILER DVM 191 disk                    00546782
+.sr c0718 = &sysppage                                                   00546790
+./ R 00547680          $ 547770 90                    04/05/91 16:27:34
+.bd \\SENDFILE PROFILE MAILER A TO\ mailerid                            00547770
+./ R 00560940 00560980 $ 560950 10                    04/05/91 16:27:34
+.in -.33i                                                               00560950
+.subhead 7.19. Copy files to the MAILFWD 191 disk (optional)            00560960
+.sr c0719 = &sysppage                                                   00560970
+./ I 00561020          $ 561021 1                     04/05/91 16:27:34
+Since there is no write password on the file forwarding server's        00561021
+191 disk it will be necessary to send these files to it.                00561022
+If you are currently running the file forwarding server and this        00561023
+installation is being done to install a newer release, then you must    00561024
+.bd \first stop the DVM (using the FORCE command) \before\ sending the  00561025
+files to the file forwarding server.                                    00561026
+.in +.33i                                                               00561027
+.sp 1                                                                   00561028
+.bd SENDFILE PROFILE MAILFWD A TO \MAILFWD\                             00561029
+.in -.33i                                                               00561030
+.sp 1                                                                   00561031
+.bd \Now log on to MAILFWD and \RECEIVE\ the file you just              00561032
+sent.                                                                   00561033
+Issue the following command:                                            00561034
+.in +.33i                                                               00561035
+.sp 1                                                                   00561036
+.bd \\RECEIVE\ spoolid                                                  00561037
+.in -.33i                                                               00561038
+.SP 1                                                                   00561039
+The PROFILE EXEC needs to be renamed:                                   00561040
+.in +.33i                                                               00561041
+.sp 1                                                                   00561042
+.bd RENAME PROFILE MAILFWD A = EXEC =                                   00561043
+.in -.33i                                                               00561044
+.sp 1                                                                   00561045
+The file forwarding server  is  now  ready  to  run.                    00561046
+.bd \The \"PROFILE EXEC"\ supplied is designed for AUTOLOG use.         00561047
+.us \The best way to run \MAILER\ is to have                            00561048
+.us \\VMUTIL\ or \AUTOLOG1\ AUTOLOG it.                                 00561049
+You may however log on directly and start it that way.                  00561050
+.hi 0                                                                   00561051
+.sp 1                                                                   00561052
+.cc 5                                                                   00561053
+Since you are currently logged on to MAILFWD can try starting           00561054
+the file forwarding process by issuing the following                    00561055
+commands:                                                               00561056
+.in +.33i                                                               00561057
+.sp 1                                                                   00561058
+.bd IPL CMS                                                             00561059
+.br                                                                     00561060
+.bd FORWARDX                                                            00561061
+.sp 1                                                                   00561062
+./ R 00561280 00628040 $ 563270 1990                  04/05/91 16:27:34
+This will cause the FORWARDX command to be run one time.                00563270
+To get continuous operation with the sample profile you will need to    00565260
+AUTOLOG the file forwarding server.                                     00567250
+.in -.33i                                                               00569240
+.subhead 7.20. Copy files to public disk(s) (optional)                  00571230
+.sr c0720 = &sysppage                                                   00573220
+.in +.33i                                                               00575210
+If you are supporting mail and file forwarding you may want to make     00577200
+the FWD EXEC available to your users.                                   00579190
+This would allow the users to control their own mail and file           00581180
+forwarding.                                                             00583170
+.sp 1                                                                   00585160
+You do not have to do this.                                             00587150
+An alternative approach would be to have someone (whose userid appears  00589140
+.us \in the \MaintUser#@MaintNode#\ list) be responsible for changing   00591130
+forwardings.                                                            00593120
+In this case users would contact the responsible person with their      00595110
+requests.                                                               00597100
+.sp 1                                                                   00599090
+If you want the users to control their own forwardings, place the       00601080
+FWD EXEC and FWD HELPCMS files on a publicly accessible disk (such as   00603070
+the Y-disk).                                                            00605060
+.in -.33i                                                               00607050
+./ R 00631130          $ 631320 190                   04/05/91 16:27:34
+.bd \The \MAILER PROFILE\ contains the parameters used to initialize the00631320
+./ D 00633000 00634000                                04/05/91 16:27:34
+./ R 00649730 00650510 $ 649920 190                   04/05/91 16:27:34
+Using the node name as the filename for all files associated with       00649920
+a site allows you to easily find those files among the many that you    00650110
+will have on the A disk.                                                00650300
+./ R 00652850          $ 652940 90                    04/05/91 16:27:34
+.us \The sections of \MAILER\ profile are described below:              00652940
+./ R 00667450          $ 667480 30                    04/05/91 16:27:34
+postmaster=POSTMAST@LCLNODE  ; A definition & comment                   00667480
+./ R 00671000 00672190 $ 671390 390                   04/05/91 16:27:34
+The values of all variables declared this way are available to any      00671390
+user exit.                                                              00671780
+./ R 00672570          $ 672650 80                    04/05/91 16:27:34
+table, but the value is left as is.                                     00672650
+./ R 00675980          $ 676170 190                   04/05/91 16:27:34
+.in +1.2i                                                               00676170
+./ R 00679500          $ 679690 190                   04/05/91 16:27:34
+.in -1.2i                                                               00679690
+./ R 00681980          $ 682170 190                   04/05/91 16:27:34
+.in +1.2i                                                               00682170
+./ R 00685500          $ 685690 190                   04/05/91 16:27:34
+.in -1.2i                                                               00685690
+./ R 00687780          $ 687870 90                    04/05/91 16:27:34
+.in +1.2i                                                               00687870
+./ R 00690950          $ 690970 20                    04/05/91 16:27:34
+.sp 1                                                                   00690970
+.us \If the \ThisNode\ value is not defined \Mailer\ will stop after    00690990
+the initialization checking process has completed.                      00691010
+There will be an error message telling you about the problem.           00691030
+.in -1.2i                                                               00691050
+./ R 00691520          $ 691600 80                    04/05/91 16:27:34
+.in +1.2i                                                               00691600
+./ R 00693420          $ 693500 80                    04/05/91 16:27:34
+.in -1.2i                                                               00693500
+./ R 00693990          $ 694070 80                    04/05/91 16:27:34
+.in +1.2i                                                               00694070
+./ R 00696080          $ 696370 290                   04/05/91 16:27:34
+.sp 1                                                                   00696370
+.us \During initializaiton the \Local-Host#\ list will be inspected for 00696660
+holes (undefined values followed by higher numbered defined values).    00696950
+Also all values will be checked to see if they appear in one of the     00697240
+delivery tables (either OUTGOING or DOMAINS).                           00697530
+If any problems are found they will be reported as errors, but          00697820
+.us Mailer\ will not stop.                                              00698110
+.in -1.2i                                                               00698400
+./ R 00702760          $ 703050 290                   04/05/91 16:27:34
+.in +1.2i                                                               00703050
+./ R 00706900          $ 707190 290                   04/05/91 16:27:34
+You may not specify 1-5 and then 2.                                     00707190
+./ R 00711040          $ 711330 290                   04/05/91 16:27:34
+.us \\MaintNode\#, the pair will be flagged with an error msg.          00711330
+./ R 00713800          $ 713990 190                   04/05/91 16:27:34
+.sp 1                                                                   00713990
+.us \During initializaiton the \MaintUser#\ and \MaintNode#\ lists      00714180
+will be inspected for holes (undefined values followed by higher        00714370
+.us \numbered defined values) and for consistency (a \MaintUser#\ value 00714560
+.us \existing for every defined \MaintNode#\ value).                    00714750
+If any problems are found they will be reported as errors, but          00714940
+.us Mailer\ will not stop.                                              00715130
+.in -1.2i                                                               00715320
+./ R 00718180          $ 718370 190                   04/05/91 16:27:34
+.in +1.2i                                                               00718370
+./ R 00720300          $ 720320 20                    04/05/91 16:27:34
+.in +.33i                                                               00720320
+./ R 00721200          $ 721220 20                    04/05/91 16:27:34
+.in -.33i                                                               00721220
+./ R 00721380          $ 721400 20                    04/05/91 16:27:34
+.in +.33i                                                               00721400
+./ R 00724220          $ 724270 50                    04/05/91 16:27:34
+.in -.33i                                                               00724270
+./ R 00725510          $ 725700 190                   04/05/91 16:27:34
+.in -1.2i                                                               00725700
+./ R 00728580          $ 728870 290                   04/05/91 16:27:34
+.in +1.2i                                                               00728870
+./ R 00736600          $ 736605 5                     04/05/91 16:27:34
+.in -1.2i                                                               00736605
+./ R 00736640          $ 736645 5                     04/05/91 16:27:34
+.in +1.2i                                                               00736645
+./ R 00736860          $ 736920 60                    04/05/91 16:27:34
+.in -1.2i                                                               00736920
+./ R 00738380          $ 738460 80                    04/05/91 16:27:34
+.in +1.2i                                                               00738460
+./ R 00740470          $ 740660 190                   04/05/91 16:27:34
+.in -1.2i                                                               00740660
+./ R 00742180          $ 742210 30                    04/05/91 16:27:34
+.in +1.2i                                                               00742210
+./ R 00743350          $ 744140 790                   04/05/91 16:27:34
+.in -1.2i                                                               00744140
+./ R 00746780          $ 746870 90                    04/05/91 16:27:34
+.in +1.2i                                                               00746870
+./ R 00749120          $ 749130 10                    04/05/91 16:27:34
+.in -1.2i                                                               00749130
+.sp 2                                                                   00749140
+.cc 5                                                                   00749150
+Forward-Mode!Disk mode for FORWARD files                                00749160
+.in +1.2i                                                               00749170
+.sp 1                                                                   00749180
+.us \The \Forward-Mode\ variable specifies the disk mode (1 alphabetic  00749190
+character) on which to write the FORWARD files (used by the FORWARD     00749200
+MAILER command and the LOCAL exit.                                      00749210
+.in -1.2i                                                               00749220
+.sp 2                                                                   00749230
+.cc 5                                                                   00749240
+Maillist-Mode!Disk mode for MAILLIST files                              00749250
+.in +1.2i                                                               00749260
+.sp 1                                                                   00749270
+.us \The \Maillist-Mode\ variable specifies the disk mode (1 alphabetic 00749280
+character) on which to write the MAILLIST files (used by the MAILLIST   00749290
+MAILER command and the LOCAL exit.                                      00749300
+.in -1.2i                                                               00749310
+./ R 00766545          $ 766546 1                     04/05/91 16:27:34
+.us \See section 2.1, \Overview of MAILER Operation\ for a complete     00766546
+./ R 00772270          $ 772290 20                    04/05/91 16:27:34
+.in +.33i                                                               00772290
+.ju off                                                                 00772310
+./ R 00772450          $ 772470 20                    04/05/91 16:27:34
+.in -.33i                                                               00772470
+.ju on                                                                  00772490
+./ I 00782140          $ 782180 40                    04/05/91 16:27:34
+.hi .8i                                                                 00782180
+./ I 00782320          $ 782360 40                    04/05/91 16:27:34
+.hi 0i                                                                  00782360
+./ R 00783310          $ 783340 30                    04/05/91 16:27:34
+*DEFAULT*  *  *  TRYRSCS  1  ; comment                                  00783340
+./ R 00784370          $ 784660 290                   04/05/91 16:27:34
+.us \See section 2.1, \Overview of MAILER operation\ for a complete     00784660
+./ I 00792200          $ 792250 50                    04/05/91 16:27:34
+.hi .8i                                                                 00792250
+./ I 00792300          $ 792350 50                    04/05/91 16:27:34
+.ju off                                                                 00792350
+./ I 00792400          $ 792430 30                    04/05/91 16:27:34
+.ju on                                                                  00792430
+.hi 0i                                                                  00792460
+./ R 00795980          $ 795985 5                     04/05/91 16:27:34
+It need only match the right-most, dot-delimited words.                 00795985
+./ R 00796060          $ 796061 1                     04/05/91 16:27:34
+.hi .8i                                                                 00796061
+.ju off                                                                 00796062
+*DEFAULT*ROUTE*.RSCS-Domain NJEnode NJEuserid Exitname Exittype ;       00796063
+comment                                                                 00796064
+.ju on                                                                  00796065
+.hi 0i                                                                  00796066
+./ I 00796090          $ 796093 3                     04/05/91 16:27:34
+.hi .8i                                                                 00796093
+.ju off                                                                 00796096
+./ I 00796100          $ 796103 3                     04/05/91 16:27:34
+.ju on                                                                  00796103
+.hi 0i                                                                  00796106
+./ R 00796180          $ 796185 5                     04/05/91 16:27:34
+facility is used to give the mail to RSCS in an attempt to              00796185
+./ R 00796220          $ 796222 2                     04/05/91 16:27:34
+the                                                                     00796222
+./ R 00796255          $ 796257 2                     04/05/91 16:27:34
+*DEFAULT*ROUTE*.BITNET  *  *  TRYRSCS  1  ; comment                     00796257
+./ I 00796310          $ 796315 5                     04/05/91 16:27:34
+.hi .8i                                                                 00796315
+./ R 00796330          $ 796332 2                     04/05/91 16:27:34
+.ju off                                                                 00796332
+*DEFAULT*  INTERBIT SMTP  BSMTP  3  ; Send it to INTERBIT               00796334
+.ju on                                                                  00796336
+.hi .0i                                                                 00796338
+./ R 00796780 00796820 $ 796790 10                    04/05/91 16:27:34
+If you have a local internet gateway that supports MX records           00796790
+then you may                                                            00796800
+want to route to your local gateway rather than to INTERBIT             00796810
+(if you                                                                 00796820
+don't know what this means you don't need to do this).                  00796830
+./ I 00796880          $ 796890 10                    04/05/91 16:27:34
+.hi .8i                                                                 00796890
+./ R 00796920          $ 796926 6                     04/05/91 16:27:34
+*DEFAULT*  *  SMTP  BSMTP  3  ; Send to local MX gateway                00796926
+.hi .0i                                                                 00796932
+./ R 00797240          $ 797330 90                    04/05/91 16:27:34
+.us \See section 2.1, \Overview of MAILER operation\ for a complete     00797330
+./ I 00961100          $ 961150 50                    04/05/91 16:27:34
+.tb set                                                                 00961150
+./ R 00961224          $ 961225 1                     04/05/91 16:27:34
+mail forwarding (some of which really amount to address                 00961225
+transformations).                                                       00961226
+./ I 00961232          $ 961234 2                     04/05/91 16:27:34
+.tb set !                                                               00961234
+./ R 00961380 00961390 $ 961385 5                     04/05/91 16:27:34
+this node to be forwarded to a different user at this node, or a        00961385
+userid on some other node, or a list of userids on this or other        00961390
+nodes.                                                                  00961395
+./ R 00962910          $ 962920 10                    04/05/91 16:27:34
+The mail file is punched to the MUSIC system as a class M file with a   00962920
+./ R 00967150          $ 967160 10                    04/05/91 16:27:34
+.hi .33i                                                                00967160
+1.^If the parameter is not present, the destination address will be     00967170
+./ R 00967240          $ 967250 10                    04/05/91 16:27:34
+.hi 0i                                                                  00967250
+.in +.33i                                                               00967260
+./ D 00967330                                         04/05/91 16:27:34
+./ D 00967420                                         04/05/91 16:27:34
+./ R 00967480          $ 967490 10                    04/05/91 16:27:34
+.ce Mail service is not available for <system@node>                     00967490
+./ R 00967570          $ 967580 10                    04/05/91 16:27:34
+.hi .33i                                                                00967580
+2.^If the parameter is an '@' then only the host portion of the address 00967590
+./ I 00967630          $ 967640 10                    04/05/91 16:27:34
+.hi 0i                                                                  00967640
+./ D 00967750                                         04/05/91 16:27:34
+./ D 00967840                                         04/05/91 16:27:34
+./ R 00967900          $ 967910 10                    04/05/91 16:27:34
+.ce .us \Mail service is not available for \node\                       00967910
+./ R 00967990          $ 968000 10                    04/05/91 16:27:34
+.hi .33i                                                                00968000
+3.^If the parameter is present but no value is coded for it, the        00968010
+./ I 00968050          $ 968060 10                    04/05/91 16:27:34
+.hi 0i                                                                  00968060
+./ D 00968170                                         04/05/91 16:27:34
+./ D 00968260                                         04/05/91 16:27:34
+./ R 00968320          $ 968330 10                    04/05/91 16:27:34
+.ce .us \Mail service is not available for \SYSTEM\                     00968330
+./ R 00968410          $ 968420 10                    04/05/91 16:27:34
+.hi .33i                                                                00968420
+4.^If the parameter is present and a value has been coded for it the    00968430
+./ I 00968470          $ 968480 10                    04/05/91 16:27:34
+.hi 0i                                                                  00968480
+./ R 00968560          $ 968570 10                    04/05/91 16:27:34
+.ce system^=^userid_system^^                                            00968570
+./ R 00968620 00968650 $ 968640 20                    04/05/91 16:27:34
+.ce SYSTEM^*^*^NOMAIL SYSTEM                                            00968640
+./ D 00968740                                         04/05/91 16:27:34
+./ R 00968800          $ 968810 10                    04/05/91 16:27:34
+.ce .us \Mail service is not available for \USERID_SYSTEM\              00968810
+./ I 01034000          $ 1034050 50                   04/05/91 16:27:34
+.sp 1                                                                   01034050
+An error message of                                                     01034100
+.in +.33i                                                               01034150
+.sp 1                                                                   01034200
+MAILER046U Auto-forwarding error.                                       01034250
+.in -.33i                                                               01034300
+.sp 1                                                                   01034350
+will be generated if you do not code the parm or if the parm value is   01034400
+not defined.                                                            01034450
+./ I 01043000          $ 1043100 100                  04/05/91 16:27:34
+.sp 1                                                                   01043100
+An error message of                                                     01043200
+.in +.33i                                                               01043300
+.sp 1                                                                   01043400
+MAILER046U Auto-forwarding error.                                       01043500
+.in -.33i                                                               01043600
+.sp 1                                                                   01043700
+will be generated if you do not code the parm or if the parm value is   01043800
+not defined.                                                            01043900
+.in -.33i                                                               01044000
+./ R 01161374          $ 1161377 3                    04/05/91 16:27:34
+.cc 11                                                                  01161377
+./ R 01161430 01161440 $ 1161432 2                    04/05/91 16:27:34
+FORWARD   <MAIL>    ADD       destaddr                                  01161432
+          <MAIL>    DELETE    destaddr | ALL                            01161434
+          FILES     destid    < CLASS classlist >                       01161436
+                              <         '*'     >                       01161438
+                              < DELETE >                                01161440
+                              < LOGGEDON | ANYTIME >                    01161442
+                              < LOGGEDOFF >                             01161444
+./ R 01161486 01161580 $ 1161487 1                    04/05/91 16:27:34
+ADD (short for MAIL ADD) will add 1 address to the forwarding file.     01161487
+By adding the special address '*' it is possible to tell mailer to      01161488
+deliver a copy of the mail to the original delivery address.            01161489
+This address will be stored as '<*>' in the forwarding file.            01161490
+If you call this a kludge you are probably correct.                     01161491
+.sp 1                                                                   01161492
+The following command sequence (issued from "myid"):                    01161493
+.in +.33i                                                               01161494
+.sp 1                                                                   01161495
+.bd \\TELL\ mailerid \FORWARD  <MAIL> ADD\ userid1                      01161496
+.br                                                                     01161497
+.bd \\TELL\ mailerid \FORWARD  <MAIL> ADD\ userid2@loc2                 01161498
+.br                                                                     01161499
+.bd \\TELL\ mailerid \FORWARD  <MAIL> ADD\ userid3@loc3                 01161500
+.br                                                                     01161501
+.bd \\TELL\ mailerid \FORWARD  <MAIL> ADD *                             01161502
+.sp 1                                                                   01161503
+.in -.33i                                                               01161504
+will cause mail for "myid" to be delivered to 4 addresses:              01161505
+.in +.33i                                                               01161506
+.sp 1                                                                   01161507
+userid1@thisnode                                                        01161508
+.br                                                                     01161509
+userid2@loc2                                                            01161510
+.br                                                                     01161511
+userid3@loc3                                                            01161512
+.br                                                                     01161513
+myid@thisnode                                                           01161514
+.in -.33i                                                               01161515
+.sp 1                                                                   01161516
+DELETE (short for MAIL DELETE) will delete 1 address (or all the        01161517
+addresses if ALL is used).                                              01161518
+Address comparisons are done in a case insensitive fashion.             01161519
+This means that addresses for a case sensitive system may provide       01161520
+difficulties.                                                           01161521
+.sp 1                                                                   01161522
+FILES allows the user to control forwarding of non-mail files.          01161523
+The 'destid' value must be an NJE address expressed as 'userid@node' or 01161524
+'userid AT node'.                                                       01161525
+.SP 1                                                                   01161526
+The CLASS operand allows selection of a subset of files by their        01161527
+spool class (A...Z0..9).                                                01161528
+A CLASS specification of '*' means all files.                           01161529
+This is also the default if no CLASS operand is given                   01161530
+It is possible to have different subsets of the possible class values   01161531
+forwarded to different userids.                                         01161532
+The command verifies that there is no overlap between any of the        01161533
+forwardings (errors messages are produced and the command is ignored if 01161534
+this rule would be violated).                                           01161535
+.sp 1                                                                   01161536
+.in +.3i                                                                01161537
+.bd \\TELL\ mailerid \FORWARD  FILES\ userid1 \CLASS ABCDEF\            01161538
+.sp 1                                                                   01161539
+.bd \\TELL\ mailerid \FORWARD  FILES\ userid2 \CLASS GHIJKLMN\          01161540
+.in -.3i                                                                01161541
+will forward classes ABCDEF to userid1 and classes GHIJKLMN to userid 2 01161542
+but leave all other classes in the reader.                              01161543
+.sp 1                                                                   01161544
+DELETE indicates a request to delete forwarding of files.               01161545
+It can be used in conjunction with the CLASS operand to delete only a   01161546
+subset of the files being forwarded to some userid.                     01161547
+.cc 6                                                                   01161548
+.sp 1                                                                   01161549
+.in +.3i                                                                01161550
+.bd \\TELL\ mailerid \FORWARD  FILES\ userid1 \CLASS ABCDEF\            01161551
+.br                                                                     01161552
+.bd \\TELL\ mailerid \FORWARD  FILES\ userid1 \DELETE CLASS ABC\        01161553
+.sp 1                                                                   01161554
+.in -.3i                                                                01161555
+will forward classes DEF to userid1 and                                 01161556
+leave all other classes in the reader.                                  01161557
+.sp 1                                                                   01161558
+.in +.3i                                                                01161559
+.bd \\TELL\ mailerid \FORWARD  FILES\ userid1 \CLASS *\                 01161560
+.br                                                                     01161561
+.bd \\TELL\ mailerid \FORWARD  FILES\ userid1 \DELETE CLASS ABC\        01161562
+.sp 1                                                                   01161563
+.in -.3i                                                                01161564
+will forward all classes except ABC to userid1.                         01161565
+.sp 1                                                                   01161566
+LOGGEDON and ANYTIME indicate that files may be removed from the reader 01161567
+at any time (even if the user id logged on to the system).              01161568
+LOGGEDOFF indicates that files should be transferred only if the user   01161569
+is not logged onto the system.                                          01161570
+The default (if nothing is specified) is LOGGEDOFF.                     01161571
+.sp 1                                                                   01161572
+.cc 6                                                                   01161573
+The privileged command syntax is:                                       01161574
+.in +.33i                                                               01161575
+.sp 1                                                                   01161576
+.fo off                                                                 01161577
+FORWARD   FOR  userid   <MAIL>    ADD     ...                           01161578
+                        <MAIL>    DELETE  ...                           01161579
+                        FILES     destid  ...                           01161580
+                        LIST                                            01161581
+.fo on                                                                  01161582
+.in -.33i                                                               01161583
+.sp 1                                                                   01161584
+The additional operand of 'FOR userid' allows a privileged user         01161585
+(someone listed in the MAINTUSER#@MAINTNODE# list) to make changes      01161586
+to the forwarding list of another user.                                 01161587
+.in -.33i                                                               01161588
+./ R 01168590          $ 1168880 290                  04/05/91 16:27:34
+.subhead 11.1. New versions of Mailer                                   01168880
+./ R 01170930 01171320 $ 1171220 290                  04/05/91 16:27:34
+Most files are sent in CARD format.                                     01171220
+./ R 01172100 01173660 $ 1172190 90                   04/05/91 16:27:34
+When you receive a new version, it is recommended that you save the     01172190
+current production disks and define new disks to be used for the        01172280
+new release.                                                            01172370
+The procedure suggested is to define a new disk at the current          01172460
+production disk address and change the address of the old disk to       01172550
+something else.                                                         01172640
+Remember to add a comment to the directory entry so that you know what  01172730
+that other disk is.                                                     01172820
+If you use this approach and you are an object code site you will need  01172910
+to redefine/create anew the object code disk.                           01173000
+.sp 1                                                                   01173090
+If you are a source site you will need to redefine/create anew both     01173180
+the object code disk and the V2-MNT disk.                               01173270
+In addition, you must copy the old V2-MNT disk contents onto the newly  01173360
+defined disk.                                                           01173450
+.sp 1                                                                   01173540
+.us \You are now ready to load the new \Mailer\ release.                01173630
+./ R 01174440 01177170 $ 1174630 190                  04/05/91 16:27:34
+All files with a filename of VMM2xx (where 'xx' is the new release      01174630
+number)                                                                 01174820
+are CARD LOADED to the new object code disk.                            01175010
+You may want to label to match the release (i.e. VMM208 for release     01175200
+2.08).                                                                  01175390
+.sp 1                                                                   01175580
+Source sites will also receive files with a filename of MNT2xx (where   01175770
+'xx' is the new release number).                                        01175960
+These should be CARD LOADED to the V2-MNT disk (on top of the files     01176150
+previously copied from the old V2-MNT disk).                            01176340
+./ D 01177950 01178340                                04/05/91 16:27:34
+./ R 01179120 01179510 $ 1179810 690                  04/05/91 16:27:34
+copy the appropriate pieces to the MAILER 191 and 193 disks and the     01179810
+MAILFWD 191 disk.                                                       01180500
+./ R 01186000 01189000 $ 1186390 390                  04/05/91 16:27:34
+site's "MAILER PROFILE" which must be done whenever the network         01186390
+definition changes.                                                     01186780
+For Bitnet sites this means a monthly update (whenever the latest       01187170
+"XMAILER/MAILER/DOMAIN NAMES" files become available).                  01187560
+Using MG, you only have to make site-specific changes once (when you    01187950
+.us \first install \MAILER\ or the first update after your local        01188340
+configuration changes).                                                 01188730
+./ R 01196490          $ 1196680 190                  04/05/91 16:27:34
+"*^NAMES"^^^^^^^The NAMES files previously described in section 5.      01196680
+./ R 01203490 01205000 $ 1204080 590                  04/05/91 16:27:34
+.bd \\%incoming\, \%outgoing\ and \%domains\, respectively.             01204080
+MG replaces these lines with the appropriate information taken from     01204670
+"XMAILER NAMES", "MAILER NAMES", "DOMAIN NAMES", and                    01205260
+./ R 01207000 01208000 $ 1207090 90                   04/05/91 16:27:34
+.hi 0                                                                   01207090
+.in +16                                                                 01207180
+.sp 1                                                                   01207270
+.bd \\%incoming\ is replaced by lines in the appropriate format for     01207360
+the INCOMING table.                                                     01207450
+This provides you with a complete list of the the mailers defined on    01207540
+the network.                                                            01207630
+.sp 1                                                                   01207720
+.bd \\%outgoing\ is replaced by lines formatted for the OUTGOING table. 01207810
+This gives you a set of entries describing how to deliver to all the    01207900
+nodes on the network.                                                   01207990
+.sp 1                                                                   01208080
+.bd \\%domains\ is replaced by lines formatted for the DOMAINS table.   01208170
+This gives you a set of entries describing how to deliver to the        01208260
+domain destinations defined in DOMAIN NAMES.                            01208350
+.sp 1                                                                   01208440
+.bd \You can also use "\%include\                                       01208530
+.us \\fn\.\ft\.\fm\" to cause a file to be included in the output       01208620
+./ I 01209490          $ 1209530 40                   04/05/91 16:27:34
+This form may appear anywhere in the file.                              01209530
+The lines in the file must be appropriately formatted (they are simply  01209570
+copied, no formatting is done).                                         01209610
+.sp 1                                                                   01209650
+You would use this form if you wanted to define a set of variable values01209690
+dynamically (maybe having a program produce the file) and automatically 01209730
+have those variables included when you build the profile.               01209770
+You can also use this facility to include additional entries in the     01209810
+INCOMING, OUTGOING, SPECIAL and DOMAINS tables.                         01209850
+.in -16                                                                 01209890
+./ R 01212490 01217180 $ 1212980 490                  04/05/91 16:27:34
+.us \"\name\^MAILLCL"^^This file provides replacment lines for the      01212980
+OUTGOING and DOMAINS tables that need to be different for your site.    01213470
+An example of this is your own node's entry.                            01213960
+In the XMAILER NAMES file the :mailer tag will specify the BSMTP exit   01214450
+but at your site you want to use the LOCAL exit so that the mail can be 01214940
+delivered.                                                              01215430
+.us \You use an entry in the "\name\^MAILLCL" file to do this.          01215920
+.hi 0                                                                   01216410
+.in +16                                                                 01216900
+.sp 1                                                                   01217390
+./ R 01219000 01219200 $ 1219050 50                   04/05/91 16:27:34
+in the OUTGOING and DOMAINS table.                                      01219050
+The first word on the line is matched against the first                 01219100
+word on the lines of the OUTGOING and DOMAINS tables entries.           01219150
+If the first words match the line from the MAILLCL file will be used.   01219200
+./ R 01220000 01221000 $ 1220990 990                  04/05/91 16:27:34
+.in -16                                                                 01220990
+./ R 01258000 01262000 $ 1258590 590                  04/05/91 16:27:34
+The default list of NAMES files used by MG is: "XMAILER.NAMES           01258590
+MAILER.NAMES -d DOMAIN.NAMES".                                          01259180
+.sp                                                                     01259770
+You will normally not need the "-i" switch which tells MG to produce    01260360
+an "initial distribution" profile.                                      01260950
+This is a profile for a mailer that  other Mailers do not yet have in   01261540
+their INCOMING tables.                                                  01262130
+./ I 01288980          $ 1296980 8000                 04/05/91 16:27:34
+.in +.3i                                                                01296980
+./ I 01326930          $ 1329930 3000                 04/05/91 16:27:34
+.in -.3i                                                                01329930
+./ R 01348600 01369490 $ 1351590 2990                 04/05/91 16:27:34
+.sp 1                                                                   01351590
+.hi 10                                                                  01354580
+.bd \\** NOTE **\^These instructions assume you have gone through the   01357570
+standard installation process.                                          01360560
+.us \If not, go back and install \Mailer\ first.                        01363550
+./ R 01371590 01378000 $ 1372180 590                  04/05/91 16:27:34
+.sp 1                                                                   01372180
+.us \You must update the \Mailer\ profile whenever the input files used 01372770
+by MG change.                                                           01373360
+This means that anytime your local network changes you  will probably   01373950
+have to update the profile.                                             01374540
+BITNET sites must do this monthly for the updates for "XMAILER NAMES",  01375130
+"MAILER NAMES", or "DOMAIN NAMES".                                      01375720
+.in +.33i                                                               01376310
+.hi .33i                                                                01376900
+1.^Obtain read access to the NAMES files on any accessed disk.          01377490
+.hi 0                                                                   01378080
+./ R 01380390 01382000 $ 1380880 490                  04/05/91 16:27:34
+.hi .33i                                                                01380880
+.us \2.^Obtain read access to "\nodename\ MTPLATE" and "\nodename\      01381370
+MAILLCL" on any accessed disk.                                          01381860
+.hi 0i                                                                  01382350
+./ R 01384690 01385590 $ 1385380 690                  04/05/91 16:27:34
+3.^Type:                                                                01385380
+./ R 01387000          $ 1387790 790                  04/05/91 16:27:34
+.sp 1                                                                   01387790
+./ R 01390000 01391980 $ 1390790 790                  04/05/91 16:27:34
+.sp 1                                                                   01390790
+.us \When MG is done, a new file, "\nodename\ PROFILE A1" will have     01391580
+./ R 01395490 01399000 $ 1396180 690                  04/05/91 16:27:34
+.hi .33i                                                                01396180
+.us \4.^Scan the newly created "\nodename\ PROFILE" looking for obvious 01396870
+errors.                                                                 01397560
+.hi 0                                                                   01398250
+.in -.33i                                                               01398940
+./ R 01401590 01404000 $ 1402180 590                  04/05/91 16:27:34
+.us \If you are satisfied with the new "\nodename\ PROFILE", replace    01402180
+.us \the old "\nodename\ PROFILE" with it (after making a backup copy). 01402770
+BITNET sites should be aware that the data provided in XMAILER NAMES is 01403360
+not always correct and occasionally                                     01403950
+./ R 01407000 01419000 $ 1407990 990                  04/05/91 16:27:34
+.sp 1                                                                   01407990
+.in +.33i                                                               01408980
+.hi .33i                                                                01409970
+.us \5. Obtain write access to the \Mailer\ DVM 193 disk.               01410960
+.hi 0                                                                   01411950
+.sp 1                                                                   01412940
+.in +.33i                                                               01413930
+.bd CP LINK MAILER 193 \cuu\ M                                          01414920
+.br                                                                     01415910
+.bd ACCESS \cuu\ Z                                                      01416900
+./ R 01421490 01422000 $ 1421580 90                   04/05/91 16:27:34
+.in -.33i                                                               01421580
+.hi .33i                                                                01421670
+6. Copy the new profile to the disk, retaining the old for a backup.    01421760
+.hi 0                                                                   01421850
+.sp 1                                                                   01421940
+.in +.33i                                                               01422030
+.bd ERASE \nodename\ OLDPROFI Z                                         01422120
+.br                                                                     01422210
+.bd RENAME \nodename\ PROFILE Z = OLDPROFI =                            01422300
+.br                                                                     01422390
+.bd COPYFILE \nodename\ PROFILE A = = Z ( OLDDATE'                      01422480
+.in -.33i                                                               01422570
+./ R 01424490 01439000 $ 1424980 490                  04/05/91 16:27:34
+.hi .33i                                                                01424980
+.us \7. Tell \MAILER\ to reaccess the disk.                             01425470
+The standard PROFILE EXEC accesses the 193 disk at mode C.              01425960
+.hi 0                                                                   01426450
+.sp 1                                                                   01426940
+.in +.33i                                                               01427430
+The following commands will only be accepted from the userids listed as 01427920
+.us \the \MAILER\ maintainer(s) in the profile.                         01428410
+.in +.33i                                                               01428900
+ .TELL mailerid CMS ACCESS 193 C                                        01429390
+ * CMS command accepted.                                                01429880
+ * R(00000) for: ACCESS 193 C                                           01430370
+ .TELL mailerid RELOAD                                                  01430860
+ * Reload command accepted.                                             01431350
+.in -.33i                                                               01431840
+.sp 1                                                                   01432330
+If you are using the standard driver exec provided with the Mailer      01432820
+distribution there is an alternate approach.                            01433310
+.sp 2                                                                   01433800
+.in +.33i                                                               01434290
+ .TELL mailerid QUIESCE                                                 01434780
+ * Quiesce command accepted.                                            01435270
+ .TELL mailerid STOP                                                    01435760
+ * Stop command accepted.                                               01436250
+.in -.33i                                                               01436740
+.sp 2                                                                   01437230
+.us This approach causes \Mailer\ to exit back to the driver exec (which01437720
+will issue the ACCESS 193 command).                                     01438210
+.us \\Mailer\ will then go through a complete initialization (including 01438700
+recovery of storage by CMS).                                            01439190
+./ I 01440590          $ 1440690 100                  04/05/91 16:27:34
+.in -.33i                                                               01440690
+.in -.33i                                                               01440790
+./ R 01460000          $ 1460590 590                  04/05/91 16:27:34
+BITNET (such as the members of the XMAILER mailing list).               01460590
+./ R 01461320          $ 1461325 5                    04/05/91 16:27:34
+will be performed by the MABNXIT EXEC (see section 7.12, "Modifying     01461325
+./ R 01461340          $ 1461345 5                    04/05/91 16:27:34
+The most important part of this processing is the                       01461345
+./ R 01781240          $ 1781250 10                   04/05/91 16:27:34
+.in +.33i                                                               01781250
+./ R 01781440          $ 1781450 10                   04/05/91 16:27:34
+.in -.33i                                                               01781450
+./ R 01781560          $ 1781570 10                   04/05/91 16:27:34
+.in +.33i                                                               01781570
+./ R 01781920          $ 1781930 10                   04/05/91 16:27:34
+.in -.33i                                                               01781930
+./ R 01782040          $ 1782050 10                   04/05/91 16:27:34
+.in +.33i                                                               01782050
+./ R 01782280          $ 1782290 10                   04/05/91 16:27:34
+.in -.33i                                                               01782290
+./ R 01782400          $ 1782410 10                   04/05/91 16:27:34
+.in +.33i                                                               01782410
+./ R 01782640          $ 1782641 1                    04/05/91 16:27:34
+.in -.33i                                                               01782641
+./ R 01782646          $ 1782647 1                    04/05/91 16:27:34
+.in +.33i                                                               01782647
+./ R 01782652          $ 1782653 1                    04/05/91 16:27:34
+.in -.33i                                                               01782653
+./ R 01782658          $ 1782659 1                    04/05/91 16:27:34
+.in +.33i                                                               01782659
+./ R 01782666 01782670 $ 1782667 1                    04/05/91 16:27:34
+.in -.33i                                                               01782667
+.sp 2                                                                   01782668
+MAILER078U Outgoing mail has multiple FROM: or SENDER: fields.          01782669
+.in +.33i                                                               01782670
+.sp 1                                                                   01782671
+./ R 01782679          $ 1782680 1                    04/05/91 16:27:34
+.in -.33i                                                               01782680
+./ R 01782688 01782716 $ 1782690 2                    04/05/91 16:27:34
+.in +.33i                                                               01782690
+.sp 1                                                                   01782692
+A destination specifies use of the LOCAL exit, but is not listed in     01782694
+either the RSCS-Domains or Local-Hosts list.                            01782696
+This is more than likely a coding error.                                01782698
+.sp 1                                                                   01782700
+This message is issued by BUILDLST.                                     01782702
+BUILDLST pretends that things are coded correctly and recovers from     01782704
+this, but you should fix it up anyway.                                  01782706
+.in -.33i                                                               01782708
+.sp 2                                                                   01782710
+MAILER081U Host in routeaddress does not support mail                   01782712
+.br                                                                     01782714
+           forwarding, try a different path                             01782716
+.br                                                                     01782718
+.us \MAILER082U Host to change: \host-name\                             01782720
+.in +.33i                                                               01782722
+.sp 1                                                                   01782724
+MAILER's lookup for a host has found a line which specifies use of      01782726
+either the DEFRT or TRYRSCS exit.                                       01782728
+The address being used is not a user@host, but a routaddress (@host)    01782730
+which cannot be delivered by either of these exits (since there is no   01782732
+associated userid to give to NJE).                                      01782734
+.sp 1                                                                   01782736
+This message may indicate a coding problem in the profile and not       01782738
+a problem in the user's mail address.                                   01782740
+The coding problem would occur if the correct exit to be using for this 01782742
+destinaion is the BSMTP exit.                                           01782744
+.in -.33i                                                               01782746
+./ R 01782917          $ 1782927 10                   04/05/91 16:27:34
+.in +.33i                                                               01782927
+./ R 01783217          $ 1783218 1                    04/05/91 16:27:34
+.in -.33i                                                               01783218
+./ R 01783229          $ 1783230 1                    04/05/91 16:27:34
+.in +.33i                                                               01783230
+./ R 01783259          $ 1783266 7                    04/05/91 16:27:34
+.in -.33i                                                               01783266
+./ R 01783291          $ 1783294 3                    04/05/91 16:27:34
+.in +.33i                                                               01783294
+./ R 01783339          $ 1783342 3                    04/05/91 16:27:34
+.in -.33i                                                               01783342
+./ R 01783363          $ 1783366 3                    04/05/91 16:27:34
+.in +.33i                                                               01783366
+./ R 01783423          $ 1783426 3                    04/05/91 16:27:34
+.in -.33i                                                               01783426
+./ R 01783447          $ 1783450 3                    04/05/91 16:27:34
+.in +.33i                                                               01783450
+./ R 01783483          $ 1783486 3                    04/05/91 16:27:34
+.in -.33i                                                               01783486
+./ R 01783507          $ 1783510 3                    04/05/91 16:27:34
+.in +.33i                                                               01783510
+./ R 01783561          $ 1783564 3                    04/05/91 16:27:34
+.in -.33i                                                               01783564
+./ R 01806290          $ 1806380 90                   04/05/91 16:27:34
+.in +.33i                                                               01806380
+./ R 01807500          $ 1807690 190                  04/05/91 16:27:34
+.in -.33i                                                               01807690
+./ R 01831780          $ 1831870 90                   04/05/91 16:27:34
+.in +.33i                                                               01831870
+./ R 01833340          $ 1833630 290                  04/05/91 16:27:34
+.in -.33i                                                               01833630
+./ R 01838380          $ 1838460 80                   04/05/91 16:27:34
+.in +.33i                                                               01838460
+./ R 01840490          $ 1840680 190                  04/05/91 16:27:34
+.in -.33i                                                               01840680
+./ R 01863290          $ 1863380 90                   04/05/91 16:27:34
+.in +.33i                                                               01863380
+./ R 01866490          $ 1866680 190                  04/05/91 16:27:34
+.in -.33i                                                               01866680
+./ R 01874290          $ 1874380 90                   04/05/91 16:27:34
+.in +.33i                                                               01874380
+./ R 01876500          $ 1876690 190                  04/05/91 16:27:34
+.in -.33i                                                               01876690
+./ R 01889290          $ 1889380 90                   04/05/91 16:27:34
+.in +.33i                                                               01889380
+./ R 01892490          $ 1892680 190                  04/05/91 16:27:34
+.in -.33i                                                               01892680
+./ R 01941290          $ 1941380 90                   04/05/91 16:27:34
+.in +.33i                                                               01941380
+./ R 01943500          $ 1943690 190                  04/05/91 16:27:34
+.in -.33i                                                               01943690
+./ R 01947290          $ 1947380 90                   04/05/91 16:27:34
+.in +.33i                                                               01947380
+./ R 01950490          $ 1950680 190                  04/05/91 16:27:34
+.in -.33i                                                               01950680
+./ R 01957300          $ 1957390 90                   04/05/91 16:27:34
+.in +.33i                                                               01957390
+./ R 01960490          $ 1960680 190                  04/05/91 16:27:34
+.in -.33i                                                               01960680
+./ R 01975290          $ 1975380 90                   04/05/91 16:27:34
+.in +.33i                                                               01975380
+./ R 01979490          $ 1979680 190                  04/05/91 16:27:34
+.in -.33i                                                               01979680
+./ D 01991000                                         04/05/91 16:27:34
+./ R 01993000 01994490 $ 1993590 590                  04/05/91 16:27:34
+.hi 21                                                                  01993590
+.bd \\"MAILR2   $PACKAGE"\  List of files in the MAILR2 PACKAGE.        01994180
+./ R 01997000 02000490 $ 1997490 490                  04/05/91 16:27:34
+.hi 21                                                                  01997490
+.bd \\"&vmmlab2xx   $PACKAGE"\  List of files in the &vmmlab2xx PACKAGE.01997980
+.sp 2                                                                   01998470
+.hi 21                                                                  01998960
+.bd \\"&vmmlab2xx   nOF9"\      The &vmmlab2xx disk files.              01999450
+These files are CARD LOADED to the &vmmlab2xx disk.                     01999940
+./ R 02002000 02005490 $ 2002490 490                  04/05/91 16:27:34
+.hi 21                                                                  02002490
+.bd \\"V2-DST   $PACKAGE"\  List of files in the V2-DST PACKAGE.        02002980
+.sp 2                                                                   02003470
+.hi 21                                                                  02003960
+.bd \\"V2-DST   1OF1"\      The V2-DST disk files.                      02004450
+These files are CARD LOADED to the V2-DST disk.                         02004940
+./ R 02025990 02026980 $ 2026580 590                  04/05/91 16:27:34
+.in +.33i                                                               02026580
+1. Object code distribution files (&vmmlab2xx disk)                     02027170
+./ R 02034490          $ 2034680 190                  04/05/91 16:27:34
+.in -.33i                                                               02034680
+./ R 02036490          $ 2036780 290                  04/05/91 16:27:34
+The files for the &vmmlab2xx and V2-DST disk are sent as the MAILR2     02036780
+package                                                                 02037070
+./ R 02044000          $ 2044490 490                  04/05/91 16:27:34
+.sp 2                                                                   02044490
+./ R 02046000          $ 2046490 490                  04/05/91 16:27:34
+.bd \\"MAILR2S  $PACKAGE"\   List of files in MAILR2S PACKAGE.          02046490
+./ R 02048000          $ 2048490 490                  04/05/91 16:27:34
+.sp 2                                                                   02048490
+./ R 02050000 02051000 $ 2050190 190                  04/05/91 16:27:34
+.bd \\"V2-SRC   $PACKAGE"\   List of files in the V2-SRC PACKAGE.       02050190
+.sp 2                                                                   02050380
+.hi 22                                                                  02050570
+.bd \\"V2-SRC   nOF8"\       The V2-SRC disk files.                     02050760
+These files are CARD LOADED to the V2-SRC disk.                         02050950
+.sp 4                                                                   02051140
+./ R 02053000 02054000 $ 2053290 290                  04/05/91 16:27:34
+.bd \\"V2-MNT   $PACKAGE"\   List of files in the V2-MNT PACKAGE.       02053290
+.sp 2                                                                   02053580
+.hi 22                                                                  02053870
+.bd \\"V2-MNT   nOF6"\       The V2-MNT disk files.                     02054160
+The files are CARD LOADED to the V2-MNT disk.                           02054450
+./ I 02056000          $ 2056700 700                  04/05/91 16:27:34
+.in 0                                                                   02056700
+./ D 02151580                                         04/05/91 16:27:34
+./ R 02287000 02289000 $ 2287290 290                  04/05/91 16:27:34
+File SAMPLE MAILLCL:                                                    02287290
+.in +8                                                                  02287580
+.sp 2                                                                   02287870
+localnode^^^^*^^^^^^^^*^^^^^^^^LOCAL^^^^1                               02288160
+.in -8                                                                  02288450
+.sp 4                                                                   02288740
+File CUVMA MAILLCL:                                                     02289030
+.in +8                                                                  02289320
+.sp 2                                                                   02289610
+./ R 02291000          $ 2291490 490                  04/05/91 16:27:34
+.br                                                                     02291490
+./ R 02294000 02299000 $ 2294290 290                  04/05/91 16:27:34
+.sp 4                                                                   02294290
+File PUCC MAILLCL:                                                      02294580
+.in +8                                                                  02294870
+.sp 2                                                                   02295160
+; The local NJE changes that need to be made                            02295450
+.br                                                                     02295740
+PUASIS                     PUMIS    VMMAIL   BSMTP    3                 02296030
+.br                                                                     02296320
+PUCC                       *        *        LOCAL    1                 02296610
+.br                                                                     02296900
+PUNFSV2                    *        *        LOCAL    1                 02297190
+.br                                                                     02297480
+; Domain addresses to change                                            02297770
+.br                                                                     02298060
+Princeton.EDU              *        SMTP     BSMTP    3                 02298350
+.in -8                                                                  02298640
+./ I 02321000          $ 2321500 500                  04/05/91 16:27:34
+* Space allocation:  1500 4K blocks                                     02321500
+./ R 02326000          $ 2326290 290                  04/05/91 16:27:34
+* Disk label = &vmmlab2xx                                               02326290
+* Space allocation:  900 4K blocks                                      02326580
+./ R 02328000          $ 2328490 490                  04/05/91 16:27:34
+    MDISK 193 3380   cylno  000006 volser MR  ALL                       02328490
+./ I 02331000          $ 2331500 500                  04/05/91 16:27:34
+* Space allocation:  1500 4K blocks                                     02331500
+./ R 02333000          $ 2333490 490                  04/05/91 16:27:34
+    MDISK 194 3380   cylno  000010 volser RR  ALL                       02333490
+./ I 02336000          $ 2336500 500                  04/05/91 16:27:34
+* Space allocation:  1200 4K blocks                                     02336500
+./ I 02341000          $ 2341500 500                  04/05/91 16:27:34
+* Space allocation:  450 4K blocks                                      02341500
+./ R 02352000          $ 2352490 490                  04/05/91 16:27:34
+USER MAILER   password 02048K 04096K G                                  02352490
+./ I 02364000          $ 2364200 200                  04/05/91 16:27:34
+* Space allocation:  750 4K blocks                                      02364500
+*
+* If you want to use the FWD command this disk must have a read password
+*    of ALL.
+./ R 02366000          $ 2366490 490                  04/05/91 16:27:34
+    MDISK 191 3380   cylno  000005 volser MR  ALL                       02366000
+./ I 02368000          $ 2368500 500                  04/05/91 16:27:34
+* Space allocation:  450 4K blocks                                      02368500
+./ R 02374150          $ 2374160 10                   04/05/91 16:27:34
+.ce Standard File Forwarding Server ID Definition                       02374160
+./ R 02374660          $ 2374665 5                    04/05/91 16:27:34
+     LINK mailerid 193 193 RR                                           02374665
+*                                                                       02374670
+* The Mailer 191 disk (for access to the FORWARD files)                 02374675
+*                                                                       02374680
+     LINK mailerid 191 291 RR                                           02374685
+./ I 02374720          $ 2374730 10                   04/05/91 16:27:34
+* Space allocation:  150 4K blocks                                      02374730
+./ R 02374780          $ 2374790 10                   04/05/91 16:27:34
+    MDISK 191 3380   cylno  000001 volser MR                            02374790
+./ R 02379000 02396190 $ 2379190 190                  04/05/91 16:27:34
+.ce Inventory of Files on &vmmlab2xx disk                               02379190
+.sp 2                                                                   02379380
+.hi 24                                                                  02379570
+.bd \\"FORWARDX $EXEC"\        A merged source code file suitable for   02379760
+updating with XEDIT and EXECUPDT.                                       02379950
+Contains a REXX program to perform file forwarding using information    02380140
+.us \stored in the 'userid FORWARD' files generated by the \Mailer\     02380330
+FORWARD command.                                                        02380520
+.sp 1                                                                   02380710
+.hi 24                                                                  02380900
+.bd \\"FWD      $EXEC"\        A merged source code file suitable for   02381090
+updating with XEDIT and EXECUPDT.                                       02381280
+.sp 1                                                                   02381470
+.hi 24                                                                  02381660
+.bd \\"MABNXIT  $EXEC"\        A merged source code file suitable for   02381850
+updating with XEDIT and EXECUPDT.                                       02382040
+.sp 1                                                                   02382230
+.hi 24                                                                  02382420
+.bd \\"SAMPPROF $EXEC"\        A merged source code file suitable for   02382610
+updating with XEDIT and EXECUPDT.                                       02382800
+.us \It contains sample PROFILE and MAILER EXECs to run \MAILER\ and    02382990
+the file forwarding server as an AUTOLOG'd disconnected virtual machine.02383180
+.sp 1                                                                   02383370
+.hi 24                                                                  02383560
+.bd \\"FWD      $HELPCMS"\     A merged source code file suitable for   02383750
+updating with XEDIT and EXECUPDT.                                       02383940
+.sp 1                                                                   02384130
+.hi 24                                                                  02384320
+.bd \\"MAILER   $HELPCMS"\     A merged source code file suitable for   02384510
+updating with XEDIT and EXECUPDT.                                       02384700
+.sp 1                                                                   02384890
+.hi 24                                                                  02385080
+.bd \\"MAILERP  $HELPCMS"\     A merged source code file suitable for   02385270
+updating with XEDIT and EXECUPDT.                                       02385460
+.sp 1                                                                   02385650
+.hi 24                                                                  02385840
+.bd \\"FORWARD  $MAILER"\      A merged source code file suitable for   02386030
+updating with XEDIT and EXECUPDT.                                       02386220
+.sp 1                                                                   02386410
+.hi 24                                                                  02386600
+.bd \\"MAILLIST $MAILER"\      A merged source code file suitable for   02386790
+updating with XEDIT and EXECUPDT.                                       02386980
+.sp 1                                                                   02387170
+.hi 24                                                                  02387360
+.bd \\"SAMPLE   $MTPLATE"\     A merged source code file suitable for   02387550
+updating with XEDIT and EXECUPDT.                                       02387740
+.sp 1                                                                   02387930
+.hi 24                                                                  02388120
+.bd \\"FORWARDX AUXEXCLC"\     An auxiliary update file for FORWARDX    02388310
+$EXEC                                                                   02388500
+.sp 1                                                                   02388690
+.hi 24                                                                  02388880
+.bd \\"FWD      AUXEXCLC"\     An auxiliary update file for FWD         02389070
+$EXEC                                                                   02389260
+.sp 1                                                                   02389450
+.hi 24                                                                  02389640
+.bd \\"MABNXIT  AUXEXCLC"\     An auxiliary update file for MABNXIT     02389830
+$EXEC                                                                   02390020
+.sp 1                                                                   02390210
+.hi 24                                                                  02390400
+.bd \\"SAMPPROF AUXEXCLC"\     An auxiliary update file for SAMPPROF    02390590
+$EXEC                                                                   02390780
+.sp 1                                                                   02390970
+.hi 24                                                                  02391160
+.bd \\"SAMPLE   AUXLCL"\       An auxiliary update file for SAMPLE      02391350
+$MTPLATE                                                                02391540
+.sp 1                                                                   02391730
+.hi 24                                                                  02391920
+.bd \\"MAILER   CNTRL"\        Control file for non-$EXEC/non-$HELP     02392110
+file updating                                                           02392300
+.sp 1                                                                   02392490
+.hi 24                                                                  02392680
+.bd \\"MAILEXEC CNTRL"\        Control file for $EXEC file updating     02392870
+.sp 1                                                                   02393060
+.hi 24                                                                  02393250
+.bd \\"MAILHELP CNTRL"\        Control file for $HELP file updating     02393440
+.sp 1                                                                   02393630
+.hi 24                                                                  02393820
+.bd \\"FWD      EXEC"\         A REXX program that provides a better    02394010
+.us \user interface to the \MAILER\ FORWARD command.                    02394200
+Generated from "FWD $EXEC".                                             02394390
+./ R 02396760 02400000 $ 2397750 990                  04/05/91 16:27:34
+.bd \\"MABNXIT  EXEC"\         A REXX program for handling MAILER       02397750
+abends.                                                                 02398740
+Generated from "MABNXIT $EXEC".                                         02399730
+./ I 02424000          $ 2424100 100                  04/05/91 16:27:34
+.sp 1                                                                   02424100
+.hi 24                                                                  02424200
+.bd \\"FWD      HELPCMS"\      Help file for FWD command (user          02424300
+.us \interface to \MAILER\ FORWARD command                              02424400
+Generated from "FWD $HELPCMS".                                          02424500
+./ I 02427000          $ 2427500 500                  04/05/91 16:27:34
+Generated from "MAILER $HELPCMS".                                       02427500
+./ R 02430490          $ 2430510 20                   04/05/91 16:27:34
+.bd \\"MAILERP  HELPCMS"\      Help file for privileged commands.       02430510
+Generated from "MAILERP $HELPCMS".                                      02430530
+.sp 1                                                                   02430550
+.hi 24                                                                  02430570
+.bd \\"INSTALL LISTING"\       this document in 1403 format             02430590
+.sp 1                                                                   02430610
+.hi 24                                                                  02430630
+.bd \\"INSTALL LISTPS"\        this document in postscript format       02430650
+.sp 1                                                                   02430670
+.hi 24                                                                  02430690
+.bd \\"MAILCOMP MACLIB"\       Macros to allow use of CMS 6 macros in   02430710
+CMS 4 and CMS 5 systems.                                                02430730
+.sp 1                                                                   02430750
+.hi 24                                                                  02430770
+.bd \\"MAILER   MACLIB"\       Macros for writing exits in assembler    02430790
+./ I 02433180          $ 2433220 40                   04/05/91 16:27:34
+Generated from "FORWARD $MAILER".                                       02433220
+./ R 02433630 02433810 $ 2433720 90                   04/05/91 16:27:34
+Generated from "MAILLIST $MAILER".                                      02433720
+./ R 02451000 02453000 $ 2451590 590                  04/05/91 16:27:34
+.sp 1                                                                   02451590
+.hi 24                                                                  02452180
+.bd \\"INSTALL SCRIPT"\        the Waterloo SCRIPT file used to generate02452770
+INSTALL LISTING and INSTALL LISTPS.                                     02453360
+./ R 02467000 02772000 $ 2506990 39990                04/05/91 16:27:34
+A current inventory of these files can found in the MAILR2 FILELIST     02506990
+available from LISTSERV@PUCC.                                           02546980
+These files are not available individually but only as a part of the    02586970
+.us \\Mailer\ distribution.                                             02626960
+If you need a copy of a file (due to accidental erasure, etc.) contact  02666950
+John Wagner (jwagner@Princeton.EDU).                                    02706940
+./ R 02779000 02870000 $ 2788990 9990                 04/05/91 16:27:34
+A current inventory of these files can found in the MAILR2 FILELIST     02788990
+available from LISTSERV@PUCC.                                           02798980
+These files are not available individually but only as a part of the    02808970
+.us \\Mailer\ distribution.                                             02818960
+If you need a copy of a file (due to accidental erasure, etc.) contact  02828950
+John Wagner (jwagner@Princeton.EDU).                                    02838940
+./ R 02877000 02924000 $ 2877990 990                  04/05/91 16:27:34
+A current inventory of these files can found in the MAILR2 FILELIST     02877990
+available from LISTSERV@PUCC.                                           02878980
+These files are not available individually but only as a part of the    02879970
+.us \\Mailer\ distribution.                                             02880960
+If you need a copy of a file (due to accidental erasure, etc.) contact  02881950
+John Wagner (jwagner@Princeton.EDU).                                    02882940

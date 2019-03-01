@@ -1,0 +1,17 @@
+./ I 00215990          $ 216490 500                   03/16/90 17:22:25
+         SPACE ,
+****************************************************************        00225980
+*                                                              *        00235970
+*  Check for FILE FROM: processing.  If this is a FILE FROM:   *        00245960
+*  we refuse to deliver it (since the file that would be       *        00255950
+*  bounced back from RSCS if the destination doesn't exist     *        00255950
+*  would have no headers and thus would be invalid).           *        00255950
+*                                                              *        00265940
+****************************************************************        00275930
+         SPACE ,                                                        00285920
+         TM    MAILOPTS,MOPTFIOK   FILE FROM: allowed?
+         BNO   NOFILES             ---> No, everything ok
+         TM    MAILFLG2,MFLG2N82   FILE FROM: found?
+         BO    UNKNOWN             ---> Yes, return it
+NOFILES  EQU   *
+         SPACE ,                                                        00285920

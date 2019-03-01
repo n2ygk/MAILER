@@ -1,0 +1,11 @@
+./ I 00144160          $ 144180 20                    02/17/89 14:46:56
+         TM    RELDECB,POSTED      Was it a RELOAD command?             00144080
+         BO    RELOAD              Yes : Go stop                        00144160
+./ D 00156000 00159000                                02/17/89 14:46:56
+./ I 00171000          $ 171200 200                   02/17/89 14:46:56
+         NI    RELDECB,255-POSTED  Unpost the ECB.                      00173000
+./ I 00171500          $ 171700 200                   02/17/89 14:46:56
+         HNDINT CLR,(RDR1)         Release reader (if we ever got it).  00171700
+./ D 00173000                                         02/17/89 14:46:56
+./ I 00215800          $ 216100 300                   02/17/89 14:46:56
+         DC    V(RELDECB)          ...                                  00215800

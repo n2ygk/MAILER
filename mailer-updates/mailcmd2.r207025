@@ -1,0 +1,54 @@
+./ R 00102020          $ 102030 10                    12/31/90 13:51:42
+         BNE   $FWD0060            ---> Yes                             00102020
+./ R 00102160          $ 102170 10                    12/31/90 13:51:42
+         BNZ   $FWD0060            ---> No MSGCMD value                 00102160
+./ I 00102220          $ 102223 3                     12/31/90 13:51:42
+$FWD0060 EQU   *                                                        00101980
+         CLC   =F'0',$EXCARG3      MSGCMD argument set?                 00102000
+         BNE   $FWD0100            ---> Yes                             00102020
+         L     R14,MAILPTAB        Parameter table                      00102040
+         MAILTRC CALL,TBLUK        Trace the call                       00102060
+         L     R15,ATBLUK          Pick up TBLUK routine address        00102080
+         CALL  (15),((R14),FORWDISK,L'FORWDISK,TWORK)                   00102100
+         MAILTRC RETURN,TBLUK,(R15) Trace the return                    00102120
+         LTR   R15,R15             Found an entry?                      00102140
+         BNZ   $FWD0100            ---> No MSGCMD value                 00102160
+         LA    R0,1(,R1)           Point to start of string             00102180
+         ST    R0,$EXCARG3         Put address into argument            00102200
+         MVC   $EXCARG3+7(1),0(R1) Put length into argument             00102220
+./ R 00118233 00118260 $ 118234 1                     12/31/90 13:51:42
+         BNE   $MLS0060            ---> Yes                             00118233
+         L     R14,MAILPTAB        Parameter table                      00118234
+         MAILTRC CALL,TBLUK        Trace the call                       00118235
+         L     R15,ATBLUK          Pick up TBLUK routine address        00118236
+         CALL  (15),((R14),MSGCMD,L'MSGCMD,TWORK)                       00118237
+         MAILTRC RETURN,TBLUK,(R15) Trace the return                    00118238
+         LTR   R15,R15             Found an entry?                      00118239
+         BNZ   $MLS0060            ---> No MSGCMD value                 00118240
+         LA    R0,1(,R1)           Point to start of string             00118241
+         ST    R0,$EXCARG2         Put address into argument            00118242
+         MVC   $EXCARG2+7(1),0(R1) Put length into argument             00118243
+$MLS0060 EQU   *                                                        00118231
+         CLC   =F'0',$EXCARG3      MSGCMD argument set?                 00118232
+         BNE   $MLS0100            ---> Yes                             00118233
+         L     R14,MAILPTAB        Parameter table                      00118234
+         MAILTRC CALL,TBLUK        Trace the call                       00118235
+         L     R15,ATBLUK          Pick up TBLUK routine address        00118236
+         CALL  (15),((R14),MLSTDISK,L'MLSTDISK,TWORK)                   00118237
+         MAILTRC RETURN,TBLUK,(R15) Trace the return                    00118238
+         LTR   R15,R15             Found an entry?                      00118239
+         BNZ   $MLS0100            ---> No MSGCMD value                 00118240
+         LA    R0,1(,R1)           Point to start of string             00118241
+         ST    R0,$EXCARG3         Put address into argument            00118242
+         MVC   $EXCARG3+7(1),0(R1) Put length into argument             00118243
+$MLS0100 EQU   *                                                        00118244
+         LA    R1,$EXCPL           Point to tokenized plist             00118245
+         ICM   R1,B'1000',=X'05'   Doing REXX function call             00118246
+         LA    R0,$EXCEPL          Point to extended plist              00118260
+./ I 00143860          $ 143960 100                   12/31/90 13:51:42
+FORWDISK DC    C'Forward-mode'
+MLSTDISK DC    C'Maillist-mode'
+./ R 00154116 00154117 $ 154120 4                     12/31/90 13:51:42
+$EXCARG3 DC    A(0),A(0)           Address/length of 'diskmode' value   00154115
+         DC    8X'FF'                                                   00154116
+         SPACE 1                                                        00154117

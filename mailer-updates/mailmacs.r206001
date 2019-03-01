@@ -1,0 +1,2 @@
+./ R 00492000          $ 492490 490                   04/17/90 16:15:16
+MCMDCMD  EQU   X'20'         Mail command processing to be called       00492490

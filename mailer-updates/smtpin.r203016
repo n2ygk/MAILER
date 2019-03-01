@@ -1,0 +1,32 @@
+./ R 00955490 00959000 $ 956080 590                   05/15/89 15:06:07
+ *   (1) Look up full host string in MAILRTAB
+ *   (2) If not found, look for full host string in MAILDTAB
+ *   (3) If not found and RSCS-domains are found strip RSCS domain      00955490
+ *   (4) look for the hostname in MAILRTAB                              00957000
+ *   (5) if not found,  look for it in MAILDTAB                         00958000
+ *   (6) if not found and MOPTAUN true,  look for *DEFAULT* in MAILRTAB 00959000
+./ I 00975840          $ 975849 9                     05/15/89 15:06:07
+                                                                        00985000
+    /* (1) see if it is in MAILRTAB */                                  00986000
+    if (ctbluk(&te, mailblok.mailrtab, s, l) == TBMATCH) {              00987580
+#ifdef DEBUG_FIND_ROUTD                                                 00987670
+        wrterm("==> find_routd: Found in MAILRTAB");                    00987760
+#endif                                                                  00987850
+        return te->tbe_dsp;        /* table dispatch value is *routd */ 00988000
+    }                                                                   00988500
+                                                                        00989000
+    /* (2) see if it is in MAILDTAB */                                  00990000
+    if (ctbluk(&te, mailblok.maildtab, s, ol) == TBMATCH) {             00991580
+#ifdef DEBUG_FIND_ROUTD                                                 00991670
+        wrterm("==> find_routd: Found in MAILDTAB");                    00991760
+#endif                                                                  00991850
+        return te->tbe_dsp;                                             00992000
+    }                                                                   00992500
+./ R 00977000          $ 977790 790                   05/15/89 15:06:07
+    /* (3) see if it ends in .<RSCS-domain> */                          00977000
+./ R 00986000          $ 986690 690                   05/15/89 15:06:07
+    /* (4) see if it is in MAILRTAB */                                  00986000
+./ R 00990000          $ 990690 690                   05/15/89 15:06:07
+    /* (5) see if it is in MAILDTAB */                                  00990000
+./ R 00994000          $ 994690 690                   05/15/89 15:06:07
+    /* (6) see if MOPTAUN and *DEFAULT* is in MAILRTAB */               00994000

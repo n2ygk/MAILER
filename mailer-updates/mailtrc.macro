@@ -1,0 +1,167 @@
+         MACRO                                                          00001000
+&NAME    MAILTRC &TYPE,&ARG1,&ARG2                                      00002000
+.********************************************************************** 00003000
+.*                                                                      00004000
+.*       Generate a trace table entry for the mailer                    00005000
+.*       Also generates code to initialize trace table pointers         00006000
+.*                                                                      00007000
+.*       Uses registers 14 and 15                                       00008000
+.*                                                                      00009000
+.*       The following TYPE codes are recognized:                       00010000
+.*                                                                      00011000
+.*             CALL     - Call of a routine to be done immediately      00012000
+.*                        following this trace entry                    00013000
+.*             CREATE   - Creation of some control block or other       00014000
+.*                        entity                                        00015000
+.*             ENTER    - Record entry into a routine                   00016000
+.*             EXIT     - Record exit from a routine                    00017000
+.*             INIT     - Initialize trace table                        00018000
+.*             RETURN   - Return from a routine done immediately        00019000
+.*                        preceeding this trace entry                   00020000
+.*                                                                      00021000
+.*       Use of any other TYPE values will cause generation of a        00022000
+.*       default trace table entry containing the type code and         00023000
+.*       address at which the trace request was coded.  This is         00024000
+.*       done to allow easy creation of state tracing info.             00025000
+.*                                                                      00026000
+.********************************************************************** 00027000
+.*                                                                      00028000
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   00029000
+.*       Code common to all entry types                                 00030000
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   00031000
+.*                                                                      00032000
+$&SYSNDX.A EQU *                   Label for trace entry address        00033000
+         AIF   ('&TYPE' EQ 'INIT').INIT                                 00034000
+.*                                                                      00035000
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   00036000
+.*       Code common to remaining entry types                           00037000
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   00038000
+.*                                                                      00039000
+         L     R14,TRTBLCUR        Get current entry pointer            00040000
+         A     R14,=A(TRCENTL)     Bump to next entry                   00041000
+         C     R14,TRTBLEND        Past end?                            00042000
+         BNH   $&SYSNDX.B          ---> No                              00043000
+         L     R14,TRTBLST         Back to start                        00044000
+$&SYSNDX.B EQU *                                                        00045000
+         ST    R14,TRTBLCUR        Update current pointer               00046000
+         USING TRCENT,R14                                               00047000
+         MVC   TRCTYPE,=CL8'&TYPE'      Move in type code               00048000
+         MVC   TRCROUTN,=CL8'&SYSECT'   Move in CSECT name              00049000
+         MVC   TRCADDR,=A($&SYSNDX.A)   Move in trace macro address     00050000
+         XC    TRCDATA,TRCDATA          Clear rest of entry             00051000
+.*                                                                      00052000
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   00053000
+.*       End of common code                                             00054000
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   00055000
+.*                                                                      00056000
+         AIF   ('&TYPE' EQ 'CALL').CALL                                 00057000
+         AIF   ('&TYPE' EQ 'CREATE').CREATE                             00058000
+         AIF   ('&TYPE' EQ 'ENTER').ENTER                               00059000
+         AIF   ('&TYPE' EQ 'EXIT').EXIT                                 00060000
+         AIF   ('&TYPE' EQ 'RETURN').RETURN                             00061000
+         MNOTE 4,'TYPE value of &TYPE not recognized'                   00062000
+         MNOTE ,'Default entry type generated'                          00063000
+         MEXIT                                                          00064000
+.*                                                                      00065000
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   00066000
+.*       Generate code for CALL trace                                   00067000
+.*                                                                      00068000
+.*       &ARG1 = Name of routine being called                           00069000
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   00070000
+.*                                                                      00071000
+.CALL    ANOP                                                           00072000
+.*                                                                      00073000
+         MVC   TRCDATA(8),=CL8'&ARG1'   Move in entity type             00074000
+         DROP  R14                                                      00075000
+         MEXIT                                                          00076000
+.*                                                                      00077000
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   00078000
+.*       Generate code for CREATE trace table entry                     00079000
+.*                                                                      00080000
+.*       &ARG1 = Created entity name (i.e. NODE, TOK, etc)              00081000
+.*       &ARG2 = Created entity address (either ADCON or Register)      00082000
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   00083000
+.*                                                                      00084000
+.CREATE  ANOP                                                           00085000
+.*                                                                      00086000
+         MVC   TRCDATA(8),=CL8'&ARG1'   Move in entity type             00087000
+         AIF   ('&ARG2'(1,1) NE '(').CREA010                            00088000
+         ST    &ARG2,TRCDATA+8          Save entity address             00089000
+         AGO   .CREA020                                                 00090000
+.CREA010 ANOP                                                           00091000
+         MVC   TRCDATA+8(4),=A(&ARG2)   Save entity address             00092000
+.CREA020 ANOP                                                           00093000
+         DROP  R14                                                      00094000
+         MEXIT                                                          00095000
+.*                                                                      00096000
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   00097000
+.*       Generate code to initialize trace table pointers               00098000
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   00099000
+.*                                                                      00100000
+.INIT    ANOP                                                           00101000
+.*                                                                      00102000
+         LM    R14,R15,STACK       Pick up stack pointers               00103000
+         L     R0,=A(1024*TRCENTL) Length for 1024 entres               00104000
+         CR    R0,R15              Will 1K worth of entries fit?        00105000
+         BNP   $&SYSNDX.B          ---> Yes                             00106000
+         L     R0,=A(100*TRCENTL)  Length for 100 entres                00107000
+$&SYSNDX.B EQU *                                                        00108000
+         ST    R14,TRTBLST         Set trace table start address        00109000
+         ST    R14,TRTBLCUR        Set trace table current address      00110000
+         USING TRCENT,R14                                               00111000
+         MVC   TRCTYPE,=CL8'INIT'       Move in type code               00112000
+         MVC   TRCROUTN,=CL8'&SYSECT'   Move in CSECT name              00113000
+         MVC   TRCADDR,=A($&SYSNDX.A)   Move in trace macro address     00114000
+         XC    TRCDATA,TRCDATA          Clear rest of entry             00115000
+         DROP  R14                                                      00116000
+         SR    R15,R0              Reduce stack size                    00117000
+         AR    R14,R0              Increment stack pointer              00118000
+         STM   R14,R15,STACK       Update stack pointers                00119000
+         S     R14,=A(TRCENTL)     Back up by 1 entry                   00120000
+         ST    R14,TRTBLEND        Remember end of trace address        00121000
+         MEXIT                                                          00122000
+.*                                                                      00123000
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   00124000
+.*       Generate code for ENTER trace                                  00125000
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   00126000
+.*                                                                      00127000
+.ENTER   ANOP                                                           00128000
+.*                                                                      00129000
+         DROP  R14                                                      00130000
+         MEXIT                                                          00131000
+.*                                                                      00132000
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   00133000
+.*       Generate code for EXIT trace                                   00134000
+.*       &ARG1 = Return code (Decimal value or Register)                00135000
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   00136000
+.*                                                                      00137000
+.EXIT    ANOP                                                           00138000
+.*                                                                      00139000
+         AIF   ('&ARG1' EQ '').EXIT020                                  00140000
+         AIF   ('&ARG1'(1,1) NE '(').EXIT010                            00141000
+         ST    &ARG1,TRCDATA            Save return code                00142000
+         AGO   .EXIT020                                                 00143000
+.EXIT010 ANOP                                                           00144000
+         MVC   TRCDATA(4),=A(&ARG1)     Save return code                00145000
+.EXIT020 ANOP                                                           00146000
+         DROP  R14                                                      00147000
+         MEXIT                                                          00148000
+.*                                                                      00149000
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   00150000
+.*       Generate code for RETURN trace                                 00151000
+.*       &ARG1 = Return code (Register)                                 00152000
+.*       &ARG2 = Return code (Register)                                 00153000
+.*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   00154000
+.*                                                                      00155000
+.RETURN  ANOP                                                           00156000
+.*                                                                      00157000
+         MVC   TRCDATA(8),=CL8'&ARG1'   Move in routine name            00158000
+         AIF   ('&ARG2'(1,1) NE '(').RETU010                            00159000
+         ST    &ARG2,TRCDATA+8          Save return code                00160000
+         AGO   .RETU020                                                 00161000
+.RETU010 ANOP                                                           00162000
+         MNOTE 8,'Return code value must be in register'                00163000
+.RETU020 ANOP                                                           00164000
+         DROP  R14                                                      00165000
+.*                                                                      00166000
+         MEND                                                           00167000

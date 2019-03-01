@@ -1,0 +1,20 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R206001    Fix to MSG/SMSG handling
+R205022    Dump trace table to console for some exit conditions
+R203035    Fix Copyright notice
+R203014    Support for FORWARD command
+R202018    Remove PRINT NOGENs, make DSECTs honor SYSPARM(SUP)/SYSPARM(EXP)
+R202016    Fix MAILER007E RC=0002 during RELOAD processing.
+R202010    Command processing enhancements.
+R202003    Run MAILSMSD to disable SMSG's during reload processing.
+R201013    Fix validation bug for SMSG of privileged commands.
+R201004    Make MAILBLOK globally available to all code
+*          This will remove dependence on Waterloo AUX file usage for
+*          (hopefully) increased portability of C code
+R200012    Update version date for R200012
+R200011    Update version date for R200011
+R200010    Improve version identification
+R200009    Allow multiple Rscs-Domains.
+*          Reassemble to change version date
+R200008    Allow multiple Local-Hosts.
+*          Reassemble to change version date

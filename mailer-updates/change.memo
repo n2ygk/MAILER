@@ -1,0 +1,528 @@
+The following changes were incorporated into MAILER release 2.01
+
+ASM/C
+Changes    Description
+--------   --------------------------------------------------------------
+R200001    ARPADATE producing non-printable characters in last 2 bytes
+           out output if time zone not in +/- format
+
+R200002    APARSE not supporting null header fields correctly
+
+R200003    BSMTP errors not being returned
+
+R200004    Run the "accept the mail" code for properly identified
+           untrusted sources
+
+R200005    MAILRET only accepts first token of user and node for return
+*          address.
+
+R200006    VALIDATE changes MAILUSER and MAILNODE without changing
+*          MAILULEN and MAILNLEN. Force them to 8 each.
+
+R200007    VALIDATE doesn't understand LocalDomain.
+
+R200008    Allow multiple Local-Hosts.
+
+           This update  changes MAILER  to support multiple  names for
+           the local  node, in addition  to the real  nodename.  These
+           names    are   coded    in    the    MAILER   PROFILE    as
+           "Local-Host#=<text>", where "#" runs  from 1 to the maximum
+           (currently 9) and <text> is a fully specfied host name (all
+           parts of  a domain-style  name must  be coded).   The first
+           name   (Local-Host1)  may   also   be   specified  by   the
+           Local-Domain  parameter,  for  compatability  with  earlier
+           releases (NOTE: this capability WILL be removed in a future
+           release).
+
+           The  value  of Local-Host1  will  be  used when  generating
+           "Received:" lines;  in BSMTP "HELO" commands;  in the BSMTP
+           greeting message;   and in generating missing  <domain>s in
+           the "From:" and "Sender:"  lines of locally generated mail.
+           All Local-Host* values will be  accepted in the "From:" and
+           "Sender:" lines  of locally generated mail  as synonyms for
+           the local node, and will  be recognized as synonyms for the
+           local node in incoming mail.
+
+R200009    Allow multiple Rscs-Domains.
+
+           This  update  changes  MAILER to  support  multiple  domain
+           suffixes for the network to which RSCS is connected.  These
+           names    are   coded    in    the    MAILER   PROFILE    as
+           "Rscs-Domain#=<text>", where "#" runs from 1 to the maximum
+           (currently 9)  and <text> is  a domain suffix  (the leading
+           dot optional, one will be assumed if not coded).  The first
+           name   (Rscs-Domain1)  may   also  be   specified  by   the
+           Rscs-Domain  parameter,  for   compatability  with  earlier
+           releases  (there  is currently  no  intent  to remove  this
+           capability).
+
+           The value  of Rscs-Domain1  will be  appended to  the local
+           node name (with a separating  dot) and used (if Local-Host1
+           is  not specfied)  when generating  "Received:" lines;   in
+           BSMTP "HELO" commands;  in the BSMTP greeting message;  and
+           in  generating   missing  <domain>s  in  the   "From:"  and
+           "Sender:"   lines   of   locally   generated   mail.    All
+           Rscs-Domain*  values  will  be  removed  from  "From:"  and
+           "Sender:"  lines  in  incoming   mail  when  attempting  to
+           validate the source  of the mail.  The  resulting node name
+           will be located in the "Incoming:" table, and if found, the
+           mail will  be accepted.   No changes will  be made  to mail
+           headers.  The same removal and lookup will be performed for
+           outgoing mail, also with no changes to the mail headers.
+
+           It  is   intended  that  this   new  support  be   used  in
+           enviornments where the local node participates in more than
+           one RSCS network, and may expect to receive mail from nodes
+           in all of them.  The  Maintainer must make a decision which
+           network the node belongs to, and code that as Rscs-Domain1.
+           It is highly recommended that "BITNET" and "EARN" be listed
+           as  acceptable Rscs-Domains.   Failure to  do so  may cause
+           MAILER to  reject incoming mail  from many BITNET  and EARN
+           nodes.
+
+R200010    Improve version identification
+
+R200011    Fix "L;BZ" instruction sequences
+
+R200012    Remove stack clearing MVCL
+           Add DIAG 10 to purge old stack pages
+
+R200013    Corrections for improper zeroing of various control blocks
+              built stack
+
+R200014    Change mailer version to 2.01
+
+
+The following changes were incorporated into MAILER release 2.02
+
+ASM/C
+Changes    Description
+--------   --------------------------------------------------------------
+R201001    Correct BSMPT to handle '%var' parm correctly
+
+R201002    Correct deletion of routeaddr when processing headers
+*          Also adds support for standardized storage allocation call
+*          (macro) from assembler
+
+R201003    Correct validation of user@node for commands from network
+
+R201004    Correct userid in MAIRTS029I message
+
+R201005    Correct creation of strings in MAILGEN GENLST subroutine
+*          Don't leave trailing '.' on string
+
+R201006    Create new default exit for outgoing table.  This exit will
+*          re-implement the Allow-Unknown-Nodes code without the
+*          cross network routing of the internet exit.
+
+R201007    Handle stack overflow in GETHDR
+
+R201008    Report errors for mail not sent when multiple destinations
+*          given and only some destinations are bad
+
+R201009    Handle local address part correctly in tagging files
+
+R201010    Handle TICK with no tick-id correctly
+
+R201011    Handle BSMTP addresses without '@' correctly
+
+R201012    Handle long addresses in BSMTP exit correctly
+
+R201013    Fix validation bug for SMSG of privileged commands.
+
+R201014    Change mailer version to 2.02
+
+
+The following changes were incorporated into MAILER release 2.03
+
+ASM/C
+Changes    Description
+--------   --------------------------------------------------------------
+R202001    Handle local address part correctly in tagging files
+*          Fix DEFRT (which was missed) and get spool file name right
+*          in PUNCLS
+
+R202002    Change mailer version to 2.02A
+
+R202003    Run MAILSMSD  to disable  SMSG's during  reload processing.
+           This  update changes  the RELOAD  process to  call MAILSMSD
+           when preparing  to reload.  This prevents  misleading error
+           messages during MAILSMSI processing, related to IUCV buffer
+           ownership
+
+R202004    Correctly handle comparison of userids (with dots) and
+*          NJE userid for BSMTP
+
+R202005    Correctly handle null keywords in MAILER profile
+*          Adopted solution is to ignore keywords with no value field
+*          (i.e.  Local-Domain=      ;Local domain name)
+
+R202006    Correction for continued MAIL FROM: lines in BSMTP
+
+R202007    Correct call to error msg routine for msg
+*          "Mailer problem: can't read error log"
+
+R202008    Fix for BSMTP exit processing of MAIL FROM: when userid
+*          has no domain portion and RSCS-domain is not coded.
+
+R202009    Support userid aliases in INCOMING table.  This allows a
+*          well known userid (such as MAILER) to be represented by 1
+*          entry instead of 1 entry per node.  The format for these
+*          entries will be a node of '*default*' and a userid of the
+*          specific userid
+
+R202010    Command processing enhancements.  Avoid unnecessary "Mailer
+*          waiting for work"  messages;  add RC to  STOP command;  log
+*          incoming commands on console;   don't tokenize CMS commands
+*          (shouldn't  be tokenized  for ATTN);   upcase CP  commands;
+*          change interrupt logic to use ECBs.
+
+R202011    Handle blanks in the sender userid properly when issuing
+*          CP CLOSE command
+
+R202012    Add a CP ORDER to be sure we get the right file's data.
+*          Thanks to Cornell for this mod.
+
+R202013    Correct handling of userids with '.'s in LOCAL exit
+
+R202014    Make MAILBLOK globally available to all code
+*          This will remove dependence on Waterloo AUX file usage for
+*          increased portability of C code
+
+R202015    Make MG compatible with Waterloo C 3.0
+
+R202016    Fix MAILER007E RC=0002 during RELOAD processing.
+
+R202017    More changes to make C code compatible with ANSI
+
+R202018S   Sequence MAILLEX and MAILLRP before applying R202018
+
+R202018    Remove PRINT NOGENs, make DSECTs honor SYSPARM(SUP)/SYSPARM(EXP)
+
+R202019    Handle <@localnode,@localnode,...:userid@somenode> correctly
+
+R202020    Change mailer version to 2.03
+
+
+The following changes were incorporated into MAILER release 2.04
+
+ASM/C
+Changes    Description
+--------   --------------------------------------------------------------
+R203001    Handle negative string length in _tbluk
+*          This is a kludge for a problem that is not understood yet
+
+R203002    SMTPIN debugging code
+*          First step to dynamic debugging info in BSMTP support
+
+R203003    Support for options to C compiler
+
+R203004    ISSPACE subroutine white space values incorrect
+
+R203005    TRYRSCS should see if domain on node is one of the
+*          RSCS-Domainx values before giving up
+
+R203006    Extend abend recovery to BSMTP code
+
+R203007    Change version to 2.03A and fix up length of version field
+*          problem (reported by Waterloo).
+
+R203008    Fix for BSMTP addressing problem in call to genlist from
+*          check_sender
+
+R203009    Change version to 2.03B
+
+R203010    Fix "SMSG" command - responses weren't being returned.
+
+R203011    Support for '%' kludge
+
+R203012    Drop 8 character userid limit for DEFRT
+
+R203013    Fixes for Waterloo C 3.0
+
+R203014    Support for FORWARD command
+*          See MAILER HELPCMS and MAILER HELPPRIV (or comments at top
+*          of FORWARD MAILER) for command syntax.  The FORWARD MAILER
+*          code must be put on the disk with the MAILER MODULE for this
+*          support to work.  If you do not want to support the FORWARD
+*          command, simply do not move it.  The code will then issue
+*          the 'Forward command not implemented' messge.
+
+R203015    Support for *default* in ORIGINS table.
+*          This change allows control of all mail from any local id
+
+R203016    Look for full host destination name before stripping RSCS
+*          domains.
+*          This modification changes the sequence used to look up the
+*          destination for outgoing mail.  The new sequence is:
+*
+*          1.  Look for the full host string in the OUTGOING table
+*          2.  Look for the full host string in the DOMAINS table
+*          3.  Strip any matching RSCS domain
+*          4.  Look for the remaining string in the OUTGOING table
+*          5.  Look for the remaining string in the DOMAINS table
+*          6.  If Allow-Unknown-Nodes = true, look for *DEFAULT* in the
+*              outgoing table
+*
+*          The sequence ends when a lookup succeeds or all steps have
+*          been performed.
+
+R203017    Support for *default* in DOMAIN table.
+*          This modification changes the destination search to be
+*
+*
+*          1.  Look for the full host string in the OUTGOING table
+*          2.  Strip any matching RSCS domain
+*          3.  Look for the remaining string in the OUTGOING table
+*          4.  Look for the remaining string in the DOMAINS table
+*          5.  If Allow-Unknown-Nodes = true, look for *DEFAULT*
+*              A. If a '.' still exists in the address use the
+*                 DOMAINS table
+*              B. If no '.' in the address use the OUTGOING table
+
+R203018    Fix case sensitivity problems.
+           Changes NAMES to use a case-independent version of strcmp();
+           changes MG to accept "-I" option as variant of "-i";  and
+           changes MAILSMSG to accept mixed-case messages from RSCS.
+
+R203019    SALOC assembly failure with ASM-X
+
+R203020    Fix MAILCL031U message.
+
+R203021    Use full name for GENMOD command
+*          Generate both MAILER and MG in GENMAIL
+
+R203022    Add an eyecatcher to LOCAL for dumps.
+
+R203023    Handle missing Subject: text in PROFS exit
+
+R203024    Correction for remote user CMS command handling
+
+R203025    Fix case sensitivity in VALIDATE w/LocalHost.
+
+R203026    Interim speedup of TBLUK service, using binary search.
+
+R203027    Support comments in MG
+
+R203028    Support MAINTUSER1@MAINTNODE1 as synonym for MAINTUSER@MAINTNODE
+*          Issue warning when variables multiply defined
+
+R203029    Correct comments so they make sense in READINIT
+
+R203030    Verify existence of Local-Host# values in OUTGOING table.
+*          List various (important) variable values
+
+R203031    Fix problems caused by right justifying userid and node in
+*          command processing
+
+R203032    Fix up Copyright displayed at initialization.
+
+R203033    Rebuild SAMPPROF EXEC and SAMPLE MTPLATE during MAILGEN
+
+R203034    Fix parameter parsing bug in MG (-d switch causes incorrect
+*          decrement).  Fix thanks to  Christian J. Reichetzeder
+*          (REICHETZ@AWIIMC11)
+
+R203035    Fix Copyright notice
+
+R203036    Incorporate documentation changes into SAMPLE MTPLATE
+
+R204000    Change version to 2.04
+
+
+The following changes were incorporated into MAILER release 2.05
+
+ASM/C
+Changes    Description
+--------   --------------------------------------------------------------
+R204001    MAILGEN should generate filetype MAILER execs also
+
+R204002    Support comments in FORWARD files
+
+R204003    Fix bug in use of strnindex
+
+R204004    Support for MAILLIST command
+
+R204005    Fix code in READINIT to properly reset TRAPTAB when looking
+*          for a comment
+
+R204006    Corrections to handling of parm by BSMTP exit
+*          1. '%parm' was being used to set HELO string
+*          2. Bad address used if parm not found
+
+R204007    Fix is_mailer processing in SMTPIN
+*          This caused bug in return of mail to maintainer
+*          Additional (compile time controlled) debugging code added
+
+R204008    Produce mail being forwarded message if FORWARD file found
+
+R205000    Change version number to R2.05
+
+
+The following changes were incorporated into MAILER release 2.06
+
+ASM/C
+Changes    Description
+--------   --------------------------------------------------------------
+R205001    Incorporate MUSIC exit
+
+R205002    Fix up SHOW VERSION response to match startup msg
+
+R205003    Correction to processing of *DEFAULT*ROUTE*
+
+R205004    Correction to processing of RSCS-Domains in TRYRSCS
+
+R205005    Support for '!' in addresses
+
+R205006    Provide support to turn on listing of all msgs received
+*          This is meant to be used for debugging
+*
+*                Show-All-Msgs
+
+R205007    Report existence of multiple From or Senders correctly
+*          Don't use 'no From: or Sender: field' msg
+
+R205009    Use LOAD SVC, not LOAD command, to load external exits
+
+R205010    Fixes to MAILLIST command processing
+
+R205011    Code clean-up in BUILDLST
+
+R205012    Fixes for routeaddr processing
+*          These fixes do something more reasonable in routines that
+*          use default route delivery (DEFRT, TRYRSCS, LOCAL)
+
+R205013    Move debugging controls to variables
+*          This update creates the following new variables:
+*
+*          SMTPIN-Trace-Calls
+*          SMTPIN-Trace-Check-Local
+*          SMTPIN-Trace-Find-Routd
+*          SMTPIN-Trace-Is-Mailer
+*          SMTPIN-Trace-Rep-Mailer
+*          SMTPIN-Trace-S-Getdata
+*          SMTPIN-Trace-S-Input
+*          SMTPIN-Trace-S-RCPT
+*          SMTPIN-Trace-S-MAIL
+*          BUILDLST-Trace
+
+R205014    Add control to turn off looking for RFC822 headers inside
+*          the BSMTP envelope
+*
+*             BSMTP-No-RFC822 = True | False  (default false)
+*
+*          When BSMTP-No-RFC822 = TRUE then there will be no search
+*          for RFC822 headers inside the DATA portion of the BSMTP
+*          stream.
+*
+*          Let's be honest here.  This doesn't work very well, but
+*          the code was useful to help implement R205015.  Rather
+*          than merge the updates, I left this here, but I don't
+*          recommend you use it.
+
+R205015    Add control to allow acceptance of BSMTP streams with
+*          FILE FROM: header.
+*
+*             Allow-File-From = True | False  (default false)
+*
+*          When Allow-File-From = TRUE then BSMTP streams with the
+*          FILE FROM: header will be accepted.  MAILER will not look
+*          for RFC822 headers inside the BSMTP DATA when FILE FROM:
+*          is found.  Files being forwarded via the BSMTP exit will
+*          include the FILE FROM: line.  Files being delivered by
+*          the LOCAL or DEFRT exits will not have headers.  Attempts
+*          to forward files to nodes using the TRYRSCS exit will cause
+*          the file to be returned to sender (since MAILER would have
+*          to attempt delivery without any envelope, and if the node
+*          was unknown to RSCS, the file that MAILER would get back
+*          in its reader would have no routing info).
+*
+*          When Allow-File-From = FALSE (the default) the BSMTP stream
+*          will be returned with the FILE FROM: flagged as a syntax
+*          error.
+
+R205016    Add tracing code to TBLUK
+*
+*          Setting TBLUK-TRACE = TRUE will trace TBLUK
+
+R205017    BSMTP streams not returning error file when number of
+*          recipients is zero
+
+R205018    Add flag to only trace a mail creating exit.
+*          When this flag is set, the exit should list the actions
+*          it would have performed, but *NOT* create the output file.
+
+R205019    Correct MAILMOD2 EXEC to match files needed in MAILER TXTLIB
+
+R205020    More tracing controls.  This adds keywords for:
+*
+*              HDRSCAN-trace
+*              GETHDR-trace
+*              LOCAL-trace
+
+R205021    Fix invalid length in CP command closing RDR when return
+*          BSMTP error mail
+
+R205022    Dump trace table to console for some exit conditions
+*              Conditions:
+*              1.  rc > 16 in MAILMAIN
+*              2.  rc <  0 in MAILMAIN
+
+R205023    More tracing controls.  This adds keywords for:
+*
+*              SENDLST-trace
+*
+*          It also adds additional register support to the MAILTRC
+*          macro.
+*          MAILTRC entries are added in:
+*
+*              SENDLST
+*              LOCAL
+
+R205024    Update MAILRTOT during BSMTP buildlst processing
+*          Produce output trace when BUILDLST tracing requested
+
+R205025    Display duplicate entry when MAIRDI064W msg issued
+
+R205026    Handle userids with '.'s correctly in SNDRMSG
+
+R205027    Change existing parse tracing code from assembly time
+*          switches to runtime switches.  This adds 'Trace-Parsing'
+*          to the debugging variables
+
+R205028    Fix PUNHDR to handle empty address lines
+*          This currently only fixes the problem for header lines
+*          that have not been modified.
+
+R205029    DOC changes - Fixes to documentation discovered during BETA
+*          test period
+
+R206000    Change version id
+
+
+The following changes were incorporated into MAILER release 2.07
+
+ASM/C
+Changes    Description
+--------   --------------------------------------------------------------
+R206001    Fix to MSG/SMSG handling
+*          This corrects a problem with MAILER's external interrupt
+*          handler, that caused it to be non-reentrant.  It required
+*          A large rewrite of the command handling routines (including
+*          commands from the console).
+
+R206002    Fix to STOP and QUIESCE processing
+*          Check for the receipt of STOP and QUIESCE commands after
+*          every mail file is processed.  This requires that command
+*          processing be performed any time there are commands in the
+*          queue.  Before this change, commands were only processed
+*          after all mail files were done.
+
+R206003    Fix processing of commands from network when Show-All-Messages
+           is true.
+
+R206004    Fix bugs in new command processing for MAILLIST and FORWARD
+*          Looping when formatting RC msg
+*          Entire command string was not being passed.
+
+R207000    Change version id

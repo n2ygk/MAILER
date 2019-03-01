@@ -1,0 +1,30 @@
+./ R 00120330 00120400 $ 120390 60                    05/22/90 10:57:29
+         L     R1,ARGV             Get pointer to first token           00120330
+./ I 00128730          $ 128740 10                    05/22/90 10:57:29
+         LA    R15,WRITSAVE        Point to our save                    00128740
+         ST    R15,8(,R13)         Chain forward                        00128750
+         ST    R13,4(,R15)         Chain back                           00128760
+         LR    R13,R15             Point to the new save area           00128770
+./ I 00130970          $ 130975 5                     05/22/90 10:57:29
+         L     R14,MAILPTAB        Parameter table                      00130975
+         L     R15,ATBLUK          TBLUK routine                        00130980
+         CALL  (15),((R14),MSGCMD,L'MSGCMD,TWORK)                       00130985
+         LTR   R15,R15             Found MSGCMD?                        00130990
+         BNZ   MSGCOMM             ---> No                              00130995
+         MVC   MSGBUF,=CL18' '     Clear all blanks                     00131000
+         IC    R15,0(R1)           Get length                           00131005
+         C     R15,=F'8'           Longer than 8?                       00131010
+         BH    MSGCOMM             ---> Yes, can't use it               00131015
+         BCTR  R15,0               Decrement for EX                     00131020
+         EX    R15,MSGCMDMV        Move in the command                  00131025
+./ I 00131040          $ 131050 10                    05/22/90 10:57:29
+         SPACE 1                                                        00131050
+MSGCMDMV MVC   MSGBUF(1),1(R1)     Executed                             00131060
+         SPACE 1                                                        00131070
+./ R 00132090 00132160 $ 132120 30                    05/22/90 10:57:29
+         CLC   =CL4'MSG ',MSGBUF   Was it MSG?                          00132120
+         BE    MSGRET              ---> Yes, can't fix it up then.      00132150
+./ I 00132720          $ 132750 30                    05/22/90 10:57:29
+         L     R13,4(,R13)         Back to previous save area           00132750
+./ I 00139490          $ 139690 200                   05/22/90 10:57:29
+WRITSAVE DS    18F                 WRITEMSG save area                   00139690

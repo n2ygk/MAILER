@@ -1,0 +1,5 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R207043    Always return '- SMSG output complete.' if SMSG reply requested
+R207042    Don't prepend message responses with blanks.
+R207006    Add SET command
+R207002    Fixes for command processing rewrite

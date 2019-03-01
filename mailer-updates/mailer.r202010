@@ -1,0 +1,73 @@
+./ I 00024100          $ 24160 60                     02/13/89 17:16:01
+         NUCON ,                                                        00024160
+         DEVTAB ,                                                       00024220
+./ I 00039400          $ 39500 100                    02/13/89 17:16:01
+         USING NUCON,R0                                                 00039500
+./ I 00115000          $ 115100 100                   02/13/89 17:16:01
+         HNDINT SET,(RDR1,RDRINT,00C,ASAP) Init reader handler.         00115100
+         LTR   R15,R15              All is well?                        00115200
+         BNZ   ERRRET               No  : Abort MAILER.                 00115300
+         L     R1,ADEVTAB                                               00115400
+         USING DEVTAB,R1                                                00115500
+         LA    R1,CON1ECB           Get console ECB address             00115600
+         ST    R1,ECBLIST              into ECB list.                   00115700
+         DROP  R1                                                       00115800
+         SPACE ,                                                        00115900
+./ R 00122000          $ 122290 290                   02/13/89 17:16:01
+*        (1)   Process command(s)                                       00122290
+*        (1.5) Process reader file(s)                                   00122580
+./ I 00128000          $ 128500 500                   02/13/89 17:16:01
+         NI    RDRECB,255-POSTED   Unpost the reader ECB.               00128500
+./ R 00142000          $ 142490 490                   02/13/89 17:16:01
+         WAITECB 1,ECBLIST=ECBLIST Wait for work.                       00142490
+./ R 00144000 00145000 $ 144080 80                    02/13/89 17:16:01
+         TM    STOPECB,POSTED      Was it stop command?
+         BO    SHUTDOWN            Yes : Go stop
+         L     R1,ADEVTAB                                               00144090
+         USING DEVTAB,R1                                                00144180
+         TM    CON1ECB,POSTED      Was it the console?                  00144270
+         BO    CONSINT             Yes : Go process input.              00144360
+         DROP  R1                                                       00144450
+         TM    RDRECB,POSTED       What about the reader?               00144540
+         BO    MAINLOOP            Yes : Go process new file(s).        00144630
+         TM    CMDECB,POSTED       What about incoming commands?        00144720
+         BO    MAINLOOP            Yes : Go process them.               00144810
+         WRTERM 'Unknown interrupt, MAILER terminating'                 00144900
+         B     SHUTDOWN                                                 00144990
+CONSINT  DS    0H                                                       00145080
+         DMSKEY NUCLEUS            Go to key zero                       00145170
+         L     R1,ADEVTAB                                               00145260
+         USING DEVTAB,R1                                                00145350
+         NI    CON1ECB,255-POSTED  Unpost the console ECB.              00145440
+         DMSKEY RESET              Back to previous key                 00145530
+         DROP  R1                                                       00145620
+./ R 00150000          $ 150490 490                   02/13/89 17:16:01
+         B     WAIT                Go check for work.                   00150490
+./ I 00155000          $ 155500 500                   02/13/89 17:16:01
+         NI    CMDECB,255-POSTED   Unpost the command ECB.              00155500
+./ R 00168000          $ 168490 490                   02/13/89 17:16:01
+         L     R15,HALTRC          Get return code from STOP command.   00168490
+./ I 00190000          $ 190200 200                   02/13/89 17:16:01
+         LR    R5,R15              Save RC around HNDINT.               00190200
+         HNDINT CLR,(RDR1)         Release reader (if we ever got it).  00190400
+         LR    R15,R5              Restore RC.                          00190600
+./ R 00195000          $ 195060 60                    02/13/89 17:16:01
+         EJECT ,                                                        00195060
+*--------------------------------------------------------------------   00195120
+*        READER INTERRUPT HANDLER                                       00195180
+*--------------------------------------------------------------------   00195240
+         PUSH  USING                                                    00195300
+         DROP  ,                                                        00195360
+RDRINT   DS    0H                                                       00195420
+         USING RDRINT,R15                                               00195480
+         OI    RDRECB,POSTED      Awaken MAILER.                        00195540
+         SR    R15,R15            RC = 0.                               00195600
+         BR    R14                Return to IO FLIH.                    00195660
+         POP   USING                                                    00195720
+         EJECT ,                                                        00195780
+./ I 00214000          $ 214600 600                   02/13/89 17:16:01
+ECBLIST  DC    A(0)                List of ECBs.                        00214800
+         DC    V(CMDECB)           ...                                  00215600
+         DC    V(STOPECB)          ...                                  00215600
+         DC    X'80',AL3(RDRECB)   ...                                  00216400
+RDRECB   DC    F'0'                Reader ECB.                          00217200

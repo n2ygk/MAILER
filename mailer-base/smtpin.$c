@@ -1,0 +1,1847 @@
+/*-------------------------------------------------------------------*  00001000
+ *    MAILER -- Copyright (c) 1982,1987 Columbia University.         *  00002490
+ *  Program Property of the Trustees of Columbia University in the   *  00003000
+ *  City of New York.                                                *  00004000
+ *-------------------------------------------------------------------*/ 00005000
+/* Changes in 1.24:                                                     00005050
+ *  - include mailvers in service ready message.                        00005100
+ *  - send bsmtp reply class m                                          00005150
+ *  - BSMTP replies are now only generated depending on the appearance  00005200
+ *    of VERB and RPLY commands.                                        00005250
+ *  - added "RPLY MAIL|SMTP" command.                                   00005300
+ *  - failure reply from DATA command now includes the reasons from     00005350
+ *    the userlog file.                                                 00005400
+ *  - Bug fix (some valid addresses wouldn't parse) from Andy Hooper,   00005450
+ *    Queens University (QUCDN).                                        00005500
+ *  - rep_wrt() will now wrap lines longer than 80 characters.          00005550
+ *  - added ":REA" command to ignore :READ header from CMS PUNCH cmd.   00005600
+ *  - sprinkle in many messages for the console                         00005650
+ *  - parse DATA RFC822 header into MAILKTAB for benefit of user exits. 00005700
+ *    (the authoritave FROM: is the SMTP one pointed to by MAISFLD).    00005750
+ *  - added smtprep() which actually parses SMTP replies and sends      00005800
+ *    appropriate error mail.                                           00005850
+ */                                                                     00005900
+/*                                                                      00006000
+ * Batch SMTP support for files received.  Smtpin() handles a smtp      00007000
+ * command stream in the reader and smtprep() handles a smtp reply      00008000
+ * stream.                                                              00009000
+ *                                                                      00010000
+ * Alan Crosswell 12/85                                                 00011000
+ */                                                                     00012000
+#undef __STDC__                                                         00012500
+#include "types.h"                                                      00013000
+#include "cfuncs.h"                                                     00014000
+#include "cmsbloks.h"                                                   00015000
+#include "mailblok.h"                                                   00016000
+                                                                        00017000
+struct routd *find_routd();                                             00018000
+                                                                        00019000
+typedef enum {                    /* states of the server */            00026000
+    initial = 0,                  /* 0: connection established */       00027000
+    seenhelo,                     /* 1: HELO command seen */            00028000
+    seenmail,                     /* 2: MAIL command seen */            00029000
+    error,                        /* 3: error */                        00030000
+    final                         /* 4: final */                        00031490
+} s_state;                                                              00032000
+#define NSTATE 4                                                        00033000
+                                                                        00034000
+/* global SMTP server information */                                    00035490
+static struct {                                                         00036000
+    int (*repf)();               /* function to pass reply text to */   00037000
+    s_state state;               /* server state */                     00038000
+    char *domain;                /* HELO domain */                      00039000
+    int dl;                      /* length of it */                     00039500
+    int rcpts;                   /* number of valid RCPT's */           00040000
+    struct fieldd *first_rcpt;   /* pointer to rcpt fieldd */           00041000
+    struct tbentry from_tbe;     /* tbentry for FROM: */                00041300
+    struct tbentry rcpt_tbe;     /* tbentry for TO: */                  00041600
+    struct fscb data_file;       /* fscb for data */                    00042000
+    enum {disknone=0,diskfull,diskother} disk_error;                    00045000
+    enum {                                                              00046040
+        noverb=0,                /* no VERB seen */                     00046080
+        on,                      /* VERB ON seen */                     00046120
+        off                      /* VERB OFF seen */                    00046160
+    } verb;                                                             00046200
+    enum {                       /* whichever is first is default */    00046240
+        norply=0,                /* no RPLY seen */                     00046280
+        mail,                    /* send reply as mail (mailret) */     00046320
+        smtp                     /* send reply as smtp reply */         00046360
+    } rply;                                                             00046400
+    int hdrbytes;                /* length of header part of DATA */    00046440
+    char trusted;                /* file is from a trusted mailer */    00046480
+    char charlatan;              /* file is from a charlatan */         00046520
+    char fakefrom;               /* MAIL FROM: isn't right */           00046560
+    char in_data;                /* in data reading mode */             00046600
+    char error;                  /* true if an error occurred */        00046640
+    char pasthdr;                /* are past the header in the DATA */  00046680
+} S;                                                                    00047000
+                                                                        00048000
+static char Verbonmsg[] = "250 Verbose mode ON.";                       00048200
+static char Verboffmsg[] = "250 Verbose mode OFF.";                     00048400
+                                                                        00048600
+/*                                                                      00049000
+ * SMTPIN:  Handle a BSMTP request:                                     00050000
+ *   0) Look sender up in incoming table and see if a trusted mailer.   00051000
+ *   1) Initialize the reply file.                                      00052000
+ *   2) Initialize the SMTP finite state machine.                       00053000
+ *   3) Loop,  reading each line from the request file and pass         00054000
+ *      it along to the smtp interpreter.                               00055000
+ *   4) Return the reply file to the requestor.                         00056000
+ */                                                                     00057000
+smtpin()                                                                00058000
+{                                                                       00059000
+    char rbuf[160];                                                     00060490
+    int rlen;                                                           00061000
+    int rep_wrt();                                                      00062000
+                                                                        00063490
+    cpcmd("CLOSE 00C",9);                                               00065000
+    if (cpcmd("READY 00C",9)) return 12;                                00066000
+    rep_init();                      /* init the reply file */          00067000
+    s_init(rep_wrt);                                                    00068000
+    while ((rlen = rdcard(rbuf,(int)mailsfb.sfbrecsz)) >= 0)            00069000
+        if (s_input(rbuf, rlen) != 0) break;                            00070000
+    cpcmd("CLOSE 00C",9);                                               00071000
+    rep_send();                      /* send the reply file back */     00073000
+    s_finish();                      /* finish the smtp session */      00074490
+    return 4;                                                           00075000
+}                                                                       00076000
+                                                                        00077000
+/*                                                                      00078000
+ * check_incoming: See if the file is from a Mailer listed in the       00079000
+ * incoming table.  First,  see if mail is from self.                   00080490
+ */                                                                     00081000
+static                                                                  00082000
+check_incoming()                                                        00083000
+{                                                                       00084000
+    struct tbentry *te;                                                 00085000
+    char key[16];                                                       00086000
+    struct {                                                            00087000
+        int *mb;                                                        00088000
+    } val_plist;                                                        00089000
+                                                                        00090000
+    if (mailflg1&MFLG1LCL && bcmp(mailuser,mailvmid,8) == 0)            00090300
+      return 1;                                                         00090600
+    bcopy(mailnode,key,8);                                              00091000
+    bcopy(mailuser,&key[8],8);                                          00092000
+    if (ctbluk(&te, mailvtab, key, 16) == TBMATCH) {                    00093000
+        struct vald *v = (struct vald *)te->tbe_dsp;                    00094000
+        if (v->vaaddr == 0)         /* no user-supplied exit */         00095000
+            return 1;               /* so trust him now */              00096000
+        val_plist.mb = &mailblok;                                       00097000
+        if (acall(v->vaaddr, 0, &val_plist) == 0)                       00098000
+            return 1;               /* user exit trusts him */          00099000
+    }                                                                   00100000
+    return 0;                       /* not in table - don't trust */    00101000
+}                                                                       00102000
+                                                                        00103000
+static struct fscb repfile;                                             00104000
+rep_init()                                                              00105000
+{                                                                       00106000
+    int rc;                                                             00107000
+                                                                        00108000
+    fserase("smtp.reply.a");                                            00109590
+    rc = fsinit(&repfile, "smtp.reply.a");                              00110180
+    repfile.fscbfv = 'V';                                               00111000
+    return rc;                                                          00112000
+}                                                                       00113000
+                                                                        00114000
+/*                                                                      00114090
+ * rep_wrt:  Write SMTP reply message into reply log file.  Wrap lines  00114180
+ *  longer than 80 characters (76 actually: 4 for code and continuation)00114270
+ *   nnncmessage text                                                   00114360
+ *   254-blather blather                                                00114450
+ *   254 blather                                                        00114540
+ *  NOTE: This will do the right thing even if called with a continued  00114630
+ *  message since it copies the caller-supplied continuation which is   00114720
+ *  what the final message will contain.                                00114810
+ */                                                                     00114900
+rep_wrt(s,l)                                                            00115000
+char *s;                                                                00116000
+int l;                                                                  00117000
+{                                                                       00118000
+    int rc,len,olen, olen2;                                             00119190
+    char *cp,obuf[81];                                                  00119380
+                                                                        00119570
+    for (len = l-4, cp = &s[4]; len > 0; len -= olen, cp += olen) {     00119760
+        olen = (len > 76)?76:len;   /* max(len,76) */                   00119950
+        bcopy(s,obuf,4);            /* copy "nnnc" */                   00120140
+        if (len > 76)                                                   00120330
+          obuf[3] = '-';            /* continuation */                  00120520
+        bcopy(cp,&obuf[4],olen);    /* copy message */                  00120710
+        olen2 = olen + 4;                                               00120900
+        obuf[olen2] = '\0';                                             00121090
+        if (mailopts & MOPTVL)      /* verbose log */                   00121280
+          wrterm(obuf);                                                 00121470
+        if (rc = fswrite(&repfile, obuf, &olen2)) {                     00121660
+            wtr("SMT",50,2,"ca","fswrite ","d",rc);                     00121850
+            return;                                                     00122040
+        }                                                               00122230
+    }                                                                   00122420
+}                                                                       00123000
+                                                                        00124000
+/*                                                                      00124040
+ * rep_send:  Send reply back as MAIL, SMTP or not at all depending     00124080
+ *  on if an error occurred and VERB and RPLY commands.  Decision is    00124120
+ *  made like this:                                                     00124160
+ */                                                                     00124200
+#define DONT 0                                                          00124240
+#define MAIL 1                                                          00124280
+#define SMTP 2                                                          00124320
+#define BOTH (MAIL|SMTP)                                                00124360
+static char how[3][4] = {                                               00124400
+/* how to      |   verb==none   |   verb!=none  */                      00124440
+/* reply:      | error   !error | error   !error*/                      00124480
+/* ------------+------------------+-------------*/                      00124520
+/* rply==none */ MAIL,    DONT,   SMTP,   SMTP,                         00124560
+/* rply==mail */ MAIL,    DONT,   BOTH,   SMTP,                         00124600
+/* rply==smtp */ SMTP,    DONT,   SMTP,   SMTP                          00124640
+};                                                                      00124680
+/* (for verb!=none, the VERB ON/OFF commands are used to determine      00124720
+ *  if 050 echoes are sent in the reply.  SMTP replies when verb==      00124760
+ *  none are sent w/050 msgs as if VERB ON)                             00124800
+ */                                                                     00124840
+static                                                                  00124880
+rep_send()                                                              00125000
+{                                                                       00126000
+    register i = (int) S.rply;                                          00127990
+    register j = ((S.verb==noverb)?0:2) + (S.error?0:1);                00128980
+                                                                        00129970
+    fsclose(&repfile);                                                  00131000
+    if (mailflg2&(MFLG2NLF|MFLG2NOH)) {                                 00140980
+        /* Was an SMTP error (FROM: <>) or no host (FROM: <user>      */00142970
+        wtr("SMT",68,0);            /* Note that we would have sent   */00144960
+                                    /* error mail had it not been for */00146950
+                                    /* the MAIL FROM */                 00148940
+    } else {                                                            00150930
+        if (how[i][j] & SMTP)                                           00152920
+          rep_smtp();               /* send SMTP reply */               00154910
+        if (how[i][j] & MAIL)                                           00156900
+          rep_mail();               /* send MAIL reply */               00158890
+    }                                                                   00160880
+    fserase("smtp.reply.a");                                            00166950
+}                                                                       00178000
+                                                                        00179000
+static                                                                  00179010
+rep_smtp()                                                              00179020
+{                                                                       00179030
+    char buf[100];                                                      00179040
+    int buflen;                                                         00179050
+    int rc, rc2;                                                        00179060
+    int verbmode = 0;                                                   00179070
+                                                                        00179080
+    /* point punch at sender */                                         00179090
+    bcopy("SPOOL 00D COPY 1 NOCONT CLASS M TO ",buf, buflen = 35);      00179100
+    if (mailflg1&MFLG1LCL) {                                            00179110
+        bcopy(mailuser, &buf[buflen], 8);                               00179120
+        buflen += 8;                                                    00179130
+        cpcmd(buf, buflen);                                             00179140
+        cpcmd("TAG DEV 00D",11);                                        00179150
+    } else {                                                            00179160
+        bcopy(rscsname, &buf[buflen], 8);                               00179170
+        buflen += 8;                                                    00179180
+        cpcmd(buf, buflen);                                             00179190
+        bcopy("TAG DEV 00D ", buf, buflen=12);                          00179200
+        bcopy(mailnode, &buf[buflen], 8);                               00179210
+        buflen += 8;                                                    00179220
+        buf[buflen++] = ' ';                                            00179230
+        bcopy(mailuser, &buf[buflen], 8);                               00179240
+        buflen += 8;                                                    00179250
+        bcopy(" 50 W=", &buf[buflen], 6);                               00179260
+        buflen += 6;                                                    00179270
+        bcopy(mailuser, &buf[buflen], 8);                               00179280
+        buflen += 8;                                                    00179290
+        cpcmd(buf, buflen);                                             00179300
+    }                                                                   00179310
+                                                                        00179320
+    /* copy repfile to punch, sending 050's depending on VERB */        00179330
+    fsinit(&repfile,"smtp.reply.a");                                    00179340
+    repfile.fscbfv = 'V';                                               00179350
+    do {                                                                00179360
+        buflen = sizeof(buf);                                           00179370
+        switch (rc = fsread(&repfile, buf, &buflen)) {                  00179380
+        case 0:                                                         00179390
+            if (S.verb != noverb) {                                     00179400
+                if (!bcmp(buf,Verbonmsg,sizeof(Verbonmsg)-1))           00179410
+                  verbmode = 1;                                         00179420
+                else if (!bcmp(buf,Verboffmsg,sizeof(Verboffmsg)-1))    00179430
+                  verbmode = 0;                                         00179440
+            } else /* verb == none; must be rply == smtp */             00179450
+              verbmode = 1;                                             00179460
+            if (!verbmode && !bcmp(buf,"050",3))                        00179470
+              break;          /* VERB OFF and an 050 msg */             00179480
+            punch(buf,buflen);                                          00179490
+            break;                                                      00179500
+        case 12:           /* EOF */                                    00179510
+            fsclose(&repfile);                                          00179520
+            break;                                                      00179530
+        default:                                                        00179540
+            wtr("SMT",50,2,"ca","fsread#1","d",rc);                     00179550
+            break;                                                      00179560
+        }                                                               00179570
+    } while (rc == 0);                                                  00179580
+    cpcmd("CLOSE 00D NAME BSMTP REPLY",26);                             00179590
+    wtr("SMT",56,2,"ca",mailnode,"ca",mailuser);                        00179600
+}                                                                       00179610
+                                                                        00179620
+/*                                                                      00179630
+ * return the error mail to the MAIL FROM address if a valid one        00179640
+ * was parsed.  Make sure that valid MAIL FROM address is not a         00179650
+ * mailer (self or other) to prevent loops.  If no valid MAIL FROM,     00179660
+ * only send the error mail to the spool file origin if it was NOT      00179670
+ * a trusted mailer.                                                    00179680
+ */                                                                     00179690
+static                                                                  00179700
+rep_mail()                                                              00179710
+{                                                                       00179720
+    struct fscb *fscbptr = (S.disk_error != diskother) ? &S.data_file   00179730
+                                                       : 0;             00179740
+                                                                        00179750
+    if (mailsfld) {           /* there was a valid MAIL FROM */         00179760
+        if (!is_mailer(mailsfld))                                       00179770
+          err_mail(mailsfld->fistr+1,                                   00179780
+                   (mailsfld->fiend-mailsfld->fistr-2),fscbptr);        00179790
+        else                                                            00179800
+          err_loop(fscbptr);                                            00179810
+    } else if (!S.trusted) {    /* NOT a trusted mailer so safe to */   00179820
+        char buf[20];         /* to send reply mail to rscs origin */   00179830
+        int bl;                                                         00179840
+                                                                        00179850
+        bcopy(mailuser,buf,bl = mailulen);                              00179860
+        buf[bl++] = '@';                                                00179870
+        bcopy(mailnode,&buf[bl],mailnlen); bl += mailnlen;              00179880
+        err_mail(buf,bl,fscbptr);                                       00179890
+    } else                    /* From a trusted mailer (shouldn't */    00179900
+      err_loop(fscbptr);  /* happen -- haha) */                         00179910
+}                                                                       00179920
+                                                                        00179930
+                                                                        00179940
+/*                                                                      00180000
+ * smtp server                                                          00181000
+ */                                                                     00182000
+                                                                        00183000
+/* forward declarations for functions in the table */                   00184000
+s_state s_helo(), s_mail(), s_rcpt(), s_data(), s_rset(),               00185000
+        s_noop(), s_quit(), s_verb(), s_tick(), s_read(), s_rply(),     00186490
+        s_oseq(), s_badc(), s_errr(), s_nosp(), s_getdata(), s_syntax(),00186980
+        s_syntax553(), s_maxr(), parse_data_hdr();                      00187660
+/*                                                                      00188000
+ * command table:  Contains command name and ptr to function to         00189000
+ * call for each command (given current server state). When called,     00190000
+ * the function has 3 args:  func(state, s, l);  State is the server    00191000
+ * state at the time of call, s and l are the ptr to and length of      00192000
+ * the command string.  The function returns the new state.             00193000
+ */                                                                     00194000
+static struct {                 /* command table */                     00195000
+    char cmd[5];                /* command name */                      00196000
+    s_state (*func[NSTATE])();  /* ptr to function for each state */    00197000
+} cmdtable[] = {                                                        00198000
+/* command   initial  seenhelo seenmail error   */                      00199000
+    "HELO",  s_helo , s_oseq , s_oseq , s_errr ,                        00200000
+    "MAIL",  s_oseq , s_mail , s_oseq , s_errr ,                        00201000
+    "RCPT",  s_oseq , s_oseq , s_rcpt , s_errr ,                        00202000
+    "DATA",  s_data , s_data , s_data , s_data ,                        00203000
+    "RSET",  s_rset , s_rset , s_rset , s_rset ,                        00204000
+    "NOOP",  s_noop , s_noop , s_noop , s_noop ,                        00205000
+    "QUIT",  s_quit , s_oseq , s_oseq , s_quit ,                        00206000
+    "VERB",  s_verb , s_verb , s_verb , s_verb ,                        00207000
+    "TICK",  s_tick , s_tick , s_tick , s_tick ,                        00208000
+    "RPLY",  s_rply , s_rply , s_rply , s_rply ,                        00208300
+    ":REA",  s_read , s_read , s_read , s_read ,                        00208600
+};                                                                      00209000
+#define CMDTSIZE (sizeof(cmdtable)/sizeof(*cmdtable))                   00210000
+                                                                        00211000
+/*                                                                      00212000
+ * s_init - initialize the SMTP server                                  00213000
+ *   has 1 arg: ptr to function which replies are written to.           00214000
+ *   that function is called as func(s,l) where s is the pointer        00215000
+ *   to the reply text and l is the length.                             00216000
+ */                                                                     00217000
+s_init(func)                                                            00218000
+int (*func)();                    /* function to write replies to */    00219000
+{                                                                       00220000
+    char buf[200];                                                      00221000
+    int len;                                                            00222000
+                                                                        00223000
+    mailflg2 |= MFLG2SMT;                                               00223200
+    mailflg2 |= MFLG2NOR;            /* we build our own received: */   00223400
+    wtr("SMT",54,0);                                                    00223600
+    if (s_init0(func)) return 1;                                        00224000
+    S.verb = 0;                      /* 'cuz s_init0 preserves it */    00224500
+    S.trusted = check_incoming();                                       00225000
+                                                                        00226000
+    bcopy("220 ",buf,len = 4);                                          00228990
+    len += mydomain(&buf[len], sizeof(buf)-len);                        00230980
+    bcopy(" Columbia MAILER ", &buf[len], 17); len += 17;               00232970
+    bcopy(mailvers,&buf[len],8); len += 8;                              00234960
+    while (buf[len-1] == ' ') --len; /* trim blanks from version */     00236950
+    bcopy(" BSMTP service ready.", &buf[len], 21); len += 21;           00238940
+    (*func)(buf, len);                                                  00240930
+    return 0;                                                           00244000
+}                                                                       00245000
+                                                                        00246000
+s_init0(func)                       /* common init code */              00247000
+int (*func)();                                                          00248000
+{                                                                       00249000
+    int vrb = S.verb;                                                   00249390
+                                                                        00249600
+    bzero(&S, sizeof(S));          /* zero the whole mess */            00250000
+    S.repf = func;                                                      00251000
+    S.state = initial;                                                  00252000
+    S.verb = vrb;                                                       00252690
+    mailchn = 0;                   /* zero the mailchn ptr */           00253000
+    fserase("smtp.data");                                               00254000
+    if (fsinit(&S.data_file, "smtp.data") != 0) {                       00255000
+        S.state = s_nosp(error, 0, 0);                                  00256000
+        return 1;                                                       00257000
+    }                                                                   00258000
+    S.data_file.fscbfv = 'V';                                           00259000
+    return 0;                                                           00260000
+}                                                                       00261000
+                                                                        00262000
+/*                                                                      00263000
+ * mydomain - build local domain name string.                           00264000
+ */                                                                     00265000
+static                                                                  00266000
+mydomain(bp, bl)                                                        00267000
+char *bp;                       /* where to write the result */         00268000
+int bl;                         /* limit on result length */            00269000
+{                                                                       00270000
+    u_char *lcldp, lcldl;                                               00271000
+                                                                        00272000
+    if (lcldom == (char *)0) {  /* user didn't provide one */           00273000
+        bcopy(cpustr,bp,lcldl = cpuslen);                               00274000
+        if (rscsdom != (char *)0) {                                     00275000
+            bcopy(rscsdom+1,&bp[lcldl],*rscsdom);                       00276000
+            lcldl += *rscsdom;                                          00277000
+        }                                                               00278000
+    } else {                                                            00279000
+        lcldp = lcldom+1;       /* pointer to lcl domain name */        00280000
+        lcldl = *lcldom;        /* 1st byte is string length */         00281000
+        bcopy(lcldp, bp, lcldl);                                        00282000
+    }                                                                   00283000
+    return lcldl;                                                       00284000
+}                                                                       00285000
+                                                                        00286000
+/*                                                                      00287000
+ * s_input:  Called once per line of data obtained from the SMTP        00288000
+ *  connection.  Two args:  s is pointer to the line and l is length.   00289000
+ *  Parses the line and invokes the appropriate command processing      00290000
+ *  function.                                                           00291000
+ * NOTE: should it immediately quit when error state is entered?        00292000
+ */                                                                     00293000
+s_input(s,l)                                                            00294000
+char *s;                                                                00295000
+int l;                                                                  00296000
+{                                                                       00297000
+    char buf[200];                                                      00298000
+    register int i;                                                     00299000
+                                                                        00300000
+    if (S.state == error)     /* remember errors across state */        00300200
+      S.error = 1;            /* transitions. */                        00300400
+                                                                        00300600
+    /* if S.in_data flag is on,  then we are reading mail data instead  00301000
+       of commands */                                                   00302000
+    if (S.in_data) {                                                    00303000
+        S.state = s_getdata(S.state, s,l);  /* get the data line */     00304000
+        return 0;                                                       00305000
+    }                                                                   00306000
+                                                                        00307000
+    /* always echo the command */                                       00308990
+    bcopy("050 ",buf,4);      /* stuff in the echo code */              00309980
+    if (l > sizeof(buf)-4) l = sizeof(buf) - 4;                         00310970
+    bcopy(s, &buf[4], l);                                               00311960
+    (*S.repf)(buf,l+4);       /* write the echo */                      00312950
+                                                                        00315000
+    /* if in the final state,  no more commands are allowed */          00316000
+    if (S.state == final)                                               00317000
+        return 4;             /* just ignore any extra junk */          00318000
+                                                                        00319000
+    /* now look the command name up in the command table */             00320000
+    for (i = 0; i < CMDTSIZE; i++)                                      00321000
+        if (xcmp(s, cmdtable[i].cmd, 4) == 0) {  /* match */            00322000
+            S.state = (*cmdtable[i].func[S.state])(S.state, s, l);      00323000
+            return 0;                                                   00324000
+        }                                                               00325000
+    S.state = s_badc(S.state,s,l);  /* unrecognized cmd */              00326000
+    return 0;                                                           00327000
+}                                                                       00328000
+                                                                        00329000
+/*                                                                      00330000
+ * s_finish:  Finish up the SMTP work.  Called when transmission ends.  00331000
+ *  The transmission may possibly be incomplete.                        00332000
+ */                                                                     00333000
+s_finish()                                                              00334000
+{                                                                       00335000
+    mailflg2 &= ~MFLG2SMT;                                              00336190
+    mailflg2 &= ~MFLG2NOR;           /* restore the flag */             00336380
+    mailflg2 &= ~MFLG2NLF;                                              00336440
+    mailflg2 &= ~MFLG2NOH;                                              00336500
+    wtr("SMT",55,0);                                                    00336570
+}                                                                       00337000
+                                                                        00338000
+static s_state                                                          00339000
+s_helo(st, s, l)                                                        00340000
+s_state st;                                                             00341000
+char *s;                                                                00342000
+int l;                                                                  00343000
+{                                                                       00344000
+    char *p, buf[200];                                                  00345000
+    int len, buflen;                                                    00346000
+                                                                        00347000
+    for (p = &s[5], l -= 5; *p != ' ' && l > 0; p++, l--);              00348000
+    if (!(S.domain = (char *)salloc(len = p - &s[5])))                  00349490
+        return s_nosp(st, s, l);                                        00350000
+    bcopy(&s[5], S.domain, S.dl = len);  /* save the domain for later */00351490
+                                                                        00352000
+    /* if not from a trusted mailer, domain must be "nice" */           00353000
+    if (!S.trusted && !check_domain(S.domain, len))                     00354390
+      if (mailopts & MOPTAC) { /* allow charlatans */                   00354780
+          bcopy("250 ", buf, 4);                                        00355170
+          buflen = 4 + mydomain(&buf[4], sizeof(buf)-4);                00355560
+          bcopy(" You are a charlatan; ",&buf[buflen],22); buflen+=22;  00355950
+          bcopy(S.domain, &buf[buflen], len); buflen += len;            00356340
+          bcopy(" is bogus for a file with RSCS origin ",               00356730
+                &buf[buflen],38); buflen += 38;                         00357120
+          bcopy(mailnode,&buf[buflen],8); buflen += 8;                  00357510
+          buf[buflen++] = ' ';                                          00357900
+          bcopy(mailuser,&buf[buflen],8); buflen += 8;                  00358290
+          (*S.repf)(buf, buflen);                                       00358680
+          S.charlatan = 1;                                              00359070
+          return seenhelo;                                              00359460
+      } else {                 /* don't allow charlatans */             00359850
+          bcopy("501 ", buf, 4);                                        00360240
+          bcopy(S.domain, &buf[4], len);                                00360630
+          buflen = 4+len;                                               00361020
+          bcopy(" is bogus for a file with RSCS origin ",               00361410
+                &buf[buflen],38);                                       00361800
+          buflen += 38;                                                 00362190
+          bcopy(mailnode,&buf[buflen],8);                               00362580
+          buflen += 8;                                                  00362970
+          buf[buflen++] = ' ';                                          00363360
+          bcopy(mailuser,&buf[buflen],8);                               00363750
+          buflen += 8;                                                  00364140
+          (*S.repf)(buf, buflen);                                       00364530
+          return error;                                                 00364920
+      }                                                                 00365310
+    bcopy("250 ", buf, 4);                                              00368000
+    buflen = 4 + mydomain(&buf[4], sizeof(buf)-4);                      00369000
+    bcopy(" Hello ", &buf[buflen], 7);                                  00370000
+    buflen += 7;                                                        00371000
+    bcopy(S.domain, &buf[buflen], len);                                 00372000
+    buflen += len;                                                      00373000
+    (*S.repf)(buf, buflen);                                             00374000
+    return seenhelo;                                                    00375000
+}                                                                       00376000
+                                                                        00377000
+/*                                                                      00378000
+ * check that domain name matches the RSCS origin                       00379000
+ *  Do the following tests until one succeeds:                          00380000
+ *  1) Compare the domain to MAILNODE.                                  00381000
+ *  2) Compare the domain to MAILNODE concatenated w/ RSCS-Domain.      00382000
+ *  3) If file is local, see if domain matches This-Domain (LCLDOM).    00383000
+ *  4) Look for the domain in MAILRTAB and compare the RTROUTE          00384000
+ *     to MAILNODE.                                                     00385000
+ *  5) Do the same for MAILDTAB.                                        00386000
+ */                                                                     00387000
+static                                                                  00388000
+check_domain(s,l)                                                       00389000
+char *s;                                                                00390000
+int l;                                                                  00391000
+{                                                                       00392000
+    struct tbentry *te;                                                 00393000
+                                                                        00397000
+    /* (1) Compare domain to mailnode */                                00398000
+    if (mailnlen == l && xcmp(mailnode,s,l) == 0)                       00399490
+        return 1;                                                       00400000
+                                                                        00401000
+    /* (2) Compare domain concatenated w/RSCS-domain to mailnode */     00402000
+    if (rscsdom != 0) {                                                 00403000
+        char rl = *rscsdom;                                             00404000
+        char *rp = &rscsdom[1];                                         00405000
+        int i;                                                          00406000
+                                                                        00407000
+        if (rl < l && xcmp(rp, &s[i = l-rl], rl) == 0)                  00408000
+            if (mailnlen == i && xcmp(s, mailnode, i) == 0)             00409490
+                return 1;                                               00410000
+    }                                                                   00411000
+                                                                        00412000
+    /* (3) If file is from local user,  see if Local-Domain matches */  00413000
+    if (mailflg1&MFLG1LCL && lcldom != 0)                               00414000
+        if (*lcldom == l && xcmp(&lcldom[1], s, l) == 0)                00415000
+            return 1;                                                   00416000
+                                                                        00417000
+    /* (4) Look in MAILRTAB and compare RTROUTE to MAILNODE */          00418000
+    if (ctbluk(&te, mailrtab, s, l) == TBMATCH &&                       00419000
+        bcmp(mailnode, ((struct routd *)te->tbe_dsp)->rtroute, 8) == 0) 00420000
+        return 1;                                                       00421000
+                                                                        00422000
+    /* (5) Look in MAILDTAB and compare RTROUTE to MAILNODE */          00423000
+    if (ctbluk(&te, maildtab, s, l) == TBMATCH &&                       00424000
+        bcmp(mailnode, ((struct routd *)te->tbe_dsp)->rtroute, 8) == 0) 00425000
+        return 1;                                                       00426000
+                                                                        00427000
+    /* time to give up */                                               00428000
+    return 0;                                                           00429000
+}                                                                       00430000
+                                                                        00431000
+/*                                                                      00432000
+ * s_mail: Parse the from: address with APARSE, building a FIELDD       00433000
+ * on the stack.  Stuff it all into MAILSFLD.  Also add it to MAILKTAB  00434000
+ * -- this allows later code to find the FROM: field via TBLUK.         00435000
+ * Also,  call check_sender() to make sure it's not a forgery.          00436000
+ */                                                                     00437000
+static s_state                                                          00438000
+s_mail(st, s, l)                                                        00439000
+s_state st;                                                             00440000
+char *s;                                                                00441000
+int l;                                                                  00442000
+{                                                                       00443000
+    struct fieldd *f;                                                   00444000
+    struct tokend *t;                                                   00445000
+    char buf[200]; int len;                                             00446000
+    struct tbentry *te;                                                 00447000
+    struct tbs *ts;                                                     00448000
+    struct mbox *a;                                                     00448500
+    int rlen;                                                           00448700
+                                                                        00449000
+    mailsfld = 0;                                                       00450000
+    if (xcmp(" FROM:", &s[4], 6) != 0)     /* check syntax */           00451000
+        return s_syntax(st, s, l);                                      00452000
+                                                                        00453000
+    /* allocate space from stack */                                     00454000
+    f = (struct fieldd *)salloc(sizeof(*f));                            00455000
+    t = (struct tokend *)salloc(sizeof(*t));                            00456000
+    ts = (struct tbs *)salloc(l-5+sizeof(*ts)-1);                       00457000
+    if (!f || !t || !ts)                                                00458490
+        return s_nosp(st, s, l);                                        00459000
+                                                                        00460000
+    /* Check if "FROM:<.....>" is continued on second record.           00460080
+     * If continuation exists, read in next record and update total     00460160
+     * length                                                           00460240
+     */                                                                 00460320
+    if (s[79] == 0x15) {                                                00460400
+       if ((rlen = rdcard(&s[79],(int)mailsfb.sfbrecsz)) >= 0)          00460480
+          l = l+rlen;                                                   00460560
+       else                                                             00460640
+          return s_syntax(st, s, l);                                    00460720
+    }                                                                   00460800
+                                                                        00460880
+    /*                                                                  00461000
+     * copy "FROM:<......>" onto stack preceded by tbs header.          00462000
+     * then set up the tokend pointing to it too.                       00463990
+     */                                                                 00465000
+    bcopy(&s[5], &ts->tbs_str, l-5);                                    00466000
+    ts->tbs_siz = 4;                    /* length of "FROM" */          00467000
+    t->tokptr = &ts->tbs_str;           /* point tokend at it */        00468590
+    t->toktype = TOKATM;                /* FROM: is an atom */          00469180
+    t->toklen = 5;                      /* length of FROM: */           00470000
+    te = &S.from_tbe;                   /* where we put it for now */   00471990
+    te->tbe_str = ts;                   /* point at tbs */              00474000
+    te->tbe_dsp = f;                    /* disp. value is &fieldd */    00475000
+                                                                        00477000
+    /* now set up the fieldd */                                         00478000
+    f->fitok = t;                                                       00479000
+    f->fistr = t->tokptr+5;             /* point past the FROM: */      00480490
+    f->fiend = f->fistr + l - 10;       /* end of the string */         00481190
+    while (*(f->fistr) == ' ' && f->fistr <= f->fiend)                  00481460
+      ++(f->fistr);                     /* skip intervening blanks */   00481570
+                                                                        00481600
+    if (f->fistr[0] == '<') {           /* look for MAIL FROM:<> */     00481630
+        register int i = 1;                                             00481660
+        while ((f->fistr[i] == ' ') && (&f->fistr[i] < f->fiend))       00481690
+          i++;                          /* trim white space */          00481720
+        if (f->fistr[i] == '>')         /* MAIL FROM:<> */              00481750
+          if (!do_null_from(f))         /* dummy up the MAIL FROM */    00481780
+            return s_nosp(st, s, l);    /* no space left */             00481810
+    }                                                                   00481840
+                                                                        00481870
+    if (_aparse(f) != 0)                /* parse the string */          00482000
+        return s_syntax(st, s, l);                                      00483000
+    mailsfld = f;                       /* set mailblok sender ptr */   00484000
+                                                                        00485000
+    if (((a = (struct mbox *)f->fipars) !=0) &&                         00485200
+         (a->mbxdcnt == 0))                                             00485400
+       mailflg2 |= MFLG2NOH;            /* Remember no host id     */   00485600
+                                                                        00485800
+    /* check to see if this is a forged from: userid */                 00486000
+    if (!S.trusted) {   /* not a trusted mailer */                      00488390
+        if (!check_sender(f->fipars)) {                                 00488780
+            bcopy("501 ", buf, 4);                                      00489170
+            bcopy(s+10,&buf[4], l-10);                                  00489560
+            len = 4 + l-10;                                             00489950
+            bcopy(" does not correspond to RSCS origin of ",            00490340
+            &buf[len],39);                                              00490730
+            len += 39;                                                  00491120
+            bcopy(mailnode, &buf[len], 8);  len += 8;                   00491510
+            buf[len++] = ' ';                                           00491900
+            bcopy(mailuser, &buf[len], 8);  len += 8;                   00492290
+            if (mailopts & MOPTAC) {        /* allow charlatans */      00492680
+                bcopy("250 ", buf, 4);      /* rewrite reply code */    00493070
+                while (buf[len-1] == ' ') --len;                        00493460
+                bcopy(". You are a charlatan.",&buf[len],22); len += 22;00493850
+                S.fakefrom = 1;                                         00494240
+                (*S.repf)(buf, len);                                    00494630
+                return seenmail;        /* xxx Add a delivery-notice? */00495020
+            } else {                        /* dissallow charlatans */  00495410
+                (*S.repf)(buf, len);                                    00495800
+                mailsfld = 0;                                           00496190
+                return error;                                           00496580
+            }                                                           00496970
+            /* NOTREACHED */                                            00497360
+        } /* if !check_sender */                                        00497750
+    } else {                         /* a trusted mailer */             00498140
+        bcopy("250 ", buf, 4);                                          00498530
+        bcopy(s+10, &buf[4], l-10);     /* copy in from address */      00498920
+        len = 4 + l-10;                                                 00499310
+        bcopy("... sender OK.", &buf[len], 14);                         00499700
+        (*S.repf)(buf, len+14);                                         00500090
+        return seenmail;                                                00500480
+    }                                                                   00503210
+    /* NOTREACHED */                                                    00503700
+}                                                                       00506000
+                                                                        00506030
+/*                                                                      00506060
+ * do_null_from: Handle MAIL FROM:<>.                                   00506090
+ *                                                                      00506120
+ * Dummies up a sender fieldd so later code that needs it has a valid   00506150
+ * sender (e.g. exits that want to send a message saying "you have new  00506180
+ * mail from ...") but also sets a flag indicating that a error loops   00506210
+ * are to be avoided.                                                   00506240
+ */                                                                     00506270
+static int                                                              00506300
+do_null_from(f)                                                         00506330
+struct fieldd *f;                                                       00506360
+{                                                                       00506390
+    char *dummied;                                                      00506420
+    int dl = 0;                                                         00506450
+                                                                        00506480
+    wtr("SMT",67,2,"ca",mailnode,"ca",mailuser);                        00506510
+    mailflg2 |= MFLG2NLF;                                               00506540
+    dummied = (char *)salloc(20);   /* <mailuser@mailnode>\0 */         00506570
+    if (!dummied)                                                       00506600
+      return 0;                                                         00506630
+    dummied[dl++] = '<';                                                00506660
+    bcopy(mailuser,&dummied[dl],mailulen);  dl += mailulen;             00506690
+    dummied[dl++] = '@';                                                00506720
+    bcopy(mailnode,&dummied[dl],mailnlen);  dl += mailnlen;             00506750
+    dummied[dl++] = '>';                                                00506780
+    dummied[dl] = '\0';                                                 00506810
+    f->fistr = dummied;                                                 00506840
+    f->fiend = &dummied[dl];                                            00506870
+    return 1;                                                           00506900
+}                                                                       00506930
+                                                                        00507000
+/*                                                                      00508000
+ * Check_sender - check to see if sender address matches RSCS origin.   00509490
+ *  (1) Compare sender userid to MAILUSER                               00510000
+ *  (2) Check sender domain name with check_domain()                    00511000
+ */                                                                     00512000
+static                                                                  00513000
+check_sender(a)                                                         00514000
+struct mbox *a;                                                         00515490
+{                                                                       00516000
+    int len;                                                            00517490
+    char *ptr;                                                          00518000
+                                                                        00519000
+    if (mailflg2&MFLG2NLF) /* always fail */                            00519700
+      return 0;                                                         00520400
+                                                                        00521100
+    /* see if address is properly formed */                             00522000
+    if (a->mbxlcnt != 1 || a->mbxdcnt != 1)                             00523490
+        return 0;                                                       00524000
+                                                                        00525000
+    /* (1) See if sender userid matches MAILUSER */                     00526000
+    ptr = TOKPTR(MBOXLCL(a)->noddown);                                  00528460
+    len = MBOXLCL(a)->noddown->toklen;                                  00528660
+    if (len != mailulen || xcmp(ptr, mailuser, len) != 0)               00529070
+        return 0;                                                       00530000
+                                                                        00531000
+    /* (2) See if domain checks out */                                  00532000
+    return check_domain(TOKPTR(MBOXDML(a)->noddown),                    00534360
+                        MBOXDML(a)->noddown->toklen);                   00534560
+}                                                                       00535000
+                                                                        00536000
+/*                                                                      00537000
+ * s_rcpt: Parse the recipient address,  look it up in MAILRTAB,        00538000
+ *  MAILDTAB, etc.  Add to ACTADR chain depending on exit type          00539000
+ *  from ROUTD.  This replicates a lot of the work done in              00540000
+ *  BUILDLST,  but it is easier to do again here than try to integrate  00541000
+ *  the two.  This also allows immediate feedback on bad rcpt's that    00542000
+ *  can be sent as the SMTP reply.                                      00543000
+ */                                                                     00544000
+extern genlist();                                                       00544300
+extern delroute();                                                      00544600
+static s_state                                                          00545000
+s_rcpt(st, s, l)                                                        00546000
+s_state st;                                                             00547000
+char *s;                                                                00548000
+int l;                                                                  00549000
+{                                                                       00550000
+    char buf[200];                                                      00551000
+    int buflen;                                                         00552000
+    struct fieldd *f;                                                   00553000
+    struct tokend *t;                                                   00554000
+    struct tbs *ts;                                                     00555290
+    struct tokend *faketok;                                             00555700
+    struct mbox *a;                                                     00556490
+    struct routd *r;                                                    00557000
+    struct tbentry *te;                                                 00558000
+    char *hs; int hl;                                                   00559000
+    int rlen;                                                           00559500
+    char hoststring[256]; int hostlen;                                  00559530
+    char *hoststringptr;                                                00559560
+    struct node *n;                                                     00559590
+    struct {                                                            00559620
+      int *node;                                                        00559650
+      int *hs;                                                          00559680
+      int *hl;                                                          00559710
+      int *hoststringptr;                                               00559740
+      int *hostlen;                                                     00559770
+    } plist;                                                            00559800
+    struct {                                                            00559830
+      int *delmbox;                                                     00559860
+    } plist2;                                                           00559890
+    int i;                                                              00559920
+                                                                        00560000
+    if (xcmp(" TO:", &s[4], 4) != 0)    /* check syntax */              00561000
+        return s_syntax(st, s, l);                                      00562000
+                                                                        00563000
+    /* allocate space from stack */                                     00564000
+    f = (struct fieldd *)salloc(sizeof(*f));                            00565000
+    if (!f)                                                             00566490
+        return s_nosp(st, s, l);                                        00567000
+                                                                        00567090
+    /* Check for continuation onto second record.  If continued         00567180
+     * read in next record and update total length                      00567270
+     */                                                                 00567360
+    if (s[79] == 0x15) {                                                00567450
+       if ((rlen = rdcard(&s[79],(int)mailsfb.sfbrecsz)) >= 0)          00567540
+          l = l+rlen;                                                   00567630
+       else                                                             00567720
+          return s_syntax(st, s, l);                                    00567810
+    }                                                                   00567900
+                                                                        00568000
+    /*                                                                  00569000
+     * on the first pass,  do a little extra work:                      00570000
+     *  1) Set up the initial fieldd (all subsequent ones are extents)  00571000
+     *  2) Set up initial tbs and tokend and MAILKTAB entry.            00572000
+     */                                                                 00573000
+    if (S.rcpts == 0) {                                                 00574000
+        t = (struct tokend *)salloc(sizeof(*t));                        00575000
+        ts = (struct tbs *)salloc(sizeof(struct tokend)+l-5-1);         00576690
+        if (!ts || !t)                                                  00577490
+            return s_nosp(st,s,l);                                      00578000
+                                                                        00579000
+        /* copy TO:<...> onto stack preceded by tbs header */           00580000
+        bcopy(&s[5], &ts->tbs_str, l-5);                                00581000
+        ts->tbs_siz = 2;                                                00582000
+        t->tokptr = &ts->tbs_str;                                       00583590
+        t->toktype = TOKATM;                                            00584180
+        t->toklen = 3;                                                  00585000
+        te = &S.rcpt_tbe;            /* put it here for now */          00586990
+        te->tbe_str = ts;                                               00587980
+        te->tbe_dsp = f;                                                00590000
+                                                                        00592000
+        /* set up initial fieldd */                                     00593000
+        S.first_rcpt = f;                                               00594000
+        f->fitok = t;                                                   00595000
+        f->fistr = t->tokptr+3;                                         00596490
+        f->fiend = f->fistr + l - 8;                                    00597000
+    } else /* rcpts > 0 */ {                                            00598000
+        /* allocate stack space */                                      00599000
+        if (!(f->fistr = (char *)salloc(l - 8)))                        00600490
+            return s_nosp(st,s,l);                                      00601000
+        /* copy <.....> onto stack (don't need to TO: or tbs header) */ 00602000
+        bcopy(&s[8], f->fistr, l - 8);                                  00603000
+                                                                        00604000
+        /* set up extn fieldd.  Insert into chain.  Use same tokend */  00605000
+        f->fiend = f->fistr + l - 8;                                    00606000
+        f->fitok = S.first_rcpt->fitok;                                 00607000
+        f->fiextn = S.first_rcpt->fiextn; S.first_rcpt->fiextn = f;     00608000
+    }                                                                   00609000
+                                                                        00610000
+    /* Now parse it, look up in various tables and insert in MAILCHN */ 00611000
+                                                                        00613000
+    if (_aparse(f) != 0)                                                00614000
+        return s_syntax553(st, s, l);                                   00615000
+                                                                        00616000
+    a = (struct mbox *)f->fipars;                                       00617590
+                                                                        00620000
+    /* (2) Look up the host name in MAILRTAB, MAILDTAB */               00621000
+                                                                        00623390
+    if (a->mbxrtl == 0)                                                 00623420
+       n = a->mbxdml;                                                   00623450
+    else                                                                00623480
+       n = MBOXRTL(a)->noddown;                                         00623510
+    plist.node = &n;                                                    00623540
+    plist.hs = &hs;                                                     00623570
+    plist.hl = &hl;                                                     00623600
+    for (i=0; i < sizeof(hoststring); hoststring[i] = ' ',i++);         00623630
+    hoststringptr = &hoststring[0];                                     00623660
+    plist.hoststringptr = &hoststringptr;                               00623690
+    hostlen = sizeof(hoststring);                                       00623720
+    plist.hostlen = &hostlen;                                           00623750
+    acall(genlist, 0, &plist);                                          00623780
+    if ((r = find_routd(hs, hl)) == 0) {                                00624000
+        (*S.repf)("550 Mailbox not found.", 22);                        00625000
+        return st;                                                      00626000
+    }                                                                   00627000
+                                                                        00628000
+    /* add to mailchn */                                                00629000
+    if (add_mailchn(f,r)) {                                             00630000
+        /* now that everything has worked,  add to fieldd extension */  00631000
+        ++S.rcpts;                                                      00632000
+        bcopy("250 ", buf, buflen=4);                                   00633000
+        bcopy(f->fistr, &buf[buflen], f->fiend-f->fistr);               00634000
+        buflen += f->fiend - f->fistr;                                  00635000
+        bcopy("... recipient OK.", &buf[buflen], 17);                   00636000
+        buflen += 17;                                                   00637000
+        (*S.repf)(buf, buflen);                                         00638000
+        if (a->mbxrtl != 0) {                                           00638100
+           plist2.delmbox = &a;                                         00638200
+           acall(delroute, 0, &plist2);        /* Remove route addr */  00638300
+           f->fiflg1 |= FIEDIFLG;              /* Remember changed  */  00638400
+        }                                                               00638500
+        return st;                                                      00639000
+    } else                                                              00640000
+        return s_nosp(st, s, l);                                        00641000
+}                                                                       00642000
+                                                                        00643000
+/*                                                                      00644000
+ * add_mailchn:  Add routd and fieldd to mailchn (with an actadr block) 00645000
+ *  Depending on the exit type,  the addition is done differently:      00646000
+ *  RTPROG type 1: Always create and add an ACTADR                      00647000
+ *  2: Add a new one only if one for the same node doesn't exist        00648000
+ *  3: Add one for each using the ACTCHN pointer.                       00649000
+ */                                                                     00650000
+static                                                                  00651000
+add_mailchn(f, r)                                                       00652000
+struct fieldd *f;                                                       00653000
+struct routd *r;                                                        00654000
+{                                                                       00655000
+    struct actadr *a, *b;                                               00656000
+                                                                        00657000
+    switch (r->rtflags&(RTP1|RTP2|RTP3)) {                              00658000
+    case RTP1:                                                          00659000
+        if (!(a = (struct actadr *)salloc(sizeof(*a))))                 00660490
+            return 0;                                                   00661000
+        a->actnext = mailchn;      /* insert in front of chain */       00662000
+        mailchn = a;                                                    00663000
+        a->actmbox = f->fipars;                                         00664490
+        a->actrt = r;                                                   00665000
+        return 1;                                                       00666000
+    case RTP2:                                                          00667000
+        /* search for a matching rtroute/rtuser/rtprog/rtparm */        00668490
+        for (a = mailchn; a != 0; a = a->actnext)                       00669000
+            if (bcmp(a->actrt->rtroute, r->rtroute, 8) == 0             00670000
+                && bcmp(a->actrt->rtuser, r->rtuser, 8) == 0            00671390
+                && bcmp(a->actrt->rtprog, r->rtprog, 8) == 0            00671780
+                && bcmp(a->actrt->rtparm, r->rtparm, 8) == 0)           00672170
+              return 1;         /* already one there */                 00672560
+        /* none there yet;  insert this one */                          00673000
+        if (!(a = (struct actadr *)salloc(sizeof(*a))))                 00674490
+            return 0;                                                   00675000
+        a->actnext = mailchn;                                           00676000
+        mailchn = a;                                                    00677000
+        a->actmbox = f->fipars;                                         00678490
+        a->actrt = r;                                                   00679000
+        return 1;                                                       00680000
+    case RTP3:                                                          00681000
+        /* search for matching rtroute/rtuser/rtprog */                 00682490
+        for (a = mailchn; a != 0; a = a->actnext)                       00683000
+            if (bcmp(a->actrt->rtroute, r->rtroute, 8) == 0             00684000
+                && bcmp(a->actrt->rtuser, r->rtuser, 8) == 0            00685490
+                && bcmp(a->actrt->rtprog, r->rtprog, 8) == 0) {         00685980
+                if (!(b = (struct actadr *)salloc(sizeof(*b))))         00686470
+                    return 0;                                           00687000
+                b->actchn = a->actchn;                                  00688000
+                a->actchn = b;                                          00689000
+                b->actmbox = f->fipars;                                 00690490
+                b->actrt = r;                                           00691000
+                return 1;                                               00692000
+            }                                                           00693000
+        /* didn't find it so create a new one */                        00694000
+        if (!(a = (struct actadr *)salloc(sizeof(*a))))                 00695490
+            return 0;                                                   00696000
+        a->actnext = mailchn;                                           00697000
+        mailchn = a;                                                    00698000
+        a->actmbox = f->fipars;                                         00699490
+        a->actrt = r;                                                   00700000
+        return 1;                                                       00701000
+                                                                        00702000
+    default:                                                            00703000
+        wrterm("screw up in add_mailchn.");                             00704000
+        return 0;                                                       00705000
+    } /* end switch */                                                  00706000
+    /* NOTREACHED */                                                    00707000
+}                                                                       00708000
+                                                                        00709000
+static s_state                                                          00710000
+s_data(st, s, l)                                                        00711000
+s_state st;                                                             00712000
+char *s;                                                                00713000
+int l;                                                                  00714000
+{                                                                       00715000
+    mailhrec = mailhlin = 0;                                            00715300
+    add_received();                /* add received: stamp to data */    00715600
+    (*S.repf)("354 Start mail input.  End with <crlf>.<crlf>", 45);     00716000
+    S.in_data = 1;                                                      00717000
+    return st;                                                          00718000
+}                                                                       00719000
+                                                                        00720000
+/*                                                                      00721000
+ * s_getdata:  Called repeatedly as long as S.in_data is true.          00722000
+ *  Sets S.in_data false when the end of data signal is seen (".")      00723000
+ *  When end of data is seen,  actually cause the mail to be            00724000
+ *  delivered by calling sendlst().                                     00725000
+ *  This routine is called even when a DATA command is out of sequence  00726000
+ *  so that the data may be eaten up instead of trying to interpret     00727000
+ *  it as commands.                                                     00728000
+ */                                                                     00729000
+extern sendlst(), mailret();                                            00730000
+static s_state                                                          00731000
+s_getdata(st,s,l)                                                       00732000
+char *s;                                                                00733000
+int l;                                                                  00734000
+{                                                                       00735000
+    struct actadr *a, *b;                                               00736000
+    char buf[200];                                                      00737000
+    struct {                                                            00738000
+        int *mb;                                                        00739000
+    } plist;                                                            00740000
+                                                                        00741000
+    if (l == 0) S.pasthdr = 1;     /* end of header portion of data */  00741500
+    if (l == 1 && *s == '.') {     /* end of data */                    00742000
+        S.in_data = 0;                                                  00743000
+        fsclose(&S.data_file);                                          00743500
+        switch (S.disk_error) {                                         00744000
+        case disknone:                                                  00745000
+            break;                                                      00746000
+        case diskfull:                                                  00747000
+            (*S.repf)("552 DATA aborted:  out of disk space.",37);      00748000
+            return error;                                               00749000
+        case diskother:                                                 00750000
+            (*S.repf)("451 DATA aborted: CMS filesystem error.", 39);   00751000
+            return error;                                               00752000
+        }                                                               00753000
+        if (st == seenmail) {                                           00754000
+            /* now send the stuff in MAILCHN off */                     00755000
+            if (st = parse_data_hdr(st,s,l) == error)                   00755200
+              return st;                                                00755400
+            if (maxrcvd && count_received() > maxrcvd)                  00755600
+              return s_maxr(st, s, l);                                  00755800
+            wtr("SMT",43,1,"d",S.rcpts);                                00756000
+            plist.mb = &mailblok;                                       00757000
+            mailflg1 |= MFLG1HDS;           /* header scanned OK */     00758000
+            switch (acall(sendlst,0,&plist)) {                          00759000
+            case 0:                                                     00760000
+                (*S.repf)("250 Mail accepted for delivery.", 31);       00761000
+                break;                                                  00762000
+            case 12:                                                    00763000
+                return s_nosp(st, s, l);    /* croak */                 00764000
+            default:                                                    00765990
+                log_errors();               /* copy into bsmtp.reply */ 00766980
+                return error;                                           00767970
+            }                                                           00771000
+        } else {                                                        00772000
+           (*S.repf)("451 Request aborted: command out of sequence",44);00773000
+           return error;                                                00773500
+        }                                                               00774000
+        /* now get back to initial state in case there's more work */   00775000
+        if (s_init0(S.repf))                                            00776000
+            return s_nosp(st, s, l);                                    00777000
+        else                                                            00778000
+            return initial;                                             00779000
+    } else {                       /* a regular data line */            00780000
+        int rc;                                                         00781000
+                                                                        00782000
+        if (S.disk_error != disknone) return st;                        00783000
+        if (*s == '.') ++s, --l;   /* de-double the dot */              00784000
+        else if (l == 0) s = " ", l = 1;                                00785000
+        if (!S.pasthdr) {          /* still in header part of DATA */   00785200
+            S.hdrbytes += l + 1;   /* number to copy into MAILHBUF */   00785400
+            ++mailhrec; ++mailhlin; /* increment # of header lines */   00785600
+        }                                                               00785800
+        switch (rc = fswrite(&S.data_file, s, &l)) {                    00786000
+        case 0:                    /* no error */                       00787000
+            return st;                                                  00788000
+        case 13:                   /* disk full */                      00789000
+            S.disk_error = diskfull;                                    00790000
+            return error;                                               00791000
+        default:                   /* some other error */               00792000
+            wtr("SMT",50,2,"ca","fswrite ","d",rc);                     00793490
+            S.disk_error = diskother;                                   00794000
+            return error;                                               00795000
+        }                                                               00796000
+    }                                                                   00797000
+    /* NOTREACHED */                                                    00798000
+}                                                                       00799000
+                                                                        00800000
+static s_state                                                          00801000
+s_rset(st, s, l)                                                        00802000
+s_state st;                                                             00803000
+char *s;                                                                00804000
+int l;                                                                  00805000
+{                                                                       00806000
+    if (s_init0(S.repf))                                                00807000
+        return s_nosp(st, s, l);                                        00808000
+    (*S.repf)("250 Service reset OK.", 21);                             00809000
+    return initial;                                                     00810000
+}                                                                       00811000
+static s_state                                                          00812000
+s_noop(st, s, l)                                                        00813000
+s_state st;                                                             00814000
+char *s;                                                                00815000
+int l;                                                                  00816000
+{                                                                       00817000
+    (*S.repf)("250 Ok", 6);                                             00818000
+    return st;                                                          00819000
+}                                                                       00820000
+static s_state                                                          00821000
+s_quit(st, s, l)                                                        00822000
+s_state st;                                                             00823000
+char *s;                                                                00824000
+int l;                                                                  00825000
+{                                                                       00826000
+    char buf[200];                                                      00827000
+    int len;                                                            00828000
+                                                                        00829000
+    bcopy("221 ",buf, 4);                                               00830000
+    len = mydomain(&buf[4], sizeof(buf)-4);                             00831000
+    bcopy(" Columbia MAILER BSMTP service done.", &buf[len+4], 36);     00832000
+    (*S.repf)(buf, len+40);                                             00833000
+    return final;                                                       00834000
+}                                                                       00835000
+                                                                        00836000
+static s_state                                                          00837000
+s_verb(st, s, l)                                                        00838000
+s_state st;                                                             00839000
+char *s;                                                                00840000
+int l;                                                                  00841000
+{                                                                       00842000
+    if (l == 7 && xcmp(" ON", &s[4], 3) == 0) {                         00843000
+        S.verb = on;                                                    00844590
+        (*S.repf)(Verbonmsg,sizeof(Verbonmsg)-1);                       00845180
+    } else if (l == 8 && xcmp(" OFF", &s[4], 4) == 0) {                 00846000
+        S.verb = off;                                                   00847590
+        (*S.repf)(Verboffmsg,sizeof(Verboffmsg)-1);                     00848180
+    } else                                                              00849000
+        return s_syntax(st, s, l);                                      00850000
+    return st;                                                          00851000
+}                                                                       00852000
+                                                                        00853000
+static s_state                                                          00854000
+s_tick(st, s, l)                                                        00855000
+s_state st;                                                             00856000
+char *s;                                                                00857000
+int l;                                                                  00858000
+{                                                                       00859000
+    char buf[200];                                                      00860000
+                                                                        00861000
+    bcopy("250 ",buf,4);                                                00862000
+    bcopy(&s[5], &buf[4], l-5);                                         00863000
+    bcopy(" ... that's the ticket.",&buf[4+l-5],23);                    00864000
+    (*S.repf)(buf,27+l-5);                                              00865000
+    return st;                                                          00866000
+}                                                                       00867000
+                                                                        00867030
+static s_state                                                          00867060
+s_rply(st, s, l)                                                        00867090
+s_state st;                                                             00867120
+char *s;                                                                00867150
+int l;                                                                  00867180
+{                                                                       00867210
+    if (l == 9 && xcmp(" MAIL", &s[4], 5) == 0) {                       00867240
+        S.rply = mail;                                                  00867270
+        (*S.repf)("250 Error replies will be sent as mail.",39);        00867300
+    } else if (l == 9 && xcmp(" SMTP", &s[4], 5) == 0) {                00867330
+        S.rply = smtp;                                                  00867360
+        (*S.repf)("250 Error replies will be sent as smtp.",39);        00867390
+    } else                                                              00867420
+        return s_syntax(st, s, l);                                      00867450
+    return st;                                                          00867480
+}                                                                       00867510
+                                                                        00867540
+static s_state                                                          00867570
+s_read(st, s, l)                                                        00867600
+s_state st;                                                             00867630
+char *s;                                                                00867660
+int l;                                                                  00867690
+{                                                                       00867720
+    if (l > 4 && xcmp("D", &s[4], 1) == 0) {                            00867750
+        (*S.repf)("200 :READ card ignored.", 23);                       00867780
+        return st;                                                      00867810
+    } else                                                              00867840
+        return s_badc(st, s, l);                                        00867870
+}                                                                       00867900
+                                                                        00868000
+static s_state                                                          00869000
+s_oseq(st, s, l)                                                        00870000
+s_state st;                                                             00871000
+char *s;                                                                00872000
+int l;                                                                  00873000
+{                                                                       00874000
+    (*S.repf)("500 Command out of sequence", 27);                       00875000
+    return error;                                                       00876590
+}                                                                       00877180
+static s_state                                                          00878000
+s_badc(st, s, l)                                                        00879000
+s_state st;                                                             00880000
+char *s;                                                                00881000
+int l;                                                                  00882000
+{                                                                       00883000
+    (*S.repf)("500 Invalid command", 19);                               00884000
+    return error;                                                       00885490
+}                                                                       00886000
+static s_state                                                          00887000
+s_errr(st, s, l)                                                        00888000
+s_state st;                                                             00889000
+char *s;                                                                00890000
+int l;                                                                  00891000
+{                                                                       00892000
+    (*S.repf)("500 Command ignored due to a previous error.",44);       00893000
+    return error;                                                       00894490
+}                                                                       00895000
+static s_state                                                          00896000
+s_nosp(st, s, l)                                                        00897000
+s_state st;                                                             00898000
+char *s;                                                                00899000
+int l;                                                                  00900000
+{                                                                       00901000
+    char buf[200];                                                      00902000
+    int len;                                                            00903000
+                                                                        00904000
+    bcopy("421 ", buf, 4);                                              00905000
+    len = mydomain(&buf[4], sizeof(buf)-4);                             00906000
+    bcopy(" Service not available (internal error).", &buf[len+4], 40); 00907000
+    (*S.repf)(buf, len+43);                                             00908000
+    return error;                                                       00909000
+}                                                                       00910000
+                                                                        00911000
+static s_state                                                          00912000
+s_syntax(st, s, l)                                                      00913000
+s_state st;                                                             00914000
+char *s;                                                                00915000
+int l;                                                                  00916000
+{                                                                       00917000
+                                                                        00918000
+    (*S.repf)("501 Parameter syntax error.", 27);                       00919000
+    return error;                                                       00920000
+}                                                                       00921000
+                                                                        00922000
+static s_state                                                          00923000
+s_syntax553(st, s, l)                                                   00924000
+s_state st;                                                             00925000
+char *s;                                                                00926000
+int l;                                                                  00927000
+{                                                                       00928000
+                                                                        00929000
+    (*S.repf)("553 Mailbox syntax error.", 25);                         00930000
+    return error;                                                       00931490
+}                                                                       00932000
+                                                                        00933000
+static s_state                                                          00933070
+s_maxr(st, s, l)                                                        00933140
+s_state st;                                                             00933210
+char *s;                                                                00933280
+int l;                                                                  00933350
+{                                                                       00933420
+    char buf[200];                                                      00933490
+                                                                        00933560
+    wtr("SMT",63,0);                                                    00933630
+    (*S.repf)("554 Mail aborted.  Maximum hop count exceeded.",46);     00933700
+    return error;                                                       00933770
+}                                                                       00933840
+/*                                                                      00934000
+ * _aparse: call assembler aparse function.                             00935000
+ */                                                                     00936000
+extern aparse();                                                        00937000
+static struct {                                                         00938000
+    int *mb;                                                            00939000
+    struct fieldd *fd;                                                  00940000
+    int *sp[2];                                                         00941000
+} a_plist;                                                              00942000
+static                                                                  00943000
+_aparse(f)                                                              00944000
+struct fieldd *f;                                                       00945000
+{                                                                       00946000
+    a_plist.mb = &mailblok;                                             00947000
+    a_plist.fd = f;                                                     00948000
+    a_plist.sp[0] = &stackp[0]; a_plist.sp[1] = &stackp[1];             00949000
+    return acall(aparse, 0, &a_plist);                                  00950000
+}                                                                       00951000
+                                                                        00952000
+/*                                                                      00952010
+ * parse_data_hdr:  Parse the mail header within the DATA to fill in    00952020
+ *  the MAILKTAB table since many of the header fields are used by      00952030
+ *  the various outgoing exits (e.g. Subject: used by bulletin board    00952040
+ *  posting exit).  Then, clobber the FROM: and TO: tbentrys with the   00952050
+ *  ones we derived from the SMTP MAIL FROM and RCPT TO commands.       00952060
+ *                                                                      00952070
+ * xxx Maybe later, we can compare the MAIL FROM: with the FROM: in     00952080
+ * the DATA header and provide a delivery advice message if they don't  00952090
+ * match.                                                               00952100
+ */                                                                     00952110
+extern hdrscan();                                                       00952120
+static s_state                                                          00952130
+parse_data_hdr(st,s,l)                                                  00952140
+char *s;                                                                00952150
+int l;                                                                  00952160
+{                                                                       00952170
+    int i, blen, resid = S.hdrbytes + 1;   /* (for the final x15) */    00952180
+    char *bp;                                                           00952190
+    struct {                                                            00952200
+        int *mb;                                                        00952210
+    } pl;                                                               00952220
+    struct tbentry *te;                                                 00952230
+                                                                        00952240
+    if ((mailhbuf[0] = (int)salloc(mailhbuf[1] = resid)) <= 0)          00952250
+      return s_nosp(st, s, l);                                          00952260
+    for (i = 0, bp = (char *)mailhbuf[0]; i < mailhrec; i++) {          00952270
+        int rc;                                                         00952280
+                                                                        00952290
+        blen = resid;                                                   00952300
+        if ((rc = fsread(&S.data_file,bp,&blen)) != 0) {                00952310
+            wtr("SMT",50,2,"ca","fsread#2","d",rc);                     00952320
+            fsclose(&S.data_file);                                      00952330
+            return st;                   /* ignore parse failures */    00952340
+        }                                                               00952350
+        bp += blen;                                                     00952360
+        *bp++ = 0x15;                    /* newline */                  00952370
+        resid -= (blen + 1);                                            00952380
+    }                                                                   00952390
+    *bp = 0x15;                          /* final newline for EOH */    00952400
+    fsclose(&S.data_file);                                              00952410
+    pl.mb = &mailblok;                                                  00952420
+    acall(hdrscan,0,&pl);             /* parse the header */            00952430
+                                     /* side effect: allocs mailktab */ 00952440
+    /* if FROM or TO are missing from the mailktab, then plug in        00952450
+       SMTP FROM and TO so user exits can find them. */                 00952460
+    if (mailktab) {                  /* but only if it got allocated */ 00952470
+        if (ctbluk(&te,mailktab,"from",4) != TBMATCH)                   00952480
+          ctbadd(mailktab,&S.from_tbe);    /* so add one */             00952490
+        if (ctbluk(&te,mailktab,"to",2) != TBMATCH)                     00952500
+          ctbadd(mailktab,&S.rcpt_tbe);                                 00952510
+    }                                                                   00952520
+    return st;                                                          00952530
+}                                                                       00952540
+                                                                        00952550
+/*                                                                      00953000
+ * find_routd:  Return pointer to ROUTD given hostname string           00954000
+ *   (1) see if RSCS-domain is found and if so,  see if hostname        00955000
+ *       ends in it.  If so,  strip it off before (2).                  00956000
+ *   (2) look for the hostname in MAILRTAB                              00957000
+ *   (3) if not found,  look for it in MAILDTAB                         00958000
+ *   (4) if not found and MOPTAUN true,  look for *DEFAULT* in MAILRTAB 00959000
+ *  Returns ptr to ROUTD or NULL if not found.                          00960000
+ */                                                                     00961000
+_fnroutd(s, l)     /* assembly-language callable stub */                00962000
+char *s;                                                                00963000
+int l;                                                                  00964000
+{                                                                       00965000
+    return find_routd(s, l);                                            00966000
+}                                                                       00967000
+                                                                        00968000
+static struct routd *                                                   00969000
+find_routd(s, l)                                                        00970000
+char *s;                                                                00971000
+int l;                                                                  00972000
+{                                                                       00973000
+    struct tbentry *te;                                                 00974000
+    int ol = l;              /* original length */                      00975000
+                                                                        00976000
+    /* (1) see if it ends in .<RSCS-domain> */                          00977000
+    if (rscsdom != 0) {                                                 00978000
+        char rl = *rscsdom;                                             00979000
+        char *rp = &rscsdom[1];                                         00980000
+                                                                        00981000
+        if (rl < l && xcmp(rp, &s[l-rl], rl) == 0)                      00982000
+            l -= rl;           /* chop of the RSCS-domain */            00983000
+    }                                                                   00984000
+                                                                        00985000
+    /* (2) see if it is in MAILRTAB */                                  00986000
+    if (ctbluk(&te, mailrtab, s, l) == TBMATCH)                         00987000
+        return te->tbe_dsp;        /* table dispatch value is *routd */ 00988000
+                                                                        00989000
+    /* (3) see if it is in MAILDTAB */                                  00990000
+    if (ctbluk(&te, maildtab, s, ol) == TBMATCH)                        00991000
+        return te->tbe_dsp;                                             00992000
+                                                                        00993000
+    /* (4) see if MOPTAUN and *DEFAULT* is in MAILRTAB */               00994000
+    if (mailopts&MOPTAUN                                                00995000
+        && ctbluk(&te, mailrtab, "*DEFAULT*", 9) == TBMATCH)            00996000
+        return te->tbe_dsp;                                             00997000
+                                                                        00998000
+    /* give up */                                                       00999000
+    return 0;                                                           01000000
+}                                                                       01001000
+                                                                        01002000
+/*                                                                      01003000
+ * log_errors: get the error messages from the userlog file and         01004000
+ *  write them into the SMTP reply file. This replaces call on MAILRET. 01005000
+ */                                                                     01006000
+log_errors()                                                            01007000
+{                                                                       01008000
+    int rc,buflen,rblen;                                                01009000
+    char buf[80], rbuf[200];                                            01010000
+                                                                        01011000
+    bcopy("554 Mail not delivered to some or all recipients:",          01012000
+          rbuf,rblen=49);                                               01013000
+    fsclose(mailulfs);        /* close user error log */                01014000
+    mailulfs->fscbitno = mailulfs->fscbaitn = 0;  /* point */           01015000
+    do {                                                                01016000
+        buflen = sizeof(buf);                                           01017000
+        switch (rc = fsread(mailulfs,buf,&buflen)) {                    01018000
+        case 0:                                                         01019000
+           rbuf[3] = '-';     /* continue prev. message */              01020000
+           (*S.repf)(rbuf,rblen); /* and dump it out */                 01021000
+           while (buf[buflen-1] == ' ' && buflen > 0)                   01022000
+             --buflen;        /* trim trailing blanks */                01023000
+           rbuf[3] = ' ';                                               01024000
+           bcopy(buf,&rbuf[4],buflen);                                  01025000
+           rblen = buflen + 4;                                          01026000
+           break;                                                       01027000
+        case 12:              /* EOF */                                 01028000
+           fsclose(mailulfs);                                           01029000
+           (*S.repf)(rbuf,rblen);                                       01030000
+           break;                                                       01031000
+        default:                                                        01032000
+           wtr("SMT",50,2,"ca","fsread#3","d",rc);                      01033000
+           rbuf[3] = '-';                                               01034000
+           (*S.repf)(rbuf,rblen);                                       01035000
+           (*S.repf)("554 Mailer problem: can't read error log.",       01036000
+                     &buf[4], 41);                                      01037000
+           break;                                                       01038000
+        }                                                               01039000
+    } while (rc == 0);                                                  01040000
+    bcopy("ERASE   ",mailulfs->fscbcomm,8);                             01041000
+    svc202(mailulfs);          /* erase userlog file */                 01042000
+}                                                                       01043000
+                                                                        01044000
+/*                                                                      01045000
+ * add_received:  Add "Received:" stamp to DATA file.  Format is:       01046000
+ *                                                                      01047000
+ *  if from a trusted mailer:                                           01048000
+ *    Received: from <domain> by <lcldom>(Mailer <mailvers>)            01049000
+ *     with BSMTP id <mailftxt>; <arpadate>                             01050000
+ *                                                                      01051000
+ *  if not from a trusted mailer and not a charlatan:                   01052000
+ *    Received: from <domain>(<mailuser>) by <lcldom>(Mailer <mailvers>)01053000
+ *     with BSMTP id <mailftxt>; <arpadate>                             01054000
+ *                                                                      01055000
+ *  if from a charlatan:                                                01056000
+ *    Received: from <domain>(<mailuser>@<mailnode>)                    01057000
+ *     by <lcldom>(Mailer <mailvers>) with BSMTP id <mailftxt>;         01058000
+ *     <arpadate>                                                       01059000
+ *                                                                      01060000
+ *  Also adds an X-Delivery-Notice if S.fakefrom.                       01061000
+ *                                                                      01062000
+ */                                                                     01063000
+static char Deliv[] =                                                   01064000
+  "X-Delivery-Notice:  SMTP MAIL FROM does not correspond to sender.";  01065000
+                                                                        01066000
+static                                                                  01067000
+add_received()                                                          01068000
+{                                                                       01069000
+    char buf[256];                                                      01070000
+    int len;                                                            01071000
+    extern arpadate();                                                  01072000
+                                                                        01073000
+    if (S.fakefrom)                                                     01074000
+      foldwrite(&S.data_file,Deliv,sizeof(Deliv)-1);                    01075000
+    bcopy("Received: from ",buf,len=15);                                01076000
+    bcopy(S.domain, &buf[len], S.dl); len += S.dl;                      01077000
+    if (!S.trusted) {          /* not trusted;  put in the vmid */      01078000
+        buf[len++] = ' '; buf[len++] = '(';                             01079000
+        bcopy(mailuser,&buf[len],mailulen); len += mailulen;            01080000
+        if (S.charlatan) {     /* charlatan: add the node too */        01081000
+            buf[len++] = '@';                                           01082000
+            bcopy(mailnode,&buf[len],mailnlen);  len += mailnlen;       01083000
+        }                                                               01084000
+        buf[len++] = ')';                                               01085000
+    }                                                                   01086000
+    bcopy(" by ",&buf[len],4); len += 4;                                01087000
+    if (lcldom != 0) {                                                  01088000
+        bcopy(&lcldom[1],&buf[len],(int)lcldom[0]); len += lcldom[0];   01089000
+    } else {                                                            01090000
+        bcopy(cpustr,&buf[len],cpuslen); len += cpuslen;                01091000
+        if (rscsdom != 0) {                                             01092000
+            bcopy(&rscsdom[1],&buf[len],(int)rscsdom[0]);               01093000
+            len += rscsdom[0];                                          01094000
+        }                                                               01095000
+    }                                                                   01096000
+    bcopy(" (Mailer ",&buf[len],9); len += 9;                           01097000
+    bcopy(mailvers,&buf[len],8); len += 8;                              01098000
+    while (buf[len-1] == ' ') --len;                                    01099000
+    bcopy(") with BSMTP id ",&buf[len],16); len += 16;                  01100000
+    bcopy(mailftxt,&buf[len],4); len += 4;                              01101000
+    buf[len++] = ';';  buf[len++] = ' ';                                01102000
+    acall(arpadate,0,&buf[len]); len += 29;                             01103490
+    foldwrite(&S.data_file, buf, len);                                  01104000
+}                                                                       01105000
+                                                                        01106000
+/*                                                                      01107000
+ * foldwrite: Write to file after folding long lines.                   01108000
+ */                                                                     01109000
+static                                                                  01110000
+foldwrite(f,buf,len)                                                    01111000
+struct fscb *f;                                                         01112000
+char *buf;                                                              01113000
+int len;                                                                01114000
+{                                                                       01115000
+    int i,l,l2;                                                         01116000
+                                                                        01117000
+    i = 0;                                                              01118000
+    while (len > 0) {                                                   01119000
+        if (len > 80) {        /* fold the line (search back for */     01120000
+            int j;             /* blank and leave it for next time) */  01121000
+            for (l = 80, j = i+79; buf[j] != ' ' && j > i; j--,l--) ;   01122000
+            if (--l <= 0) l = 80;  /* xxx */                            01123000
+        } else                                                          01124000
+          l = len;                                                      01125000
+                                                                        01126000
+        len -= l;                                                       01127000
+        l2 = l;                                                         01128000
+        S.hdrbytes += l + 1;                                            01129000
+        mailhrec++, mailhlin++;                                         01130000
+        fswrite(f,&buf[i],&l2);                                         01131000
+        i += l;                                                         01132000
+    }                                                                   01133000
+}                                                                       01134000
+                                                                        01135000
+/*                                                                      01136000
+ * count_received:  return number of received: lines in header.         01137000
+ */                                                                     01138000
+static                                                                  01139000
+count_received()                                                        01140000
+{                                                                       01141000
+    struct tbentry *te;                                                 01142000
+    struct fieldd *f;                                                   01143000
+    int i;                                                              01144000
+                                                                        01145000
+    if (ctbluk(&te,mailktab,"received",8) != TBMATCH)                   01146000
+      return 0;                                                         01147000
+    for (i = 0, f = (struct fieldd *)te->tbe_dsp;                       01148000
+         FIEXTN(f) != 0; i++, f = FIEXTN(f))                            01149000
+      ; /* count extensions */                                          01150000
+    return i;                                                           01151000
+}                                                                       01152000
+_cntrcvd()               /* assembler-called stub */                    01153000
+{                                                                       01154000
+    return count_received();                                            01155000
+}                                                                       01156000
+                                                                        01157000
+/*                                                                      01158000
+ * SMTPREP: Process a BSMTP reply file.  If there are any error codes,  01159000
+ *  notify the sender (if it can be figured out).  If the outbound file 01160000
+ *  was not sent in VERB mode,  then there is no way to know who the    01161000
+ *  MAIL FROM user is without doing a lot more work than I feel like.   01162000
+ *                                                                      01163000
+ * NOTE: It's probably better just to let the remote BSMTP server send  01164000
+ * error mail directly to the user than waste time with BSMTP replies.  01165000
+ * But,  for the sake of completeness and interoperability with other   01166000
+ * BSMTP implemenations,  this code had to be written.                  01167000
+ */                                                                     01168000
+/* global reply parser state information */                             01169000
+static struct {                                                         01170000
+    char error;                 /* an error response was parsed */      01171000
+    char parserr;               /* error parsing reply file */          01172000
+    char *mailfrom;             /* ptr to mail from: string */          01173000
+    int mflen;                  /* length of above */                   01174000
+    struct fscb repfile;        /* fscb for the disk copy of reply */   01175000
+} R;                                                                    01176000
+                                                                        01177000
+smtprep()                                                               01178000
+{                                                                       01179000
+    char rbuf[133];                                                     01180000
+    int rlen;                                                           01181000
+                                                                        01182000
+    r_init();                                                           01183000
+    cpcmd("CLOSE 00C",9);                                               01184000
+    if (cpcmd("READY 00C",9)) return 12;                                01185000
+    while ((rlen = rdcard(rbuf,(int)mailsfb.sfbrecsz)) >= 0) {          01186000
+        rbuf[rlen] = '\0';                                              01187000
+        if (r_input(rbuf, rlen) != 0) {                                 01188000
+            R.parserr++;                                                01189000
+            break;                                                      01190000
+        }                                                               01191000
+    }                                                                   01192000
+    cpcmd("CLOSE 00C",9);                                               01193000
+    r_finish();                                                         01194000
+    return 4;                                                           01195000
+}                                                                       01196000
+                                                                        01197000
+/*                                                                      01198000
+ * r_init: 1) Initialize data structures.                               01199000
+ *         2) Init file to copy BSMTP reply to.                         01200000
+ */                                                                     01201000
+r_init()                                                                01202000
+{                                                                       01203000
+    wtr("SMT",57,0);                                                    01204000
+    bzero(&R,sizeof(R));                                                01205000
+    fserase("smtp.reply");                                              01206000
+    fsinit(&R.repfile,"smtp.reply");                                    01207000
+    R.repfile.fscbfv = 'V';                                             01208000
+}                                                                       01209000
+                                                                        01210000
+/*                                                                      01211000
+ * r_finish: 1) Close BSMTP reply file.                                 01212000
+ *           2) See if there was an error and, if mailfrom is known,    01213000
+ *              generate error mail.                                    01214000
+ *           3) Erase BSMTP reply file.                                 01215000
+ *  (Future stuff to add:  Acknowledgements)                            01216000
+ */                                                                     01217000
+r_finish()                                                              01218000
+{                                                                       01219000
+    fsclose(&R.repfile);                                                01220000
+    if (!R.parserr && R.error && R.mailfrom)                            01221000
+      err_mail(R.mailfrom,R.mflen,0);                                   01222000
+    fserase("smtp.reply");                                              01223000
+    wtr("SMT",58,0);                                                    01224000
+}                                                                       01225000
+                                                                        01226000
+/*                                                                      01227000
+ * r_input: parse smtp reply messages and look for error codes.         01228000
+ *   Also, keep an eye out for a 050 MAIL FROM to see who to report     01229000
+ *   the errors to.  Format of all messages should be:                  01230000
+ *   01234                                                              01231000
+ *   nnnb<response>                                                     01232000
+ *   Where 'nnn' must be digits and 'b' is either blank or '-' to       01233000
+ *   indicate a continuation.                                           01234000
+ *   This routine also copies each reply record to a disk file to       01235000
+ *   be used in the event that an error code is parsed.                 01236000
+ */                                                                     01237000
+r_input(rbuf, rlen)                                                     01238000
+char *rbuf;                                                             01239000
+int rlen;                                                               01240000
+{                                                                       01241000
+    int rc, l;                                                          01242000
+                                                                        01243000
+    if (mailopts & MOPTVL)      /* verbose log */                       01244000
+      wrterm(rbuf);                                                     01245000
+    if (rlen < 3 || !isdigit(rbuf[0]) || !isdigit(rbuf[1])              01246000
+        || !isdigit(rbuf[2])) {                                         01247000
+        wtr("SMT",60,0);                                                01248000
+        return 8;               /* response contains garbage */         01249000
+    }                                                                   01250000
+                                                                        01251000
+    l = rlen;                                                           01252000
+    if (rc = fswrite(&R.repfile,rbuf,&l))                               01253000
+      wtr("SMT",50,2,"ca","fswrite ","d",rc);                           01254000
+                                                                        01255000
+    /* use the response code to select what operation to perform */     01256000
+    switch (rbuf[0]) {                                                  01257000
+      case '0':                 /* look for 050 MAIL FROM:<...> */      01258000
+        if (rbuf[1] == '5' && rbuf[2] == '0' && rlen >= 16              01259000
+            && xcmp("MAIL FROM:<",&rbuf[4],11) == 0) {                  01260000
+                if (R.mailfrom) { /* already seen one */                01261000
+                    wtr("SMT",61,0);                                    01262000
+                    return 12;                                          01263000
+                }                                                       01264000
+                R.mailfrom = (char *) salloc(rlen-15);                  01265000
+                if (!R.mailfrom) {  /*  no space */                     01266490
+                    wtr("SMT",3,1,"ca","r_input ");                     01267000
+                    return 16;                                          01268000
+                }                                                       01269000
+                bcopy(&rbuf[15],R.mailfrom,R.mflen = rlen-16);          01270000
+                R.mailfrom[rlen-15] = '\0';                             01271000
+        }                                                               01272000
+        break;                                                          01273000
+      case '1':                 /* normal responses */                  01274000
+      case '2':                                                         01275000
+      case '3':                                                         01276000
+        break;                                                          01277000
+      case '4':                 /* error responses */                   01278000
+      case '5':                                                         01279000
+        R.error++;                                                      01280000
+        break;                                                          01281000
+      default:                                                          01282000
+        return 8;               /* garbage */                           01283000
+    }                                                                   01284000
+    return 0;                                                           01285000
+}                                                                       01286000
+                                                                        01287000
+/*                                                                      01288000
+ * err_mail:  Send BSMTP error mail.  Called both from the SMTP         01289000
+ *  request parser and the SMTP reply parser.  In both cases,           01290000
+ *  the SMTP transaction log is in "smtp.reply".                        01291000
+ */                                                                     01292000
+static                                                                  01293000
+err_mail(rcpt,rl,fp)                                                    01294000
+char *rcpt;         /* whom to send it to */                            01295000
+int rl;             /* length */                                        01296000
+struct fscb *fp;    /* fscb for data or zero for none */                01297000
+{                                                                       01298000
+    char buf[200],myfrom[100],*domp;                                    01299000
+    int bl,rc,fl,dl;                                                    01300000
+    extern arpadate();                                                  01301000
+    struct fscb repfile;                                                01302000
+                                                                        01303000
+    /* build my from address */                                         01304000
+    myfrom[0] = '<';                                                    01305000
+    bcopy(mailvmid,&myfrom[1],8);                                       01306000
+    for (fl = 8; myfrom[fl] == ' '; fl--) ; /* trim blanks */           01307000
+    fl++;                                                               01308000
+    myfrom[fl++] = '@';                                                 01309000
+    fl += dl = mydomain(domp = &myfrom[fl],sizeof(myfrom)-fl);          01310000
+    myfrom[fl++] = '>';                                                 01311000
+    cpcmd("SPOOL 00D *",11);                                            01312000
+    cpcmd("TAG DEV 00D --- returned mail file ---",38);                 01313000
+    bcopy("HELO ",buf,bl = 5);                                          01314000
+    bcopy(domp,&buf[bl],dl); bl += dl;                                  01315000
+    punch(buf,bl);                                                      01316000
+    bcopy("MAIL FROM:",buf,bl = 10);                                    01317000
+    bcopy(myfrom,&buf[bl],fl); bl += fl;                                01318000
+    punch(buf,bl);                                                      01319000
+    bcopy("RCPT TO:<",buf,bl = 9);                                      01320000
+    bcopy(rcpt,&buf[bl],rl); bl += rl;                                  01321000
+    buf[bl++] = '>';                                                    01322000
+    punch(buf,bl);                                                      01323000
+    punch("DATA",4);                                                    01324000
+    bcopy("Date:                              ",buf,bl = 29+6);         01325590
+    acall(arpadate,0,&buf[6]);        /* max result len is 29 */        01326180
+    punch(buf,bl);                                                      01327000
+    bcopy("From: Network Mailer ",buf,bl=21);                           01328000
+    bcopy(myfrom,&buf[bl],fl);  bl += fl;                               01329000
+    punch(buf,bl);                                                      01330000
+    bcopy("To: ",buf,bl=4);                                             01331000
+    bcopy(rcpt,&buf[bl],rl); bl += rl;                                  01332000
+    punch(buf,bl);                                                      01333000
+    punch("Subject: mail delivery error",28);                           01334000
+    punch(" ",1);                                                       01335000
+    punch("Batch SMTP transaction log follows:",35);                    01336000
+    punch(" ",1);                                                       01337000
+    /* copy smtp.reply to punch */                                      01338000
+    fsinit(&repfile,"smtp.reply");                                      01339000
+    repfile.fscbfv = 'V';                                               01340000
+    do {                                                                01341000
+        bl = sizeof(buf);                                               01342000
+        switch (rc = fsread(&repfile, buf, &bl)) {                      01343000
+          case 0:                                                       01344000
+            punch(buf, bl);                                             01345000
+            break;                                                      01346000
+          case 12:          /* EOF */                                   01347000
+            fsclose(&repfile);                                          01348000
+            break;                                                      01349000
+          default:          /* unexpected error */                      01350000
+            wtr("SMT",50,2,"ca","fsread#4","d",rc);                     01351000
+            break;                                                      01352000
+        }                                                               01353000
+    } while (rc == 0);                                                  01354000
+    if (fp) {                                                           01355000
+        punch(" ",1);                                                   01356000
+        punch("Original message follows:",25);                          01357000
+        punch(" ",1);                                                   01358000
+        buf[0] = '.';      /* in case doubling is needed */             01359000
+        do {                                                            01360000
+            bl = sizeof(buf) - 1;                                       01361000
+            switch (rc = fsread(fp, &buf[1], &bl)) {                    01362000
+              case 0:                                                   01363000
+                if (buf[1] == '.')                                      01364000
+                  punch(buf,bl+1);                                      01365000
+                else                                                    01366000
+                  punch(&buf[1],bl);                                    01367000
+                break;                                                  01368000
+              case 12:   /* EOF */                                      01369000
+                fsclose(fp);                                            01370000
+                break;                                                  01371000
+              default:                                                  01372000
+                wtr("SMT",50,2,"ca","fsread#5","d",rc);                 01373000
+                break;                                                  01374000
+             }                                                          01375000
+          } while (rc == 0);                                            01376000
+    }                                                                   01377000
+    punch(".",1);                                                       01378000
+    punch("QUIT",4);                                                    01379000
+    cpcmd("CLOSE 00D NAME ERROR MAIL",26);                              01380000
+    wtr("SMT",59,0);                                                    01381000
+}                                                                       01382000
+                                                                        01383000
+/*                                                                      01384000
+ * is_mailer: returns true if fieldd points to a registered             01385000
+ *  mailer (including myself).  compares user@node to outgoing/domain,  01386000
+ *  incoming, and mailvmid@cpustr.                                      01387000
+ *  1. Convert and pad the user to 8 characters for comparisons.        01388000
+ *  2. Look up routd for given domain and compare RTUSER to userid      01389000
+ *  3. If not that, compare RTNODE/user to CPUSTR/MAILVMID.             01390000
+ *  4. If not that, use RTNODE and user to check MAILVTAB.              01391000
+ *  5. If not that, then return false:  not a mailer.                   01392000
+ *  If there are any bogus data structures, return true to play it      01393000
+ *  safe (the idea is to prevent loops).                                01394000
+ */                                                                     01395000
+static                                                                  01396000
+is_mailer(f)                                                            01397000
+struct fieldd *f;                                                       01398000
+{                                                                       01399000
+    union {                               /* vald key */                01400000
+        struct { char node[8], user[8]; } part;                         01401000
+        char both[16];                                                  01402000
+    } key;                                                              01403000
+    struct mbox *a = (struct mbox *)f->fipars;                          01404490
+    struct tbentry te;                                                  01405000
+    struct routd *r;                                                    01406000
+    char *us,*hs;                                                       01407000
+    int ul,hl,i;                                                        01408000
+                                                                        01409000
+    if (a == 0 || a->mbxdcnt != 1 || a->mbxlcnt != 1)                   01410490
+      return 1;                          /* is a mailer */              01411000
+    for (i = 0; i < sizeof(key.both); i++)                              01412000
+      key.both[i] = ' ';                 /* init key to blanks */       01413000
+    /* 1. Convert and pad the userid */                                 01414000
+    us = TOKPTR(MBOXLCL(a)->noddown);                                   01416070
+    ul = MBOXLCL(a)->noddown->toklen;                                   01416370
+    if (ul > 8)                          /* not a mailer since userid */01417000
+      return 0;                          /* is longer than a VMID */    01418000
+    bcopy(us,key.part.user,ul);               /* copy in the userid */  01419490
+    /* 2. Look up the routd. */                                         01420000
+    hs = TOKPTR(MBOXDML(a)->noddown);                                   01422070
+    hl = MBOXDML(a)->noddown->toklen;                                   01422370
+    if ((r = find_routd(hs, hl)) == 0)                                  01423000
+      return 1;                                                         01424000
+    if (xcmp(key.part.user,r->rtuser,8)==0)/*user matches mailer id*/   01425490
+      return 1;                                                         01426000
+    /* 3. compare rtnode to cpustr and rtuser to mailvmid */            01427000
+    bcopy(r->rtuser,key.part.user,8);            /* fill in the key */  01428490
+    if (xcmp(cpustr,key.part.node,8)==0 &&                              01428980
+        xcmp(mailvmid,key.part.user,8)==0)                              01429470
+      return 1;                                                         01430000
+    /* 4. look in mailvtab */                                           01431000
+    if (ctbluk(&te, mailvtab, &key, 16) == TBMATCH)                     01432000
+      return 1;                                                         01433000
+    /* 5. must not be a mailer! */                                      01434000
+    return 0;                                                           01435000
+}                                                                       01436000
+                                                                        01437000
+/*                                                                      01438000
+ * err_loop: send error mail to maintainer.                             01439000
+ */                                                                     01440000
+static                                                                  01441000
+err_loop(f)                                                             01442000
+struct fscb *f;                                                         01443000
+{                                                                       01444000
+    char buf[25];                                                       01445000
+    int bl;                                                             01446000
+                                                                        01447000
+    wtr("SMT",28,0);                                                    01448000
+    bcopy(maintid,buf,bl=8);                                            01449000
+    while (buf[bl-1] == ' ') --bl;                                      01450000
+    buf[bl++] = '@';                                                    01451000
+    bcopy(maintnod,&buf[bl],8); bl += 8;                                01452000
+    while (buf[bl-1] == ' ') --bl;                                      01453000
+    err_mail(buf,bl,f);                                                 01454000
+}                                                                       01455000
+                                                                        01456000
+static                                                                  01457000
+punch(buf,buflen)               /* punch a card and logout if error */  01458000
+char *buf;                      /* since the only possible error is */  01459000
+int buflen;                     /* device not ready which means spool */01460000
+{                               /* system is SNAFU */                   01461000
+    int rc;                                                             01462000
+                                                                        01463000
+    if (buflen > 80) buflen = 80;  /* xxx */                            01464000
+    if (rc = punchc(buf, buflen) != 0) {                                01465000
+        wtr("SMT",50,2,"ca","punchc  ","d",rc);                         01466000
+        cpcmd("SP PUN PURGE",12); /* don't send a partial file */       01467000
+        cpcmd("LOGOUT",6);      /* can't do much if spool is full */    01468000
+    }                                                                   01469000
+}                                                                       01470000

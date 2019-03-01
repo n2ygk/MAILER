@@ -1,0 +1,6 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R203001    Handle negative string length in _tbluk
+*          This is a kludge for a problem that is not understood yet
+R202014    Make MAILBLOK globally available to all code
+*          This will remove dependence on Waterloo AUX file usage for
+*          increased portability of C code

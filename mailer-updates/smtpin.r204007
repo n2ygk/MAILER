@@ -1,0 +1,111 @@
+./ I 00017400          $ 17420 20                     11/13/89 11:37:52
+/* DEBUG_IS_MAILER          Trace is_mailer routine                  */ 00017420
+/* DEBUG_REP_MAIL           Trace rep_mail routine                   */ 00017440
+./ I 00179768          $ 179770 2                     11/13/89 11:37:52
+#ifdef DEBUG_REP_MAIL                                                   00179770
+        wrterm("==> Valid MAIL FROM");                                  00179772
+#endif                                                                  00179774
+./ I 00179850          $ 179853 3                     11/13/89 11:37:52
+#ifdef DEBUG_REP_MAIL                                                   00179853
+        wrterm("==> No valid MAIL FROM & not a trusted mailer");        00179856
+#endif                                                                  00179859
+./ R 00179900          $ 179902 2                     11/13/89 11:37:52
+    } else {                  /* From a trusted mailer (shouldn't */    00179902
+#ifdef DEBUG_REP_MAIL                                                   00179904
+      wrterm("==> No valid MAIL FROM & a trusted mailer");              00179906
+#endif                                                                  00179908
+./ I 00179910          $ 179915 5                     11/13/89 11:37:52
+    }                                                                   00179915
+./ R 00448800          $ 448840 40                    11/13/89 11:37:52
+    wrterm("==> Entered s_mail");                                       00448800
+./ I 01403000          $ 1403100 100                  11/13/89 11:37:52
+    struct node *n;                                                     01403100
+    char hoststring[256]; int hostlen;                                  01403200
+    char *hoststringptr;                                                01403300
+    struct {                                                            01403400
+      int *node;                                                        01403500
+      int *hs;                                                          01403600
+      int *hl;                                                          01403700
+      int *hoststringptr;                                               01403800
+      int *hostlen;                                                     01403900
+    } plist;                                                            01404000
+./ I 01408000          $ 1408050 50                   11/13/89 11:37:52
+#ifdef DEBUG_IS_MAILER                                                  01408050
+    char dbgmsg[133];                                                   01408100
+#endif                                                                  01408150
+./ R 01417000          $ 1417080 80                   11/13/89 11:37:52
+#ifdef DEBUG_IS_MAILER                                                  01417080
+    bcopy("==> is_mailer: userid=<", dbgmsg, 23);                       01417160
+    bcopy(us, &dbgmsg[23], ul);                                         01417240
+    bcopy(">", &dbgmsg[23+ul], 2);                                      01417320
+    wrterm(dbgmsg);                                                     01417400
+#endif                                                                  01417480
+    if (ul > 8) {                        /* not a mailer since userid */01417560
+#ifdef DEBUG_IS_MAILER                                                  01417640
+      wrterm("===> is_mailer: Not a mailer, userid too long");          01417720
+#endif                                                                  01417800
+./ I 01418000          $ 1418700 700                  11/13/89 11:37:52
+    }                                                                   01418700
+./ R 01422070 01422370 $ 1422110 40                   11/13/89 11:37:52
+    n = MBOXDML(a);                                                     01422110
+    plist.node = &n;                                                    01422150
+    plist.hs = &hs;                                                     01422190
+    plist.hl = &hl;                                                     01422230
+    for (i=0; i < sizeof(hoststring); hoststring[i] = ' ',i++);         01422270
+    hoststringptr = &hoststring[0];                                     01422310
+    plist.hoststringptr = &hoststringptr;                               01422350
+    hostlen = sizeof(hoststring);                                       01422390
+    plist.hostlen = &hostlen;                                           01422430
+    acall(genlist, 0, &plist);                                          01422470
+#ifdef DEBUG_IS_MAILER                                                  01422510
+    bcopy("==> is_mailer: node=<", dbgmsg, 21);                         01422550
+    bcopy(hs, &dbgmsg[21], hl);                                         01422590
+    bcopy(">", &dbgmsg[21+hl], 2);                                      01422630
+    wrterm(dbgmsg);                                                     01422670
+#endif                                                                  01422710
+./ I 01424000          $ 1424300 300                  11/13/89 11:37:52
+#ifdef DEBUG_IS_MAILER                                                  01424300
+    wrterm("==> is_mailer: Found in OUTGOING or DOMAINS table");        01424600
+#endif                                                                  01424900
+./ R 01427000 01428490 $ 1427190 190                  11/13/89 11:37:52
+#ifdef DEBUG_IS_MAILER                                                  01427190
+    bcopy("==> is_mailer: <", dbgmsg, 16);                              01427380
+    bcopy(key.part.user, &dbgmsg[16], 8);                               01427570
+    bcopy("> != <", &dbgmsg[24], 6);                                    01427760
+    bcopy(r->rtuser, &dbgmsg[30], 8);                                   01427950
+    bcopy(">", &dbgmsg[38], 2);                                         01428140
+    wrterm(dbgmsg);                                                     01428330
+#endif                                                                  01428520
+    /* 3. compare rtnode to userid and rtuser to mailvmid */            01428710
+    bcopy(r->rtroute,key.part.node,8);           /* fill in the key */  01428900
+./ I 01430000          $ 1430070 70                   11/13/89 11:37:52
+#ifdef DEBUG_IS_MAILER                                                  01430070
+    bcopy("==> is_mailer: <", dbgmsg, 16);                              01430140
+    bcopy(key.part.node, &dbgmsg[16], 8);                               01430210
+    bcopy("> != <", &dbgmsg[24], 6);                                    01430280
+    bcopy(mailblok.cpustr, &dbgmsg[30], 8);                             01430350
+    bcopy(">  |  <", &dbgmsg[38], 7);                                   01430420
+    bcopy(key.part.user, &dbgmsg[45], 8);                               01430490
+    bcopy("> != <", &dbgmsg[53], 6);                                    01430560
+    bcopy(mailblok.mailvmid, &dbgmsg[59], 8);                           01430630
+    bcopy(">", &dbgmsg[67], 2);                                         01430700
+    wrterm(dbgmsg);                                                     01430770
+#endif                                                                  01430840
+./ I 01431000          $ 1431200 200                  11/13/89 11:37:52
+#ifdef DEBUG_IS_MAILER                                                  01431200
+    bcopy("==> is_mailer: search incoming table for >", dbgmsg, 42);    01431400
+    bcopy(&key, &dbgmsg[42], 16);                                       01431600
+    bcopy("<", &dbgmsg[58], 2);                                         01431800
+    wrterm(dbgmsg);                                                     01432000
+#endif                                                                  01432200
+./ I 01434180          $ 1434190 10                   11/13/89 11:37:52
+#ifdef DEBUG_IS_MAILER                                                  01434190
+    bcopy("==> is_mailer: search incoming table for >", dbgmsg, 42);    01434200
+    bcopy(&key, &dbgmsg[42], 16);                                       01434210
+    bcopy("<", &dbgmsg[58], 2);                                         01434220
+    wrterm(dbgmsg);                                                     01434230
+#endif                                                                  01434240
+./ I 01434450          $ 1434550 100                  11/13/89 11:37:52
+#ifdef DEBUG_IS_MAILER                                                  01434550
+      wrterm("===> is_mailer: Not a mailer");                           01434650
+#endif                                                                  01434750

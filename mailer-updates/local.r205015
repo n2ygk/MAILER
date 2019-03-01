@@ -1,0 +1,8 @@
+./ I 00172000          $ 172100 100                   12/21/89 17:44:31
+         TM    MAILOPTS,MOPTFIOK   FILE FROM: allowed?
+         BNO   PUNHDR              ---> No
+         TM    MAILFLG2,MFLG2N82   FILE FROM: found?
+         BO    NOPUNHDR            ---> Yes
+PUNHDR   EQU   *
+./ I 00176000          $ 176500 500                   12/21/89 17:44:31
+NOPUNHDR EQU   *

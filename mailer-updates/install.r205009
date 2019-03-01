@@ -1,0 +1,6 @@
+./ R 01574000 01576000 $ 1574990 990                  01/11/90 16:11:48
+.us \\Nn\ is the return code from the LOAD subroutine.                  01574000
+.us \\MAILER\ dynamically loads user exits by issuing an OS LOAD SVC.   01575000
+./ I 01579000          $ 1579100 100                  01/11/90 16:11:48
+.sp 1
+nn = 16  Specified exit name not found

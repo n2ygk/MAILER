@@ -1,0 +1,247 @@
+./ R 00069000          $ 69490 490                    02/16/89 13:26:57
+    while ((rlen = rdcard(rbuf,(int)mailblok.mailsfb.sfbrecsz)) >= 0)   00069490
+./ R 00090300          $ 90390 90                     02/16/89 13:26:57
+    if (mailblok.mailflg1&MFLG1LCL &&                                   00090390
+        bcmp(mailblok.mailuser,mailblok.mailvmid,8) == 0)               00090480
+./ R 00091000 00093000 $ 91690 690                    02/16/89 13:26:57
+    bcopy(mailblok.mailnode,key,8);                                     00091690
+    bcopy(mailblok.mailuser,&key[8],8);                                 00092380
+    if (ctbluk(&te, mailblok.mailvtab, key, 16) == TBMATCH) {           00093070
+./ R 00100360 00100420 $ 100390 30                    02/16/89 13:26:57
+    bcopy(mailblok.mailuser,&key[8],8);                                 00100390
+    if (ctbluk(&te, mailblok.mailvtab, key, 16) == TBMATCH) {           00100420
+./ R 00121280          $ 121360 80                    02/16/89 13:26:57
+        if (mailblok.mailopts & MOPTVL)      /* verbose log */          00121360
+./ R 00140980          $ 141870 890                   02/16/89 13:26:57
+    if (mailblok.mailflg2&(MFLG2NLF|MFLG2NOH)) {                        00141870
+./ R 00179110 00179120 $ 179116 6                     02/16/89 13:26:57
+    if (mailblok.mailflg1&MFLG1LCL) {                                   00179116
+        bcopy(mailblok.mailuser, &buf[buflen], 8);                      00179122
+./ R 00179170          $ 179175 5                     02/16/89 13:26:57
+        bcopy(mailblok.rscsname, &buf[buflen], 8);                      00179175
+./ R 00179210          $ 179215 5                     02/16/89 13:26:57
+        bcopy(mailblok.mailnode, &buf[buflen], 8);                      00179215
+./ R 00179240          $ 179245 5                     02/16/89 13:26:57
+        bcopy(mailblok.mailuser, &buf[buflen], 8);                      00179245
+./ R 00179280          $ 179285 5                     02/16/89 13:26:57
+        bcopy(mailblok.mailuser, &buf[buflen], 8);                      00179285
+./ R 00179600          $ 179605 5                     02/16/89 13:26:57
+    wtr("SMT",56,2,"ca",mailblok.mailnode,"ca",mailblok.mailuser);      00179605
+./ R 00179760 00179790 $ 179768 8                     02/16/89 13:26:57
+    if (mailblok.mailsfld) {  /* there was a valid MAIL FROM */         00179768
+        if (!is_mailer(mailblok.mailsfld))                              00179776
+         err_mail(mailblok.mailsfld->fistr+1,                           00179784
+         (mailblok.mailsfld->fiend-mailblok.mailsfld->fistr-2),fscbptr);00179792
+./ R 00179860          $ 179865 5                     02/16/89 13:26:57
+        bcopy(mailblok.mailuser,buf,bl = mailblok.mailulen);            00179865
+./ R 00179880          $ 179883 3                     02/16/89 13:26:57
+        bcopy(mailblok.mailnode,&buf[bl],mailblok.mailnlen);            00179883
+        bl += mailblok.mailnlen;                                        00179886
+./ R 00223200 00223400 $ 223290 90                    02/16/89 13:26:57
+    mailblok.mailflg2 |= MFLG2SMT;                                      00223290
+    mailblok.mailflg2 |= MFLG2NOR;   /* we build our own received */    00223380
+./ R 00234960          $ 235850 890                   02/16/89 13:26:57
+    bcopy(mailblok.mailvers,&buf[len],8); len += 8;                     00235850
+./ R 00253000          $ 253490 490                   02/16/89 13:26:57
+    mailblok.mailchn = 0;          /* zero the mailchn ptr */           00253490
+./ R 00273490 00277070 $ 274080 590                   02/16/89 13:26:57
+    if (mailblok.lclhost[0] == (char *)0) { /*user didn't provide one*/ 00274080
+        bcopy(mailblok.cpustr,bp,lcldl = mailblok.cpuslen);             00274670
+        if (mailblok.rscsdom[0] != 0) {                                 00275260
+            bcopy(&mailblok.rscsdom[0][1],&bp[lcldl],                   00275850
+                  (int)mailblok.rscsdom[0][0]);                         00276440
+            lcldl += mailblok.rscsdom[0][0];                            00277030
+./ R 00280590 00281180 $ 280980 390                   02/16/89 13:26:57
+        lcldp = &mailblok.lclhost[0][1];  /* pointer to lcl host name */00280980
+        lcldl = mailblok.lclhost[0][0];  /* 1st byte is string length */00281370
+./ R 00306700          $ 306740 40                    02/16/89 13:26:57
+       if ((rlen = rdcard(&s[l],(int)mailblok.mailsfb.sfbrecsz)) >= 0)  00306740
+./ R 00336190 00336500 $ 336250 60                    02/16/89 13:26:57
+    mailblok.mailflg2 &= ~MFLG2SMT;                                     00336250
+    mailblok.mailflg2 &= ~MFLG2NOR;           /* restore the flag */    00336310
+    mailblok.mailflg2 &= ~MFLG2NLF;                                     00336370
+    mailblok.mailflg2 &= ~MFLG2NOH;                                     00336430
+./ R 00354780          $ 354870 90                    02/16/89 13:26:57
+      if (mailblok.mailopts & MOPTAC) { /* allow charlatans */          00354870
+./ R 00357510          $ 357600 90                    02/16/89 13:26:57
+          bcopy(mailblok.mailnode,&buf[buflen],8); buflen += 8;         00357600
+./ R 00358290          $ 358380 90                    02/16/89 13:26:57
+          bcopy(mailblok.mailuser,&buf[buflen],8); buflen += 8;         00358380
+./ R 00362580          $ 362670 90                    02/16/89 13:26:57
+          bcopy(mailblok.mailnode,&buf[buflen],8);                      00362670
+./ R 00363750          $ 363840 90                    02/16/89 13:26:57
+          bcopy(mailblok.mailuser,&buf[buflen],8);                      00363840
+./ R 00376360          $ 376370 10                    02/16/89 13:26:57
+    if (mailblok.mailnlen == l && xcmp(mailblok.mailnode,s,l) == 0)     00376370
+./ R 00376440 00376500 $ 376450 10                    02/16/89 13:26:57
+    if (mailblok.rscsdom[0] != 0) {                                     00376450
+        for (ri= 0; mailblok.rscsdom[ri] != 0 &&                        00376460
+              ri < MAXRSCSDOM; ri++) {                                  00376470
+           int rl = mailblok.rscsdom[ri][0];                            00376480
+           char *rp = &mailblok.rscsdom[ri][1];                         00376490
+./ R 00376580          $ 376586 6                     02/16/89 13:26:57
+               if (mailblok.mailnlen == i &&                            00376586
+                   xcmp(s, mailblok.mailnode, i) == 0)                  00376592
+./ R 00376700 00376740 $ 376710 10                    02/16/89 13:26:57
+    if (mailblok.lclhost[0] != 0)                                       00376710
+        for (ri = 0; mailblok.lclhost[ri] != 0 && ri < MAXLCLHOST; ri++)00376720
+        if (*mailblok.lclhost[ri] == l &&                               00376730
+             xcmp(&mailblok.lclhost[ri][1], s, l) == 0)                 00376740
+./ R 00399490          $ 399680 190                   02/16/89 13:26:57
+    if (mailblok.mailnlen == l && xcmp(mailblok.mailnode,s,l) == 0)     00399680
+./ R 00403380 00405450 $ 403770 390                   02/16/89 13:26:57
+    if (mailblok.rscsdom[0] != 0) {                                     00403770
+        for (ri= 0; mailblok.rscsdom[ri] != 0 &&                        00404160
+              ri < MAXRSCSDOM; ri++) {                                  00404550
+           int rl = mailblok.rscsdom[ri][0];                            00404940
+           char *rp = &mailblok.rscsdom[ri][1];                         00405330
+./ R 00408210          $ 408400 190                   02/16/89 13:26:57
+               if (mailblok.mailnlen == i &&                            00408400
+                   xcmp(s, mailblok.mailnode, i) == 0)                  00408590
+./ R 00414490 00415470 $ 414780 290                   02/16/89 13:26:57
+    if (mailblok.mailflg1&MFLG1LCL && mailblok.lclhost[0] != 0)         00414780
+        for (ri = 0; mailblok.lclhost[ri] != 0 && ri < MAXLCLHOST; ri++)00415070
+        if (*mailblok.lclhost[ri] == l &&                               00415360
+             xcmp(&mailblok.lclhost[ri][1], s, l) == 0)                 00415650
+./ R 00419000 00420000 $ 419490 490                   02/16/89 13:26:57
+    if (ctbluk(&te, mailblok.mailrtab, s, l) == TBMATCH &&              00419490
+        bcmp(mailblok.mailnode,                                         00419980
+             ((struct routd *)te->tbe_dsp)->rtroute, 8) == 0)           00420470
+./ R 00424000 00425000 $ 424490 490                   02/16/89 13:26:57
+    if (ctbluk(&te, mailblok.maildtab, s, l) == TBMATCH &&              00424490
+        bcmp(mailblok.mailnode,                                         00424980
+             ((struct routd *)te->tbe_dsp)->rtroute, 8) == 0)           00425470
+./ R 00450000          $ 450490 490                   02/16/89 13:26:57
+    mailblok.mailsfld = 0;                                              00450490
+./ R 00484000          $ 484490 490                   02/16/89 13:26:57
+    mailblok.mailsfld = f;              /* set mailblok sender ptr */   00484490
+./ R 00485600          $ 485690 90                    02/16/89 13:26:57
+       mailblok.mailflg2 |= MFLG2NOH;    /* Remember no host id */      00485690
+./ R 00491510          $ 491600 90                    02/16/89 13:26:57
+            bcopy(mailblok.mailnode, &buf[len], 8);  len += 8;          00491600
+./ R 00492290 00492680 $ 492480 190                   02/16/89 13:26:57
+            bcopy(mailblok.mailuser, &buf[len], 8);  len += 8;          00492480
+            if (mailblok.mailopts & MOPTAC) {    /* allow charlatans */ 00492670
+./ R 00496190          $ 496280 90                    02/16/89 13:26:57
+                mailblok.mailsfld = 0;                                  00496280
+./ R 00506510 00506540 $ 506520 10                    02/16/89 13:26:57
+    wtr("SMT",67,2,"ca",mailblok.mailnode,"ca",mailblok.mailuser);      00506520
+    mailblok.mailflg2 |= MFLG2NLF;                                      00506530
+./ R 00506690          $ 506700 10                    02/16/89 13:26:57
+    bcopy(mailblok.mailuser,&dummied[dl],mailblok.mailulen);            00506700
+    dl += mailblok.mailulen;                                            00506710
+./ R 00506750          $ 506760 10                    02/16/89 13:26:57
+    bcopy(mailblok.mailnode,&dummied[dl],mailblok.mailnlen);            00506760
+    dl += mailblok.mailnlen;                                            00506770
+./ R 00519700          $ 519990 290                   02/16/89 13:26:57
+    if (mailblok.mailflg2&MFLG2NLF) /* always fail */                   00519990
+./ R 00529630          $ 529720 90                    02/16/89 13:26:57
+    if (hl > mailblok.mailulen || xcmp(hs, mailblok.mailuser, hl) != 0) 00529720
+./ R 00620822 00620824 $ 620823 1                     02/16/89 13:26:57
+       faketoke->tokptr = &mailblok.cpustr[0];                          00620823
+       faketoke->toklen = mailblok.cpuslen;                             00620824
+./ R 00662000 00663000 $ 662790 790                   02/16/89 13:26:57
+        a->actnext = mailblok.mailchn; /* insert in front of chain */   00662790
+        mailblok.mailchn = a;                                           00663580
+./ R 00669000          $ 669490 490                   02/16/89 13:26:57
+        for (a = mailblok.mailchn; a != 0; a = a->actnext)              00669490
+./ R 00676000 00677000 $ 676790 790                   02/16/89 13:26:57
+        a->actnext = mailblok.mailchn;                                  00676790
+        mailblok.mailchn = a;                                           00677580
+./ R 00683000          $ 683490 490                   02/16/89 13:26:57
+        for (a = mailblok.mailchn; a != 0; a = a->actnext)              00683490
+./ R 00697000 00698000 $ 697790 790                   02/16/89 13:26:57
+        a->actnext = mailblok.mailchn;                                  00697790
+        mailblok.mailchn = a;                                           00698580
+./ R 00715300          $ 715390 90                    02/16/89 13:26:57
+    mailblok.mailhrec = mailblok.mailhlin = 0;                          00715390
+./ R 00755600          $ 755690 90                    02/16/89 13:26:57
+            if (mailblok.maxrcvd && count_received() > mailblok.maxrcvd)00755690
+./ R 00758000          $ 758490 490                   02/16/89 13:26:57
+            mailblok.mailflg1 |= MFLG1HDS;  /* header scanned ok */     00758490
+./ R 00785600          $ 785650 50                    02/16/89 13:26:57
+            ++mailblok.mailhrec;    /* increment # of header lines */   00785650
+            ++mailblok.mailhlin;                                        00785700
+./ R 00949000          $ 949290 290                   02/16/89 13:26:57
+    a_plist.sp[0] = &mailblok.stackp[0];                                00949290
+    a_plist.sp[1] = &mailblok.stackp[1];                                00949580
+./ R 00952250          $ 952253 3                     02/16/89 13:26:57
+    if ((mailblok.mailhbuf[0] =                                         00952253
+                 (int)salloc(mailblok.mailhbuf[1] = resid)) <= 0)       00952256
+./ R 00952270          $ 952273 3                     02/16/89 13:26:57
+    for (i = 0, bp = (char *)mailblok.mailhbuf[0];                      00952273
+          i < mailblok.mailhrec; i++) {                                 00952276
+./ R 00952470 00952510 $ 952478 8                     02/16/89 13:26:57
+    if (mailblok.mailktab) {         /* but only if it got allocated */ 00952478
+        if (ctbluk(&te,mailblok.mailktab,"from",4) != TBMATCH)          00952486
+          ctbadd(mailblok.mailktab,&S.from_tbe);    /* so add one */    00952494
+        if (ctbluk(&te,mailblok.mailktab,"to",2) != TBMATCH)            00952502
+          ctbadd(mailblok.mailktab,&S.rcpt_tbe);                        00952510
+./ R 00978490          $ 978680 190                   02/16/89 13:26:57
+    if (mailblok.rscsdom[0] != 0) {                                     00978680
+./ R 00979470 00980450 $ 979760 290                   02/16/89 13:26:57
+        for (ri = 0; mailblok.rscsdom[ri] != 0 &&                       00979760
+              ri < MAXRSCSDOM; ri++) {                                  00980050
+           int rl = mailblok.rscsdom[ri][0];                            00980340
+           char *rp = &mailblok.rscsdom[ri][1];                         00980630
+./ R 00987000          $ 987490 490                   02/16/89 13:26:57
+    if (ctbluk(&te, mailblok.mailrtab, s, l) == TBMATCH)                00987490
+./ R 00991000          $ 991490 490                   02/16/89 13:26:57
+    if (ctbluk(&te, mailblok.maildtab, s, ol) == TBMATCH)               00991490
+./ R 00995000 00996000 $ 995590 590                   02/16/89 13:26:57
+    if (mailblok.mailopts&MOPTAUN                                       00995590
+        && ctbluk(&te, mailblok.mailrtab, "*DEFAULT*", 9) == TBMATCH)   00996180
+./ R 01014000 01015000 $ 1014490 490                  02/16/89 13:26:57
+    fsclose(mailblok.mailulfs);        /* close user error log */       01014490
+    mailblok.mailulfs->fscbitno =                                       01014980
+                        mailblok.mailulfs->fscbaitn = 0;  /* point */   01015470
+./ R 01018000          $ 1018490 490                  02/16/89 13:26:57
+        switch (rc = fsread(mailblok.mailulfs,buf,&buflen)) {           01018490
+./ R 01029000          $ 1029490 490                  02/16/89 13:26:57
+           fsclose(mailblok.mailulfs);                                  01029490
+./ R 01041000 01042000 $ 1041590 590                  02/16/89 13:26:57
+    bcopy("ERASE   ",mailblok.mailulfs->fscbcomm,8);                    01041590
+    svc202(mailblok.mailulfs);          /* erase userlog file */        01042180
+./ R 01080000          $ 1080290 290                  02/16/89 13:26:57
+        bcopy(mailblok.mailuser,&buf[len],mailblok.mailulen);           01080290
+        len += mailblok.mailulen;                                       01080580
+./ R 01083000          $ 1083290 290                  02/16/89 13:26:57
+            bcopy(mailblok.mailnode,&buf[len],mailblok.mailnlen);       01083290
+            len += mailblok.mailnlen;                                   01083580
+./ R 01088490 01089470 $ 1088780 290                  02/16/89 13:26:57
+    if (mailblok.lclhost[0] != 0) {                                     01088780
+        bcopy(&mailblok.lclhost[0][1],&buf[len],                        01089070
+              (int)mailblok.lclhost[0][0]);                             01089360
+        len += mailblok.lclhost[0][0];                                  01089650
+./ R 01091000 01094070 $ 1091490 490                  02/16/89 13:26:57
+        bcopy(mailblok.cpustr,&buf[len],mailblok.cpuslen);              01091490
+        len += mailblok.cpuslen;                                        01091980
+        if (mailblok.rscsdom[0] != 0) {                                 01092470
+            bcopy(&mailblok.rscsdom[0][1],&buf[len],                    01092960
+                  (int)mailblok.rscsdom[0][0]);                         01093450
+            len += mailblok.rscsdom[0][0];                              01093940
+./ R 01098000          $ 1098490 490                  02/16/89 13:26:57
+    bcopy(mailblok.mailvers,&buf[len],8); len += 8;                     01098490
+./ R 01101000          $ 1101490 490                  02/16/89 13:26:57
+    bcopy(mailblok.mailftxt,&buf[len],4); len += 4;                     01101490
+./ R 01130000          $ 1130490 490                  02/16/89 13:26:57
+        mailblok.mailhrec++, mailblok.mailhlin++;                       01130490
+./ R 01146000          $ 1146490 490                  02/16/89 13:26:57
+    if (ctbluk(&te,mailblok.mailktab,"received",8) != TBMATCH)          01146490
+./ R 01186000          $ 1186490 490                  02/16/89 13:26:57
+    while ((rlen = rdcard(rbuf,(int)mailblok.mailsfb.sfbrecsz)) >= 0) { 01186490
+./ R 01244000          $ 1244490 490                  02/16/89 13:26:57
+    if (mailblok.mailopts & MOPTVL)      /* verbose log */              01244490
+./ R 01306000          $ 1306490 490                  02/16/89 13:26:57
+    bcopy(mailblok.mailvmid,&myfrom[1],8);                              01306490
+./ R 01428980 01429470 $ 1429270 290                  02/16/89 13:26:57
+    if (xcmp(mailblok.cpustr,key.part.node,8)==0 &&                     01429270
+        xcmp(mailblok.mailvmid,key.part.user,8)==0)                     01429560
+./ R 01432000          $ 1432490 490                  02/16/89 13:26:57
+    if (ctbluk(&te, mailblok.mailvtab, &key, 16) == TBMATCH)            01432490
+./ R 01434270          $ 1434300 30                   02/16/89 13:26:57
+    if (ctbluk(&te, mailblok.mailvtab, &key, 16) == TBMATCH)            01434300
+./ R 01449000          $ 1449490 490                  02/16/89 13:26:57
+    bcopy(mailblok.maintid,buf,bl=8);                                   01449490
+./ R 01452000          $ 1452490 490                  02/16/89 13:26:57
+    bcopy(mailblok.maintnod,&buf[bl],8); bl += 8;                       01452490

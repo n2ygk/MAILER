@@ -1,0 +1,133 @@
+./ I 00393000          $ 393200 200                   11/29/90 16:00:06
+    int dbgi;                                                           00393200
+    char dbgmsg[133];                                                   00393400
+./ I 00396180          $ 396280 100                   11/29/90 16:00:06
+    if (mailblok.dbgflg[1] & TRACE_CHECK_DOMAIN) {                      00396280
+        bcopy("check_domain:  Processing '",dbgmsg,27);                 00396380
+        bcopy(s,&dbgmsg[27],l);                                         00396480
+        bcopy("'",&dbgmsg[l+27],2);                                     00396580
+        wrterm(dbgmsg);                                                 00396680
+    }                                                                   00396780
+./ R 00399680          $ 399750 70                    11/29/90 16:00:06
+    if (mailblok.mailnlen == l && xcmp(mailblok.mailnode,s,l) == 0) {   00399750
+        if (mailblok.dbgflg[1] & TRACE_CHECK_DOMAIN)                    00399820
+            wrterm("check_domain:  Domain and THISNODE match");         00399890
+./ I 00400000          $ 400200 200                   11/29/90 16:00:06
+    }                                                                   00400200
+    if (mailblok.dbgflg[1] & TRACE_CHECK_DOMAIN)                        00400400
+         wrterm("check_domain:  Domain & THISNODE do not match");       00400600
+./ I 00403770          $ 403870 100                   11/29/90 16:00:06
+        if (mailblok.dbgflg[1] & TRACE_CHECK_DOMAIN)                    00403870
+            wrterm("check_domain:  Checking against RSCS-Domains");     00403970
+./ I 00406140          $ 406230 90                    11/29/90 16:00:06
+           if (mailblok.dbgflg[1] & TRACE_CHECK_DOMAIN) {               00406230
+               bcopy("check_domain:  Comparing to '", dbgmsg , 29);     00406320
+               bcopy(rp, &dbgmsg[29], rl);                              00406410
+               bcopy("'", &dbgmsg[29+rl], 2);                           00406500
+               wrterm(dbgmsg);                                          00406590
+           }                                                            00406680
+./ R 00408590          $ 408650 60                    11/29/90 16:00:06
+                   xcmp(s, mailblok.mailnode, i) == 0) {                00408650
+                   if (mailblok.dbgflg[1] & TRACE_CHECK_DOMAIN)         00408710
+                       wrterm("check_domain:  RSCS-Domain match found");00408770
+./ I 00408900          $ 409200 300                   11/29/90 16:00:06
+               }                                                        00409200
+./ R 00414780 00416000 $ 414830 50                    11/29/90 16:00:06
+    if (mailblok.mailflg1&MFLG1LCL && mailblok.lclhost[0] != 0) {       00414830
+        if (mailblok.dbgflg[1] & TRACE_CHECK_DOMAIN)                    00414880
+            wrterm("check_domain:  Checking against Local-Hosts");      00414930
+        for (ri = 0; mailblok.lclhost[ri] != 0 &&                       00414980
+             ri < MAXLCLHOST; ri++) {                                   00415030
+             if (mailblok.dbgflg[1] & TRACE_CHECK_DOMAIN) {             00415080
+                 bcopy("check_domain:  Comparing to '",dbgmsg,29);      00415130
+                 bcopy(&mailblok.lclhost[ri][1],&dbgmsg[29],            00415180
+                                               mailblok.lclhost[ri][0]);00415230
+                 bcopy("'",&dbgmsg[mailblok.lclhost[ri][0]+29],2);      00415280
+                 wrterm(dbgmsg);                                        00415330
+             }                                                          00415380
+             if (*mailblok.lclhost[ri] == l &&                          00415430
+                  xcmp(&mailblok.lclhost[ri][1], s, l) == 0) {          00415480
+                 if (mailblok.dbgflg[1] & TRACE_CHECK_DOMAIN)           00415530
+                     wrterm("check_domain:  Local-host match found");   00415580
+                 return 1;                                              00415630
+             }                                                          00415680
+        }                                                               00415730
+    }                                                                   00415780
+    else {                                                              00415830
+        if (mailblok.dbgflg[1] & TRACE_CHECK_DOMAIN) {                  00415880
+            bcopy("check_domain:  Skipping Local-Domains check, ",      00415930
+                                                             dbgmsg,45);00415980
+            if (mailblok.lclhost[0] = 0)                                00416030
+               bcopy("no Local-Domains defined",&dbgmsg[45],25);        00416080
+            else                                                        00416130
+               bcopy("not from local user",&dbgmsg[45],20);             00416180
+            wrterm(dbgmsg);                                             00416230
+        }                                                               00416280
+    }                                                                   00416330
+./ R 00420470          $ 420560 90                    11/29/90 16:00:06
+             ((struct routd *)te->tbe_dsp)->rtroute, 8) == 0) {         00420560
+        if (mailblok.dbgflg[1] & TRACE_CHECK_DOMAIN)                    00420650
+            wrterm("check_domain:   Found in OUTGOING table");          00420740
+./ I 00421000          $ 421200 200                   11/29/90 16:00:06
+    }                                                                   00421200
+    if (mailblok.dbgflg[1] & TRACE_CHECK_DOMAIN)                        00421400
+        wrterm("check_domain:  Not found in OUTGOING table");           00421600
+./ R 00425470          $ 425560 90                    11/29/90 16:00:06
+             ((struct routd *)te->tbe_dsp)->rtroute, 8) == 0) {         00425560
+        if (mailblok.dbgflg[1] & TRACE_CHECK_DOMAIN)                    00425650
+            wrterm("check_domain:  Found in DOMAINS table");            00425740
+./ I 00426000          $ 426200 200                   11/29/90 16:00:06
+    }                                                                   00426200
+    if (mailblok.dbgflg[1] & TRACE_CHECK_DOMAIN)                        00426400
+        wrterm("check_domain:  Not found in DOMAINS table");            00426600
+./ I 00518840          $ 518850 10                    11/29/90 16:00:06
+    char dbgmsg[133];                                                   00518850
+./ R 00519990 00520400 $ 520580 590                   11/29/90 16:00:06
+    if (mailblok.mailflg2&MFLG2NLF) { /* always fail */                 00520580
+        if (mailblok.dbgflg[1] & TRACE_CHECK_SENDER)                    00521170
+            wrterm("check_sender:  Null from, sender bad");             00521760
+        return 0;                                                       00522350
+    }                                                                   00522940
+    if (mailblok.dbgflg[1] & TRACE_CHECK_SENDER)                        00523530
+        wrterm("check_sender:  Not processing a null From:");           00524120
+./ I 00528730          $ 528760 30                    11/29/90 16:00:06
+        if (mailblok.dbgflg[1] & TRACE_CHECK_SENDER)                    00528760
+            wrterm("check_sender:  Processing route list address");     00528790
+./ I 00529630          $ 529639 9                     11/29/90 16:00:06
+        if (mailblok.dbgflg[1] & TRACE_CHECK_SENDER) {                  00529639
+                                                                        00529648
+            bcopy("check_sender:  Compare '",dbgmsg,24);                00529657
+            bcopy(hs,&dbgmsg[24],hl);                                   00529666
+            bcopy("' and '",&dbgmsg[hl+24],7);                          00529675
+            bcopy(mailblok.mailuser,&dbgmsg[hl+31],mailblok.mailulen);  00529684
+            bcopy("'",&dbgmsg[hl+mailblok.mailulen+31],2);              00529693
+            wrterm(dbgmsg);                                             00529702
+        }                                                               00529711
+./ R 00529990          $ 530000 10                    11/29/90 16:00:06
+            xcmp(hs, mailblok.mailuser, hl) != 0) {                     00530000
+            if (mailblok.dbgflg[1] & TRACE_CHECK_SENDER)                00530010
+                wrterm("check_sender:  Sender/routelist host mismatch");00530020
+./ R 00530170          $ 530250 80                    11/29/90 16:00:06
+        } else {                                                        00530250
+            if (mailblok.dbgflg[1] & TRACE_CHECK_SENDER)                00530330
+                bcopy("check_sender: ");                                00530410
+        }                                                               00530490
+    } else {                                                            00530570
+        if (mailblok.dbgflg[1] & TRACE_CHECK_SENDER)                    00530650
+            wrterm("check_sender:  No route list present");             00530730
+    }                                                                   00530810
+./ R 00534420          $ 534423 3                     11/29/90 16:00:06
+    if (a->mbxdml == 0)  {                                              00534423
+        if (mailblok.dbgflg[1] & TRACE_CHECK_SENDER)                    00534426
+             wrterm("check_sender: No host name present");              00534429
+        return 0;                                                       00534432
+    }                                                                   00534435
+    if (mailblok.dbgflg[1] & TRACE_CHECK_SENDER)                        00534438
+        wrterm("check_sender:  Host name present");                     00534441
+./ I 00534750          $ 534754 4                     11/29/90 16:00:06
+    if (mailblok.dbgflg[1] & TRACE_CHECK_SENDER) {                      00534754
+        bcopy("check_sender:  Host name is '",dbgmsg,29);               00534758
+        bcopy(hs,&dbgmsg[29],hl);                                       00534762
+        bcopy("'",&dbgmsg[hl+29],2);                                    00534766
+        wrterm(dbgmsg);                                                 00534770
+    }                                                                   00534774

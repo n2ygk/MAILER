@@ -1,0 +1,143 @@
+./ R 00033292          $ 33294 2                      04/01/91 15:03:05
+.sr version = 2.08                                                      00033294
+./ R 00033302 00033307 $ 33305 3                      04/01/91 15:03:05
+.sr vmm2xx = VMM208                                                     00033305
+.sr mnt2xx = MNT208                                                     00033308
+./ I 00104540          $ 104580 40                    04/01/91 15:03:05
+.in +.4i                                                                00104580
+12.1^Debugging Support!&c1201                                           00104620
+.in -.4i                                                                00104660
+./ D 01461870                                         04/01/91 15:03:05
+./ I 01462160          $ 1462162 2                    04/01/91 15:03:05
+.subhead 12.1^Debugging Support                                         01462162
+.sr c1201 = &sysppage                                                   01462164
+.in +.3i                                                                01462166
+Sometimes, even though you can reproduce the failure it is not obvious  01462168
+.us \why \Mailer\ is doing what it is doing.                            01462170
+To help in analyzing these situations two commands have been added to   01462172
+.us \\Mailer\ to allow you to dynamically control its operation.        01462174
+These commands are the 'QUERY/SHOW BIT' and 'SET BIT' commands (enter   01462176
+'HELP MAILER' and 'HELP MAILERP' to see the full syntax).               01462178
+.sp 1                                                                   01462180
+.cc 8
+Entering 'SHOW BIT *' will list all the flag bits that can be set.      01462182
+You will recognize some of them from section 8.1, "Variable             01462184
+Declarations".                                                          01462186
+The ones discussed there are:                                           01462188
+.in +.3i                                                                01462190
+.sp 1                                                                   01462192
+Allow-Unknown-Nodes                                                     01462194
+.br                                                                     01462196
+Allow-Charlatans                                                        01462198
+.br                                                                     01462200
+Verbose-Logging                                                         01462202
+.br                                                                     01462204
+Allow-File-From                                                         01462206
+.sp 1                                                                   01462208
+.in -.3i                                                                01462210
+In addition to the standard variables there are some special tracing    01462212
+variables.                                                              01462214
+These can be set on by specifying                                       01462216
+.sp 1                                                                   01462218
+.in +.3i                                                                01462220
+.bd \variable-name =\ True                                              01462222
+.in -.3i                                                                01462224
+.sp 1                                                                   01462226
+in the profile, but since they are primarily meant as debugging aids    01462228
+they should be left to default to 'False' and be set to 'True' using    01462230
+the 'SET BIT' command.                                                  01462232
+.sp 2                                                                   01462234
+.hi 27                                                                  01462236
+Verbose-Logging^^^^^^^^^^^^will cause all BSMTP protocol lines in an    01462238
+incomingBSMTP file to be echoed to the console.                         01462240
+.sp 2                                                                   01462242
+Show-All-Msgs^^^^^^^^^^^^^^will cause all MSG/SMSG traffic to be logged 01462244
+to the console.                                                         01462246
+.sp 2                                                                   01462248
+BSMTP-No-RFC822^^^^^^^^^^^^will stop Mailer from looking at the RFC822  01462250
+headers inside the BSMTP envelope.                                      01462252
+.sp 2                                                                   01462254
+SMTPIN-Trace-Calls^^^^^^^^^produces a list of the routines called within01462256
+SMTPIN during BSMTP processing.                                         01462258
+.sp 2                                                                   01462260
+SMTPIN-Trace-Check-Local^^^logs information about the processing of the 01462262
+Check-Local routine within SMTPIN.                                      01462264
+.sp 2                                                                   01462266
+SMTPIN-Trace-Find-Routd^^^^logs information about the processing of the 01462268
+Find_Routd routine within SMTPIN.                                       01462270
+.sp 2                                                                   01462272
+SMTPIN-Trace-Is-Mailer^^^^^logs information about the processing of the 01462274
+Is_Mailer routine within SMTPIN.                                        01462276
+.sp 2                                                                   01462278
+SMTPIN-Trace-Rep-Mailer^^^^logs information about the processing of the 01462280
+Rep_Mail routine within SMTPIN                                          01462282
+.sp 2                                                                   01462284
+SMTPIN-Trace-S-Getdata^^^^^logs information about the processing of the 01462286
+S_Getdata routine within SMTPIN.                                        01462288
+This routine is responsible for reading the lines following the DATA    01462290
+statment.                                                               01462292
+.sp 2                                                                   01462294
+SMTPIN-Trace-S-Input^^^^^^^logs information about the processing of the 01462296
+S_Input routine within SMTPIN.                                          01462298
+This routine is responsible for reading all lines an assigning them to  01462300
+a routine for processing.                                               01462302
+.sp 2                                                                   01462304
+SMTPIN-Trace-S-Rcpt^^^^^^^^logs information about the processing of the 01462306
+S_Rcpt routine within SMTPIN.                                           01462308
+This routine processes the RCPT TO: statement.                          01462310
+.sp 2                                                                   01462312
+SMTPIN-Trace-S-Mail^^^^^^^^logs information about the processing of the 01462314
+S_Mail routine within SMTPIN.                                           01462316
+This is the routine the process the MAIL FROM: statement.               01462318
+.sp 2                                                                   01462320
+SMTPIN-Trace-Parse-Data-Header logs information about the processing of 01462322
+the Parse-Data-Hdr routine within SMTPIN.                               01462324
+This routine parses the mail header within the DATA portion of the      01462326
+BSMTP transaction.                                                      01462328
+.sp 2                                                                   01462330
+SMTPIN-Trace-Check-Sender^^logs information about the processing of the 01462332
+Check_Sender routine within SMTPIN.                                     01462334
+This routines checks to see if the sender address matches the RSCS      01462336
+origin of the mail.                                                     01462338
+.sp 2                                                                   01462340
+SMTPIN-Trace-Check-Domain^^logs information about the processing of the 01462342
+Check_Domain routine within SMTPIN.                                     01462344
+This routine checks that a domain name matches the RSCS origin.         01462346
+.sp 2                                                                   01462348
+SMTPIN-Trace-Smtpin^^^^^^^^logs information about the processing of the 01462350
+Smtpin routine within SMTPIN.                                           01462352
+This is the finite state machine driver.                                01462354
+.sp 2                                                                   01462356
+Trace-Send-No-Mail^^^^^^^^^signals the mail distribution exits to not   01462358
+distribute mail.                                                        01462360
+Instead, messages will be issued saying what would have been done.      01462362
+.sp 2                                                                   01462364
+Trace-parsing^^^^^^^^^^^^^^logs information about the address parsing   01462366
+process.                                                                01462368
+.sp 2                                                                   01462370
+Buildlst-Trace^^^^^^^^^^^^^logs information about the destination list  01462372
+building                                                                01462374
+process.                                                                01462376
+.sp 2                                                                   01462378
+Tbluk-Trace^^^^^^^^^^^^^^^^logs information about table lookups.        01462380
+.sp 2                                                                   01462382
+Hdrscan-Trace^^^^^^^^^^^^^^logs information about the header scanning   01462384
+process.                                                                01462386
+This information is produced by HDRSCAN ASSEMBLE.                       01462388
+.sp 2                                                                   01462390
+Gethdr-Trace^^^^^^^^^^^^^^^logs information about the processing done   01462392
+in GETHDR                                                               01462394
+ASSEMBLE.                                                               01462396
+.sp 2                                                                   01462398
+Local-Trace^^^^^^^^^^^^^^^^logs information about the processing done in01462400
+LOCAL ASSEMBLE (the LOCAL exit).                                        01462402
+.sp 2                                                                   01462404
+Sendlst-Trace^^^^^^^^^^^^^^logs information about the distribution      01462406
+process.                                                                01462408
+SENDLIST (ASSEMBLE) drives the various exits used to distribute the     01462410
+mail.                                                                   01462412
+.sp 2                                                                   01462414
+Validate-Trace^^^^^^^^^^^^^logs information about the processing done   01462416
+in VALIDATE ASSEMBLE.                                                   01462418
+.hi 0                                                                   01462420
+.in -.3i                                                                01462422

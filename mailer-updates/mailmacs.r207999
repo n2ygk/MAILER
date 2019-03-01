@@ -1,0 +1,4 @@
+./ R 00500680          $ 500740 60                    03/15/91 15:02:36
+MAILVERS DC    0CL36' '                                                 00500770
+         DC    CL16'&VERSION',C' '
+         DC    CL8'&SYSDATE',C' '

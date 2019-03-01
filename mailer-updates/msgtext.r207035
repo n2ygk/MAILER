@@ -1,0 +1,10 @@
+./ R 00010997          $ 10998 1                      03/13/91 16:45:41
+         DC    A(84)         HIGHEST MESSAGE NUMBER DEFINED      [1.24] 00010997
+./ R 00014998          $ 14999 1                      03/13/91 16:45:41
+         DC A(M77,M78,M79,M80,M81,M82,M83,M84)                          00014998
+./ I 00203840          $ 203846 6                     03/13/91 16:45:41
+         SPACE 1                                                        00203720
+T84      DC    AL1(LT84),C'MAILER084E **** MAILER PROFILE coding error' 00203750
+         DC    C' ***** : One or more Local-Hostn values not defined'   00203780
+LT84     EQU   *-T84-1                                                  00203810
+M84      DC    A(T84),AL1(3,3,0)                                        00203840

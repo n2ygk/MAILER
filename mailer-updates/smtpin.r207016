@@ -1,0 +1,86 @@
+./ I 00448500          $ 448550 50                    11/29/90 17:26:51
+    char dbgmsg[133];                                                   00448550
+./ I 00448880          $ 448900 20                    11/29/90 17:26:51
+                                                                        00448900
+    if (mailblok.dbgflg[1] & TRACE_S_MAIL) {                            00448920
+        sprintf(dbgmsg,"s_mail:  MAIL FROM: line length is %d", l);     00448940
+        wrterm(dbgmsg);                                                 00448960
+    }                                                                   00448980
+./ R 00451380 00451570 $ 451570 190                   11/29/90 17:26:51
+        if (mailblok.dbgflg[1] & TRACE_S_MAIL)                          00451460
+           wrterm("s_mail:  Not MAIL FROM:");                           00451570
+./ I 00453000          $ 453010 10                    11/29/90 17:26:51
+    if (l == 10 ) {   /* MAIL/FILE FROM: with no address */             00453010
+        if (mailblok.dbgflg[1] & TRACE_S_MAIL)                          00453020
+           wrterm("s_mail:  MAIL FROM: with no return address");        00453030
+        return s_syntax(st, s, l);                                      00453040
+    }                                                                   00453050
+                                                                        00453060
+./ R 00453400          $ 453430 30                    11/29/90 17:26:51
+            if (mailblok.dbgflg[1] & TRACE_S_MAIL)                      00453430
+./ R 00458670          $ 458700 30                    11/29/90 17:26:51
+        if (mailblok.dbgflg[1] & TRACE_S_MAIL)                          00458700
+./ R 00465300          $ 465390 90                    11/29/90 17:26:51
+    if (mailblok.dbgflg[1] & TRACE_S_MAIL)                              00465390
+./ R 00478400          $ 478490 90                    11/29/90 17:26:51
+    if (mailblok.dbgflg[1] & TRACE_S_MAIL)                              00478490
+./ R 00482090          $ 482120 30                    11/29/90 17:26:51
+    if (mailblok.dbgflg[1] & TRACE_S_MAIL)                              00482120
+./ R 00482360          $ 482390 30                    11/29/90 17:26:51
+        if (mailblok.dbgflg[1] & TRACE_S_MAIL)                          00482390
+./ R 00485520          $ 485540 20                    11/29/90 17:26:51
+       if (mailblok.dbgflg[1] & TRACE_S_MAIL)                           00485540
+./ R 00488490          $ 488530 40                    11/29/90 17:26:51
+        if (mailblok.dbgflg[1] & TRACE_S_MAIL)                          00488530
+./ R 00488880          $ 488920 40                    11/29/90 17:26:51
+            if (mailblok.dbgflg[1] & TRACE_S_MAIL)                      00488920
+./ R 00492770          $ 492810 40                    11/29/90 17:26:51
+                if (mailblok.dbgflg[1] & TRACE_S_MAIL)                  00492810
+./ R 00497790          $ 497795 5                     11/29/90 17:26:51
+            if (mailblok.dbgflg[1] & TRACE_S_MAIL)                      00497795
+./ R 00498240          $ 498280 40                    11/29/90 17:26:51
+        if (mailblok.dbgflg[1] & TRACE_S_MAIL)                          00498280
+./ R 00561000          $ 561090 90                    11/29/90 17:26:51
+    if (mailblok.dbgflg[0] & TRACE_S_RCPT) {                            00560100
+        sprintf(dbgmsg,"s_rcpt:  RCPT TO: line length is %d", l);       00560200
+        wrterm(dbgmsg);                                                 00560300
+    }                                                                   00560400
+                                                                        00560500
+    if (xcmp(" TO:", &s[4], 4) != 0) {  /* check syntax */              00561000
+        if (mailblok.dbgflg[0] & TRACE_S_RCPT)                          00560100
+            wrterm("s_rcpt:  Not RCPT TO:");
+./ I 00562000          $ 562500 500                   11/29/90 17:26:51
+    }
+./ I 00563000          $ 563100 100                   11/29/90 17:26:51
+    if (l == 8 ) {  /* RCPT TO: with no address */                      00563200
+        if (mailblok.dbgflg[0] & TRACE_S_RCPT)                          00560100
+            wrterm("s_rcpt:  RCPT TO: with no address");
+        return s_syntax(st, s, l);                                      00563400
+    }
+                                                                        00563600
+./ R 00620196          $ 620198 2                     11/29/90 17:26:51
+          wrterm("s_rcpt:  Processing routeaddr");                      00620196
+./ R 00620579          $ 620580 1                     11/29/90 17:26:51
+          bcopy("s_rcpt:  Route address <", dbgmsg, 25);                00620579
+./ R 00620626          $ 620627 1                     11/29/90 17:26:51
+             bcopy("s_rcpt:  Destination is local host,", dbgmsg, 36);  00620626
+./ R 00620778          $ 620779 1                     11/29/90 17:26:51
+            wrterm("s_rcpt:  No route list found");                     00620778
+./ R 00620815 00620821 $ 620816 1                     11/29/90 17:26:51
+          wrterm("s_rcpt:  No host name, using default");               00620815
+       fakenode = (struct node *)salloc(sizeof(*fakenode));             00620816
+       if (!fakenode) return s_nosp(st,s,l);                            00620817
+       faketoke = (struct tokend*)salloc(sizeof(*faketoke));            00620818
+       if (!faketoke) return s_nosp(st,s,l);                            00620819
+       a->mbxdml = fakenode;                                            00620820
+       fakenode->noddown = faketoke;                                    00620821
+./ R 00623447          $ 623448 1                     11/29/90 17:26:51
+          wrterm("s_rcpt:  Using domain for lookup");                   00623447
+./ R 00623507          $ 623508 1                     11/29/90 17:26:51
+          wrterm("s_rcpt:  Using route-addr for lookup");               00623507
+./ R 00623838          $ 623841 3                     11/29/90 17:26:51
+       bcopy("s_rcpt:  Destination address <", dbgmsg, 31);             00623838
+./ R 00627200          $ 627210 10                    11/29/90 17:26:51
+          bcopy("s_rcpt:  Destination address <", dbgmsg, 31);          00627200
+./ R 00627700          $ 627710 10                    11/29/90 17:26:51
+         wrterm("s_rcpt:  Routing file from network");                  00627700

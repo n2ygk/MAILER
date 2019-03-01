@@ -1,0 +1,12 @@
+./ D 00995490 00995570                                11/21/89 15:13:40
+./ R 00995730          $ 995740 10                    11/21/89 15:13:40
+               bcopy(s+l,defrt+15,ol-l);                                00995730
+./ R 00995810 00995890 $ 995820 10                    11/21/89 15:13:40
+               bcopy("==> find_routd: ", dbgmsg, 16);                   00995820
+               bcopy("Checking MAILDTAB with ", dbgmsg+16, 23);         00995830
+               bcopy(defrt, dbgmsg+39, ol-l+15);                        00995840
+               bcopy(" in DOMAINS table", dbgmsg+39+(ol-l+15), 18);     00995850
+./ I 00996450          $ 996460 10                    11/21/89 15:13:40
+#ifdef DEBUG_FIND_ROUTD                                                 00996460
+           wrterm("==> find_routd: Checking MAILDTAB with *DEFAULT*");  00996470
+#endif                                                                  00996480

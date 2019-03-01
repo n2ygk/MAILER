@@ -1,0 +1,507 @@
+/*-------------------------------------------------------------------*  00001000
+ *    MAILER -- Copyright (c) 1982,1987 Columbia University.         *  00002490
+ *  Program Property of the Trustees of Columbia University in the   *  00003000
+ *  City of New York.                                                *  00004000
+ *-------------------------------------------------------------------*/ 00005000
+#define CCNET                                                           00006000
+static char version[] = "MG version 2.00";                              00006690
+/*                                                                      00007000
+ * MG: Generate mailer tables from NAMES/NODES files.                   00008490
+ *     Uses the :mailer, :nick, :alias, :netsoft tags.                  00009000
+ *                                                                      00010000
+ * INPUT FILES:                                                         00011000
+ *                                                                      00012000
+ *      XMAILER NAMES    - subset of needed fields from huge database   00013390
+ *      MAILER  NAMES    - mail-only nodes.                             00013780
+ *       (or their EARN equivalents)                                    00014170
+ *      DOMAIN  NAMES    - domains                                      00014560
+ *      <node>  MAILLCL                                                 00014950
+ *      <node>  MTPLATE                                                 00015340
+ *                                                                      00016000
+ * OUTPUT FILE:                                                         00017000
+ *                                                                      00018000
+ *      <node> PROFILE                                                  00019000
+ *                                                                      00020000
+ * Format of :nick tag is                                               00021000
+ *           :nick.hostname                                             00022000
+ *                                                                      00023000
+ * Format of :mailer tag is                                             00024000
+ *            :mailer.[vmid[@node] [exit type [parm]]]                  00025000
+ * If :mailer is blank,  then set up a default outgoing entry of:       00026000
+ *    hostname hostname ? DEFRT 1                                       00027000
+ * If :mailer.vmid is given then set up:                                00028000
+ *    hostname hostname vmid BSMTP 3                                    00029490
+ * If :mailer.vmid@node then:                                           00030000
+ *    hostname node vmid BSMTP 3                                        00031490
+ * else, use the given info to fill in the [exit type [parm]] part.     00032000
+ *                                                                      00033000
+ * When :mailer is non-blank and has no @node, generate an incoming     00034000
+ *   entry of:  hostname vmid                                           00035000
+ *                                                                      00036000
+ * Specifying the "-i" switch tells MG to replace all entries           00037000
+ * that would have BSMTP as the outgoing exit with DEFRT.  This         00038490
+ * is used for initial mailer distributions  to allow for the lag       00039000
+ * time in updates to * NAMES.                                          00040090
+ *                                                                      00040180
+ * You can now include "literal" parameters in the NAMES or MAILLCL     00040270
+ * files.  A literal is a token in quotes that gets replaced by a       00040360
+ * variable name.  This gets around the 8 character limit on parms.     00040450
+ * This will be most useful for the BSMTP exit.                         00040540
+ */                                                                     00041000
+                                                                        00042000
+#include <stdio.h>                                                      00043000
+#include <time.h>                                                       00044000
+#include <ctype.h>                                                      00045000
+#include "names.h"                                                      00046000
+                                                                        00047000
+/* Configuration constants */                                           00048000
+                                                                        00049000
+#define MAXREPS 400          /* max size of MAILLCL file */             00050000
+#define MAXNAMES 10          /* max number of names files used */       00051000
+                                                                        00052000
+struct mailfld {                                                        00053000
+    char *host;                                                         00054000
+    char *node;                                                         00055000
+    char *vmid;                                                         00056000
+    char *exit;                                                         00057000
+    char *type;                                                         00058000
+    char *parm;                                                         00059000
+}                                                                       00060000
+r;                                                                      00061000
+                                                                        00062000
+struct mailfld default1 = {                                             00063000
+    "", "", "", "BSMTP", "3", "" };                                     00064490
+                                                                        00065000
+struct mailfld default2 = {                                             00066000
+    "", "", "?", "DEFRT", "1", "" };                                    00067000
+                                                                        00068000
+struct names namelist[] = {                                             00069000
+    { "nick" },                                                         00070000
+#define NICK    0                                                       00071000
+    { "alias" },                                                        00072000
+#define ALIAS   1                                                       00073000
+    { "mailer" },                                                       00074000
+#define MAILER  2                                                       00075000
+    { "netsoft" },                                                      00076000
+#define NETSOFT 3                                                       00077000
+    { NULL }                                                            00078000
+};                                                                      00079000
+                                                                        00080000
+char *names[MAXNAMES+2] = {    /* list of names files to use */         00081490
+    "xmailer.names",                                                    00082000
+    "mailer.names",                                                     00083000
+    NULL                                                                00084000
+};                                                                      00085000
+                                                                        00085100
+char *domnames[MAXNAMES+2] = { /* list of domain names files */         00085200
+    "domain.names",                                                     00085300
+     NULL                                                               00085400
+};                                                                      00085500
+                                                                        00085600
+char outtab[] = "mailgen.cmsut1";                                       00086000
+char intab[]  = "mailgen.cmsut2";                                       00087000
+char domtab[]  = "mailgen.cmsut3";                                      00087500
+char littab[]  = "mailgen.cmsut4";                                      00087700
+char repfile[18];                                                       00088000
+char *repfpat = "%.8s.maillcl";                                         00089000
+char outfile[60];                                                       00090000
+char *outfpat = "%.8s.profile (recfm f lrecl 80";                       00091000
+char tpfile[18];                                                        00092000
+char *tpfpat = "%.8s.mtplate";                                          00093000
+int iniflag = 0;                                                        00094000
+                                                                        00095000
+char *token();                                                          00096000
+#define strcmp(s,t) Xstrcmp(s,t)                                        00097000
+                                                                        00098190
+extern int namenode;                                                    00098380
+                                                                        00098570
+main(argc,argv)                                                         00099000
+int argc;                                                               00100000
+char **argv;                                                            00101000
+{                                                                       00102000
+    int rc;                                                             00103000
+    char *profname;                                                     00103500
+    FILE *litf;                                                         00103600
+                                                                        00103700
+    namenode = 1;       /* tell names library that :node is OK */       00103800
+                                                                        00104000
+    for (; argc > 1 && *argv[1]  == '-'; --argc, ++argv)                00105000
+      switch(argv[1][1]) {                                              00106000
+        case 'i':         /* initial installation */                    00107000
+          iniflag++;                                                    00108000
+          break;                                                        00109000
+        default:                                                        00110000
+          usage();                                                      00111000
+      }                                                                 00112000
+    if (argc < 2) usage();                                              00113000
+    profname = argv[1];                                                 00114190
+    /*                                                                  00114380
+     * see if the user wants to override the default list of mailer or  00114570
+     * domain NAMES files.  Mailer names files are indicate simply by   00114760
+     * the name.  Domain names file have a "-d" arg in front.           00114950
+     */                                                                 00115140
+    if (argc > 2) {                                                     00115330
+        int ni, di;                                                     00115520
+                                                                        00116000
+        for (ni = di = 0, argc -= 2, argv = &argv[2];                   00117190
+                          argc > 0; argc--, argv++) {                   00117380
+            if (strcmp("-d", *argv) == 0) { /* domain names file */     00117570
+                if (--argc <= 0 || di >= MAXNAMES) break;               00117760
+                domnames[di++] = *++argv;                               00117950
+                domnames[di] = NULL;                                    00118140
+                --argc;                                                 00118330
+            } else {                                                    00118520
+                if (ni >= MAXNAMES) break;                              00118710
+                names[ni++] = *argv;                                    00118900
+                names[ni] = NULL;                                       00119090
+            }                                                           00119280
+        }                                                               00119470
+    }                                                                   00120000
+                                                                        00121000
+    sprintf(repfile,repfpat,profname);                                  00122590
+    sprintf(outfile,outfpat,profname);                                  00123180
+    sprintf(tpfile,tpfpat,profname);                                    00123770
+    if ((litf = fopen(littab,"w")) == NULL) {                           00124550
+        fprintf(stderr,"Couldn't create %s\n", littab);                 00124740
+        exit(1);                                                        00124930
+    }                                                                   00125120
+    generate(names, outtab, intab, litf);   /* work on mailer names */  00125310
+    generate(domnames, domtab, NULL, litf); /* work on domain names */  00125500
+    fclose(litf);                                                       00125690
+    merge();                                                            00126000
+    unlink(intab);                                                      00127000
+    unlink(outtab);                                                     00128000
+    unlink(littab);                                                     00128200
+    unlink(domtab);                                                     00128500
+    exit(0);                                                            00129000
+}                                                                       00130000
+usage()                                                                 00131000
+{                                                                       00132000
+    printf(                                                             00133580
+ "Usage: mg [-i] <node> [<names_file> ...] [-d <domains_file>...]\n");  00133670
+    exit(1);                                                            00134000
+}                                                                       00135000
+                                                                        00136000
+generate(names, outtab, intab, litf)                                    00137270
+char *names[];                                                          00137380
+char *outtab, *intab;                                                   00137570
+FILE *litf;                                                             00137770
+{                                                                       00138000
+    FILE *outf;                                                         00139590
+    FILE *inf;                                                          00140180
+    FILE *namesf;                                                       00141000
+    int i;                                                              00142000
+                                                                        00143000
+    if ((outf = fopen(outtab,"w")) == NULL) {                           00144490
+        fprintf(stderr,"Couldn't create %s\n", outtab);                 00145000
+        exit(1);                                                        00146000
+    }                                                                   00147000
+    if (intab == NULL)                                                  00148190
+        inf = NULL;                                                     00148380
+    else if ((inf = fopen(intab,"w")) == NULL) {                        00148570
+        fprintf(stderr,"Couldn't create %s\n", intab);                  00149000
+        exit(1);                                                        00150000
+    }                                                                   00151000
+                                                                        00152000
+    for (i = 0; names[i] != NULL; i++) {                                00153000
+        if ((namesf = fopen(names[i], "r")) == NULL) {                  00154000
+            fprintf(stderr,"Couldn't open %s\n", names[i]);             00155000
+            exit(1);                                                    00156000
+        }                                                               00157000
+        for (namelist[ALIAS].n_val = 0;                                 00158190
+             nextname(namesf, namelist);                                00158380
+             namelist[ALIAS].n_val = 0) {                               00158570
+            char *alias = namelist[ALIAS].n_val;                        00159000
+            char *a;                                                    00160000
+            int tlen;                                                   00161000
+                                                                        00162000
+#ifdef CCNET                                                            00163000
+/* temporary CCnet kludge:  Site names end in .CCNET in the NAMES       00164000
+ * file,  but the CCnet mailer on CU20B doesn't believe in the          00165000
+ * .CCNET ending yet,  so strip it out here for now.                    00166000
+ */                                                                     00167000
+            if ((tlen = strlen(namelist[NICK].n_val)) > 7)              00168000
+              if (strcmp(&(namelist[NICK].n_val)[tlen-6],".CCNET") == 0)00169000
+                (namelist[NICK].n_val)[tlen-6] = '\0';                  00170000
+#endif CCNET                                                            00171000
+            /* parse and output an outgoing table entry */              00172000
+            scanmailer(namelist[MAILER].n_val, namelist[NICK].n_val,    00173000
+                       namelist[NETSOFT].n_val);                        00174000
+            put_outf(outf, &r, litf);                                   00175490
+                                                                        00176000
+            /* maybe output an incoming table entry */                  00177000
+#define mailer namelist[MAILER].n_val                                   00178000
+            if (inf != NULL && *mailer && *mailer != '?'                00179290
+                && !strcmp(r.host,r.node))                              00179580
+              put_inf(inf, &r);                                         00180000
+#undef mailer                                                           00181000
+                                                                        00182000
+            /* go thru list of aliases and generate outgoing entries */ 00183000
+            if (alias != NULL)                                          00184000
+              for (a = token(&alias); *a != '\0'; a = token(&alias))    00185000
+                if (strcmp(namelist[NICK].n_val, a) != 0) {             00186000
+                    r.host = a;                                         00187000
+                    put_outf(outf, &r, litf);                           00188490
+                }                                                       00189000
+        }                                                               00190000
+        fclose(namesf);                                                 00191000
+    }                                                                   00192000
+    fclose(outf);                                                       00193000
+    if (inf != NULL) fclose(inf);                                       00194490
+}                                                                       00195000
+                                                                        00196000
+scanmailer(mailer,nick,netsoft)                                         00197000
+char *mailer, *nick;                                                    00198000
+{                                                                       00199000
+    char *i, *s;                                                        00200000
+                                                                        00201000
+    if (*mailer == '\0') {                                              00202000
+        r = default2;               /* use DEFRT */                     00203000
+        r.host = r.node = nick;                                         00204000
+        if ((strfind(netsoft,"jnet") != 0)                              00205590
+            || (strfind(netsoft,"urep") != 0)) /* ok to truncate */     00206180
+          r.parm = "TRUNCATE";                                          00207000
+        return;                                                         00208000
+    }                                                                   00209000
+    r = default1;                                                       00210000
+    if (iniflag) {            /* initial dist */                        00211990
+            r.exit = "DEFRT"; /* use DEFRT instead of BSMTP */          00212980
+            r.type = "1";     /* called once per address */             00214000
+        }                                                               00215000
+    r.host = r.node = nick;                                             00216000
+    r.vmid = token(&mailer);        /* vmid is first token */           00217000
+    for (i = r.vmid; *i != '\0' && *i != '@' && *i != ' '; i++);        00218000
+    switch(*i) {                                                        00219000
+      case '\0':                                                        00220000
+        if (*mailer == '\0') return;                                    00221000
+        break;                                                          00222000
+      case ' ':                                                         00223000
+        break;                                                          00224000
+      case '@':                                                         00225000
+        *i++ = '\0';                                                    00226000
+        r.node = i;                                                     00227000
+        break;                                                          00228000
+    }                                                                   00229000
+    if (*mailer == '\0') return;                                        00230000
+    r.exit = token(&mailer);                                            00231000
+    if (*mailer == '\0') return;                                        00232000
+    r.type = token(&mailer);                                            00233000
+    if (*mailer == '\0') return;                                        00234000
+    r.parm = token(&mailer);                                            00235000
+}                                                                       00236000
+                                                                        00237000
+put_outf(f, r, litf)                                                    00238590
+FILE *f;                                                                00239180
+struct mailfld *r;                                                      00240000
+FILE *litf;                                                             00240500
+{                                                                       00241000
+    struct mailfld *outrep();                                           00242000
+    static char pat[] = "%-16s %-8s %-8s %-8s %-4s %-8s\n";             00243000
+    char *first,*last,*parm,parmbuf[100];                               00243200
+    int len,l1;                                                         00243400
+    static int litnum = 0;  /* counter for literal var names */         00243600
+                                                                        00244000
+    r = outrep(r);          /* do any local replacement */              00245000
+    parm = r->parm;                                                     00245090
+    /* check parm for a literal which needs to be replaced by a var */  00245180
+    if ((first = index(r->parm,'"')) && (last = rindex(r->parm,'"'))) { 00245270
+        if ((len = last - first - 1) < 0)  /* length of lit value */    00245360
+          len = 0;                                                      00245450
+        l1 = first - r->parm;    /* length of part before lit */        00245540
+        fprintf(litf,"$%04.4d=%*.*s\n",++litnum,len,len,first+1);       00245630
+        sprintf(parmbuf,"%*.*s$%04.4d%s",l1,l1,r->parm,litnum,last+1);  00245720
+        parm = parmbuf;                                                 00245810
+    }                                                                   00245900
+    fprintf(f, pat, r->host, r->node, r->vmid, r->exit, r->type,        00246000
+            parm);                                                      00247490
+}                                                                       00248000
+                                                                        00249000
+put_inf(f, r)                                                           00250000
+FILE *f;                                                                00251000
+struct mailfld *r;                                                      00252000
+{                                                                       00253000
+    static char pat[] = "%-8s %-8s\n";                                  00254000
+                                                                        00255000
+    fprintf(f, pat, r->node, r->vmid);                                  00256000
+}                                                                       00257000
+                                                                        00258000
+/*                                                                      00259000
+ * outrep:  replace any matching entries from outgoing table            00260000
+ */                                                                     00261000
+struct mailfld *                                                        00262000
+outrep(r)                                                               00263000
+struct mailfld *r;                                                      00264000
+{                                                                       00265000
+    static FILE *repf = NULL;                                           00266000
+    static struct mailfld reptab[MAXREPS];                              00267000
+    static int nrep = 0, norep = 0;                                     00268000
+    static char buf[512];                                               00269000
+    struct mailfld *m;                                                  00270000
+    int len, i;                                                         00271000
+    char *p, *malloc();                                                 00272000
+                                                                        00273000
+    if (norep) return r;                                                00274000
+                                                                        00275000
+    if (repf == NULL) {     /* 1st time thru */                         00276000
+        if ((repf = fopen(repfile,"r")) == NULL) {                      00277000
+            fprintf(stderr,"No replacements file (%s)\n", repfile);     00278000
+            norep++;                                                    00279000
+            return r;                                                   00280000
+        }                                                               00281000
+        while (fgets(buf, sizeof(buf), repf)) {                         00282000
+            len = strlen(buf);                                          00283000
+            buf[len-1] = '\0';      /* kill newline */                  00284000
+            if ((p = malloc(len)) == NULL) {                            00285000
+                fprintf(stderr,"Out of memory.\n");                     00286000
+                exit(1);                                                00287000
+            }                                                           00288000
+            bcopy(buf, p, len);                                         00289000
+            m = &reptab[nrep];                                          00290000
+            if (nrep++ >= MAXREPS) {                                    00291000
+                fprintf(stderr,"Table overflow.\n");                    00292000
+                exit(1);                                                00293000
+            }                                                           00294000
+            m->host = token(&p);                                        00295000
+            m->node = token(&p);                                        00296000
+            m->vmid = token(&p);                                        00297000
+            m->exit = token(&p);                                        00298000
+            m->type = token(&p);                                        00299000
+            m->parm = token(&p);                                        00300000
+        }                                                               00301000
+        fclose(repf);                                                   00302000
+        }                                                               00303000
+                                                                        00304000
+    /* Search the table for matching host name */                       00305000
+                                                                        00306000
+    for (i = 0; i < nrep; i++)                                          00307000
+      if (strcmp(reptab[i].host, r->host) == 0)                         00308000
+        return &reptab[i];                                              00309000
+    return r;                                                           00310000
+}                                                                       00311000
+                                                                        00312000
+merge()                                                                 00313000
+{                                                                       00314000
+    extern struct tm *localtim();                                       00315000
+    extern char *asctime();                                             00316000
+    FILE *tpf = fopen(tpfile,"r");                                      00317000
+    FILE *outf = fopen(outfile,"w");                                    00318000
+    char buf[512];                                                      00319000
+                                                                        00320000
+    if (tpf == NULL) {                                                  00321000
+        printf("%s: not found.\n", tpfile);                             00322000
+        return 1;                                                       00323000
+    }                                                                   00324000
+    if (outf == NULL) {                                                 00325000
+        printf("%s: not found.\n", outfile);                            00326000
+        return 1;                                                       00327000
+    }                                                                   00328000
+    fprintf(outf,"; Generated by %s %s", version,                       00329190
+            asctime(localtime()));                                      00329380
+                                                                        00329570
+    while(fgets(buf, sizeof(buf), tpf)) {                               00330000
+        if (buf[0] == '%') {                                            00331000
+            if (strncmp(&buf[1],"incoming",8) == 0)                     00332000
+              mergein(outf, intab, 1);                                  00333490
+            else if (strncmp(&buf[1],"outgoing",8) == 0)                00334000
+              mergein(outf, outtab, 1);                                 00335090
+            else if (strncmp(&buf[1],"domains",7) == 0)                 00335300
+              mergein(outf, domtab, 1);                                 00335790
+            else if (strncmp(&buf[1], "include", 7) == 0) {             00336000
+                buf[strlen(buf)-1] = '\0';                              00337000
+                rtrim(buf);                                             00338000
+                mergein(outf, &buf[9], 1);                              00339490
+            }                                                           00340000
+        }                                                               00341000
+        else                                                            00342000
+          fputs(buf, outf);                                             00343000
+    }                                                                   00344000
+    fprintf(outf,"; \"literal\" variables:\n");                         00344300
+    mergein(outf, littab, 0);       /* literals file */                 00344790
+    fclose(outf);                                                       00345000
+    return 0;                                                           00346000
+}                                                                       00347000
+                                                                        00348000
+mergein(f,n,complain)                                                   00349490
+FILE *f;                                                                00350000
+char *n;                                                                00351000
+int complain;  /* complain about missing file */                        00351500
+{                                                                       00352000
+    FILE *inf = fopen(n,"r");                                           00353000
+    int c;                                                              00354000
+                                                                        00355000
+    if (inf == NULL) {                                                  00356000
+        if (complain) printf("%s: not found..n", n);                    00357490
+        return;                                                         00358000
+    }                                                                   00359000
+                                                                        00360000
+    while ((c = getc(inf)) != EOF)                                      00361000
+      putc(c,f);                                                        00362000
+    fclose(inf);                                                        00363000
+}                                                                       00364000
+                                                                        00365000
+/*                                                                      00366000
+ * token: Return a pointer to the next null-terminated token in a string00367000
+ *    of tokens delimited by white space.  Update the passed pointer    00368000
+ *    so that subsequent calls will return subsequent tokens.           00369000
+ */                                                                     00370000
+                                                                        00371000
+char *                                                                  00372000
+token(c)                                                                00373000
+register char **c;                                                      00374000
+{                                                                       00375000
+    char *r;                                                            00376000
+                                                                        00377000
+    if (**c == '\0') return *c;                                         00378000
+    while (isspace(**c) && **c != '\0') (*c)++; /* trim leading */      00379000
+    r = *c;                                                             00380000
+    if (**c == '\0') return r;                                          00381000
+    while (!isspace(**c) && **c != '\0') (*c)++;    /* skip over */     00382000
+    if (**c == '\0') return r;                                          00383000
+    **c = '\0';                 /* replace w/null */                    00384000
+    (*c)++;                                                             00385000
+    return r;                                                           00386000
+}                                                                       00387000
+                                                                        00388000
+#define lower(c) (isupper(c)?tolower(c):c)                              00389000
+                                                                        00390000
+Xstrcmp(s, t) /* case independent strcmp() */                           00391000
+char *s, *t;                                                            00392000
+{                                                                       00393000
+    for (; lower(*s) == lower(*t); s++, t++)                            00394000
+      if (*s == '\0')                                                   00395000
+        return 0;                                                       00396000
+    return lower(*s) - lower(*t);                                       00397000
+}                                                                       00398000
+                                                                        00399000
+rtrim(c)                                                                00400000
+char *c;                                                                00401000
+{                                                                       00402000
+    register int l;                                                     00403000
+                                                                        00404000
+    for (l = strlen(c) - 1; l >= 0 && c[l] == ' '; --l)                 00405000
+      c[l] = '\0';                                                      00406000
+    return l+1;                                                         00407000
+}                                                                       00408000
+                                                                        00409000
+/* strfind(haystack,needle)                                             00410000
+   haystack is a string of blank-delimited words                        00411000
+   needle is a word to look for in haystack                             00412000
+                                                                        00413000
+   will return 0 if needle not found                                    00414000
+   will return word number of needle in haystack if found               00415000
+*/                                                                      00416000
+int                                                                     00417000
+strfind(s1,s2)                                                          00418000
+char *s1,*s2;                                                           00419000
+{                                                                       00420000
+    char *s = s1;                                                       00421000
+    char *t;                                                            00422000
+    int i ;                                                             00423000
+                                                                        00424000
+    for(i=1;strcmp((t = token(&s)),s2) != 0;++i)                        00425000
+         if (*t == '\0'){                                               00426000
+              i = 0;                                                    00427000
+              break;                                                    00428000
+         };                                                             00429000
+    return i;                                                           00430000
+}                                                                       00431000

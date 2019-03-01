@@ -1,0 +1,21 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R207041    Blank out buffer used by SHOW BIT response
+R207036    Add debug tracing to VALIDATE
+R207019    Don't send BSMTP files into black hole if missing '.'
+R207006    Add SET command
+R207005    Support SHOW PATH command
+R207002    Fixes for command processing rewrite
+R206001    Fix to MSG/SMSG handling
+R205002    Fix up SHOW VERSION response to match startup msg
+R204004    Support for DISTLIST command
+R203031    Fix problems caused by right justifying userid and node in
+*          command processing
+R203024    Correction for remote user CMS command handling
+R203014    Support for FORWARD command
+R203010    Fix "SMSG" command - responses weren't being returned.
+R202018    Remove PRINT NOGENs, make DSECTs honor SYSPARM(SUP)/SYSPARM(EXP)
+R202016    Fix MAILER007E RC=0002 during RELOAD processing.
+R202010    Command processing enhancements.
+R201013    Fix validation bug for SMSG of privileged commands.
+R201003    Correct validation of user@node for commands from network
+R200010    Improve version indentification.

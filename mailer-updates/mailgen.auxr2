@@ -1,0 +1,4 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R202018    Remove PRINT NOGENs, make DSECTs honor SYSPARM(SUP)/SYSPARM(EXP)
+R201005    Correct creation of strings in MAILGEN GENLST subroutine
+*          Don't leave trailing '.' on string

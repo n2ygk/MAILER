@@ -1,0 +1,15 @@
+MAILBLOK TITLE 'VM Network mailer MAILBLOK csect'                       00001000
+*********************************************************************** 00002000
+*                                                                     * 00003000
+*  The MAILBLOK is the main control block for the VM Network Mailer.  * 00004000
+*  It contains global values and pointers to chains used by routines  * 00005000
+*  throughout mailer processing.                                      * 00006000
+*                                                                     * 00007000
+*********************************************************************** 00008000
+         SPACE 2                                                        00009000
+         COPY  VERSION                                                  00010000
+         SPACE 5                                                        00011000
+MAILBLOK CSECT ,                                                        00012000
+         ENTRY MAILTRAC                                                 00013000
+         MAILBLOK  DSECT=NO                                             00014000
+         END ,                                                          00015000

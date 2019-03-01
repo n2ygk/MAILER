@@ -1,0 +1,7 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R207020    Stop if THISNODE not defined.
+R205029    DOC changes - Fixes to documentation discovered during BETA
+*          test period
+R203036    Incorporate documentation changes into SAMPLE MTPLATE
+R200009    Allow multiple Rscs-Domains.
+R200008    Allow multiple Local-Hosts.

@@ -1,0 +1,43 @@
+./ R 00001000 00003000 $ 1990 990                     11/30/90 12:03:31
+/* ****************************************************************** */00001990
+/*  MACGEN - Generate the maclibs needed by MAILER                    */00002980
+/* ****************************************************************** */00003970
+                                                                        00004960
+address command                                                         00005950
+                                                                        00006940
+ectl = 'MAILEXEC'                            /* EXEC control file     */00007930
+mctl = 'MAILER'                              /* MACLIB control file   */00008920
+                                                                        00009910
+exitrc = 0                                   /* Default value         */00010900
+                                                                        00011890
+maclib.0 = 2                                 /* List of MACLIBs       */00012880
+maclib.1 = 'MAILER'                          /* Standard maclib       */00013870
+maclib.2 = 'MAILCOMP'                        /* Compatibility support */00014860
+                                                                        00015850
+do i=1 for maclib.0                          /* Process list          */00016840
+                                                                        00017830
+   say ' '
+   say 'Rebuilding' maclib.i 'MACLIB load list'
+   'EXEC EXECUPDT' maclib.i 'EXEC (CTL' ectl /* Update load list      */00018820
+   if rc <> 0  then  do                                                 00019810
+      if rc > exitrc  then  exitrc = rc                                 00020800
+      iterate                                                           00021790
+      end                                                               00022780
+                                                                        00023770
+   'ERASE' maclib.i 'UPDLOG  A'              /* Discard logs          */00024760
+   'ERASE' maclib.i 'UPDATES A'                                         00025750
+                                                                        00026740
+   say ' '
+   say 'Rebuilding' maclib.i 'MACLIB'
+   'EXEC VMFMAC' maclib.i mctl               /* Create maclib         */00027730
+   if rc <> 0  then  do                                                 00028720
+      if rc > exitrc  then  exitrc = rc                                 00029710
+      iterate                                                           00030700
+      end                                                               00031690
+                                                                        00032680
+   'ERASE' maclib.i 'EXEC A'                 /* Discard loadlist      */00033670
+   'ERASE' maclib.i 'COPY A'                 /* Discard log           */00034660
+                                                                        00035650
+   end                                                                  00036640
+                                                                        00037630
+exit exitrc                                                             00038620

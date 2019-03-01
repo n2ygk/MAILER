@@ -1,0 +1,16 @@
+./ R 00064000 00065000 $ 64050 50                     04/06/89 15:33:57
+         LTR   R15,R15              GETMAIN failed?                     00064050
+         BNZ   GETFAIL              ---> Yes                            00064100
+         LA    R15,STACKORG+4       Stack size value here               00064150
+         WTR   LER011,(DA,(R15))    Tell how big stack is               00064200
+         WTR   LER070               'Freeing half of stack for CMS'     00064250
+         LM    R14,R15,STACKORG     Pick up stack size & length         00064300
+         SRL   R15,4                Keep only                           00064350
+         SLL   R15,3                   half                             00064400
+         L     R0,STACKORG+4        Remember old length                 00064450
+         STM   R14,R15,STACKORG     Update pointers                     00064500
+         LA    R1,0(R15,R14)        Start freeing here                  00064550
+         S     R0,STACKORG+4        For this length                     00064600
+         FREEMAIN R,LV=(0),A=(1)    Free storage                        00064650
+         LA    R15,STACKORG+4       Stack size value here               00064700
+         WTR   LER011,(DA,(R15))    Tell how big remaining stack is     00064750

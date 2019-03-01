@@ -1,0 +1,9 @@
+./ I 00054000          $ 54100 100                    01/10/90 14:55:37
+         SPACE 1
+         TM    DBGFLG6,DBGNOOUT    Sending mail?
+         BZ    SKIP001             ---> Yes
+         WRTERM 'FWDMAIL:  Trace-send-no-mail set'
+         SR    R15,R15             Set return code
+         B     RET
+         SPACE 1
+SKIP001  EQU   *

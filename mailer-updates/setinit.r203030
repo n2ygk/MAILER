@@ -1,0 +1,106 @@
+./ I 00063040          $ 63045 5                      09/27/89 15:54:41
+*  List values as we go                                                 00063045
+./ I 00090000          $ 90100 100                    09/27/89 15:54:41
+         MVC   MSGBUFF,MSGBUFF-1   Clear to blanks                      00090100
+         LINEDIT TEXT='.............................. = ''........''', X00090200
+               SUB=(CHARA,((R7),(R4)),CHARA,(R3)),                     X00090300
+               DISP=NONE,BUFFA=MSGBUFF,DOT=NO,COMP=YES,RENT=NO          00090400
+         WTR   STI075,(CA,MSGBUFF+1)   Write msg                        00090500
+./ R 00092850          $ 92854 4                      09/27/89 15:54:41
+         MVC   MSGBUFF,MSGBUFF-1   Clear to blanks                      00092854
+         XR    R14,R14             Clear register                       00092858
+         IC    R14,0(R2)           Pick up length                       00092862
+         LA    R2,1(,R2)           Start of string                      00092866
+         LINEDIT TEXT='.............................. = ''.............X00092870
+               ......................''',                              X00092874
+               SUB=(CHARA,((R7),(R4)),CHARA,((R2),(R14))),             X00092878
+               DISP=NONE,BUFFA=MSGBUFF,DOT=NO,COMP=YES,RENT=NO          00092882
+         WTR   STI075,(CA,MSGBUFF+1)   Write msg                        00092886
+SET$1    EQU   *                                                 [1.22] 00092890
+./ I 00103000          $ 103500 500                   09/27/89 15:54:41
+         LA    R15,=CL5'False'     Set default value
+./ I 00107000          $ 107500 500                   09/27/89 15:54:41
+         LA    R15,=CL5'True'      Remember the correct value
+./ I 00121000          $ 121100 100                   09/27/89 15:54:41
+         MVC   MSGBUFF,MSGBUFF-1   Clear to blanks                      00121100
+         LINEDIT TEXT='.............................. = ''.....''',    X00121200
+               SUB=(CHARA,((R7),(R4)),CHARA,(R15)),                    X00121300
+               DISP=NONE,BUFFA=MSGBUFF,DOT=NO,COMP=YES,RENT=NO          00121400
+         WTR   STI075,(CA,MSGBUFF+1)   Write msg                        00121500
+./ I 00124880          $ 124882 2                     09/27/89 15:54:41
+*--------------------------------------------------------------------   00124882
+*        Do some cursory validation of profile                          00124884
+*        This is anything but complete                                  00124886
+*--------------------------------------------------------------------   00124888
+         SPACE 1                                                        00124890
+         LA    R3,LCLHOST          Address of LocalHost array.          00124892
+         LA    R4,L'LCLHOST/4      Number of entries in LCLHOST.        00124894
+LCHLOOP  DS    0H                                                       00124896
+         ICM   R1,B'0111',1(R3)    Is there a LocalHost ptr?            00124898
+         BZ    LCHDONE             ---> No, all done.                   00124900
+         SR    R6,R6               Get Local-Host                       00124902
+         ICM   R6,B'0001',0(R1)       length.                           00124904
+         BZ    LCHNEXT             ---> Zero length                     00124906
+         LA    R7,1(,R1)           Start of string                      00124908
+         L     R8,MAILRTAB         Point to OUTGOING table              00124910
+         CALL  TBLUK,((R8),(R7),(R6),TWORK)                             00124912
+         LTR   R15,R15             Was it found?                        00124914
+         BZ    LCHNEXT             ---> Yes                             00124916
+         LR    R15,R6              Copy field name length               00124918
+         BCTR  R15,0               Decrement                            00124920
+         MVC   LCHOSTNM,=CL40' '   Clear to blanks                      00124922
+         EX    R15,COPYNAME        Move into field for msg processing   00124924
+         WTR   STI072,(CA,LCHOSTNM)  Issue msg                          00124926
+         L     R8,MAILDTAB         Point to DOMAINS table               00124928
+         CALL  TBLUK,((R8),(R7),(R6),TWORK)                             00124930
+         LTR   R15,R15             Was it found?                        00124932
+         BZ    LCHNDOM             ---> Yes                             00124934
+         WTR   STI073,(CA,LCHOSTNM)  Issue msg                          00124936
+         B     LCHNEXT                                                  00124938
+         SPACE 1                                                        00124940
+LCHNDOM  EQU   *                                                        00124942
+         WTR   STI074,(CA,LCHOSTNM)  Issue msg                          00124944
+         SPACE 1                                                        00124946
+LCHNEXT  DS    0H                                                       00124948
+         LA    R3,4(,R3)           Update pointer                       00124950
+         BCT   R4,LCHLOOP             and loop.                         00124952
+LCHDONE  EQU   *                                                        00124954
+         SPACE 1                                                        00124956
+*--------------------------------------------------------------------   00124958
+*        End of profile validation                                      00124960
+*--------------------------------------------------------------------   00124962
+         SPACE 1                                                        00124964
+./ I 00361000          $ 361010 10                    09/27/89 15:54:41
+         DC    A(MAINTNOD-MAILBLOK,STRMNOD)                             00361010
+./ I 00361020          $ 361030 10                    09/27/89 15:54:41
+         DC    A(MAINTNOD-MAILBLOK,STRMNOD1)    MAINTNODE1 = MAINTNODE  00361030
+./ D 00362000 00362500                                09/27/89 15:54:41
+./ R 00366210 00366220 $ 366216 6                     09/27/89 15:54:41
+PPTRARR  DC    A(RSCSDOM1-MAILBLOK,STRDOMAI) RSCS-Domain =              00366216
+         DC    A(RSCSDOM1-MAILBLOK,STRDOM1)       RSCS-Domain1          00366222
+./ R 00366410 00366420 $ 366416 6                     09/27/89 15:54:41
+         DC    A(LCLHOST1-MAILBLOK,STRLCLDO) Local-Domain =             00366416
+         DC    A(LCLHOST1-MAILBLOK,STRLCLH1)      Local-Host1           00366422
+./ I 00381000          $ 381500 500                   09/27/89 15:54:41
+         SPACE 1                                                        00381500
+./ I 00382000          $ 382500 500                   09/27/89 15:54:41
+         SPACE 1                                                        00382500
+./ I 00383000          $ 383500 500                   09/27/89 15:54:41
+         SPACE 1                                                        00383500
+./ I 00384000          $ 384500 500                   09/27/89 15:54:41
+         SPACE 1                                                        00384500
+./ I 00385000          $ 385500 500                   09/27/89 15:54:41
+         SPACE 1                                                        00385500
+./ R 00387000          $ 387040 40                    09/27/89 15:54:41
+         SPACE 1                                                        00387040
+         DC    C' '                                                     00387080
+MSGBUFF  DC    CL81' '             Formatting of MAISTI075 msgs         00387120
+*                                  First byte will get length from      00387160
+*                                  LINEDIT macro                        00387200
+         SPACE 1                                                        00387240
+         DS    0D                                                       00387280
+TWORK    DS    256X                                                     00387320
+         SPACE 1                                                        00387360
+./ I 00387500          $ 387600 100                   09/27/89 15:54:41
+         ORG   FIELDNAM                Reuse                            00387600
+LCHOSTNM DS    CL40                    Must match length of 072 msg     00387700

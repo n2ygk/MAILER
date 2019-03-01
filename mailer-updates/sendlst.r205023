@@ -1,0 +1,29 @@
+./ I 00043000          $ 43500 500                    02/21/90 18:13:28
+         TRACETBL ,                                                     00043500
+./ I 00070000          $ 70100 100                    02/21/90 18:13:28
+         TM    DBGFLG7,DBGSNDLS    Tracing?                             00070100
+         BNO   SNDDBG01            ---> No                              00070200
+         LINEDIT TEXT='SENDLST : **** Start processing of ACTADR chain X00070300
+               ****',DOT=NO                                             00070400
+SNDDBG01 EQU   *                                                        00070500
+./ I 00078000          $ 78090 90                     02/21/90 18:13:28
+         TM    DBGFLG7,DBGSNDLS    Tracing?                             00078090
+         BNO   SNDDBG10            ---> No                              00078180
+         LINEDIT TEXT='SENDLST : Destination ........@........ using ..X00078270
+               ...... exit (entry address = ........)',                X00078360
+               SUB=(CHARA,RTUSER,CHARA,RTROUTE,CHARA,RTPROG,HEX4A,RTADDX00078450
+               R),                                                     X00078540
+               DOT=NO,COMP=YES,RENT=NO                                  00078630
+SNDDBG10 EQU   *                                                        00078720
+         LA    R1,RTPROG           Point to exit name                   00078810
+         MAILTRC CALL,(R1)         Create trace table entry             00078900
+./ R 00080000          $ 80190 190                    02/21/90 18:13:28
+         CALL  (15),((R11),(R8))     Call it                            00080190
+         LA    R1,RTPROG             Point to exit name                 00080380
+         MAILTRC RETURN,(R1),(R15)   Create trace table entry           00080570
+./ I 00105000          $ 105100 100                   02/21/90 18:13:28
+         TM    DBGFLG7,DBGSNDLS    Tracing?                             00105100
+         BNO   SNDDBG99            ---> No                              00105200
+         LINEDIT TEXT='SENDLST : **** All ACTADRs processed ****',     X00105300
+               DOT=NO                                                   00105400
+SNDDBG99 EQU   *                                                        00105500

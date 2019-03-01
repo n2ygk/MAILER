@@ -1,0 +1,4 @@
+R207011    Correct error in NOMAIL 041 msg (service not listed)
+R205018    Add flag to only trace a mail creating exit.
+*          When this flag is set, the exit should list the actions
+*          it would have performed, but *NOT* create the output file.

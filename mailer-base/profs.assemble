@@ -1,0 +1,357 @@
+*9/8/86 - New PROFS-specific exit based on LOCAL thru vers 1.24         00001000
+*         Same as LOCAL but doesn't look in MAILSTAB. Includes code     00002000
+*         from Peter Day:                                               00003000
+*[EMU1] 3/19/86 - Output PROFS compatible subject line on PROFS param   00004000
+*[EMU2] 3/22/86 - Set Reply / Forward indicator on PROFS subj line      00005000
+PROFS  TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - PROFS DISTRIBUTION'   00006000
+*---------------------------------------------------------------------* 00007000
+*      MAILER -- Copyright (c) 1982,1986 Columbia University.         * 00008000
+*    Program Property of the Trustees of Columbia University in the   * 00009000
+*    City of New York.                                                * 00010000
+*---------------------------------------------------------------------* 00011000
+PROFS    CSECT ,                                                        00012000
+* PROFS  -                                                              00013000
+*  This routine performs the delivery of files to local profs users.    00014000
+*                                                                       00015000
+*                                                                       00016000
+PAB      DSECT ,                                                        00017000
+@MBLOK   DS    A             MAILBLOK BASE                              00018000
+@ACT     DS    A             ACTADR BASE                                00019000
+* REGISTER USAGE -                                                      00020000
+R0  EQU  0 -                                                            00021000
+R1  EQU  1 -                                                            00022000
+R2  EQU  2 -                                                            00023000
+R3  EQU  3 -                                                            00024000
+R4  EQU  4 -                                                            00025000
+R5  EQU  5 -                                                            00026000
+R6  EQU  6 -                                                            00027000
+R7  EQU  7 -                                                            00028000
+R8  EQU  8 -                                                            00029000
+R9  EQU  9 -                                                            00030000
+R10 EQU 10 - ACTADR BASE                                                00031000
+R11 EQU 11 - MAILBLOK BASE                                              00032000
+R12 EQU 12 - PROGRAM BASE                                               00033000
+R13 EQU 13 - SAVE AREA                                                  00034000
+R14 EQU 14 - SUBROUTINE LINKAGE                                         00035000
+R15 EQU 15 - SUBROUTINE LINKAGE                                         00036000
+         PRINT NOGEN                                                    00037000
+         BLOCKS ,                                                       00038000
+         MAILBLOK ,                                                     00039000
+         EJECT ,                                                        00040000
+PROFS    CSECT ,                                                        00041000
+         STM   R14,R12,12(R13)                                          00042000
+         BALR  R12,0                                                    00043000
+         USING *,R12                                                    00044000
+         LA    R14,SAVE                                                 00045000
+         ST    R13,4(R14)                                               00046000
+         ST    R14,8(R13)                                               00047000
+         LR    R13,R14                                                  00048000
+         USING PAB,R1        ADDRESS PARMS                              00049000
+         L     R11,@MBLOK    GET MAILBLOK BASE                          00050000
+         L     R10,@ACT      GET ACTADR BASE                            00051000
+         DROP  R1                                                       00052000
+         USING MAILBLOK,R11                                             00053000
+         USING ACTADR,R10                                               00054000
+         L     R7,ACTMBOX    GET MBOX BLOCK                             00055980
+         USING MBOX,R7                                                  00056380
+         L     R7,MBXLCL         GET USER LIST                          00057070
+         USING NODE,R7     ADDRESS IT                                   00058590
+         L     R7,NODDOWN    GET DOWN POINTER                           00059180
+         USING TOKEND,R7     ADDRESS THE USER NAME TOKEN                00060000
+         L     R9,TOKPTR         GET STRING                             00061680
+         SR    R4,R4         GET ZERO                                   00062000
+         L     R4,TOKLEN     LENGTH OF USERID STRING                    00063490
+         DROP  R7            [1.20]                                     00064000
+         MVC   RECVR,=CL8' ' [3]blank it                                00065000
+         LR    R1,R4         [3]copy                                    00066000
+         C     R1,=F'8'      [3]trunc to 8 if necessary                 00067000
+         BNH   *+8           [3]                                        00068000
+         LA    R1,8          [3]                                        00069000
+         BCTR  R1,0          [3]                                        00070000
+         EX    R1,MOVEIT     [3]move into RECVR                         00071000
+         EX    R1,UPIT       [3]upper case it.                          00072000
+         SPACE ,                                                        00073000
+CHKRET   EQU   *                                                        00074000
+         C     R4,=F'8'      8 OR LESS?                                 00075000
+         BH    ILLEGAL                                                  00076000
+         ST    R4,RCVRLEN    [2]save receiver length for later          00077000
+         CLC   RECVR,MAILVMID TRYING TO SEND MAIL TO MAILER?            00078000
+         BE    NOFILES       HANDLE MAIL TO MAILER                      00079000
+         LINEDIT   TEXT='SP PUN TO ........ CLASS M',DOT=NO,RENT=NO,   *00080000
+               DISP=CPCOMM,SUB=(CHARA,RECVR)                            00081000
+         LTR   R15,R15       DID IT WORK?                               00082000
+         BNZ   NOSUCH        NOPE                                       00083000
+*[1.20] BEGIN -----------------------------------------------------     00084000
+*    Build an RSCS-style tag so people with a modified RDRLIST          00085000
+*    and similar execs can figure who the mail is from                  00086000
+*------------------------------------------------------------------     00087000
+         MVC   TNUM,MAILFTXT file number                                00088000
+         L     R6,MAILSFLD   get sender FIELDD                          00089000
+         USING FIELDD,R6     address the field                          00090000
+         L     R6,FIPARS     pointer to adaddr                          00091000
+         DROP  R6                                                       00092000
+         USING MBOX,R6     address list thing                           00093590
+         L     R1,MBXLCL         point to list of user adnodes          00094180
+         USING NODE,R1     address a user node                          00095590
+         L     R1,NODDOWN    point down to user name token              00096180
+         DROP  R1                                                       00097000
+         USING TOKEND,R1     address the tokend                         00098000
+         L     R3,TOKPTR         address of user name token             00099680
+         SR    R4,R4                                                    00100000
+         L     R4,TOKLEN     length of it                               00101490
+         DROP  R1                                                       00102000
+         MVC   TUSER,=CL8' '  blank out the user tag item               00103000
+         C     R4,=F'8'      if > 8 trunc it.                           00104000
+         BNH   OK1           it's ok                                    00105000
+         LA    R4,8          force to 8                                 00106000
+OK1      EQU   *                                                        00107000
+         BCTR  R4,0          -1 for executed copy                       00108000
+         LA    R2,TUSER      dest of copy                               00109000
+         EX    R4,COPY       copy it in                                 00110000
+* now do the same for host name                                         00111000
+         MVC   THOST,=CL8'? ' blank out the host tag item        [1.22] 00112000
+         L     R1,MBXDML         point to list of host adnodes          00113680
+         BZ    NOHOST1       sometimes these slip thru...        [1.22] 00114000
+         USING NODE,R1     address a host node                          00115590
+         L     R1,NODDOWN    point down to host name token              00116180
+         DROP  R1                                                       00117000
+         USING TOKEND,R1     address the tokend                         00118000
+         L     R3,TOKPTR         address of host name token             00119680
+         SR    R4,R4                                                    00120000
+         L     R4,TOKLEN     length of it                               00121490
+         DROP  R1                                                       00122000
+         C     R4,=F'8'      if > 8 trunc it.                           00123000
+         BNH   OK2           it's ok                                    00124000
+         LA    R4,8          force to 8                                 00125000
+OK2      EQU   *                                                        00126000
+         BCTR  R4,0          -1 for executed copy                       00127000
+         LA    R2,THOST      dest of copy                               00128000
+         EX    R4,COPY       copy it in                                 00129000
+         DROP  R6                                                       00130000
+NOHOST1  EQU   *             here when avoiding null hostname    [1.22] 00131000
+         LA    R1,TCMD       point to tag command                       00132000
+         LA    R0,TLEN       length of the command                      00133000
+         DIAG  R1,R0,X'0008' do it                                      00134000
+         MVC   PROFUSER,TUSER copy sender into profs junk               00135000
+         PUNCHC PROFCARD     punch the profs card                       00136000
+         LTR   R15,R15       check for error                            00137000
+         BNZ   RET           and return if there is one                 00138000
+*[1.20] END                                                             00139000
+         L     R15,APUNHDR                                              00140000
+         CALL  (15),((R11))  PUNCH THE HEADER                           00141000
+         LTR   R15,R15       ANY SCREW UPS?                             00142000
+         BNZ   RET                                                      00143000
+         L     R15,APUNTXT                                              00144000
+         CALL  (15),((R11))  PUNCH THE REST                             00145000
+         LTR   R15,R15      ANY ERRORS?                                 00146000
+         BNZ   RET           OH WEEELLL....                             00147000
+*[EMU1] BEGIN                                                           00148000
+* Create a PROFS subject trailer card with Reply/Forward indicator      00149000
+* First, clear the card, then see if there is a Subject field           00150000
+         MVI   PROFSUBJ,C' '                                            00151000
+         MVC   PROFSUBJ+1(PROFCLEN-1),PROFSUBJ  fill with blanks        00152000
+         L     R4,MAILKTAB             get keyword table                00153000
+         L     R15,ATBLUK              tbluk address                    00154000
+         CALL  (15),((R4),SUBJECT,L'SUBJECT,TWORK)                      00155000
+         LTR   R15,R15                 find Subject?                    00156000
+         BZ    SUBFOUND                yes, get it                      00157000
+         MVC   PROFSUBJ(10),=C'NO SUBJECT' else: be explicit            00158000
+         B     SUBJEND                 to endif                         00159000
+SUBFOUND EQU   *                                                        00160000
+         USING FIELDD,R1               address the field                00161000
+         L     R3,FISTR                start address of string          00162000
+         L     R15,FIEND               end address of string            00163000
+         DROP  R1                                                       00164000
+         SR    R15,R3                  length-1 of string               00165000
+         SH    R15,=H'1'               trim trailing LF                 00166000
+TRIMSUBJ EQU   *                                                        00167000
+         CLI   0(R3),C' '              leading blank?                   00168000
+         BNE   SUBJTRIM                all done                         00169000
+         LA    R3,1(R3)                bump pointer                     00170000
+         BCT   R15,TRIMSUBJ            trim leading blank               00171000
+SUBJTRIM EQU   *                                                        00172000
+         C     R15,=A(L'PROFSUBJ)      > space available?               00173000
+         BL    MOVESUBJ                if fits                          00174000
+         LA    R15,L'PROFSUBJ-1        else truncate                    00175000
+MOVESUBJ EQU   *                                                        00176000
+         LA    R2,PROFSUBJ             prepare for EX                   00177000
+         EX    R15,COPY                move subj to card                00178000
+SUBJEND  EQU   *                       subject text moved               00179000
+* Now see if Forward or Reply and if so set indicator      [EMU2]       00180000
+* Reply to Forwarded note removes Resent- fields           [EMU2]       00181000
+         L     R15,ATBLUK         tbluk address            [EMU2]       00182000
+         CALL  (15),((R4),RESENT,L'RESENT,TWORK)           [EMU2]       00183000
+         LTR   R15,R15            find Resent-?            [EMU2]       00184000
+         BNZ   FWDEND             Not found; not forward   [EMU2]       00185000
+         MVI   PROFTYPE,C'F'      set forwarded            [EMU2]       00186000
+         B     PUNSUBJ            go punch subj card       [EMU2]       00187000
+FWDEND   EQU   *                                           [EMU2]       00188000
+         L     R15,ATBLUK         tbluk address            [EMU2]       00189000
+         CALL  (15),((R4),NREPLYTO,L'NREPLYTO,TWORK)       [EMU2]       00190000
+         LTR   R15,R15            find In-Reply-To?        [EMU2]       00191000
+         BNZ   REPLYEND           Not found; not reply     [EMU2]       00192000
+         MVI   PROFTYPE,C'R'      set reply                [EMU2]       00193000
+         B     PUNSUBJ            go punch subj card       [EMU2]       00194000
+REPLYEND EQU   *                                           [EMU2]       00195000
+PUNSUBJ  EQU   *                                           [EMU2]       00196000
+         PUNCHC PROFCRD2     punch the profs subj card                  00197000
+         LTR   R15,R15       check for error                            00198000
+*[EMU1] END                                                             00199000
+         L     R15,APUNCLS   ROUTINE TO CLOSE PUNCH                     00200000
+         CALL  (15),((R11))  CALL IT                                    00201000
+         LTR   R15,R15       ANY ERRORS?                                00202000
+         BNZ   RET           SORRY...                                   00203000
+         LA    R4,CPUSTR                                                00204000
+         LOG   OFS034,(CA,RECVR,CA,(R4))                                00205000
+*----------[1] and [2]-------------------------------------------[2]    00206000
+*  Send a message to recipient of new mail telling him of the    [2]    00207000
+*  arrival.  The message sent is done by MSGNOH unless the       [2]    00208000
+*  parameter "MSGCMD" is found in MAILPTAB.  If found,  the      [2]    00209000
+*  value of MSGCMD is used as the CP command name.  Also,  an    [2]    00210000
+*  optional prefix may follow the message command.  This prefix  [2]    00211000
+*  is set in "MSGPREFIX".                                        [2]    00212000
+*                                                                [2]    00213000
+*  Message format is:                                            [2]    00214000
+*  (prefix) New mail from <From-field-contents>                  [2]    00215000
+*----------------------------------------------------------------[2]-   00216000
+         LA    R6,MSGBUF               [2] message buffer               00217000
+         L     R3,MAILPTAB             [2] parameter table              00218000
+         L     R15,ATBLUK              [2] tbluk routine                00219000
+         LA    R4,=C'MSGNOH'           [2] default msgcmd               00220000
+         LA    R5,6                    [2] Length                       00221000
+         CALL  (15),((R3),MSGCMD,L'MSGCMD,TWORK)                        00222000
+         LTR   R15,R15                 [2] find it?                     00223000
+         BNZ   NOMSGCMD                [2] nope - use default           00224000
+         LA    R4,1(R1)                [2]msgcmd name                   00225000
+         SR    R5,R5                                                    00226000
+         IC    R5,0(R1)                [2]lenght                        00227000
+NOMSGCMD EQU   *                                                        00228000
+         LR    R7,R5                   [2]length of MVCL                00229000
+         MVCL  R6,R4                   [2]move into header              00230000
+         MVI   0(R6),C' '              [2]insert space                  00231000
+         LA    R6,1(R6)                [2]                              00232000
+*--- now move in the recipient userid... [2]                            00233000
+         LA    R4,RECVR                [2]receiver userid               00234000
+         L     R5,RCVRLEN              [2] and length                   00235000
+         LR    R7,R5                   [2]                              00236000
+         MVCL  R6,R4                   [2]"MSGNOH userid" so far        00237000
+         MVI   0(R6),C' '                                               00238000
+         LA    R6,1(R6)                                                 00239000
+*--- see if msgprefix is defined...                                     00240000
+         L     R3,MAILPTAB             [2]get parmater table            00241000
+         L     R15,ATBLUK              [2]                              00242000
+         CALL  (15),((R3),MSGPREF,L'MSGPREF,TWORK) [2]                  00243000
+         LTR   R15,R15                 [2] not found?                   00244000
+         BNZ   NOPREFIX                [2] just as well                 00245000
+         LA    R4,1(R1)                [2] start of data                00246000
+         SR    R5,R5                                                    00247000
+         IC    R5,0(R1)                [2] length                       00248000
+         LR    R7,R5                   [2]                              00249000
+         MVCL  R6,R4                   [2] move the prefix in           00250000
+         B     NOPREFI2                -> skip default prefix    [1.24] 00251000
+NOPREFIX EQU   *                                                        00252000
+         MVI   0(R6),C'*'              default for GONE, et. al. [1.24] 00253000
+         LA    R6,1(,R6)               increment pointer         [1.24] 00254000
+NOPREFI2 EQU   *                       <- here when had prefix   [1.24] 00255000
+         MVI   0(R6),C' '                                               00256000
+         LA    R6,1(R6)                                                 00257000
+         MVC   0(L'NEWMSG,R6),NEWMSG   [2] nice message                 00258000
+         LA    R6,L'NEWMSG(R6)         [2]                              00259000
+*-- now (finally) add the from field from the memo header [2]           00260000
+         L     R4,MAILKTAB             [1]get keyword table             00261000
+         L     R15,ATBLUK              [1]tbluk address                 00262000
+*[4]     CALL  (15),((R4),FROM,L'FROM,TWORK)     [1]                    00263000
+*[4]     LTR   R15,R15                 [1]find it?                      00264000
+*[4]     BNZ   RET                     [1]nope - just return            00265000
+         L     R1,MAILSFLD             [4]get sender FIELDD             00266000
+         USING FIELDD,R1               [1]address the field             00267000
+         L     R2,FISTR                [1]start address of string       00268000
+         L     R3,FIEND                [1]end address of string         00269000
+         DROP  R1                      [1]                              00270000
+         SR    R3,R2                   [1]length of string              00271000
+*---- trim leading blanks ----- [2]                                     00272000
+TRIMIT   EQU   *                                                        00273000
+         CLI   0(R2),C' '              [2] leading blank?               00274000
+         BNE   TRIMMED                 [2] all done                     00275000
+         LA    R2,1(R2)                [2] bump pointer                 00276000
+         BCT   R3,TRIMIT               [2] trim leading blk             00277000
+TRIMMED  EQU   *                       [2]                              00278000
+         LR    R4,R3                   [2]hold length for later         00279000
+         LA    R7,L'MSGBUF+MSGBUF      [2] addr of end                  00280000
+         SR    R7,R6                   [2] remainder available          00281000
+         SR    R4,R7                   [2]|from| - |available|          00282000
+         BH    FROMLONG                [2]from is longer; trunc it      00283000
+         LR    R7,R3                   [2]from is shorter;              00284000
+FROMLONG EQU   *                       [2]                              00285000
+         MVCL  R6,R2                   [2]copy into message             00286000
+         LA    R1,MSGBUF               [2]point to msg command          00287000
+         LR    R0,R6                   [2]                              00288000
+         S     R0,=A(MSGBUF)           [2] total length                 00289000
+         DC    X'83100008'             [1]send it off                   00290000
+         SR    R15,R15                 [4]clean RC                      00291000
+RET      EQU   *                                                        00292000
+         L     R13,4(R13)                                               00293000
+         L     R14,12(R13)                                              00294000
+         LM    R0,R12,20(R13)                                           00295000
+         BR    R14                                                      00296000
+         SPACE ,                                                        00297000
+*--------------------------------------------------------------------   00298000
+*  ERROR/SPECIAL HANDLING                                               00299000
+*--------------------------------------------------------------------   00300000
+NOFILES  EQU   *             NOT ALLOWED TO SEND FILES TO THESE IDS     00301000
+         LOG   OFS033,(CA,RECVR)  TELL THE USER                         00302000
+         LA    R15,4         ERROR RETCODE                              00303000
+         B     RET                                                      00304000
+         SPACE ,                                                        00305000
+ILLEGAL  EQU   *                                                        00306000
+         LOG   OFS031,(CA,(R9))                                         00307000
+         LA    R15,4                                                    00308000
+         B     RET                                                      00309000
+         SPACE ,                                                        00310000
+NOSUCH   EQU   *                                                        00311000
+         LOG   OFS032,(CA,RECVR)                                        00312000
+         LA    R15,4                                                    00313000
+         B     RET                                                      00314000
+*                                                                       00315000
+COPY     MVC   0(0,R2),0(R3)                                            00316000
+MOVEIT   MVC   RECVR(0),0(R9)                                           00317000
+UPIT     TR    RECVR(0),UPCASE                                          00318000
+         SPACE ,                                                        00319000
+         LTORG ,                                                        00320000
+FROM     DC    C'From'                 [1]                              00321000
+SUBJECT  DC    C'Subject'              [EMU1]                           00322000
+RESENT   DC    C'Resent-To'            [EMU2]                           00323000
+NREPLYTO DC    C'In-Reply-To'          [EMU2]                           00324000
+MSGCMD   DC    C'Msgcmd'               [2]                              00325000
+MSGPREF  DC    C'Msgprefix'            [2]                              00326000
+NEWMSG   DC    C'New mail from '       [2]                              00327000
+SAVE     DS    18F                                                      00328000
+TWORK    DS    64F                                                      00329000
+MYPAB    DS    F                                                        00330000
+         DC    A(MYACT)      COPY OF ACTADR FOR SPECIAL EXIT            00331000
+MYACT    DS    (ACTLEN/4)F                                              00332000
+RCVRLEN  DS    F                       [2]                              00333000
+RECVR    DS    CL8                                                      00334000
+MSGBUF   DS    CL130                    [2]                             00335000
+PROFCARD DC    CL80' '       [1.20]                                     00336000
+         ORG   PROFCARD      [1.20]                                     00337000
+         DC    C':READ '     [1.20]                                     00338000
+PROFUSER DC    CL8' '        [1.20]                                     00339000
+         DC    C' NOTE     A' [1.20]                                    00340000
+         ORG   ,             [1.20]                                     00341000
+         SPACE ,             [1.20]                                     00342000
+TCMD     DC    C'TAG DEV PUN FILE ('   [1.20]                           00343000
+TNUM     DC    CL4'0000',C') ORIGIN '  [1.20]                           00344000
+THOST    DC    CL8' ',C' '             [1.20]                           00345000
+TUSER    DC    CL8' '                  [1.20]                           00346000
+TLEN     EQU    *-TCMD                 [1.20]                           00347000
+PROFCRD2 DC    CL80' '                 [EMU1]                           00348000
+         SPACE ,                       [EMU1]                           00349000
+         ORG   PROFCRD2                [EMU1]                           00350000
+         DC    X'FFFF40404040'         [EMU1]                           00351000
+PROFSUBJ DS    CL65                    [EMU1]                           00352000
+         DS    CL6                     [EMU1]                           00353000
+PROFTYPE DS    CL1                     [EMU1]    R=REPLY F=FORWARD      00354000
+PROFCLEN EQU   *-PROFSUBJ              [EMU1]    LENGTH TO CLEAR        00355000
+         ORG   ,                                                        00356000
+         END   PROFS                                                    00357000

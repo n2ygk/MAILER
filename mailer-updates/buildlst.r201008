@@ -1,0 +1,5 @@
+./ I 00100000          $ 100300 300                   10/31/88 15:14:21
+         NI    MAILFLG2,X'FF'-MFLG2BLD  Clear our problem flag
+         SPACE ,                                                        00100000
+./ I 00321000          $ 321500 500                   10/31/88 15:14:21
+         OI    MAILFLG2,MFLG2BLD   Remember we had a problem

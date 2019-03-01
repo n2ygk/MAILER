@@ -1,0 +1,27 @@
+./ I 00736600          $ 736610 10                    03/16/90 16:14:20
+.sp 2                                                                   00736610
+.cc 5                                                                   00736620
+Allow-File-From!Control use of MAILER to transport files                00736630
+.in +12                                                                 00736640
+.sp 1                                                                   00736650
+.us \\Allow-File-From,\ when true, allows BSMTP requests to use the     00736660
+FILE FROM: header (where the MAIL FROM: header would normally be        00736670
+used).                                                                  00736680
+When a FILE FROM: is seen, MAILER assumes that the "data" for the BSMTP 00736690
+transaction (normally a mail file) does not have any headers.           00736700
+Normally MAILER looks at the "data" to extract headers in case they     00736710
+are needed by any of the exits.                                         00736720
+It will not do this when the FILE FROM: header is found.                00736730
+.sp 1                                                                   00736740
+In addition, if FILE FROM: is being accepted, files being forwarded     00736750
+to another node via BSMTP will have a FILE FROM: line created by the    00736760
+BSMTP exit.  Files being delivered locally (by the LOCAL exit) will     00736770
+not have headers.
+.sp 1                                                                   00736780
+Specifying 'False' (the default) causes mail using FILE FROM: to be     00736790
+rejected.                                                               00736800
+.sp 1                                                                   00736810
+It is suggested that you specify 'True'.                                00736820
+This will provide the starting base for a domain addressed file transfer00736830
+network in BITNET.                                                      00736840
+.in -12                                                                 00736850

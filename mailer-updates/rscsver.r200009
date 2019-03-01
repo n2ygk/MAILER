@@ -1,0 +1,19 @@
+./ R 00087200 00087240 $ 87210 10                     10/04/88 14:36:36
+* If any RSCS-domains are defined and the hostname ends in one, then
+* strip it off since the various tables don't include them.
+./ R 00087320          $ 87328 8                      10/04/88 14:36:36
+         LA    R14,L'RSCSDOM/4     Number of RSCS-Domains.
+         LA    R15,RSCSDOM         First RSCS-Domain.
+DOMLOOP0 DS    0H
+         ICM   R4,B'1111',0(R15) no RSCS domain string defined?
+./ R 00087600          $ 87610 10                     10/04/88 14:36:36
+         BM    DOMNEXT       token too short to include it
+./ R 00088040          $ 88050 10                     10/04/88 14:36:36
+         BNE   DOMNEXT       don't match; try next
+./ I 00088240          $ 88248 8                      10/04/88 14:36:36
+         B     DOMDONE
+DOMNEXT  DS    0H
+         LA    R15,4(,R15)         Try the next RSCS-Domain
+         BCT   R14,DOMLOOP0           if there is one.
+./ R 00088320          $ 88910 590                    10/04/88 14:36:36
+DOMDONE  EQU   *             fall thru here to old lookup code

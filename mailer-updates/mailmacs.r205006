@@ -1,0 +1,2 @@
+./ I 00479800          $ 479900 100                   11/28/89 10:30:41
+MOPTALLM EQU   X'04'         Print all messages received

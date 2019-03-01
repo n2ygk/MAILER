@@ -1,0 +1,5 @@
+./ R 00001000          $ 1290 290                     10/21/88 16:01:41
+*COPY VERSION                                                           00001290
+*[1.22]new file:  contains mailer version number.                [1.22] 00001580
+./ R 00003000          $ 3990 990                     10/21/88 16:01:41
+&VERSION SETC  'R2.01'                                                  00003990

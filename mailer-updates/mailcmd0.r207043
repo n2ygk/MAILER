@@ -1,0 +1,10 @@
+./ I 00171000          $ 171100 100                   04/04/91 09:43:42
+         TM    FLAG,SMSFLG         Requested response as SMSG?
+         BNO   TRYNEXT2            ---> No
+         L     R1,=A(ENDSMSG)      end marker                           00889240
+         LA    R0,L'ENDSMSG        length of above                      00889590
+         BAL   R14,WRITEMSG        send the message                     00889880
+TRYNEXT2 EQU   *
+./ I 00654000          $ 654060 60                    04/04/91 09:43:42
+         SPACE 1                                                        00969150
+ENDSMSG  DC    C'- SMSG output complete.'                               00969180

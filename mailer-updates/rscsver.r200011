@@ -1,0 +1,4 @@
+./ R 00065570          $ 65760 190                    10/12/88 17:12:25
+         ICM   R9,B'1111',MBXLCL    Get userid node pointer             00065570
+./ R 00082770          $ 82860 90                     10/12/88 17:12:25
+         ICM   R9,B'1111',MBXDML   Get host node pointer                00082770

@@ -1,0 +1,17 @@
+./ I 00903000          $ 903300 300                   10/27/88 14:19:00
+         CLC   @CODE,=A(CMDNET)    Command from network?                00902490
+         BE    CHKSMS        ---> Yes                                   00903000
+./ I 00906670          $ 906770 100                   10/27/88 14:19:00
+         L     R1,@SENDNOD   Get sender node address
+./ R 00908030          $ 908090 60                    10/27/88 14:19:00
+         BE    CHKSMS30                   ---> Yes, accept any          00908030
+         CLC   @CODE,=A(CMDNET)           Command from network?         00902490
+         BE    CHKSMS20                   ---> Yes                      00903000
+./ R 00908610 00908900 $ 908690 80                    10/27/88 14:19:00
+         BNE   CHKSMS40                   ---> No, go try next          00908610
+CHKSMS20 DS    0H                                                       00908900
+         CLC   MAINTNOD-MAINTID(,R15),0(R1) Maintainer node match?      00908320
+         BNE   CHKSMS40                   ---> No, go try next          00908610
+CHKSMS30 DS    0H                                                       00908900
+./ R 00909770          $ 909860 90                    10/27/88 14:19:00
+CHKSMS40 DS    0H                                                       00909770

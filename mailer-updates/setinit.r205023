@@ -1,0 +1,4 @@
+./ I 00366896          $ 366898 2                     02/21/90 14:57:38
+         DC    A(DBGFLG7-MAILBLOK,MAILTR76,DBGSNDLS)                    00366896
+./ I 00387982          $ 387985 3                     02/21/90 14:57:38
+MAILTR76 DC    Y(13),C'SENDLST-TRACE'                                   00387982

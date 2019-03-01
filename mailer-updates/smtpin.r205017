@@ -1,0 +1,10 @@
+./ I 00625000          $ 625500 500                   12/22/89 15:36:07
+        mailblok.mailflg2 |= MFLG2BLD;                                  00625500
+./ I 00760000          $ 760100 100                   12/22/89 15:36:07
+                if (mailblok.mailflg2 & MFLG2BLD) {                     00760100
+                   if (mailblok.dbgflg[0] & TRACE_S_GETDATA) {          00760200
+                       wrterm("==> s_getdata: No errors from sendlst"); 00760300
+                       wrterm("==> s_getdata: Errors in RCPT list");    00760400
+                   }                                                    00760500
+                   return error;                                        00760700
+                }                                                       00760800

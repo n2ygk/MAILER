@@ -1,0 +1,24 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R208004    Handle RECFM=V mailer profile correctly
+R208002    Correct DISTSUB ASSEMBLE to properly handle long MAIL FROM:
+*          lines
+R208000    Change version to 2.08
+R207999    Change version to 2.08 Beta
+R207036    Add debug tracing to VALIDATE
+R207019    Don't send BSMTP files into black hole if missing '.'
+R207015    New trace flags:
+*              smtpin-trace-check_sender
+*              smtpin-trace-check_domain
+R207006    Add SET command
+R207000    Change version to 2.07
+R206000    Change version to 2.06
+R205015    Add control to allow accpetance of BSMTP streams with
+*          FILE FROM: header.
+R205014    Add control to turn off looking for RFC822 headers inside
+*          the BSMTP envelope
+R205013    Move debugging controls to variables
+R205000    Change version to 2.05
+R204000    Change version to 2.04
+R203009    Change version to 2.03B
+R202016    Fix MAILER007E RC=0002 during RELOAD processing.
+R202010    Command processing enhancements.

@@ -1,0 +1,222 @@
+./ D 00082690 00083570                                01/31/91 18:34:54
+./ D 00083600 00083750                                01/31/91 18:34:54
+./ R 00083770          $ 83860 90                     01/31/91 18:34:54
+.us \6.14.^Copy files to \MAILER\ DVM's 193 disk!&c0614                 00083770
+./ R 00084310          $ 84315 5                      01/31/91 18:34:54
+.us \6.15.^Copy files to the \MAILER\ DVM's 191 disk!&c0615             00084310
+./ R 00084780          $ 84790 10                     01/31/91 18:34:54
+.us \7.^^Overview of the \MAILER\ product!&c07
+.in +.4i
+.br
+.us \7.1^Overview of \MAILER\ Operation!&c0701                          00084780
+.br
+.us \7.2^Overview of the file forwarding operation!&c0702               00084780
+.in -.4i
+./ I 00109020          $ 109030 10                    01/31/91 18:34:54
+.hi 1.2i                                                                00106720
+./ I 00109050          $ 109070 20                    01/31/91 18:34:54
+.hi 0                                                                   00107390
+./ R 00546662 00546819 $ 546663 1                     01/31/91 18:34:54
+The FORWARDX EXEC contains the code to implement the file forwarding    00546662
+.us \function of \MAILER\.                                              00546663
+It is maintained using the EXECUPDT command.                            00546664
+To edit the file issue the following command:                           00546665
+.in +.33i                                                               00546666
+.sp 1                                                                   00546667
+.bd XEDIT FORWARDX $EXEC (CTL MAILEXEC                                  00546668
+.in -.33i                                                               00546669
+This will cause 1 update to be applied (LCLMODS).                       00546670
+All your local changes will be made in this update.                     00546671
+Make the following changes:                                             00546672
+.in -.33i                                                               00546673
+.subhead 6.13.1 Remove "configuration not done" message                 00546674
+.sr c061301 = &sysppage                                                 00546675
+.in +.33i                                                               00546676
+Issue the following commands:                                           00546677
+.in +.33i                                                               00546678
+.sp 1
+/*** Note ***/                                                          00546679
+.br                                                                     00546680
+DELETE 4                                                                00546681
+.sp 1
+.in -.33i                                                               00546682
+This will delete 4 lines, the last of which is an 'exit 8' REXX         00546683
+statement                                                               00546684
+.in -.33i                                                               00546685
+.subhead 6.13.2 Set the spooled console destination                     00546686
+.sr c061302 = &sysppage                                                 00546687
+.in +.33i                                                               00546688
+If you want the console spooled (to retain a report of the actions      00546689
+performed by the file forwarder) you must set the 'consoleto' variable. 00546690
+Change the line to read:                                                00546691
+.in +.33i                                                               00546692
+.sp 1
+consoleto = 'userid'                                                    00546693
+.sp 1
+.in -.33i                                                               00546694
+where 'userid' is the local destination for the console log.            00546695
+.in -.33i                                                               00546696
+.subhead 6.13.3 Change the mailer userid                                00546697
+.sr c061303 = &sysppage                                                 00546698
+.in +.33i                                                               00546699
+If the userid of the Mailer DVM is not 'MAILER' you will need to        00546700
+change the 'mailerid' variable to the correct userid.                   00546701
+.in -.33i                                                               00546702
+.subhead 6.13.4 Set the MAILER 191 disk link address                    00546703
+.sr c061304 = &sysppage                                                 00546704
+.in +.33i                                                               00546705
+.in -.33i                                                               00546706
+.subhead 6.13.5 Change the server exclusion list                        00546707
+.sr c061305 = &sysppage                                                 00546708
+.in +.33i                                                               00546709
+.in -.33i                                                               00546710
+.subhead 6.13.6 Change the source exclusion list                        00546711
+.sr c061306 = &sysppage                                                 00546712
+.in +.33i                                                               00546713
+.in -.33i                                                               00546714
+.subhead 6.13.7 Changes for Single System Image sites                   00546715
+.sr c061307 = &sysppage                                                 00546716
+.in +.33i                                                               00546717
+.in -.33i                                                               00546718
+.subhead 6.13.8 Save the updates on disk                                00546719
+.sr c061308 = &sysppage                                                 00546720
+.in +.33i                                                               00546721
+To save the changes you have made issue the following command:          00546722
+.in +.33i                                                               00546723
+.sp 1                                                                   00546724
+.bd FILE = = A                                                          00546725
+.in -.33i                                                               00546726
+.in -.33i                                                               00546727
+.subhead 6.13.9 Create a new FORWARDX EXEC file                         00546728
+.sr c061309 = &sysppage                                                 00546729
+.in +.33i                                                               00546730
+To apply the update you have created and create a new FORWARDX EXEC file00546731
+issue the following command:                                            00546732
+.in +.33i                                                               00546733
+.sp 1                                                                   00546734
+.bd EXECUPDT FORWARDX EXEC (CTL MAILEXEC                                00546735
+.in -.33i                                                               00546736
+.in -.33i                                                               00546737
+.subhead 6.14. Copy files to MAILER DVM 193 disk                        00546738
+.sr c0614 = &sysppage                                                   00546739
+.in +.33i                                                               00546740
+Copy the following files from the A and C disks to the mailer DVM       00546741
+193 disk:                                                               00546742
+.sp 1                                                                   00546743
+.in +.33i                                                               00546744
+MAILER   EXEC                                                           00546745
+.br                                                                     00546746
+MAILER   MODULE                                                         00546747
+.br                                                                     00546748
+MAILER   TXTLIB                                                         00546749
+.br                                                                     00546750
+nodename PROFILE                                                        00546751
+.br                                                                     00546752
+MABNXIT  EXEC                                                           00546753
+.in -.33i                                                               00546754
+.sp 1                                                                   00546755
+If you want to support the FORWARD and/or  MAILLIST commands (you do not00546756
+have to do this), you will need to copy the following files.            00546757
+.us \If these files are not copied \MAILER\ will issue a message saying 00546758
+the commands are not implemented.                                       00546759
+.in +.33i                                                               00546760
+.sp 1                                                                   00546761
+FORWARD  MAILER                                                         00546762
+.br                                                                     00546763
+MAILLIST MAILER                                                         00546764
+.in -.33i                                                               00546765
+.sp 1                                                                   00546766
+If you want to implement file forwarding (you do not have to do this),  00546767
+you will need to copy the following files.                              00546768
+.in +.33i                                                               00546769
+.sp 1                                                                   00546770
+FORWARDX EXEC                                                           00546771
+.in -.33i                                                               00546772
+.sp 1                                                                   00546773
+To copy the files issue the following commands:                         00546774
+.in +.33i                                                               00546775
+.sp 1                                                                   00546776
+.bd \\CP LINK MAILER 193 111 W\ writepw                                 00546777
+.br                                                                     00546778
+.bd ACCESS 111 Z                                                        00546779
+.br                                                                     00546780
+.bd COPYFILE MAILER EXEC A = = Z (OLDD                                  00546781
+.br                                                                     00546782
+.bd COPYFILE MAILER MODULE C = = Z (OLDD                                00546783
+.br                                                                     00546784
+.bd COPYFILE MAILER TXTLIB C = = Z (OLDD                                00546785
+.br                                                                     00546786
+.bd \\COPYFILE\ nodename \PROFILE A = = Z (OLDD\                        00546787
+.br                                                                     00546788
+.bd COPYFILE MABNXIT EXEC C = = Z (OLDD                                 00546789
+.in -.33i                                                               00546790
+.sp 1                                                                   00546791
+If you are supporting the FORWARD and/or MAILLIST commands issue the    00546792
+following commands:                                                     00546793
+.in +.33i                                                               00546794
+.sp 1                                                                   00546795
+.bd COPYFILE FORWARD MAILER C = = Z (OLDD                               00546796
+.br                                                                     00546797
+.bd COPYFILE MAILLIST MAILER C = = Z (OLDD                              00546798
+.in -.33i                                                               00546799
+.sp 1                                                                   00546800
+If you are supporting file forwarding issue the following commands:     00546801
+.in +.33i                                                               00546802
+.sp 1                                                                   00546803
+.bd COPYFILE FORWARDX EXEC A = = Z (OLDD                                00546804
+.in -.33i                                                               00546805
+.sp 1                                                                   00546806
+Using the OLDD(ate) option allows you to verify that the file you have  00546807
+on the mailer DVM's disk is the same as the file you have on your       00546808
+maintenance disks (because the date and time will match).               00546809
+Release the mailer DVM's 193 disk.                                      00546810
+.in +.33i                                                               00546811
+.sp 1                                                                   00546812
+.bd RELEASE Z (DET                                                      00546813
+.in -.33i                                                               00546814
+.sp 1                                                                   00546815
+You should always free up the disk after you are done.                  00546816
+.in -.33i                                                               00546817
+.subhead 6.15. Copy files to the MAILER DVM's 191 disk                  00546818
+.sr c0615 = &sysppage                                                   00546819
+./ R 00561550 00561660 $ 561560 10                    01/31/91 18:34:54
+.heading 7.0 Overview of the MAILER product
+.sr c07 = &sysppage                                                     00561660
+.in +.33i
+.sp 2
+The mailer system is composed of two components.                        00564000
+.us \A mail transfer agent (\MAILER\) and a file forwarding agent
+.us \(\FORWARDX\).
+.sp 1
+The mail transfer agent accepts files from local users or the network
+and decides how to route them.
+This process is aided and abetted by creation of tables describing
+????.
+
+.in -.33i
+.subhead 7.1 Overview of MAILER Operation                               00561550
+.sr c0701 = &sysppage                                                   00561660
+./ R 00564000          $ 564490 490                   01/31/91 18:34:54
+.us \This is a brief description of what \MAILER\ does.                 00564000
+./ R 00620820          $ 620900 80                    01/31/91 18:34:54
+set true) an entry of *DEFAULT*@*DEFAULT* is searched for.              00620900
+./ R 00623260          $ 623270 10                    01/31/91 18:34:54
+(i.e., "a" in "<@a,@b:userid@hostid>").                                 00623270
+./ I 00627590          $ 627680 90                    01/31/91 18:34:54
+.subhead 7.2 Overview of the file forwarding operation                  00561550
+.sr c0702 = &sysppage                                                   00561660
+.in +.33i
+.sp 2
+.in -.33i
+./ R 00766542          $ 766545 3                     01/31/91 18:34:54
+.us \See section 7.1, \Overview of MAILER Operation\ for a complete     00766542
+./ R 00783980          $ 784370 390                   01/31/91 18:34:54
+.us \See section 7.1, \Overview of MAILER operation\ for a complete     00783980
+./ R 00796210 00796220 $ 796215 5                     01/31/91 18:34:54
+When using your local RSCS for the default route destination of .BITNET 00796215
+entries the                                                             00796220
+*DEFAULT*ROUTE* entry should be coded as:                               00796225
+./ R 00796250          $ 796255 5                     01/31/91 18:34:54
+*DEFAULT*ROUTE*.BITNET   *       *         TRYRSCS  1  ;                00796255
+./ R 00797150          $ 797240 90                    01/31/91 18:34:54
+.us \See section 7.1, \Overview of MAILER operation\ for a complete     00797150

@@ -1,0 +1,119 @@
+/*-------------------------------------------------------------------*  00001000
+ *    MAILER -- Copyright (c) 1982,1985 Columbia University.         *  00002000
+ *  Program Property of the Trustees of Columbia University in the   *  00003000
+ *  City of New York.                                                *  00004000
+ *-------------------------------------------------------------------*/ 00005000
+/*                                                                      00006000
+ * structs.h:  C versions of various Mailer data structures.            00007000
+ *   Keep this file in sync with MAILMACS MACRO.                        00008000
+ *                                                                      00009090
+ * A lot of these structs are really dumb looking.  This is because     00009180
+ * they reflect assembler DSECTs which did things like put a length     00009270
+ * in one byte and a pointer in the other 3 bytes of a word.  Due to    00009360
+ * the language syntax,  it also means a whole bunch of macros are      00009450
+ * defined herein which cast a 3-byte pointer to it's actual type.      00009540
+ *                                                                      00009630
+ * Alan Crosswell 12/85                                                 00010000
+ */                                                                     00011000
+                                                                        00012000
+struct fieldd {                                                         00013000
+    struct fieldd *finext;                                              00014000
+    struct {                                                            00015690
+        unsigned f_flg1:8;                                              00016380
+        unsigned f_extn:24;                                             00017070
+    } s1;                                                               00017760
+#define FINEXT(f) ((f)->finext)                                         00018450
+#define FIEXTN(f) ((struct fieldd *)(f)->s1.f_extn)                     00019140
+#define fiextn s1.f_extn                                                00019830
+#define fiflg1 s1.f_flg1                                                00020520
+#define FIEXTFLG 0x80                                                   00021210
+#define FIINVFLG 0x40                                                   00021900
+#define FIEDIFLG 0x20                                                   00022590
+    struct {                                                            00023280
+        unsigned f_ecnt:8;                                              00023970
+        unsigned f_tok:24;                                              00024660
+    } s2;                                                               00025350
+#define FITOK(f) ((struct tokend *)(f)->s2.f_tok)                       00026040
+#define fitok s2.f_tok                                                  00026730
+#define fiecnt s2.f_ecnt                                                00027420
+    unsigned fipars;                                                    00030000
+    char *fistr;                                                        00031000
+    char *fiend;                                                        00032000
+};                                                                      00033000
+                                                                        00034000
+struct tokend {                                                         00035000
+    struct tokend *toknext;                                             00037280
+#define TOKNEXT(t) ((struct tokend *)(t)->toknext)                      00037870
+    struct tokend *tokprev;                                             00038460
+    char *tokptr;                                                       00039340
+#define TOKPTR(t) ((char *)(t)->tokptr)                                 00039630
+    int toklen;                                                         00040230
+    char toktype;                                                       00041310
+#define TOKATM  'A'                                                     00042000
+#define TOKQSTR '"'                                                     00043000
+#define TOKCMA  ","                                                     00044000
+#define TOKLTP  "("                                                     00045000
+#define TOKRTP  ")"                                                     00046000
+#define TOKLTB  "<"                                                     00047000
+#define TOKRTB  ">"                                                     00048000
+#define TOKAT   "@"                                                     00049000
+    char unused1;                                                       00051680
+    char unused2;                                                       00052670
+    char unused3;                                                       00053660
+};                                                                      00056000
+                                                                        00057000
+struct mbox {                                                           00058990
+    struct mbox *mbxnext;                                               00059980
+    struct mbox *mbxprev;                                               00060970
+    struct node *mbxrtl;                                                00062550
+#define MBOXRTL(a) ((struct node *)(a)->mbxrtl)                         00063140
+    int mbxrcnt;                                                        00063940
+    struct node *mbxlcl;                                                00065520
+#define MBOXLCL(a) ((struct node *)(a)->mbxlcl)                         00066110
+    int mbxlcnt;                                                        00066910
+    struct node *mbxdml;                                                00068490
+#define MBOXDML(a) ((struct node *)(a)->mbxdml)                         00069080
+    int mbxdcnt;                                                        00069880
+};                                                                      00072000
+                                                                        00073000
+struct node {                                                           00074590
+    struct node *nodnext;                                               00075180
+    struct node *nodprev;                                               00075770
+    struct tokend *noddown;                                             00076360
+};                                                                      00077000
+                                                                        00078000
+struct routd {                                                          00079000
+    char rtroute[8];                                                    00080000
+    char rtuser[8];                                                     00081000
+    char rtprog[8];                                                     00082000
+    char rtparm[8];                                                     00083000
+    char rttype[2];                                                     00084000
+    char rtflags;                                                       00085000
+#define RTP1 0x80                                                       00086000
+#define RTP2 0x40                                                       00087000
+#define RTP3 0x20                                                       00088000
+    char rtrsvd;                                                        00089000
+    int *rtaddr;                                                        00090000
+    int rtmsgcnt;                                                       00091000
+    int rtmsgfai;                                                       00092000
+    int rtmsglen;                                                       00093000
+    int rtmsgmax;                                                       00094000
+};                                                                      00095000
+                                                                        00096000
+struct actadr {                                                         00097000
+    struct actadr *actnext;                                             00098000
+    struct mbox *actmbox;                                               00099680
+    struct routd *actrt;                                                00100000
+    struct actadr *actchn;                                              00101000
+};                                                                      00102000
+                                                                        00103000
+struct vald {                                                           00104000
+    char vauser[8];                                                     00105000
+    char vaprog[8];                                                     00106000
+    char vaparm[8];                                                     00107000
+    int *vaaddr;                                                        00108000
+    int vamsgcnt;                                                       00109000
+    int vamsgfai;                                                       00110000
+    int vamsglen;                                                       00111000
+    int vamsgmax;                                                       00112000
+};                                                                      00113000

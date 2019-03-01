@@ -1,0 +1,35 @@
+./ R 01782680          $ 1782681 1                    03/16/90 15:13:20
+.sp 2                                                                   01782667
+MAILER079E **** MAILER PROFILE coding error ***** : LOCAL exit          01782668
+destination not
+.br
+.us \MAILER080E found in RSCS-Domains or Local-Hosts: \local-name\
+.in +4                                                                  01782669
+.sp 1                                                                   01782670
+A destination specifies use of the LOCAL exit, but is not listed in     01782671
+either the RSCS-Domains or Local-Hosts list.                            01782672
+This is more than likely a coding error.                                01782673
+.sp 1
+This message is issued by BUILDLST.
+BUILDLST pretends that things are coded correctly and recovers from
+this, but you should fix it up anyway.
+.in -4                                                                  01782674
+.sp 2                                                                   01782667
+MAILER081U Host in routeaddress does not support mail forwarding, try   01782668
+a different path
+.br
+.us \MAILER082U Host to change: \host-name\
+.in +4                                                                  01782669
+.sp 1                                                                   01782670
+MAILER's lookup for a host has found a line which specifies use of      01782671
+either the DEFRT or TRYRSCS exit.                                       01782672
+The address being used is not a user@host, but a routaddress (@host)    01782673
+which cannot be delivered by either of these exits (since there is no
+associated userid to give to NJE).
+.sp 1
+This message may indicate a coding problem in the profile and not
+a problem in the user's mail address.
+The coding problem would occur if the correct exit to be using for this
+destinaion is the BSMTP exit.
+.in -4                                                                  01782674
+.in -.33i                                                               01782680

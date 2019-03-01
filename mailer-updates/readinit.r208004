@@ -1,0 +1,16 @@
+./ I 00188000          $ 188100 100                   05/22/91 17:17:30
+         L     R1,FSCBBUFF   Get buffer address                         00188100
+         L     R15,FSCBSIZE  Get buffer length                          00188200
+         S     R15,=F'2'     Decrement for MVC and EX                   00188300
+         MVI   0(R1),C' '    Blank out the buffer                       00188400
+         EX    R15,CLRBUFF                                              00188500
+./ I 00377000          $ 377100 100                   05/22/91 17:17:30
+         USING FSCBD,R8      ADDRESS THE FSCB                           00182000
+         L     R1,FSCBBUFF   Get buffer address                         00378200
+         L     R15,FSCBSIZE  Get buffer length                          00378400
+         DROP  R8
+         S     R15,=F'2'     Decrement for MVC and EX                   00378600
+         MVI   0(R1),C' '    Blank out the buffer                       00378800
+         EX    R15,CLRBUFF                                              00188500
+./ I 00782000          $ 782500 500                   05/22/91 17:17:30
+CLRBUFF  MVC   1(0,R1),0(R1)       Used to clear input buffer           00782500

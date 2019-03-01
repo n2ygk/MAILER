@@ -1,0 +1,263 @@
+*[1.22] initialize @C@STACK for C function interface             [1.22] 00001290
+*[1] X1.10 - ADD PARM TO MAILER COMMAND LINE = PROFILE NAME             00001580
+MAIL     TITLE 'CUCCA VM NETWORK MAILER - VERSION 1'                    00002000
+*---------------------------------------------------------------------* 00003000
+*      MAILER -- Copyright (c) 1982,1987 Columbia University.         * 00004490
+*    Program Property of the Trustees of Columbia University in the   * 00005000
+*    City of New York.                                                * 00006000
+*---------------------------------------------------------------------* 00007000
+MAILER   CSECT ,                                                        00008000
+         PRINT NOGEN                                                    00009000
+* MAILER - MAIL DISTRIBUTION DISCONNECTED MACHINE.                      00010000
+*                                                                       00011000
+* THIS IS THE TOP LEVEL PROGRAM FOR THE MAILER DISCONNECTED             00012000
+* MACHINE.  IT INITIALIZES THE ROUTING TABLE, ISSUES THE                00013000
+* NECESSARY CP COMMANDS TO GET STARTED AND WAITS FOR READER             00014000
+* INTERRUPTS.  ONCE AN INTERRUPT HAS BEEN RECEIVED, THE MAIN            00015000
+* PROCEDURE, MAILMAIN, IS ENTERED.  ALL FILES IN THE READER ARE         00016000
+* PROCESSED BY MAILMAIN PRIOR TO RETURNING.  ADDITIONALLY, MAILMAIN     00017000
+* IS CALLED ONCE JUST AFTER INITIALIZATION EVEN IF NO READER            00018000
+* INTERRUPT WAS RECEIVED. THIS IS TO CHECK FOR FILES THAT WERE          00019000
+* ALREADY IN THE READER PRIOR TO THE PROGRAM STARTING UP.               00020000
+*                            ALAN CROSSWELL 7/81                        00021000
+* LAST EDIT: 10/26/82 BY ALAN CROSSWELL                                 00022000
+         COPY  VERSION                                           [1.22] 00022500
+         BLOCKS ,                                                       00023000
+         TRACETBL ,                                                     00023500
+         REGEQU ,                                                       00024000
+         COPY  MAILEQU                                                  00024100
+         SPACE 2                                                  UW002 00024300
+         WXTRN LCLMOD                                             UW002 00024600
+         SPACE 2                                                        00024700
+         PRINT GEN                                                      00024800
+         EJECT ,                                                        00025000
+MAILER   CSECT ,                                                        00026000
+         USING MAILER,R15    TEMP ADDRESSABILITY                        00027000
+         B     EYESKIP       SKIP OVER ID                               00028000
+MYNAME   DC    CL8'MAILER',CL8'&SYSDATE'                                00029000
+         DC    C'  '                                                    00029050
+         DC    C'Copyright (c) 1982, 1987, The Trus'                    00029100
+         DC    C'tees of Columbia University in the'                    00029150
+         DC    C' City of New York.                '                    00029200
+         DC    C'Permission is granted to any indiv'                    00029250
+         DC    C'idual or institution to use, copy,'                    00029300
+         DC    C' or redistribute this software so '                    00029350
+         DC    C'long as it is not sold for profit,'                    00029400
+         DC    C' provided that this notice and the'                    00029450
+         DC    C' original copyright notices are re'                    00029500
+         DC    C'tained.  Columbia University makes'                    00029550
+         DC    C' no representations about the suit'                    00029600
+         DC    C'ability of this software for any p'                    00029650
+         DC    C'urpose.  It is provided "as is" wi'                    00029700
+         DC    C'thout express or implied warranty.'                    00029750
+         DC    C'  May be used but not sold without'                    00029800
+         DC    C' permission.                      '                    00029850
+EYESKIP  DS    0H                                                       00030000
+         DROP  R15                                                      00031000
+         STM   R14,R12,12(R13)                                          00032000
+         LR    R12,R15                 GET BASE ADDRESS                 00033000
+         USING MAILER,R12    ADDRESS THIS CSECT                         00034000
+         LA    R14,SAVE                                                 00035000
+         ST    R13,4(R14)                                               00036000
+         ST    R14,8(R13)                                               00037000
+         LR    R13,R14                                                  00038000
+         SPACE ,                                                        00039000
+*--------------------------------------------------------------------   00040000
+*        GET PROFILE NAME FROM COMMAND LINE IF SUPPLIED    [1]          00041000
+*--------------------------------------------------------------------   00042000
+         CLI   8(R1),X'FF'   NOTHING?                      [1]          00043000
+         BE    NOPROF                                      [1]          00044000
+         MVC   MAILRTFN(8),8(R1) MOVE IN FN                [1]          00045000
+         CLI   16(R1),X'FF'   FT DEFAULT?                  [1]          00046000
+         BE    NOPROF                                      [1]          00047000
+         MVC   MAILRTFN+8(8),16(R1) MOVE IN FT             [1]          00048000
+         CLI   24(R1),X'FF'   FM DEFAULT?                  [1]          00049000
+         BE    NOPROF                                      [1]          00050000
+         MVC   MAILRTFN+16(2),24(R1)                       [1]          00051000
+NOPROF   EQU   *                                           [1]          00052000
+         STRINIT ,           INTIALIZE GETMAIN POINTERS                 00053000
+         SPACE ,                                                        00054000
+         WTR   LER001,(CA,MAILVERS,CA,MYNAME+8)                  [1.22] 00055490
+         MVI   MAILSTAT,0    STATUS FLAG INITIALLY ZERO                 00056000
+         MVI   MAILCMD,0     COMMAND FLAGS INITIALLY ZERO               00057000
+         XC    MAILCMDL,MAILCMDL SAME FOR COMMAND LIST                  00058000
+*--------------------------------------------------------------------   00059000
+*        USE VARIABLE GETMAIN TO GET A STACK.  ALL FUTURE STORAGE       00060000
+*        NEEDS WILL BE TAKEN FROM THE STACK.                            00061000
+*--------------------------------------------------------------------   00062000
+         GETMAIN VC,LA=LIMITS,A=STACKORG   ALLOCATE THE STACK           00063000
+         LTR   R15,R15       GETMAIN FAILED?                            00064000
+         BNZ   GETFAIL                                                  00065000
+         L     R3,=V(@C@STACK)    find the C-glue stack pointer  [1.22] 00065100
+         LM    R1,R2,STACKORG     get stackorg addr,len          [1.22] 00065200
+         ST    R1,0(,R3)          give part of it to C           [1.22] 00065300
+         A     R1,=F'10240'       give C 10K                     [1.22] 00065400
+         S     R2,=F'10240'       which means 10K less for asm   [1.22] 00065500
+         STM   R1,R2,STACKORG     new stack origin               [1.22] 00065600
+RELENT   EQU   *             RELOAD ENTRY                               00066000
+         XC    MAILRMAX,MAILRMAX  CLEAR A STATISTICS COUNTER            00067000
+         XC    MAILRTOT,MAILRTOT                                        00068000
+         XC    MAILICNT,MAILICNT                                        00069000
+         XC    MAILSTMX,MAILSTMX                                        00070000
+         LA    R1,D4         4 DWORDS                                   00071000
+         DC    X'8310000C'   PSEUDO-TIMER                               00072000
+         MVC   MAILTIME,D4   COPY TIME STAMP                            00073000
+         MVC   STACK,STACKORG          SET FIRST STACK POINTER          00074000
+         SPACE ,                                                        00075000
+*--------------------------------------------------------------------   00076000
+*        HOLD THE READER VIA CP SPOOL COMMAND                           00077000
+*--------------------------------------------------------------------   00078000
+         LA    R1,HOLDRDR                                               00079000
+         LA    R0,LHOLDRDR                                              00080000
+         DC    X'83100008'   HOLD THE READER                            00081000
+         SPACE ,                                                        00082000
+*--------------------------------------------------------------------   00083000
+*        CALL OPTIONAL LOCAL MOD USER EXIT IF IT IS LOADED.             00084000
+*--------------------------------------------------------------------   00085000
+         ICM   R15,B'1111',=V(LCLMOD)  SEE IF THIS SYMBOL IS RESOLVED   00086000
+         BZ    NOLCLMOD      NO LOCAL MODS EXIT PROVIDED                00087000
+         LA    R1,=A(MAILBLOK) PASS ADDRESS OF MAILBLOK TO USER EXIT    00088000
+         BALR  R14,R15       CALL IT                                    00089000
+         LTR   R15,R15       DID IT FAIL?                               00090000
+         BNZ   ERRRET        LCLMOD EXIT FAILED                         00091000
+NOLCLMOD EQU   *                                                        00092000
+         SPACE ,                                                        00093000
+*--------------------------------------------------------------------   00094000
+*        GET THE VM USERID I AM RUNNING UNDER SO THAT I MAY TRY         00095000
+*        TO PREVENT LOOPING MESSAGES.                                   00096000
+*--------------------------------------------------------------------   00097000
+         LA    R1,EXTID      ADDRESS OF EXTENDED ID BUFFER              00098000
+         LA    R0,LEXTID     LENGTH OF IT                               00099000
+         DC    X'83100000'   DIAG 0 STORE EXTENDED ID CODE              00100000
+         MVC   MAILVMID,EXTVMID  GET THIS MACHINE'S VM USERID           00101000
+         SPACE ,                                                        00102000
+*--------------------------------------------------------------------   00103000
+*        LOAD THE ROUTING TABLE AND USER EXITS.                         00104000
+*--------------------------------------------------------------------   00105000
+         CALL  READINIT,(MAILBLOK)     READ MAILER PROFILE              00106000
+         LTR   R15,R15       ANY PROBLEMS                               00107000
+         BNZ   ERRRET                                                   00108000
+         CALL  SETINIT,(MAILBLOK)      NOW SET VALUES READ              00109000
+         LTR   R15,R15       ANY PROBLEMS                               00110000
+         BNZ   ERRRET                                                   00111000
+         CALL  MAILSMSI      SET UP SMSG HANDLER                        00112000
+         LTR   R15,R15                                                  00113000
+         BNZ   ERRRET                                                   00114000
+         SPACE ,                                                        00115000
+         WTR   LER004,(CA,CPUSTR)      WRITE STARTUP MESSAGE            00116000
+         WTR   LER011,(DA,STACK+4)  TELL HOW BIG REMAINING STACK IS     00117000
+         WTR   LER069               'Initializing trace table'          00117290
+         MAILTRC INIT               create trace table on stack         00117400
+         WTR   LER011,(DA,STACK+4)  Tell how big remaining stack is     00117600
+         WTR   LER005        'INIT. COMPLETE'                           00118000
+         SPACE ,                                                        00119000
+*--------------------------------------------------------------------   00120000
+*        MAIN PROGRAM LOOP -                                            00121000
+*        (1) PROCESS READER FILE(S)                                     00122000
+*        (2) WAIT FOR READER INTERRUPT                                  00123000
+*        (3) LOOP BACK TO (1)                                           00124000
+*--------------------------------------------------------------------   00125000
+MAINLOOP EQU   *                                                        00126000
+         LA    R1,CKWRITE    Check for writeable A-disk          [1.24] 00126200
+         SVC   202           STATEW * * A                        [1.24] 00126400
+         DC    AL4(NONWRITE)                                     [1.24] 00126600
+         CLI   MAILCMD,0     ANY COMMANDS RECEIVED?                     00127000
+         BNE   COMMANDS      GO DO THE COMMANDS                         00128000
+         TM    MAILSTAT,MSTQSC   MAILER IN QUIESCENT STATE?             00129000
+         BNO   MAIN2         NOPE, DO SOME WORK                         00130000
+         WTR   LER042        REMIND THEM...                             00131000
+         B     WAIT          AND GO BACK TO SLEEP                       00132000
+MAIN2    EQU   *                                                        00133000
+         MVC   STACKP,STACK  RESET STACK POINTER                        00134000
+         CALL  MAILMAIN,(MAILBLOK)                                      00135000
+         LTR   R15,R15       ANY ERRORS?                                00136000
+         BNZ   ERRRET                                                   00137000
+         WTR   LER006        WAITING FOR WORK MESSAGE                   00138000
+WAIT     EQU   *                                                        00139000
+         WAITT ,             LET TERMINAL QUIESCE                       00140000
+         OI    MAILSTAT,MSTINWT  IN WAIT STATE                          00141000
+         WAITD RDR1,CON1     WAIT FOR FURTHER RDR INTS.                 00142000
+         NI    MAILSTAT,X'FF'-MSTINWT                                   00143000
+         C     R1,=CL4'CON1' WAS IT CONSOLE?                            00144000
+         BNE   MAINLOOP      NOPE, GO PROCESS NEW READER FILE(S)        00145000
+* INTERRUPT WAS FROM CONSOLE ATTN                                       00146000
+         RDTERM TERMBUF                                                 00147000
+         LR    R5,R0         GET LENGTH READ                            00148000
+         CALL  MAILCMD1,(MAILBLOK,TERMBUF,(R5),MAILVMID,0,CMDCONS)      00149000
+         B     MAINLOOP      GO PROCESS NEW RDR FILE(S)                 00150000
+         SPACE ,                                                        00151000
+*--------------------------------------------------------------------   00152000
+*  A COMMAND WAS ISSUED...                                              00153000
+*--------------------------------------------------------------------   00154000
+COMMANDS EQU   *                                                        00155000
+         TM    MAILCMD,MCMDHALT   HALT COMMAND?                         00156000
+         BO    SHUTDOWN      GO SHUT DOWN                               00157000
+         TM    MAILCMD,MCMDRELD  RELOAD COMMAND?                        00158000
+         BO    RELOAD                                                   00159000
+         TM    MAILCMD,MCMDCMD2  MAILCMD2 HAS TO BE CALLED              00160000
+         BO    MCMD2                                                    00161000
+         WRTERM '?EH'                                                   00162000
+         B     MAINLOOP                                                 00163000
+         SPACE ,                                                        00164000
+SHUTDOWN EQU   *             HALT COMMAND                               00165000
+         CALL  MAILSMSD      DISABLE SMSGS                              00166000
+         WTR   LER038        ISSUE STOPPING MESSAGE                     00167000
+         SR    R15,R15                                                  00168000
+         B     RET                                                      00169000
+         SPACE ,                                                        00170000
+RELOAD   EQU   *                                                        00171000
+         WTR   LER039        ISSUE RELOADING MESSAGE                    00172000
+         NI    MAILCMD,255-MCMDRELD  TURN OFF RELOAD FLAG               00173000
+         B     RELENT        GOTO RELOAD ENTRY                          00174000
+         SPACE ,                                                        00175000
+MCMD2    EQU   *                                                        00176000
+         CALL  MAILCMD2,(MAILBLOK)     2ND LEVEL COMMAND HANDLER        00177000
+         B     MAINLOOP      AND GO BACK TO WORK                        00178000
+         SPACE ,                                                        00179000
+*--------------------------------------------------------------------   00180000
+*        THE ONLY RETURNS ARE ERROR RETURNS...                          00181000
+*--------------------------------------------------------------------   00182000
+NONWRITE EQU   *             <- non-writeable A-disk.            [1.24] 00182200
+         WTR   LER062                                            [1.24] 00182400
+         LA    R15,28        error code                          [1.24] 00182600
+         B     ERRRET                                            [1.24] 00182800
+GETFAIL  EQU   *                                                        00183000
+         WTR   LER003,(CA,MYNAME)      WRITE ERROR MESSAGE              00184000
+         LA    R15,8         ERROR RETCODE                              00185000
+ERRRET   EQU   *             ERROR RETURN                               00186000
+         LR    R5,R15        SAVE RETURN CODE FOR A SEC                 00187000
+         WTR   LER007,(D,(R5))     WRITE THE MESSAGE                    00188000
+         LR    R15,R5        AND EXIT WITH SAME RETCODE                 00189000
+RET      EQU   *                                                        00190000
+         L     R13,4(R13)                                               00191000
+         L     R14,12(R13)                                              00192000
+         LM    R0,R12,20(R13)                                           00193000
+         BR    R14                                                      00194000
+         SPACE ,                                                        00195000
+*--------------------------------------------------------------------   00196000
+*        LITERAL POOL AND OTHER READ-ONLY DATA                          00197000
+*--------------------------------------------------------------------   00198000
+         LTORG ,                                                        00199000
+LIMITS   DC    A(0,X'00FFFFF8') RANGE OF VARIABLE ALLOCATION            00200000
+HOLDRDR  DC    C'SP RDR HOLD',X'15',C'SP RDR CLASS *'                   00201000
+LHOLDRDR EQU   *-HOLDRDR                                                00202000
+CGLUE    DC    V(CGLUE)     just to drag in the text file...     [1.22] 00202200
+CFUNC    DC    V(CFUNC)     just to drag in the text file...     [1.22] 00202400
+CMISC    DC    V(CMISC)     just to drag in the text file...     [1.22] 00202600
+CKWRITE  DC    0D'0',CL8'STATEW',CL8'*',CL8'*',CL8'A',2F'-1'     [1.24] 00202800
+         SPACE ,                                                        00203000
+*--------------------------------------------------------------------   00204000
+*        READ-WRITE DATA                                                00205000
+*--------------------------------------------------------------------   00206000
+SAVE     DS    18F                                                      00207000
+D4       DS    4D                                                       00208000
+EXTID    DS    3D            EXTENDED VM ID STUFF DUMPED HERE           00209000
+LEXTID   EQU   *-EXTID       LENGTH OF THE BUFFER                       00210000
+         ORG   EXTID+16      VM USERID IS HERE                          00211000
+EXTVMID  DS    CL8                                                      00212000
+         ORG   ,             ORG BACK                                   00213000
+TERMBUF  DS    CL130         TERMINAL INPUT BUFFER                      00214000
+         PRINT GEN                                                      00215000
+         ENTRY MAILBLOK                                                 00216000
+MAILBLOK MAILBLOK  DSECT=NO                                      [1.22] 00217490
+         END   MAILER                                                   00218000

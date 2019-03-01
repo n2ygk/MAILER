@@ -1,0 +1,614 @@
+*9/3/86 Merged Henry Nusbacher and Jeff Honig's updates (having  [1.24] 00001190
+*       update identifiers of "FIXUP" and "CCT001") as update--->[1.24] 00001380
+INTERNET TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - DEFAULT RSCS ROUTIN*00001570
+               G EXIT + INTERNET GATEWAY HANDLER'                       00002000
+         MACRO                                                          00003000
+&LABEL   BSP   &RX                                                      00004000
+         LCLC  &L                                                       00005000
+&L       SETC  'B&SYSNDX'                                               00006000
+         AIF   ('&LABEL' EQ '').NOLABEL                                 00007000
+&L       SETC  '&LABEL'                                                 00008000
+.NOLABEL ANOP                                                           00009000
+&L       CLI   0(&RX),C' '         IS THIS A BLANK ?                    00010000
+         BNE   A&SYSNDX            NOPE, CONTINUE                       00011000
+         BCTR  &RX,0               ELSE, BUMP BACKWARD BY 1             00012000
+         B     &L                  AND CHECK PREVIOUS CHARACTER         00013000
+A&SYSNDX LA    &RX,1(,&RX)         RX -> FIRST BLANK                    00014000
+         MEND                                                           00015000
+         MACRO                                                          00016000
+&LABEL   GATE  &NAME,&NODE,&USER,&FLAG=*-*,&PATH=*-*                    00017000
+&LABEL   DC    CL16'&NAME'         NAME OF DOMAIN                       00018000
+         DC    CL8'&NODE'          NAME OF GATEWAY NODE                 00019000
+         DC    CL8'&USER'          NAME OF GATEWAY USERID               00020000
+         DC    A(&PATH)            INDIRECT PATH DATA                   00021000
+         DC    AL1(&FLAG)          FLAG DATA                            00022000
+         DC    AL3(0)              ROUND OUT TO A FULL WORD             00023000
+         MEND                                                           00024000
+         EJECT ,                                                        00025000
+INTERNET CSECT ,                                                        00026000
+* INTERNET -                                                            00027000
+*  This routine punches individual files to RSCS sites that are         00028000
+*  either not running this Mailer or are running a different            00029000
+*  mailer that doesn't know how to handle the same message for          00030000
+*  several recipients as one file.                                      00031000
+*                                                                       00032000
+*  This routine has been updated to handle internet mail.  If a         00033000
+*  mail file arrives with the final characters specifying a domain      00034000
+*  like - .UUCP, .ARPA, .CCNET, .BITNET, .MAILNET                       00035000
+*  then handle it.  Some get BSMTP envelopes while others don't.        00036000
+*                                                                       00037000
+*  Changed logic for domain addressing.  A domain suffix is             00038000
+*  located if present and then looked up in a table.  The table         00039000
+*  specifies the routine to process the specified domain.  If           00040000
+*  no domain address is found, control passes to old DEFRT code.        00041000
+*  If an unknown domain address is found, an error message is           00042000
+*  printed.                                                             00043000
+*                                                                       00044000
+*  A complete list of gateways is contained in GATEWAY MEMOI   FIXUP    00054990
+*  that is available from Nicserve or Netserv.                 FIXUP    00064980
+*                                                                       00093000
+         EJECT ,                                                        00094000
+*  History:                                                             00095000
+*                                                                       00096000
+*  DEFRT was written by Alan Crosswell (EACUS@CUVMB) in 4/82.           00097000
+*  BSMTP was written by Arti Ecock (ECKCU@CUNYVM) in 3/84.              00098000
+*  These two programs were merged together by Henry Nussbacher          00099000
+*  (VSHANK@WEIZMANN) in 2/85 to form the base INTERNET program.         00100000
+*  The code has undergone changes by the following people:              00101000
+*                                                                       00102000
+*  05/24/85 BY Reg Quinton      (A362@UWOCC1)                           00103000
+*  06/10/85 BY Jeffrey Honig    (NETMAINT@CLVM)                         00104000
+*  07/16/85 BY Henry Nussbacher                                         00105000
+*  09/05/85 BY Jeffrey Honig                                            00106000
+*  09/11/85 BY Henry Nussbacher                                         00107000
+*  09/19/85 BY Henry Nussbacher                                         00108000
+*  10/30/85 BY Reg Quinton                                              00109000
+*  12/11/85 BY Henry Nussbacher                                         00110000
+*  01/12/86 BY Jeffrey C Honig                                 CCT001   00110300
+*  01/29/87 BY Henry Nussbacher                                         00110600
+*                                                                       00111000
+* Modifications:                                                        00112000
+*                                                                       00113000
+* This release represents a new base level for INTERNET.  All           00114000
+* people who wish to make modifications and enhancements are            00115000
+* urged to do so, but only in standard CMS Update format.               00116000
+* Please use, XEDIT INTERNET ASSEMBLE (CTL INTERNET SID updtname        00117000
+* to create your updates and VMFASM to assemble them.  Changes will     00118000
+* be accepted into INTERNET under the following 3 conditions:           00119000
+*                                                                       00120000
+* 1) They arrive in standard CMS Update format                          00121000
+* 2) They assemble correctly into the most current version of           00122000
+*    INTERNET                                                           00123000
+* 3) They have been checked and verified by the author to perform       00124000
+*    as stated                                                          00125000
+*                                                                       00126000
+* These changes should be sent to me (Vshank@Weizmann).                 00127000
+*                                                                       00128000
+* CCT001:                                                      CCT001   00128100
+*   Added 'RETURN' parameter (to be specified in MAILER        CCT001   00128200
+* PROFILE).  When specified will cause mail without domain     CCT001   00128300
+* addresses to be returned to the originating user with        CCT001   00128400
+* an 'Unknown Host:' message.                                  CCT001   00128500
+*                                                              CCT001   00128600
+* Changed message 'Syntax Error in field- Unknown Domain' to   CCT001   00128700
+* 'Unknown Domain'.  Requires associated mods in MSGTEXT       CCT001   00128800
+* ASSEMBLE for message 51.                                     CCT001   00128900
+*                                                                       00129000
+* Installation:                                                         00130000
+*                                                                       00131000
+* To install the latest version of the INTERNET exit:                   00132000
+*                                                                       00133000
+* 1) Edit the table of gateways listed near the end.  Some domains      00134000
+*    have multiple gateways.  Choose only one gateway per domain.       00135000
+*    Example: you could choose the Uwocc1 gateway to UUCP if you        00136000
+*    were in Canada or the Psuvax1 gateway if your node is closer       00137000
+*    to Psuvax1.                                                        00138000
+* 2) VMFASM INTERNET INTERNET                                           00139000
+* 3) TXTLIB DEL MAILER INTERNET                                         00140000
+* 4) TXTLIB ADD MAILER INTERNET                                         00141000
+* 5) Restart your mailer                                                00142000
+*                                                                       00143000
+         EJECT ,                                                        00144000
+PAB      DSECT ,                                                        00145000
+@MBLOK   DS    F             ADDRESS OF MAILBLOK                        00146000
+@ACT     DS    F             ADDRESS OF ACTADR BLOCK                    00147000
+* REGISTER USAGE -                                                      00148000
+R0  EQU  0 -                                                            00149000
+R1  EQU  1 -                                                            00150000
+R2  EQU  2 -                                                            00151000
+R3  EQU  3 -                                                            00152000
+R4  EQU  4 -                                                            00153000
+R5  EQU  5 -                                                            00154000
+R6  EQU  6 -                                                            00155000
+R7  EQU  7 -                                                            00156000
+R8  EQU  8 -                                                            00157000
+R9  EQU  9 -                                                            00158000
+R10 EQU 10 - ACTADR BASE                                                00159000
+R11 EQU 11 - MAILBLOK BASE                                              00160000
+R12 EQU 12 - PROGRAM BASE                                               00161000
+R13 EQU 13 - SAVE AREA                                                  00162000
+R14 EQU 14 - SUBROUTINE LINKAGE                                         00163000
+R15 EQU 15 - SUBROUTINE LINKAGE                                         00164000
+         BLOCKS ,                                                       00165000
+         MAILBLOK ,                                                     00166000
+         EJECT ,                                                        00167000
+         PRINT NOGEN                                                    00168000
+         PUNCH 'SPB'            TELL LOADER TO START ON NEW PAGE       00169000
+INTERNET CSECT ,                                                        00170000
+         SAVE  (14,12),,*        SAVE CALLER'S REGISTERS                00171000
+         USING INTERNET,R15      SET UP TEMP ADDRESSABILITY             00172000
+         CNOP  0,4               ALIGN SAVE AREA TO FULLWORD            00173000
+         BAL   R15,*+76          BRANCH AROUND LOCAL SAVE AREA          00174000
+         DROP  R15               DROP TEMP BASE REGISTER                00175000
+         USING SAVEAREA,R13,R12  SET UP NEW BASE REGISTERS              00176000
+SAVEAREA DC    18F'-1'           REGISTER SAVE AREA                     00177000
+*        GRAB A 2ND BASE REGISTER BEFORE SOME DODO TAKES IT             00178000
+         ST    R15,8(,R13)       CHAIN FORWARD SAVE AREA PTR            00179000
+         ST    R13,4(,R15)       CHAIN BACKWARD SAVE AREA PTR           00180000
+         LR    R13,R15           LOAD UP THE BASE REGISTER              00181000
+         LA    R12,4095(,R13)    LOAD SECOND BASE REGISTER              00182000
+         LA    R12,1(,R12)       EVEN UP FOR 8K ADDRESSABILITY          00183000
+         USING PAB,R1            PARMS                                  00184000
+         L     R11,@MBLOK        GET MAILBLOK BASE                      00185000
+         L     R10,@ACT          GET ACTADR BASE                        00186000
+         USING MAILBLOK,R11                                             00187000
+         USING ACTADR,R10                                               00188000
+         MVI   FLAGS,0           CLEAR OPTIONS FLAG                     00189000
+         EJECT ,                                                        00190000
+         L     R7,ACTMBOX        GET MBOX BLOCK                         00191980
+         USING MBOX,R7         GET USER LIST                            00192380
+         L     R7,MBXDML         POINT TO HOST LIST                     00193070
+         USING NODE,R7         ADDRESS IT                               00194590
+         L     R7,NODDOWN        GET DOWN POINTER                       00195180
+         USING TOKEND,R7         ADDRESS THE HOST NAME TOKEN            00196000
+         SR    R4,R4             GET ZERO                               00197000
+         L     R4,TOKLEN         LENGTH OF NODE STRING                  00198590
+         L     R3,TOKPTR                                                00199570
+         LA    R2,WORK           POINT TO WORK AREA                     00200000
+         MVI   0(R2),C' '        SET UP FOR BUFFER CLEAR                00201000
+         MVC   1(L'WORK-1,R2),0(R2)  PROPOGATE THE BLANK                00202000
+         LR    R5,R4             LOAD UP LENGTH OF STRING               00203000
+         BCTR  R5,0              -1 FOR EX                              00204000
+         EX    R5,COPY           AND MOVE THE ENTIRE STRING TO WORK     00205000
+         EX    R5,UPIT           AND UPPERCASE IT FOR COMPARE           00206000
+*        ADD LENGTH OF STRING TO START OF STRING                        00207000
+         LA    R3,WORK           POINT TO START OF DESTINATION          00208000
+         AR    R3,R4             ADD IN LENGTH OF STRING                00209000
+*        ALLOW FOR A 1 CHARACTER INTERNET NAME SO BACKUP TWO            00210000
+         S     R3,=A(2)          BACKUP TO SHORTEST POSSIBLE            00211000
+         LA    R1,8              SCAN BACKWARDS 8 CHARACTERS            00212000
+DOTLOOP2 CLI   0(R3),C'.'        CHECK FOR BEGINNING OF DOMAIN          00213000
+         BE    HAVEDOT2          FOUND IT!                              00214000
+         BCTR  R3,0              BACK UP TO PREVIOUS CHARACTER          00215000
+         BCT   R1,DOTLOOP2       KEEP LOOKING                           00216000
+         B     UNKNOWN           NO DOMAIN NAME, USE DEFAULT EXCCT001   00217490
+HAVEDOT2 EQU   *                 WE HAVE A FIRST DOT, KEEP SCANNING     00218000
+         S     R3,=A(2)          BACKUP ANOTHER 2 SPOTS                 00219000
+         LA    R1,7              SCAN BACK AN ADDITIONAL 8              00220000
+DOTLOOP1 CLI   0(R3),C'.'        HAVE WE HIT ANOTHER '.'?               00221000
+         BE    HAVEDOT1          YES!!!  LET'S SEE IF IT HAS AN ENTRY   00222000
+         BCTR  R3,0              BACK UP TO PREVIOUS CHARACTER          00223000
+         BCT   R1,DOTLOOP1       AND KEEP LOOPING                       00224000
+*        IF WE DROP TO HERE, WE DID NOT FIND THE 2ND DOT AND HAVE TO    00225000
+*        NOW SCAN FORWARD TO THE FIRST DOT WE FOUND.                    00226000
+SCANFWD  EQU   *                                                        00227000
+         LA    R3,1(,R3)         SCAN FORWARDS IN NODENAME              00228000
+         CLI   0(R3),C'.'        HAVE WE HIT OUR ORIGINAL DOT?          00229000
+         BNE   SCANFWD           NOPE, KEEP GOING FORWARD               00230000
+         B     HAVEDOT           AND BRANCH TO SINGLE DOMAIN TABLE      00231000
+         SPACE 3                                                        00232000
+HAVEDOT1 EQU   *                                                        00233000
+         LA    R3,1(,R3)         BUMP PAST DOT TO START OF NAME         00234000
+         LA    R1,GATES1         POINT TO START OF TABLE                00235000
+         LA    R6,GATESIZE       GET SIZE OF ENTRY                      00236000
+         LA    R7,GATES1ND       POINT TO END OF TABLE                  00237000
+         USING GATESECT,R1       SET UP ADDRESSABILITY FOR ENTRIES      00238000
+GLOOP1   CLC   GATENAME,0(R3)    IS THIS THE DOMAIN WE WANT?            00239000
+         BE    HAVEGATE          YES - SET UP AND GO PROCESS            00240000
+         BXLE  R1,R6,GLOOP1      CONTINUE SCANING                       00241000
+*        DOMAIN NOT FOUND IN 2 LEVEL DOMAIN TABLE - GO TRY 1 LEVEL      00242000
+         B     SCANFWD                                                  00243000
+         SPACE 3                                                        00244000
+HAVEDOT  EQU   *                                                        00245000
+         LA    R3,1(,R3)         BUMP PAST DOT TO START OF NAME         00246000
+         LA    R1,GATES2         POINT TO START OF TABLE                00247000
+         LA    R6,GATESIZE       GET SIZE OF ENTRY                      00248000
+         LA    R7,GATES2ND       POINT TO END OF TABLE                  00249000
+         USING GATESECT,R1       SET UP ADDRESSABILITY FOR ENTRIES      00250000
+GLOOP    CLC   GATENAME,0(R3)    IS THIS THE DOMAIN WE WANT?            00251000
+         BE    HAVEGATE          YES - SET UP AND GO PROCESS            00252000
+         BXLE  R1,R6,GLOOP       CONTINUE SCANING                       00253000
+         LOG   INT051,(CA,(R3))                                CCT001   00254490
+         LA    R15,8             INDICATE INVALID                       00255000
+         B     RET                                                      00256000
+         EJECT ,                                                        00257000
+HAVEGATE MVC   FLAGS,GATEFLAG    SET THE FLAG BYTE                      00258000
+         MVI   SEP,C'@'          MOVE IN DEFAULT SEPERATOR              00259000
+         TM    FLAGS,INDIRECT    IS IT AN INDIRECT PATH?                00260000
+         BZ    SKIPSEP           NOPE, SKIP THE '%' STUFFING            00261000
+         MVI   SEP,C'%'          MOVE IN '%' SIGN                       00262000
+SKIPSEP  EQU   *                                                        00263000
+         MVC   TAGHOST(8),GATENODE  MOVE IN BITNET NODEID               00264000
+         MVC   NETHOST(8),GATENODE  MOVE IN BITNET NODEID               00265000
+         MVC   TAGUSER(8),GATEUSER  AND WHO TO SEND IT TO               00266000
+         L     R1,GATEPATH       POINT TO THE PATH DATA                 00267000
+         DROP  R1                DROP ADDRESSABILITY                    00268000
+         TM    FLAGS,BSMTP       IS IT TO BE SENT BSMTP?                00269000
+         BNZ   DO$BSMTP          YES, GO THERE                          00270000
+         B     DEFAULT           OTHERWISE SEND WITHOUT BSMTP           00271000
+         EJECT ,                                                        00272000
+DO$BSMTP EQU   *                                                        00273000
+         L     R7,ACTMBOX        LOAD MBOX BASE REGISTER                00274780
+         USING MBOX,R7         PROVIDE MBOX ADDRESSABILITY              00275180
+*        FIRST BUILD THE "HELO NODENAME.BITNET" LINE                    00276000
+         LA    R2,WHOM           POINT TO RECEIVING FIELD               00277000
+         MVI   0(R2),C' '        START BLANKING IT OUT                  00278000
+         MVC   1(L'WHOM-1,R2),0(R2)  PROPAGATE THE BLANK                00279000
+         MVC   0(8,R2),MAILNODE  MOVE IN MY NODENAME                    00280000
+         LA    R2,8(,R2)         POINT PAST THE NODENAME                00281000
+         BSP   R2                BACK UP TO LAST BLANK                  00282000
+         MVC   0(7,R2),=C'.BITNET'   FINISH OFF THE FIELD               00283000
+*        NOW BUILD THE TICK LINE AND USE THE SPOOLID AS THE TICK        00284000
+         MVC   TICK(4),MAILFTXT  MOVE IN SPOOLID "NNNN"                 00285000
+*        TIME TO BUILD THE "MAIL FROM:<USER@HOST.BITNET>" FIELD         00286000
+         LA    R2,MADDR          POINT TO RECEIVING FIELD               00287000
+         MVI   0(R2),C' '        SET UP FOR BUFFER CLEAR                00288000
+         MVC   1(L'MADDR-1,R2),0(R2)  PROPOGATE THE BLANK               00289000
+         MVC   0(8,R2),MAILUSER  COPY ORIGIN USERID                     00290000
+         LA    R8,8(,R2)         POINT PAST THE USERID                  00291000
+         BSP   R8                POINT TO FIRST BLANK                   00292000
+         MVI   0(R8),C'@'        MOVE AN "@"                            00293000
+         MVC   1(8,R8),MAILNODE  COPY THE ORIGIN HOST                   00294000
+         LA    R8,9(,R8)         POINT PAST THE HOST                    00295000
+         BSP   R8                POINT TO FIRST BLANK                   00296000
+         MVC   0(8,R8),=C'.BITNET>'  CLOSE THE FIELD                    00297000
+*        HERE, WE BUILD THE "RCPT TO:<INTERNET_ADDRESS>" FIELD          00298000
+         L     R7,MBXLCL            POINT TO USER LIST                  00299680
+         USING NODE,R7         PROVIDE ADDRESSABILITY                   00300590
+         L     R7,NODDOWN        LOAD DOWN POINTER                      00301180
+         USING TOKEND,R7         ADDRESS THE USER NAME TOKEN            00302000
+         SR    R4,R4             CLEAR A WORK REGISTER                  00303000
+         L     R4,TOKLEN         GET LENGTH OF USERID STRING            00304490
+         CL    R4,=A(L'RADDR-1)  IS IT TOO LONG (<71)?                  00305000
+         BH    FAIL0             YES, FAIL                              00306000
+         BCTR  R4,0              LENGTH-1 FOR EXECUTE                   00307000
+         L     R3,TOKPTR         LOAD STRING ADDRESS                    00308680
+         LA    R2,RADDR          POINT TO RECEIVING FIELD               00309000
+         MVI   0(R2),C' '        SET UP FOR BUFFER CLEAR                00310000
+         MVC   1(L'RADDR-1,R2),0(R2)   PROPOGATE THE BLANK              00311000
+         EX    R4,COPY           MVC 0(*-*,R2),0(R3)                    00312000
+         LA    R2,1(R2,R4)       POINT TO LAST CHARACTER                00313000
+         MVC   0(1,R2),SEP       MOVE IN % OR @ OPERATOR                00314000
+         LA    R2,1(,R2)         BUMP PAST THE % OR @                   00315000
+         LA    R3,L'RADDR        LOAD LENGTH OF FIELD                   00316000
+         SR    R3,R4             LOAD LENGTH OF FIELD LEFT-1            00317000
+         L     R7,ACTMBOX        LOAD MBOX BASE REGISTER                00318980
+         USING MBOX,R7         PROVIDE MBOX ADDRESSABILITY              00319380
+         L     R7,MBXDML         POINT TO HOST LIST                     00320070
+         USING NODE,R7         PROVIDE ADDRESSABILITY                   00321590
+         L     R7,NODDOWN        LOAD DOWN POINTER                      00322180
+         USING TOKEND,R7         ADDRESS THE HOST NAME TOKEN            00323000
+         SR    R4,R4             CLEAR A WORK REGISTER                  00324000
+         L     R4,TOKLEN         GET LENGTH OF HOST STRING              00325490
+         CR    R4,R3             IS IT TOO LONG ?                       00326000
+         BH    FAIL0             YES, FAIL                              00327000
+         BCTR  R4,0              LENGTH-1 FOR EXECUTE                   00328000
+         L     R3,TOKPTR         LOAD STRING ADDRESS                    00329680
+         EX    R4,COPY           MVC 0(*-*,R2),0(R3)                    00330000
+         LA    R2,1(R2,R4)       POINT TO LAST CHARACTER                00331000
+         TM    FLAGS,INDIRECT    GOING TO INDIRECT GATEWAY?             00332000
+         BZ    ARPANGTE          NO - SKIP                              00333000
+         IC    R4,0(R1)          GET LENGTH OF GATEWAY ADDRESS          00334000
+         LA    R3,1(,R1)         POINT TO GATEWAY ADDRESS               00335000
+         EX    R4,COPY           MOVE IN GATEWAY ADDRESS                00336000
+         AR    R2,R4             POINT PAST LAST CHARACTER              00337000
+ARPANGTE MVI   0(R2),C'>'        CLOSE THE FIELD                        00338000
+         EJECT ,                                                        00339000
+*        NOW, SET UP "Return-path: user@node.BITNET"                    00340000
+*        LET THE GATEWAY DO THE TRANSLATION TO (EXAMPLE):               00341000
+*                    "Return-path: user%node.BITNET@WISCVM.WISC.EDU"    00342000
+*        EXCEPTION:  WHEN SENDING MAIL THRU BSMTP@UCBJADE WE            00343000
+*        DO NOT WANT THE RETURN PATH GOING BACK THRU UCBJADE SO         00344000
+*        FORCE IT TO WISCVM.WISC.EDU                                    00345000
+         MVI   RUSER,C' '        SET UP TO CLEAR REST OF CARD           00346000
+         MVC   RUSER+1(L'RUSER-1),RUSER  AND CLEAR IT                   00347000
+         MVC   RUSER(8),MAILUSER COPY ORIGIN USERID                     00348000
+         LA    R8,RUSER+8        POINT TO END OF USERID                 00349000
+         BSP   R8                BACKUP TO FIRST BLANK                  00350000
+         CLC   TAGUSER+0(8),=CL8'BSMTP' IS IT TO BSMTP????              00351000
+         BE    FAKEOUT           YES, GOTTA FAKE OUT RETURN-PATH        00352000
+         MVI   0(R8),C'@'        MOVE IN '@'                            00353000
+         MVC   1(8,R8),MAILNODE  MOVE IN THE ORIGIN NODE                00354000
+         LA    R8,9(,R8)         POINT TO END OF NODE                   00355000
+         BSP   R8                BACKUP TO FIRST BLANK                  00356000
+         MVC   0(7,R8),=C'.BITNET'                                      00357000
+         B     CONTINUE                                                 00358000
+FAKEOUT  EQU   *                 FAKE OUT BSMTP@UCBJADE                 00359000
+         MVI   0(R8),C'%'        MOVE AN "%"                            00360000
+         MVC   1(8,R8),MAILNODE  MOVE THE ORIGIN NODE                   00361000
+         LA    R8,9(,R8)         POINT TO END OF NODE                   00362000
+         BSP   R8                BACKUP TO FIRST BLANK                  00363000
+         MVC   0(23,R8),=C'.BITNET@WISCVM.WISC.EDU'                     00364000
+CONTINUE EQU   *                                                        00365000
+*        NOW COMPLETE THE BSMTP HEADER AND SEND IT OFF                  00366000
+         MVC   XRSCS,RSCSNAME    LOAD RSCS USERID                       00367000
+         CLC   TAGHOST,CPUSTR    THIS HOST ?                            00368000
+         BNE   *+10              NO - DON'T USE RSCS                    00369000
+         MVC   XRSCS,TAGUSER     SET USERID TO SEND TO                  00370000
+         LA    R1,TAGCMD         POINT TO THE CP TAG COMMAND            00371000
+         LA    R0,LTAGCMD        LOAD THE LENGTH OF THE COMMAND         00372000
+         DC    X'83100008'       ASK CP TO EXECUTE IT                   00373000
+         PUNCHC HELO             BSMTP: HELO NODE.DOMAIN                00374000
+         PUNCHC TICKMSG          BSMTP: TICK ...                        00375000
+         PUNCHC 'VERB ON'        BSMTP: VERBOSE ON                      00376000
+         PUNCHC MAILFROM         BSMTP: MAIL FROM: ...                  00377000
+         PUNCHC RCPTTO           BSTMP: RCPT TO: ...                    00378000
+         PUNCHC 'DATA'           BSMTP: DATA FOLLOWS                    00379000
+         PUNCHC RTNPATH          RFC822: RETURN-PATH:                   00380000
+         EJECT ,                                                        00381000
+*        NOW PUNCH THE RFC822 HEADER AS CREATED BY THE USER             00382000
+*        INTERFACE PROGRAM (MAIL OR MEMO OR WHATEVER)                   00383000
+         L     R15,APUNHDR       LOAD HEADER RTN ADDRESS                00384000
+         CALL  (15),((R11))      AND PUNCH THE HEADER                   00385000
+         LTR   R15,R15           DID ALL GO WELL ?                      00386000
+         BNZ   RET               NOPE, RETURN TO CALLER                 00387000
+*        NOW PUNCH THE TEXT OF THE MAIL                                 00388000
+         L     R15,APUNTXT       LOAD TEXT ROUTINE ADDRESS              00389000
+         CALL  (15),((R11))      PUNCH THE REST OF THE MAIL             00390000
+         LTR   R15,R15           DID ALL GO WELL ?                      00391000
+         BNZ   RET               NOPE, RETURN TO CALLER                 00392000
+*        NOW FINISH OFF THE BSMTP HEADER                                00393000
+         PUNCHC '.'              BSMTP: END OF DATA                     00394000
+         PUNCHC 'QUIT'           BSMTP: END OF TRANSMISSION             00395000
+         L     R15,APUNCLS       LOAD CLOSE ROUTINE ADDRESS             00396000
+         CALL  (15),((R11))      CLOSE THE PUNCH                        00397000
+         LTR   R15,R15           DID ALL GO WELL ?                      00398000
+         BNZ   RET               NOPE, RETURN TO CALLER                 00399000
+         LOG   INT034,(CA,NETUSER,CA,NETHOST) RECORD SUCCESS            00400000
+         B     RET                                                      00401000
+FAIL0    EQU   *                                                        00402000
+         LOG   INT036,(CA,EMSG)  NET ADDRESS TOO BIG!                   00403000
+         LA    R15,8             SET A BAD RETURN CODE                  00404000
+         B     RET               AND RETURN TO CALLER                   00405000
+         EJECT ,                                                        00406000
+UNKNOWN  EQU   *                                               CCT001   00406050
+***************************************************************CCT001   00406100
+*                                                              CCT001   00406150
+*  BEFORE RETURNING TO DEFRT CODE, CHECK FOR "RETURN" PARM     CCT001   00406200
+*  WHICH MEANS THAT MAIL TO AN UNKNOWN HOST WILL BE RETURNED   CCT001   00406250
+*  WITH AN ERROR MESSAGE                                       CCT001   00406300
+*                                                              CCT001   00406350
+***************************************************************CCT001   00406400
+         SPACE ,                                               CCT001   00406450
+         L     R9,ACTRT          ADDRESS OF ROUTD CARD         CCT001   00406500
+         USING ROUTD,R9          ADDRESS ROUTD CARD            CCT001   00406550
+         CLC   =CL8'RETURN',RTPARM  WAS RETURN SPECIFIED?      CCT001   00406600
+         BNE   DEFAULT                                         CCT001   00406650
+         LOG   INT027,(CA,WORK)                                CCT001   00406700
+         LA    R15,8             INDICATE INVALID              CCT001   00406750
+         B     RET                                             CCT001   00406800
+         SPACE ,                                               CCT001   00406850
+         DROP  R9                                              CCT001   00406900
+         EJECT ,                                               CCT001   00406950
+DEFAULT  EQU   *                                                        00407000
+****************************************************************        00408000
+*                                                              *        00409000
+* NOW RESUME NORMAL "DEFRT" CODE FOR SENDING THE FILE TO AN    *        00410000
+* UNDEFINED BITNET NODE, OR TO A GATEWAY THAT DOESN'T WANT     *        00411000
+* BSMTP ENVELOPE.                                              *        00412000
+*                                                              *        00413000
+****************************************************************        00414000
+         TM    FLAGS,NONBSMTP    IS IT TO A GATEWAY?                    00415000
+         BNZ   GATEWAY           YES, SKIP NON-GATEWAY CODE             00416000
+         L     R7,ACTMBOX        GET MBOX BLOCK                         00417980
+         USING MBOX,R7                                                  00418380
+         L     R7,MBXLCL         GET USER LIST                          00419070
+         USING NODE,R7         ADDRESS IT                               00420590
+         L     R7,NODDOWN        GET DOWN POINTER                       00421180
+         USING TOKEND,R7         ADDRESS THE USER NAME TOKEN            00422000
+         SR    R4,R4             GET ZERO                               00423000
+         L     R4,TOKLEN         LENGTH OF USERID STRING                00424490
+         C     R4,=F'8'          8 OR LESS?                             00425000
+         BH    FAIL                                                     00426000
+         BCTR  R4,0              -1 FOR EX                              00427000
+         L     R3,TOKPTR         GET STRING                             00428680
+         MVC   TAGUSER,=CL8' '   BLANK THE FIELD                        00429000
+         LA    R2,TAGUSER                                               00430000
+         EX    R4,COPY           MVC TAGUSER(0),4(R3)                   00431000
+         EX    R4,UPIT                                                  00432000
+         L     R7,ACTMBOX        GET MBOX BLOCK                         00433980
+         USING MBOX,R7                                                  00434380
+         L     R7,MBXDML         POINT TO HOST LIST                     00435070
+         USING NODE,R7         ADDRESS IT                               00436590
+         L     R7,NODDOWN        GET DOWN POINTER                       00437180
+         USING TOKEND,R7         ADDRESS THE HOST NAME TOKEN            00438000
+         SR    R4,R4             GET ZERO                               00439000
+         L     R4,TOKLEN         LENGTH OF HOSTNAME STRING              00440490
+         TM    FLAGS,BITNET      IS THIS MAIL TO GO DIRECT TO USER?     00441000
+         BZ    NORMAL            NOPE, USE TOKLEN FOR LENGTH            00442000
+         S     R4,=A(7)          SUBTRACT 7 POSITIONS FOR '.BITNET'     00443000
+NORMAL   EQU   *                                                        00444000
+         C     R4,=F'8'          8 OR LESS?                             00445000
+         BH    FAIL                                                     00446000
+         BCTR  R4,0              -1 FOR EX                              00447000
+         L     R3,TOKPTR         GET STRING                             00448680
+         MVC   TAGHOST,=CL8' '   BLANK THE FIELD                        00449000
+         LA    R2,TAGHOST                                               00450000
+         EX    R4,COPY           MVC TAGHOST(0),4(R3)                   00451000
+         EX    R4,UPIT                                                  00452000
+         EJECT ,                                                        00453000
+GATEWAY  EQU   *   ENTER HERE FOR MAILNET AND OTHER NON-BSMTPers        00454000
+*        FIRST MAKE SURE THAT IF GATEWAY IS RUNNING ON LOCAL HOST       00455000
+*        THEN SEND MAIL DIRECTLY TO GATEWAY AND NOT TO RSCS             00456000
+         MVC   XRSCS,RSCSNAME    GET RSCS NAME                          00457000
+         CLC   TAGHOST,CPUSTR    THIS HOST ?                            00458000
+         BNE   *+10              NO - DON'T USE RSCS                    00459000
+         MVC   XRSCS,TAGUSER     SET USERID TO SEND TO                  00460000
+         LA    R1,TAGCMD         GET THE TAG COMMAND NOW                00461000
+         LA    R0,LTAGCMD                                               00462000
+         DC    X'83100008'       AND EXECUTE                            00463000
+*        CONSTRUCT A POSSIBLE DELIVER-TO: LINE                          00464000
+         TM    FLAGS,DELIVER     DO WE NEED A DELIVER-TO LINE?          00465000
+         BZ    SKIP$DEL          NOPE, SKIP THIS SECTION                00466000
+         L     R7,ACTMBOX        LOAD MBOX BASE REGISTER                00467980
+         USING MBOX,R7         PROVIDE ADDRESSABILITY                   00468380
+         L     R7,MBXLCL         POINT TO USER LIST                     00469070
+         USING NODE,R7         PROVIDE ADDRESSABILITY                   00470590
+         L     R7,NODDOWN        LOAD DOWN POINTER                      00471180
+         USING TOKEND,R7         ADDRESS THE USER NAME TOKEN            00472000
+         SR    R4,R4             CLEAR A WORK REGISTER                  00473000
+         L     R4,TOKLEN         LENGTH OF TOKEN                        00474490
+         CL    R4,=A(L'MLADDR-1) TOO LONG?                              00475000
+         BH    FAIL0             YUP, ABORT                             00476000
+         BCTR  R4,0              LENGTH-1 FOR EXECUTE                   00477000
+         L     R3,TOKPTR         LOAD STRING ADDRESS                    00478680
+         LA    R2,MLADDR         POINT TO RECEIVING FIELD               00479000
+         MVI   0(R2),C' '        SET UP FOR BUFFER CLEAR                00480000
+         MVC   1(L'MLADDR-1,R2),0(R2)  propogate the blank              00481000
+         EX    R4,COPY           AND COPY OVER THE USER NAME            00482000
+         LA    R2,1(R2,R4)       POINT TO LAST CHARACTER                00483000
+         MVI   0(R2),C'@'        AND MOVE IN THE @                      00484000
+         LA    R2,1(R2)          INCREMENT TO HOST AREA                 00485000
+         LA    R3,L'RADDR        LOAD LENGTH OF FIELD                   00486000
+         SR    R3,R4             LOAD LENGTH OF FIELD LEFT-1            00487000
+         L     R7,ACTMBOX        LOAD MBOX BASE REGISTER                00488980
+         USING MBOX,R7         AND ESTABLISH                            00489380
+         L     R7,MBXDML         POINT TO HOST LIST                     00490070
+         USING NODE,R7         AND ESTABLISH                            00491590
+         L     R7,NODDOWN        LOAD DOWN POINTER                      00492180
+         USING TOKEND,R7         ADDRESS OF HOST NAME TOKEN             00493000
+         SR    R4,R4             CLEAR A WORKING REGISTER               00494000
+         L     R4,TOKLEN         LENGTH OF HOST NAME                    00495490
+         CR    R4,R3             TOO LONG?                              00496000
+         BH    FAIL0             YUP, ABORT                             00497000
+         BCTR  R4,0              LENGTH-1 FOR EXECUTE                   00498000
+         L     R3,TOKPTR         LOAD STRING ADDRESS                    00499680
+         EX    R4,COPY           AND COPY IN THE HOST NAME              00500000
+         PUNCHC MDELTO           PUNCH THE DELIVER-TO: LINE             00501000
+         EJECT ,                                                        00502000
+SKIP$DEL EQU   *                                                        00503000
+         L     R15,APUNHDR                                              00504000
+         CALL  (15),((R11))      PUNCH THE HEADER                       00505000
+         LTR   R15,R15           ANY SCREW UPS?                         00506000
+         BNZ   RET                                                      00507000
+         L     R15,APUNTXT                                              00508000
+         CALL  (15),((R11))      PUNCH THE REST                         00509000
+         LTR   R15,R15           ANY ERRORS?                            00510000
+         BNZ   RET               OH WEEELLL....                         00511000
+         L     R15,APUNCLS       ROUTINE TO CLOSE PUNCH                 00512000
+         CALL  (15),((R11))      CALL IT                                00513000
+         LTR   R15,R15           ERRORS?                                00514000
+         BNZ   RET                                                      00515000
+         TM    FLAGS,NONBSMTP    IS IT TO GATEWAY OR TO A USER?         00516000
+         BZ    DRCTMSG           NO, SEND DIRECT TO USER                00517000
+         LOG   INT034,(CA,NETUSER,CA,NETHOST)                           00518000
+         B     RET                                                      00519000
+DRCTMSG  EQU   *                                                        00520000
+         LOG   INT034,(CA,TAGUSER,CA,TAGHOST)                           00521000
+RET      EQU   *                                                        00522000
+         L     R13,4(,R13)       GET CALLER'S SAVE AREA PTR             00523000
+         RETURN (14,12),RC=(15)  RELOAD CALLER'S REGISTERS,             00524000
+FAIL     EQU   *                                                        00525000
+         LOG   INT030,(CA,EMSG2) NET ADDRESS TOO BIG!                   00526000
+         LA    R15,8                                                    00527000
+         B     RET                                                      00528000
+         EJECT ,                                                        00529000
+*********************************************************************** 00530000
+*                                                                     * 00531000
+*        DATA AREAS AND CONTROL BLOCKS                                * 00532000
+*                                                                     * 00533000
+*********************************************************************** 00534000
+*                                                                       00535000
+UPIT     TR    0(0,R2),UPCASE                                           00536000
+TAGCMD   DC    C'TAG DEV PUN '                                          00537000
+TAGHOST  DS    CL8                                                      00538000
+         DC    C' '                                                     00539000
+TAGUSER  DS    CL8                                                      00540000
+         DC    X'15',C'SP PUN CLASS M TO '                              00541000
+XRSCS    DS    CL8                                                      00542000
+LTAGCMD  EQU   *-TAGCMD                                                 00543000
+*                                                                       00544000
+COPY     MVC   0(*-*,R2),0(R3)         COPY USER NAME TOKEN             00545000
+HELO     DC    C'HELO '                                                 00546000
+WHOM     DS    CL75                                                     00547000
+TICKMSG  DC    C'TICK '                                                 00548000
+TICK     DC    CL75' '                                                  00549000
+MAILFROM DC    C'MAIL FROM:<'                                           00550000
+MADDR    DS    CL69                                                     00551000
+RCPTTO   DC    C'RCPT TO:<'                                             00552000
+RADDR    DS    CL71                                                     00553000
+MDELTO   DC    C'Deliver-to: '                                          00554000
+MLADDR   DS    CL68                                                     00555000
+NETUSER  DC    CL8'Gateway'                                             00556000
+NETHOST  DC    CL8'        '                                            00557000
+RTNPATH  DC    C'Return-path: '                                         00558000
+RUSER    DS    CL67                                                     00559000
+WORK     DS    CL70                                                     00560000
+EMSG     DC    CL19'NetAddress too long'                                00561000
+EMSG2    DC    CL19'User@Node too long '                                00562000
+SEP      DC    C'@'                                                     00564000
+FLAGS    DC    X'00'                   A FLAG BYTE - WHAT ELSE?         00565000
+BSMTP    EQU   X'80'                   MAIL NEEDS BSMTP ENVELOPE        00566000
+INDIRECT EQU   X'40'                   MAIL PASSES THRU 2 NETS          00567000
+DELIVER  EQU   X'20'                   MAIL NEEDS Deliver-to: HDR       00568000
+NONBSMTP EQU   X'10'                   SITE IS A SIMPLE NON-BSMTP GATE  00569000
+BITNET   EQU   X'08'                   SEND MAIL DIRECTLY TO USER       00570000
+         SPACE 1                                                        00571000
+         EJECT ,                                                        00572000
+*   Format is:                                                          00573000
+*   1st token: Domain name                                              00574000
+*   2nd token: Gateway Bitnet nodename                                  00575000
+*   3rd token: Gateway Bitnet userid                                    00576000
+*   4th token: Flags (optional)                                         00577000
+*              BSMTP    - Gateway expects BSMTP envelope                00578000
+*              INDIRECT - Mail destined via an intermediate gateway     00579000
+*                         (requires a 5th token of PATH=)               00580000
+*              DELIVER  - Requires the Deliver-To: Header               00581000
+*              NONBSMTP - Gateway expects no BSMTP envelope             00582000
+*              BITNET   - Send mail directly to user on Bitnet          00583000
+*   5th token: Path (only required if FLAG=INDIRECT)                    00584000
+*                                                                       00585000
+*   Wherever muliple gateways are listed, you are expected to choose    00586000
+*   which one you would prefer.                                         00587000
+*                                                                       00588000
+*   Special gateway of Bitnet will allow VM users to reply to mail      00589000
+*   in the form 'user@node.Bitnet'.  The mail will be sent directly     00590000
+*   to the user, therefore the userid and node must each be less        00591000
+*   than or equal to 8 characters in length.                            00592000
+*                                                                       00593000
+         SPACE 3                                                        00594000
+*        CONTANTS FOR INDIRECT NETWORK ADDRESSING                       00595000
+DEC      DC    AL1(15),C'@DECWRL.DEC.COM'                               00596990
+OZ       DC    AL1(15),C'@SEISMO.CSS.GOV'                               00597980
+UK       DC    AL1(13),C'@CS.UCL.AC.UK'                        FIXUP    00598970
+         EJECT                                                          00600000
+         DS    0D                                                       00601000
+GATES1   EQU   *                       ALIGN THE TABLE                  00602000
+*   Second level gate check is done first.  Maximum of 16 characters    00603000
+*   are allowed in second level domain check.                           00604000
+*   The following are just given as examples since the DOMAIN  FIXUP    00605390
+*   NAMES file handles this function now.                      FIXUP    00605780
+         GATE  COLUMBIA.EDU,CUVMA,MAILER,FLAG=BSMTP                     00606170
+         GATE  CMU.EDU,CMUCCVMA,MAILER,FLAG=BSMTP                       00606560
+GATES1ND EQU   *                                                        00607000
+         SPACE 3                                                        00608000
+         DS    0D                      ALIGN THE TABLE                  00609000
+GATES2   EQU   *                                                        00610000
+*   All gateways not listed here are handled within Mailer     FIXUP    00613990
+*   itself via the DOMAIN NAMES file.                          FIXUP    00616980
+         GATE  BITNET,*,*,FLAG=BITNET                            [1.24] 00619970
+         GATE  DEC,WISCVM,SMTPUSER,FLAG=INDIRECT+BSMTP,PATH=DEC         00624000
+         GATE  OZ,WISCVM,SMTPUSER,FLAG=INDIRECT+BSMTP,PATH=OZ           00637000
+GATES2ND EQU   *                                                        00648000
+         EJECT ,                                                        00649000
+         LTORG ,                                                        00650000
+         EJECT ,                                                        00651000
+GATESECT DSECT DEFINITION OF AN INTERNET TABLE ENTRY                    00652000
+GATENAME DC    CL16' '             NAME OF DOMAIN                       00653000
+GATENODE DC    CL8' '              NAME OF BITNET GATEWAY NODE          00654000
+GATEUSER DC    CL8' '              NAME OF BITNET GATEWAY USER          00655000
+GATEPATH DC    A(*-*)              INDIRECT PATH DATA                   00656000
+GATEFLAG DC    AL1(*-*)            VALUE FOR FLAG                       00657000
+         DS    AL3                 ROUND OUT TO A FULLWORD              00658000
+GATESIZE EQU   *-GATESECT          SIZE OF A GATESECT                   00659000
+         END   INTERNET                                                 00660000

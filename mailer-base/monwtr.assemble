@@ -1,0 +1,381 @@
+WTR      TITLE     'MONWTR - CONSOLE LOG WRITER'                        00001000
+*---------------------------------------------------------------------* 00002000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00003000
+*    Program Property of the Trustees of Columbia University in the   * 00004000
+*    City of New York.                                                * 00005000
+*---------------------------------------------------------------------* 00006000
+MONWTR   CSECT                                                          00007000
+* WTR - CONSOLE LOG WRITER                                              00008000
+*  WTR TAKES A MESSAGE AND WRITES IT TO THE CONSOLE PRECEDED BY         00009000
+*  A DATE AND TIME.  THE MESSAGE IS EDITED VIA DIAGNOSE 5C ACCORDING    00010000
+*  TO THE CURRENT EMSG SETTING.                                         00011000
+* ADDITIONALLY, VARIABLE FIELDS MAY BE FILLED IN THE MESSAGE            00012000
+* ACCORDING TO A FORMAT LIST PASSED IN R1.                              00013000
+*                                                                       00014000
+*                                      ALAN CROSSWELL 8/81              00015000
+* ENTRY CONDITIONS -                                                    00016000
+*  R1 - PARM LIST POINTER                                               00017000
+*                                                                       00018000
+* PARM LIST FORMAT -                                                    00019000
+*        +--------------------------------------+                       00020000
+*     0  |    0    |  MESSAGE NUMBER            |                       00021000
+*        +--------------------------------------+                       00022000
+*     4  |  FORMAT | VARIABLE                   |                       00023000
+*        +--------------------------------------+                       00024000
+*           .                                                           00025000
+*           .                                                           00026000
+*           .                                                           00027000
+*        +--------------------------------------+                       00028000
+*        |  FORMAT | VARIABLE                   |                       00029000
+*        +--------------------------------------+                       00030000
+*                                                                       00031000
+*  THE VARIABLE-LENGTH PARM LIST IS TERMINATED WITH THE LEFTMOST        00032000
+*  '1' BIT TURNED ON IN THE LAST WORD.                                  00033000
+*                                                                       00034000
+*  FORMAT -                                                             00035000
+         SPACE                                                          00036000
+A  EQU  X'10' - VARIABLE IS AN ADDRESS                                  00037000
+B  EQU  X'08' - BIT STRING                                              00038000
+C  EQU  X'04' - CHARACTER STRING                                        00039000
+D  EQU  X'02' - DECIMAL FULLWORD                                        00040000
+X  EQU  X'01' - HEXADECIMAL STRING                                      00041000
+         SPACE                                                          00042000
+* MESSAGE STRING DESCRIPTORS ARE IN MSGTEXT CSECT WITH FOLLOWING        00043000
+* FORMAT -                                                              00044000
+*        +--------------------------------------+                       00045000
+*    0   |   MAXIMUM MESSAGE NUMBER DEFINED     |                       00046000
+*        +--------------------------------------+                       00047000
+*        |   ADDRESS OF MESSAGE 0 DESCRIPTOR    |                       00048000
+*        +--------------------------------------+                       00049000
+*        |   ADDRESS OF MESSAGE 1 DESCRIPTOR    |                       00050000
+*        +--------------------------------------+                       00051000
+*           .                                                           00052000
+*           .                                                           00053000
+*           .                                                           00054000
+*        +--------------------------------------+                       00055000
+*        |   ADDRESS OF LAST MESSAGE DESCRIPTOR |                       00056000
+*        +--------------------------------------+                       00057000
+         EJECT                                                          00058000
+* MESSAGE DESCRIPTOR FORMAT -                                           00059000
+*        +--------------------------------------+                       00060000
+*    0   |  ADDRESS OF MESSAGE TEXT STRING      |                       00061000
+*        +--------------------------------------+                       00062000
+*    4   |  C1    |  L1    |                                            00063000
+*        +-----------------+                                            00064000
+*    6   |  C2    |  L2    |                                            00065000
+*        +-----------------+                                            00066000
+*           .                                                           00067000
+*           .                                                           00068000
+*           .                                                           00069000
+*        +-----------------+                                            00070000
+*        |  CN    |  LN    |                                            00071000
+*        +-----------------+                                            00072000
+*        |   0    |                                                     00073000
+*        +--------+                                                     00074000
+*                                                                       00075000
+*  CN - COLUMN NUMBER FOR START OF VARIABLE FIELD                       00076000
+*  LN - LENGTH OF VARIABLE FIELD                                        00077000
+*                                                                       00078000
+* MESSAGE TEXT STRING FORMAT -                                          00079000
+*        +--------------------------------------/   /---+               00080000
+*        | LENGTH | MONITR###C MESSAGE TEXT             |               00081000
+*        +--------------------------------------/   /---+               00082000
+*                                                                       00083000
+* FUNCTION -                                                            00084000
+*     EACH ENTRY IN THE PATTERN STRING IS REPLACED BY THE               00085000
+*     CORRESPONDING ENTRY IN THE PARM LIST WITH APPROPRIATE             00086000
+*     DATA CONVERSION BEING DONE.  ANY MISSING ENTRIES IN THE           00087000
+*     PLIST RESULT IN NO MODIFICATION OF THE CURRENT DATA IN            00088000
+*     THE MESSAGE TEXT.                                                 00089000
+         PRINT     NOGEN                                                00090000
+* REGISTER USAGE -                                                      00091000
+         SPACE                                                          00092000
+R0 EQU 0 -                                                              00093000
+R1 EQU 1 -                                                              00094000
+R2 EQU 2 -                                                              00095000
+R3 EQU 3 -                                                              00096000
+R4 EQU 4 -                                                              00097000
+R5 EQU 5 - LENGTH OF VARIABLE FIELD IN MESSAGE DESCRIPTOR               00098000
+R6 EQU 6 - START COLUMN OF VARIABLE FIELD IN MESSAGE DESCRIPTOR         00099000
+R7 EQU 7 - LENGTH OF MESSAGE SKELETON                                   00100000
+R8 EQU 8 - MESSAGE TEXT POINTER                                         00101000
+R9 EQU 9 - MESSAGE DESCRIPTOR POINTER                                   00102000
+R10 EQU 10 - COPY OF PARM POINTER (R1 ON ENTRY)                         00103000
+R11 EQU 11 - MSGTEXT CSECT BASE                                         00104000
+R12 EQU 12 - PROGRAM BASE                                               00105000
+R13 EQU 13 - SAVE AREA POINTER                                          00106000
+R14 EQU 14 - LINKAGE                                                    00107000
+R15 EQU 15 - LINKAGE                                                    00108000
+         EJECT                                                          00109000
+MONWTR   CSECT                                                          00110000
+         STM       R14,R12,12(R13)                                      00111000
+         BALR      R12,0                                                00112000
+         USING     *,R12                                                00113000
+         LA        R14,SAVE                                             00114000
+         ST        R13,4(R14)                                           00115000
+         ST        R14,8(R13)                                           00116000
+         LR        R13,R14                                              00117000
+*--------------------------------------------------------------------   00118000
+* GET THE MESSAGE NUMBER, CHECK FOR VALIDITY AND COPY THE MESSAGE       00119000
+* SKELETON INTO THE WORK BUFFER.                                        00120000
+*--------------------------------------------------------------------   00121000
+         LR        R10,R1              COPY POINTER                     00122000
+         L         R11,=V(MSGTEXT)     GET MESSAGE TEXT CSECT           00123000
+         L         R1,0(R11)           GET MAX MESSAGE NUMBER ALLOWED   00124000
+         L         R9,0(R10)           GET MESSAGE NUMBER REQUESTED     00125000
+         CR        R9,R1               COMPARE THEM                     00126000
+         BH        MSGHIGH             NUMBER IS TOO HIGH...            00127000
+         SLL       R9,2                MULTIPLY MSG NUMBER BY 4         00128000
+         LA        R9,4(R9,R11)        ADDR. OF DESCRIPTOR POINTER      00129000
+         L         R9,0(R9)            ADDRESS OF DESCRIPTOR            00130000
+         L         R8,0(R9)            ADDRESS OF MESSAGE TEXT          00131000
+         SR        R7,R7               GET A ZERO                       00132000
+         IC        R7,0(R8)            LENGTH OF MSG SKELETON           00133000
+         BCTR      R7,0                -1 FOR EXECUTE                   00134000
+         LA        R8,1(R8)            POINT AT TEXT PART               00135000
+         EX        R7,MOVEIT           COPY SKELETON INTO BUFFER        00136000
+         MVI   FLAGS,0                                                  00137000
+         CLI   BUFFER+9,C'U' MSG NUMBERS ENDING IN 'U' ?                00138000
+         BNE   NOU           NOT FOR USER LOG                           00139000
+         OI    FLAGS,UFLG                                               00140000
+NOU      EQU   *                                                        00141000
+         CLI   BUFFER+9,C'X' MSG NUMBERS ENDING IN 'X'?                 00142000
+         BNE   NOX           NOT FOR MESSAGE ROUTINE                    00143000
+         OI    FLAGS,XFLG                                               00144000
+NOX      EQU   *                                                        00145000
+*--------------------------------------------------------------------   00146000
+* ENTER LOOP, CHECKING MESSAGE DESCRIPTOR PATTERN FOR ANY VARIABLE  -   00147000
+* FIELDS. FOR EACH VARIABLE FIELD, SEE IF IT HAS A CORRESPONDING    -   00148000
+* REPLACEMENT VARIABLE IN THE PARAMETER LIST.                       -   00149000
+*--------------------------------------------------------------------   00150000
+         SR        R5,R5               GET ZERO                         00151000
+         SR        R6,R6               GET ZERO                         00152000
+         LA        R9,3(R9)            POINT BEFORE C1                  00153000
+REPLOOP  EQU       *                   REPLACEMENT LOOP                 00154000
+         LA        R9,1(R9)            GET NEXT DESCRIPTOR FIELD        00155000
+         ICM       R6,B'0001',0(R9)    GET THE COLUMN POSITION          00156000
+         BZ        REPEND              OUT OF PATTERNS TO FILL          00157000
+         LA        R9,1(R9)            BUMP POINTER                     00158000
+         ICM       R5,B'0001',0(R9)    GET THE LENGTH                   00159000
+         BZ        REPLOOP             LENGTH ZERO? - JERK!             00160000
+         TM        0(R10),X'80'        END OF REPLACEMENT LIST?         00161000
+         BO        REPEND              YES, FINISH UP                   00162000
+         LA        R10,4(R10)          POINT AT NEXT ENTRY              00163000
+         TM        0(R10),B+C+D+X      IS IT ONE OF THESE ?             00164000
+         BZ        REPLOOP             IT'S A SKIP ENTRY                00165000
+         EJECT                                                          00166000
+*--------------------------------------------------------------------   00167000
+* DETERMINE WHICH KIND OF CONVERSION NEEDS TO BE DONE AND BRANCH    -   00168000
+* TO THE APPROPRIATE CODE TO DO IT.     AT THIS POINT, REGISTERS    -   00169000
+* ARE AS FOLLOWS:                                                   -   00170000
+*  R5 - LENGTH OF PATTERN TO BE FILLED                              -   00171000
+*  R6 - COLUMN POSITION OF PATTERN TO BE FILLED (BUFFER(R6))        -   00172000
+*  R10- ADDRESS OF VARIABLE TO BE CONVERTED AND TYPE OF CONVERSION  -   00173000
+*       IN HIGH BYTE.                                               -   00174000
+*                                                                   -   00175000
+* IF THE 'A' BIT IS ON, THEN THE LOW THREE BYTES IN R10 ARE THE     -   00176000
+* ADDRESS OF THE VARIABLE TO BE CONVERTED.                          -   00177000
+* IF THE 'A' BIT IS OFF, THEN THE LOW THREE BYTES IN R10 ARE THE    -   00178000
+* VALUE TO BE CONVERTED.                                            -   00179000
+*--------------------------------------------------------------------   00180000
+         SPACE                                                          00181000
+         TM        0(R10),B            BIT STRING?                      00182000
+         BO        BITSTR              DO BIT STRING STUFF              00183000
+         TM        0(R10),C            CHARACTER STRING                 00184000
+         BO        CHARSTR             DO CHAR STRING STUFF             00185000
+         TM        0(R10),D            DECIMAL FULLWORD                 00186000
+         BO        DECIMAL             DO DECIMAL STUFF                 00187000
+         TM        0(R10),X            HEXADECIMAL STRING?              00188000
+         BO        HEXSTR              DO HEX STUFF                     00189000
+         B         REPLOOP             UNKNOWN BITS                     00190000
+         SPACE     2                                                    00191000
+*--------------------------------------------------------------------   00192000
+BITSTR   EQU       *                   BIT STRING CONVERSIONS           00193000
+         TM        0(R10),A            ADDRESS OR VALUE ARGUMENT?       00194000
+         BO        BITA                ADDRESS OF IT                    00195000
+         C         R5,=F'24'           MORE THAN 24 BITS?               00196000
+         BNH       BIT0                NOPE....                         00197000
+         LA        R5,24               CAN'T FIT MORE THAN 24           00198000
+BIT0     EQU       *                                                    00199000
+         LA        R3,1(R10)           DATA IS VALUE IN PARM            00200000
+         B         BIT1                GO DO THE REST                   00201000
+BITA     EQU       *                                                    00202000
+         L         R3,0(R10)           ADDRESS OF DATA TO MOVE          00203000
+BIT1     EQU       *                   COMMON CODE FOR BOTH WAYS        00204000
+         LA        R4,BUFFER(R6)       DESTINATION ADDRESS              00205000
+         SR        R2,R2               BYTE COUNTER                     00206000
+         SR        R6,R6               BIT COUNTER                      00207000
+         IC        R1,0(,R3)           GET FIRST DATA BYTE              00208000
+         SLL       R1,24               MOVE IT TO THE TOP               00209000
+BITLOOP  EQU       *                                                    00210000
+         C         R6,=F'7'            UP TO BIT 7 YET?                 00211000
+         BNH       BIT2                NOPE                             00212000
+         SR        R6,R6               BACK TO BIT ZERO OF ...          00213000
+         LA        R2,1(R2)            ... THE NEXT BYTE                00214000
+         IC        R1,0(R2,R3)         GET THE BYTE                     00215000
+         SLL       R1,24               MOVE IT TO THE TOP               00216000
+BIT2     EQU       *                                                    00217000
+         LTR       R1,R1               HI BIT TURNED ON?                00218000
+         BL        BITON               YUP                              00219000
+         MVI       0(R4),C'0'          NO, IT'S OFF (0)                 00220000
+         B         BIT3                                                 00221000
+BITON    EQU       *                                                    00222000
+         MVI       0(R4),C'1'          BIT IS ON (1)                    00223000
+BIT3     EQU       *                                                    00224000
+         LA        R4,1(R4)            BUMP DESTINATION POINTER         00225000
+         LA        R6,1(R6)            BUMP BIT COUNTER                 00226000
+         SLL       R1,1                SHIFT LEFT 1 BIT                 00227000
+         BCT       R5,BITLOOP          AND LOOP BACK UNLESS FIELD       00228000
+         B         REPLOOP             ... IS FULL                      00229000
+         SPACE     2                                                    00230000
+*--------------------------------------------------------------------   00231000
+CHARSTR  EQU       *                   CHARACTER STRING COPYING         00232000
+         TM        0(R10),A            ADDRESS OR VALUE ARGUMENT?       00233000
+         BO        CHARA               THE EASIER ONE                   00234000
+         C         R5,=F'3'            MORE THAN 3 BYTES?               00235000
+         BNH       CHAR0               NOPE....                         00236000
+         LA        R5,3                SORRY....CAN'T FIT MORE THAN 3   00237000
+CHAR0    EQU       *                                                    00238000
+         LA        R3,1(R10)           DATA IS VALUE IN PARM            00239000
+         B         CHAR1               GO DO THE REST                   00240000
+CHARA    EQU       *                   CHARACTER ADDRESS ENTRY          00241000
+         L         R3,0(R10)           ADDRESS OF DATA TO MOVE          00242000
+CHAR1    EQU       *                   COMMON CODE FOR BOTH WAYS        00243000
+         BCTR      R5,0                -1 FOR EXECUTE                   00244000
+         LA        R4,BUFFER(R6)       COLUMN TO MOVE INTO              00245000
+         EX        R5,MOVCH            MOVE DATA INTO BUFFER            00246000
+         B         REPLOOP             AND RETURN                       00247000
+MOVCH    MVC       0(0,R4),0(R3)       COPY STRING INTO BUFFER          00248000
+         SPACE     2                                                    00249000
+*--------------------------------------------------------------------   00250000
+DECIMAL  EQU       *                   DECIMAL CONVERSION               00251000
+         TM        0(R10),A            ADDRESS OR VALUE?                00252000
+         BO        DECA                ADDRESS.                         00253000
+         ICM       R1,B'0111',1(R10)   GET VALUE INTO R1                00254000
+         SLL       R1,8                SIGN EXTEND                      00255000
+         SRA       R1,8                3 BYTES TO 4                     00256000
+         B         DEC1                                                 00257000
+DECA     EQU       *                                                    00258000
+         L         R1,0(R10)           GET DATA ADDRESS BY R10          00259000
+         L         R1,0(R1)            GET THE VALUE                    00260000
+DEC1     EQU       *                                                    00261000
+         CVD       R1,DWORD            MAKE IT DECIMAL                  00262000
+         LA        R4,BUFFER(R6)       ADDRESS TO STUFF                 00263000
+         LTR       R1,R1               IS IT NEGATIVE?                  00264000
+         BNL       DECPOS              NO, POSITIVE                     00265000
+         MVI       0(R4),C'-'          MOVE IN MINUS SIGN.              00266000
+         BCTR      R5,0                NOW IT'S 1 SHORTER               00267000
+         LA        R4,1(R4)            BUMP ADDRESS                     00268000
+DECPOS   EQU       *                                                    00269000
+         BCTR      R5,0                LENGTH-1 FOR EXECUTE             00270000
+         LTR       R5,R5               ANY ROOM LEFT?                   00271000
+         BL        REPLOOP             OH WELL...                       00272000
+         SLL       R5,4                L1 FOR UNPK EXECUTE!             00273000
+         EX        R5,UNPACK           UNPACK THE NUMBER                00274000
+         SRL       R5,4                GET THE NUMBER BACK              00275000
+         LA        R4,0(R4,R5)         LAST BYTE OF NUMBER              00276000
+         OI        0(R4),X'F0'         FIX THE ZONE                     00277000
+         B         REPLOOP             AND RETURN                       00278000
+UNPACK   UNPK      0(0,R4),DWORD       UNPACK INSTRUCTUIN               00279000
+         SPACE     2                                                    00280000
+*--------------------------------------------------------------------   00281000
+HEXSTR   EQU       *                   HEXADECIMAL STRING CONVERSION    00282000
+         TM        0(R10),A            ADDRESS OR VALUE ARGUMENT?       00283000
+         BO        HEXA                ADDRESS OF IT                    00284000
+         C         R5,=F'6'            MORE THAN 6 HEX DIGITS?          00285000
+         BNH       HEX0                NOPE....                         00286000
+         LA        R5,6                CAN'T FIT MORE THAN 6            00287000
+HEX0     EQU       *                                                    00288000
+         LA        R3,1(R10)           DATA IS VALUE IN PARM            00289000
+         B         HEX1                GO DO THE REST                   00290000
+HEXA     EQU       *                                                    00291000
+         L         R3,0(R10)           ADDRESS OF DATA TO MOVE          00292000
+HEX1     EQU       *                                                    00293000
+         LA        R4,BUFFER(R6)       ADDRESS FOR DESTINATION          00294000
+         SR        R1,R1               GET ZERO INTO INSERT REG         00295000
+         SR        R2,R2               BYTE COUNTER                     00296000
+         SR        R6,R6               NIBBLE COUNTER                   00297000
+HEXLOOP  EQU       *                                                    00298000
+         IC        R1,0(R2,R3)         GET THE BYTE                     00299000
+         LTR       R6,R6               NIBBLE 0 OR 1?                   00300000
+         BNZ       HEX2                THE OTHER ONE                    00301000
+         SRL       R1,4                GET THE LEFT NIBBLE              00302000
+         LA        R6,1                FIX NIBBLE COUNTER               00303000
+         B         HEX3                                                 00304000
+HEX2     EQU       *                                                    00305000
+         N         R1,=X'0000000F'     GET THE RIGHT NIBBLE             00306000
+         SR        R6,R6               FIX NIBBLE COUNTER               00307000
+         LA        R2,1(R2)                                             00308000
+HEX3     EQU       *                                                    00309000
+         IC        R1,HEXDIG(R1)       GET THE HEX DIGIT                00310000
+         STC       R1,0(R4)            PUT INTO STRING                  00311000
+         LA        R4,1(R4)            BUMP INPUT COUNTER               00312000
+         BCT       R5,HEXLOOP          AND GET NEXT ONE                 00313000
+         B         REPLOOP             AND RETURN                       00314000
+HEXDIG   DC        C'0123456789ABCDEF' HEX DIGITS                       00315000
+         SPACE     3                                                    00316000
+REPEND   EQU       *                   END OF REPLACEMENT LOOP          00317000
+         SPACE ,                                                        00318000
+*---- CHECK IF THIS MESSAGE SHOULD GO TO USERLOG/SNDRMSG FIRST -----    00319000
+         TM    FLAGS,UFLG    USERLOG TOO?                               00320000
+         BNO   NOU2          NOPE, RETURN                               00321000
+         LA    R1,BUFFER+11  POINT AT BUFFER (AFTER MESSAGE NUMBER)     00322000
+         LR    R0,R7         LENGTH OF MESSAGE                          00323000
+         S     R0,=F'10'     - LENGTH OF MESSAGE NUMBER             1.6 00324000
+         L     R15,=V(USERLOG)                                          00325000
+         BALR  R14,R15                                                  00326000
+NOU2     EQU   *                                                        00327000
+         TM    FLAGS,XFLG    SNDRMSG TOO?                               00328000
+         BNO   NOX2          NOPE                                       00329000
+         LA    R1,BUFFER+11  ADDRESS OF MESSAGE (AFTER MESSAGE #)       00330000
+         LR    R0,R7         LENGTH                                     00331000
+         S     R0,=F'10'     - LENGTH OF MESSAGE NUMBER             1.6 00332000
+         L     R15,=V(SNDRMSG)                                          00333000
+         BALR  R14,R15                                                  00334000
+NOX2     EQU   *                                                        00335000
+         SPACE ,                                                        00336000
+*------ NOW EDIT THE MESSAGE AND WRITE IT TO THE CONSOLE LOG -----      00337000
+         LA        R4,TIME             ADDRESS TO PUT TIME              00338000
+         DC    X'8340000C'             DIAGNOSE X'0C'                   00339000
+         MVC       DATE(8),TIME                                         00340000
+         MVC       CLOCK(8),TIME+8                                      00341000
+         LA        R8,BUFFER           POINT AT MESSAGE                 00342000
+         LA        R7,1(R7)            IT WAS DECREMENTED ONCE BEFORE   00343000
+         DC    X'8387005C'             EDIT THE MESSAGE                 00344000
+         LTR       R7,R7               EMSG OFF?                        00345000
+         BZ        DONE                WASTED A LOT OF TIME             00346000
+         BCTR      R7,0                -1 FOR EXECUTE                   00347000
+         EX        R7,MOVEIT           MOVE THE MESSAGE INTO BUFFER     00348000
+         LA        R7,LMSG+1(R7)       LENGTH OF OVERALL MESSAGE        00349000
+         STC       R7,MSG              SAVE LENGTH                      00350000
+         LR        R0,R7               LENGTH OF MESSAGE                00351000
+         LA        R1,MSG+1            ADDRESS OF IT                    00352000
+         L         R15,=V(WRITELOG)    ACTUAL LOG WRITING               00353000
+         BALR      R14,R15             CALL IT                          00354000
+DONE     EQU       *                                                    00355000
+         SR        R15,R15             NO ERRORS                        00356000
+         B         RET                                                  00357000
+MSGHIGH  EQU       *                   MESSAGE NUMBER TO HIGN           00358000
+         LA        R15,4               INDICATE ERROR                   00359000
+RET      EQU       *                                                    00360000
+         L         R13,4(R13)                                           00361000
+         L         R14,12(R13)                                          00362000
+         LM        R0,R12,20(R13)                                       00363000
+         BR        R14                                                  00364000
+*                                                                       00365000
+MOVEIT   MVC       BUFFER(0),0(R8)     MOVE THE MESSAGE INTO BUFFER     00366000
+*                                                                       00367000
+SAVE     DS        18F                                                  00368000
+DWORD    DS        D                                                    00369000
+TIME     DS        4D                                                   00370000
+MSG      DS        AL1                 LENGTH                           00371000
+DATE     DS        CL8                                                  00372000
+         DC        C' '                                                 00373000
+CLOCK    DS        CL8                                                  00374000
+         DC        C'  '                                                00375000
+LMSG     EQU       *-MSG-1                                              00376000
+BUFFER   DS        CL100               MAX OF ABOUT 100 CHARS           00377000
+FLAGS    DC    X'00'                                                    00378000
+UFLG     EQU   X'80'                                                    00379000
+XFLG     EQU   X'40'                                                    00380000
+         END       MONWTR                                               00381000

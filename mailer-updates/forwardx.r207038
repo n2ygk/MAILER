@@ -1,0 +1,3 @@
+./ R 00339000          $ 339290 290                   03/22/91 11:39:09
+         cmd = 'CP TRANSFER' userid 'RDR' spoolid mailerid 'RDR'        00339000
+         ans = space(diag(8,cmd),1)                                     00527000

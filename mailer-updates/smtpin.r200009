@@ -1,0 +1,34 @@
+./ R 00275000 00277000 $ 275690 690                   10/11/88 17:24:02
+        if (rscsdom[0] != 0) {                                          00275690
+            bcopy(&rscsdom[0][1],&bp[lcldl],(int)rscsdom[0][0]);        00276380
+            lcldl += rscsdom[0][0];                                     00277070
+./ R 00382000          $ 382690 690                   10/11/88 17:24:02
+ *  2) Compare the domain to MAILNODE concatenated w/ RSCS-Domains.     00382690
+./ R 00402000 00410000 $ 402690 690                   10/11/88 17:24:02
+    /* (2) Compare domain concatenated w/RSCS-domains to mailnode */    00402690
+    if (rscsdom[0] != 0) {                                              00403380
+        for (ri= 0; rscsdom[ri] != 0 && ri < MAXRSCSDOM; ri++) {        00404070
+           int rl = rscsdom[ri][0];                                     00404760
+           char *rp = &rscsdom[ri][1];                                  00405450
+           int i;                                                       00406140
+                                                                        00406830
+           if (rl < l && xcmp(rp, &s[i = l-rl], rl) == 0)               00407520
+               if (mailnlen == i && xcmp(s, mailnode, i) == 0)          00408210
+                   return 1;                                            00408900
+        }                                                               00409590
+./ R 00955000          $ 955490 490                   10/11/88 17:24:02
+ *   (1) see if RSCS-domains are found and if so,  see if hostname      00955490
+./ R 00978000 00980000 $ 978490 490                   10/11/88 17:24:02
+    if (rscsdom[0] != 0) {                                              00978690
+        int ri;
+        for (ri = 0; rscsdom[ri] != 0 && ri < MAXRSCSDOM; ri++) {
+           int rl = rscsdom[ri][0];                                     00979380
+           char *rp = &rscsdom[ri][1];                                  00980070
+./ R 00982000 00983000 $ 982490 490                   10/11/88 17:24:02
+           if (rl < l && xcmp(rp, &s[l-rl], rl) == 0)                   00982000
+               l -= rl;           /* chop of the RSCS-domain */         00983000
+        }
+./ R 01092000 01094000 $ 1092690 690                  10/11/88 17:24:02
+        if (rscsdom[0] != 0) {                                          01092690
+            bcopy(&rscsdom[0][1],&buf[len],(int)rscsdom[0][0]);         01093380
+            len += rscsdom[0][0];                                       01094070

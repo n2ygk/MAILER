@@ -1,0 +1,3 @@
+./ R 00111000 00112000 $ 111590 590                   10/31/88 15:11:28
+         TM    MAILFLG2,MFLG2BLD   Any problems in BUILDLST?
+         BO    RTS           ---> Yes, return to sender                 00112000

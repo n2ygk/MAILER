@@ -1,0 +1,23 @@
+./ I 00049000          $ 49100 100                    01/10/90 15:05:16
+         SPACE 1
+         TM    DBGFLG6,DBGNOOUT    Sending mail?
+         BZ    SKIP001             ---> Yes
+         WRTERM 'BITNET:  Trace-send-no-mail set'
+SKIP001  EQU   *
+         SPACE 1
+./ I 00061820          $ 61826 6                      01/10/90 15:05:16
+         TM    DBGFLG6,DBGNOOUT  Sending mail?
+         BO    SHOWDELT          ---> No
+./ I 00061860          $ 61862 2                      01/10/90 15:05:16
+         SPACE 1
+SHOWDELT EQU   *
+         LINEDIT TEXT='BITNET:  .......................................X
+               .........................................',             X
+               SUB=(CHARA,MDELTO),DOT=NO,COMP=NO
+         B     NODEL2
+         SPACE 1
+./ I 00061960          $ 61970 10                     01/10/90 15:05:16
+         TM    DBGFLG6,DBGNOOUT    Sending mail?
+         BO    NOMAIL              ---> No
+./ I 00073000          $ 73700 700                    01/10/90 15:05:16
+NOMAIL   EQU   *

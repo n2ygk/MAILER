@@ -1,0 +1,9 @@
+./ I 00118600          $ 118700 100                   11/09/89 12:00:41
+         CLI   RTPARM,C'%'        or '%' (for percent hack)             00118300
+         BE    NOPARM             so this parm is not domain            00118600
+./ I 00216610          $ 216640 30                    11/09/89 12:00:41
+         XC    PARMSTR,PARMSTR    No pointer yet
+         XC    PARMLEN,PARMLEN    No length yet
+./ R 00234390          $ 234393 3                     11/09/89 12:00:41
+         ICM   R5,B'1111',PARMSTR get ptr back from above               00234390
+         BZ    NOPARM2            no parm value coded

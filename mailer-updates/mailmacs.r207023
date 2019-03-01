@@ -1,0 +1,14 @@
+./ I 00504000          $ 504500 500                   12/13/90 11:37:27
+MAILFORM DC    CL8' '        Mail FORM value                            00504500
+./ R 00507000 00511000 $ 507390 390                   12/13/90 11:37:27
+MSFBSIZE EQU   16                  Doubleword size of SFB returned by   00507490
+*                                  by DIAG 14 subfunction FFF.  This is 00507980
+*                                  larger than the default (13) because 00508470
+*                                  the SFBUFORM field is being used.    00508960
+*                                                                       00509450
+MAILSFB  DC    (MSFBSIZE)D'0'      Spool file block buffer for DIAG 14  00509940
+         DC    40X'0'              3800 data will go here               00510430
+         DC    XL8'0'              First CCW
+         DC    XL4'0'              First TIC
+MAILTAG  DC    CL130' '            Tag text will be here                00510920
+         SPACE 1                                                        00511410

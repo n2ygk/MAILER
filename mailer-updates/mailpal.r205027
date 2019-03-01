@@ -1,0 +1,94 @@
+./ R 00173000 00178000 $ 173990 990                   03/12/90 16:45:11
+&LABEL   TM    DBGFLG6,DBGPARSE    Debugging?                           00173990
+         BNO   $&SYSNDX.A          ---> No                              00174980
+         WRTERM &MSG               Write debugging msg                  00175970
+         WAITT ,                   Wait for it to display               00176960
+$&SYSNDX.A EQU *                                                        00177950
+./ R 00185000 00186000 $ 185590 590                   03/12/90 16:45:11
+         LR    R10,R1        address of LOCALS                          00185590
+         USING LOCALS,R10    address LOCALS                             00186180
+./ R 00199000          $ 199490 490                   03/12/90 16:45:11
+         DROP  R10           done with LOCALS                           00199490
+./ D 00203000 00204000                                03/12/90 16:45:11
+./ R 00208000 00222000 $ 208990 990                   03/12/90 16:45:11
+*        ENTRY SHIFTSEM                                                 00208990
+*        ENTRY SEMSP1                                                   00209980
+*        ENTRY SEMSP2                                                   00210970
+*        ENTRY SEMLST1                                                  00211960
+*        ENTRY SEMLST2                                                  00212950
+*        ENTRY SEMRTL1                                                  00213940
+*        ENTRY SEMRTL2                                                  00214930
+*        ENTRY SEMADS1                                                  00215920
+*        ENTRY SEMADS2                                                  00216910
+*        ENTRY SEMRADDR                                                 00217900
+*        ENTRY SEMMBOXL                                                 00218890
+*        ENTRY SEMADDRL                                                 00219880
+*        ENTRY SEMGOAL                                                  00220870
+./ R 00255000          $ 255490 490                   03/12/90 16:45:11
+PSTACK   DS    A             address of stack                           00255490
+./ I 00290990          $ 291990 1000                  03/12/90 16:45:11
+         MAILBLOK ,                                                     00291990
+./ R 00311000          $ 311490 490                   03/12/90 16:45:11
+R11      EQU   11            MAILBLOK base                              00311490
+./ I 00322000          $ 322300 300                   03/12/90 16:45:11
+         L     R11,=V(MAILBLOK)                                         00322300
+         USING MAILBLOK,R11                                             00322600
+./ R 00324000          $ 324490 490                   03/12/90 16:45:11
+         ST    R15,PSTACK    address of that stack                      00324490
+./ I 00328000          $ 328500 500                   03/12/90 16:45:11
+         ST    R1,PLIST      keep this in a convenient place            00336000
+./ R 00332000 00333000 $ 332090 90                    03/12/90 16:45:11
+         L     R3,@LEN       address of string length                   00332090
+         ST    R3,LEX@LEN    also pass along                            00332180
+         DROP  R1            done with plist for now                    00337000
+         TM    DBGFLG6,DBGPARSE    Debugging?                           00332270
+         BNO   DB0000              ---> No                              00332360
+         L     R2,0(,R2)           Get the address                      00332450
+         L     R3,0(,R3)           Get the length                       00332540
+         WRTERM 'MAILPAL : Line to be parsed'                           00332630
+         LINEDIT TEXT='................................................X00332720
+               ....................................................',  X00332810
+               SUB=(CHARA,((R2),(R3))),DOT=NO,COMP=NO,RENT=NO           00332900
+DB0000   EQU   *                                                        00332990
+./ D 00336000 00337000                                03/12/90 16:45:11
+./ R 00370000          $ 370490 490                   03/12/90 16:45:11
+         L     R3,PSTACK     get stack pointer                          00370490
+./ R 00404000 00405000 $ 404590 590                   03/12/90 16:45:11
+         LR    R10,R1        copy handle on LOCALS                      00404590
+         USING LOCALS,R10    get addressability on it                   00405180
+./ R 00416000          $ 416490 490                   03/12/90 16:45:11
+         L     R1,PSTACK     get stack pointer                          00416490
+./ R 00422000          $ 422490 490                   03/12/90 16:45:11
+         ST    R1,PSTACK     and put it back                            00422490
+./ R 00476000          $ 476290 290                   03/12/90 16:45:11
+         TM    DBGFLG6,DBGPARSE    Debugging?                           00476290
+         BNO   LEX#R02             ---> No                              00476580
+./ R 00480000          $ 480490 490                   03/12/90 16:45:11
+LEX#R02  EQU   *                                                        00480490
+./ R 00494000          $ 494490 490                   03/12/90 16:45:11
+         DROP  R10           done with LOCALS base                      00494490
+./ D 00520000 00523000                                03/12/90 16:45:11
+./ R 00564000          $ 564490 490                   03/12/90 16:45:11
+         L     R1,PSTACK     get stack pointer                          00564490
+./ R 00570000          $ 570490 490                   03/12/90 16:45:11
+         ST    R1,PSTACK     save it back                               00570490
+./ R 00587000          $ 587490 490                   03/12/90 16:45:11
+         L     R1,PSTACK     get stack pointer                          00587490
+./ R 00593000          $ 593490 490                   03/12/90 16:45:11
+         ST    R1,PSTACK     save it back                               00593490
+./ R 00621000          $ 621490 490                   03/12/90 16:45:11
+         L     R1,PSTACK     get stack pointer                          00621490
+./ R 00627000          $ 627490 490                   03/12/90 16:45:11
+         ST    R1,PSTACK     save it back                               00627490
+./ R 00652000          $ 652490 490                   03/12/90 16:45:11
+         L     R1,PSTACK     get stack pointer                          00652490
+./ R 00658000          $ 658490 490                   03/12/90 16:45:11
+         ST    R1,PSTACK     save it back                               00658490
+./ R 00696000          $ 696490 490                   03/12/90 16:45:11
+         L     R1,PSTACK     get stack pointer                          00696490
+./ R 00702000          $ 702490 490                   03/12/90 16:45:11
+         ST    R1,PSTACK     put it back                                00702490
+./ R 00749000          $ 749490 490                   03/12/90 16:45:11
+         L     R1,PSTACK     get stack pointer                          00749490
+./ R 00755000          $ 755490 490                   03/12/90 16:45:11
+         ST    R1,PSTACK     put it back                                00755490

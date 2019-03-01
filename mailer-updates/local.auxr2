@@ -1,0 +1,19 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R207025    Support specification of disk for FORWARD and MAILLIST files
+R205023    More tracing controls.  This adds keywords for:
+R205020    More tracing controls.  This adds keywords for:
+R205018    Add flag to only trace a mail creating exit.
+*          When this flag is set, the exit should list the actions
+*          it would have performed, but *NOT* create the output file.
+R205015    Add control to allow accpetance of BSMTP streams with
+*          FILE FROM: header.
+R205005    Support for '!' in addresses
+R204008    Produce mail being forwarded message if FORWARD file found
+R204004    Support for DISTLIST command
+R203022    Add an eyecatcher to LOCAL for dumps.
+R203020    Fix MAILCL031U message.
+R203014    Support for FORWARD command
+R203011    Support for '%' kludge
+R202018    Remove PRINT NOGENs, make DSECTs honor SYSPARM(SUP)/SYSPARM(EXP)
+R202013    Correct handling of userids with '.'s in LOCAL exit
+R201009    Handle local address part correctly in tagging files

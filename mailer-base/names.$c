@@ -1,0 +1,243 @@
+/*-------------------------------------------------------------------*  00001000
+ *    MAILER -- Copyright (c) 1982,1987 Columbia University.         *  00002490
+ *  Program Property of the Trustees of Columbia University in the   *  00003000
+ *  City of New York.                                                *  00004000
+ *-------------------------------------------------------------------*/ 00005000
+/*                                                                      00006000
+ * names.c:  Routines to deal with VM/SP NAMES files.                   00007000
+ *                                                                      00008000
+ * namefind(file, names, func) - look in NAMES file "file" for the      00009000
+ *      list of tags to match/fill in in the "names" array and call     00010000
+ *      func once for each one found or until func returns non-zero.    00011000
+ *                                                                      00012000
+ * nextname(filep, names) - gets next NAMES file entry and fills in     00013000
+ *      requested values from the names array.                          00014000
+ *                                                                      00015000
+ * extern int namenode when set non-zero causes ":node" to be used as   00015200
+ * an alias for :nick.  This makes it usable with the EARN NODES files. 00015400
+ *                                                                      00015600
+ * Alan Crosswell,  Columbia University Center for Computing Activities 00016000
+ */                                                                     00017000
+                                                                        00018000
+#include <stdio.h>                                                      00019000
+#include <ctype.h>                                                      00020000
+#include "names.h"                                                      00021000
+#define MAXDATA 4096                                                    00022000
+                                                                        00023000
+#define assert(X,Y) if(!(X)) error("assertion failed: %s\n",Y)          00024490
+                                                                        00025000
+int namenode = 1;                                                       00025300
+                                                                        00025600
+namefind(file, names, func)                                             00026000
+char *file;                                                             00027000
+struct names names[];                                                   00028000
+int (*func)();                                                          00029000
+{                                                                       00030000
+    FILE *filep;                                                        00031000
+    struct names *ncopy;                                                00032000
+    int i, nnames;                                                      00033000
+                                                                        00034000
+    if ((filep  = fopen(file, "r")) == NULL)                            00035000
+      return -1;                                                        00036000
+                                                                        00037000
+    /* find size of 'names' and copy tags portion of it. */             00038000
+    for (nnames = 0; names[nnames].n_tag != NULL; nnames++);            00039000
+    ++nnames;                                                           00040000
+    ncopy = calloc(nnames, sizeof (struct names));                      00041000
+    for (i = 0; i < nnames; i++)                                        00042000
+      ncopy[i].n_tag = names[i].n_tag;                                  00043000
+    while (nextname(filep, ncopy)) {    /* look for matches */          00044000
+        int matchflag = 0;                                              00045000
+                                                                        00046000
+        for (i = 0; i < nnames-1; i++) {                                00047000
+            if (names[i].n_val != NULL) {                               00048000
+                matchflag = 0;                                          00049000
+#ifdef DEBUG2                                                           00050000
+                printf("comparing %s: '%s' to '%s'\n",names[i].n_tag,   00051000
+                       names[i].n_val, ncopy[i].n_val);                 00052000
+#endif DEBUG2                                                           00053000
+                if (strcmp(names[i].n_val, ncopy[i].n_val) == 0)        00054000
+                  ++matchflag;                                          00055000
+                else                                                    00056000
+                  break;                                                00057000
+            }                                                           00058000
+        }                                                               00059000
+        if (matchflag)                                                  00060000
+          if (!(*func)(ncopy))                                          00061000
+            break;                                                      00062000
+    }                                                                   00063000
+    free(ncopy);                                                        00064000
+}                                                                       00065000
+                                                                        00066000
+/*                                                                      00067000
+ * nextname: find next name entry and fill in requested value fields.   00068000
+ * Name entries are delimited by their ":nick" tags.                    00069000
+ * Return true until EOF and then return false.                         00070000
+ *                                                                      00071000
+ * Format of a names file is:                                           00072000
+ *  :nick.something (more tags)                                         00073000
+ *   ...                                                                00074000
+ *  :nick.next thing                                                    00075000
+ *                                                                      00076000
+ */                                                                     00077000
+                                                                        00078000
+nextname(fp, nm)                                                        00079000
+FILE *fp;                                                               00080000
+struct names nm[];                                                      00081000
+{                                                                       00082000
+    int c;                                                              00083000
+    static char dbuf[MAXDATA];                                          00084000
+    static char *db, *maxdb = &dbuf[MAXDATA-1];                         00085000
+    char *curtag, *curdata;                                             00086000
+    static enum {intag, indata, initial, nickseen} state = initial;     00087000
+    static int firsttime = 1;                                           00088000
+    int leading;                                                        00089000
+    struct names *n;                                                    00090000
+                                                                        00091000
+    if (feof(fp)) {                                                     00092000
+        state = initial;                                                00093000
+        firsttime = 1;                                                  00094000
+        return 0;                                                       00095000
+    }                                                                   00096000
+                                                                        00097000
+    for (;;) {                                                          00098000
+        if (c == EOF) return 1;                                         00099000
+        c = getc(fp);                                                   00100000
+        switch(state) {                                                 00101000
+          case initial:                                                 00102000
+            leading = 1;                                                00103000
+            switch (c) {                                                00104000
+              case ':':                                                 00105000
+                     state = intag;                                     00106000
+                     curtag = db = dbuf;                                00107000
+                     break;                                             00108000
+              case ' ':                                                 00109000
+              case '\t':                                                00110000
+              case '\n':                                                00111000
+                     break;                                             00112000
+              case EOF:                                                 00113000
+                     return 0;                                          00114000
+              default:                                                  00115000
+                     error("Not a NAMES file.");                        00116490
+                     break;                                             00117000
+            }                                                           00118000
+#ifdef DEBUG                                                            00119000
+            printf("initial\n");                                        00120000
+#endif DEBUG                                                            00121000
+            break;                                                      00122000
+          case nickseen:        /* :nick was last thing seen */         00123000
+            if (c == EOF) return 0;                                     00124000
+            strcpy(dbuf,"nick");                                        00125000
+            curtag = dbuf;                                              00126000
+            curdata = db = &dbuf[5];                                    00127000
+            *db++ = c;                                                  00128000
+            state = indata;                                             00129000
+#ifdef DEBUG                                                            00130000
+            printf("nickseen\n");                                       00131000
+#endif DEBUG                                                            00132000
+            break;                                                      00133000
+          case intag:                                                   00134000
+#ifdef DEBUG                                                            00135000
+            printf("intag\n");                                          00136000
+#endif DEBUG                                                            00137000
+            switch(c) {                                                 00138000
+              case '.':                 /* end of tag */                00139000
+              case '\n':                                                00140000
+              case EOF:                                                 00141000
+                assert((db < maxdb),"db < maxdb");                      00142490
+                *db++ = '\0';                                           00143000
+                curdata = db;                                           00144000
+                state = indata;                                         00145000
+#ifdef DEBUG                                                            00146000
+                printf("tag is \"%s\"\n", curtag);                      00147000
+#endif DEBUG                                                            00148000
+                if (strcmp(curtag,"nick") == 0                          00149290
+                    || (namenode && strcmp(curtag,"node") == 0)) {      00149580
+#ifdef DEBUG                                                            00150000
+                    printf(":nick found\n");                            00151000
+#endif DEBUG                                                            00152000
+/* xxx */           state = nickseen;                                   00152500
+                    if (firsttime)                                      00153000
+                      firsttime = 0;                                    00154000
+                    else {                                              00155000
+                        return 1;                                       00157000
+                    }                                                   00158000
+                }                                                       00159000
+                break;                                                  00160000
+              default:                                                  00161000
+                if (c == EOF) break;                                    00162000
+                assert((db < maxdb),"db < maxdb");                      00163490
+                *db++ = c;                                              00164000
+#ifdef DEBUG                                                            00165000
+                printf("'%c' ",c);                                      00166000
+#endif DEBUG                                                            00167000
+                break;                                                  00168000
+            }                                                           00169000
+            break;                                                      00170000
+          case indata:                                                  00171000
+#ifdef DEBUG                                                            00172000
+            printf("indata\n");                                         00173000
+#endif DEBUG                                                            00174000
+            switch (c) {                                                00175000
+              case '\n':                                                00176000
+                leading = 1;            /* leading blanks flag */       00177000
+                assert((db < maxdb),"db < maxdb");                      00178490
+                *db++ = ' ';                                            00179000
+#ifdef DEBUG                                                            00180000
+                printf("'\\n' ");                                       00181000
+#endif DEBUG                                                            00182000
+                break;                                                  00183000
+              case ' ':                                                 00184000
+              case '\t':                                                00185000
+                if (!leading) {                                         00186000
+                    assert((db < maxdb), "db < maxdb");                 00187490
+                    *db++ = ' ';                                        00188000
+                }                                                       00189000
+                break;                                                  00190000
+              case ':':                                                 00191000
+              case EOF:                                                 00192000
+                leading = 0;                                            00193000
+                while (isspace(*--db)); /* rtrim */                     00194000
+                ++db;                                                   00195000
+                assert((db < maxdb),"db < maxdb");                      00196490
+                *db++ = '\0';                                           00197000
+#ifdef DEBUG                                                            00198000
+                printf("curdata is \"%s\"\n", curdata);                 00199000
+#endif DEBUG                                                            00200000
+                                                                        00201000
+                for (n = &nm[0]; n->n_tag != NULL; n++)                 00202000
+                  if (strcmp(n->n_tag, curtag) == 0) {                  00203000
+                      n->n_val = curdata;                               00204000
+#ifdef DEBUG2                                                           00205000
+                      printf("::%s.%s\n", n->n_tag, n->n_val);          00206000
+#endif DEBUG2                                                           00207000
+                      break;                                            00208000
+                  }                                                     00209000
+                curtag = db;                                            00210000
+                state = intag;                                          00211000
+                break;                                                  00212000
+              default:                                                  00213000
+                if (c == EOF) break;                                    00214000
+                leading = 0;                                            00215000
+                assert((db < maxdb),"db < maxdb");                      00216490
+                *db++ = c;                                              00217000
+#ifdef DEBUG                                                            00218000
+                printf("'%c' ",c);                                      00219000
+#endif DEBUG                                                            00220000
+                break;                                                  00221000
+            }                                                           00222000
+            break;                                                      00223000
+          default:                                                      00224000
+            error("Unknown state");                                     00225000
+            break;                                                      00226000
+        } /* switch */                                                  00227000
+    } /* for */                                                         00228000
+}                                                                       00229000
+                                                                        00230000
+error(s,a1,a2,a3,a4,a5)                                                 00231490
+char *s;                                                                00232000
+char *a1,*a2,*a3,*a4,*a5;                                               00232500
+{                                                                       00233000
+    fprintf(stderr,s,&a1);                                              00234490
+    exit(1);                                                            00235000
+}                                                                       00236000

@@ -1,0 +1,65 @@
+% offsets into MAILBLOK                                                 00001000
+origin 0                                                                00002000
+offset mailblok 4            % dummy variable to return address of sect 00003190
+origin 0                                                                00003380
+offset mailhbuf 8            % addr,len of header buffer                00003570
+origin 24                                                               00004000
+offset stackp 8              % memory allocation stack pointer, length  00005000
+offset mailrtab 4            % outgoing table                           00006000
+offset mailstab 4            % special table                            00007000
+offset mailktab 4            % header keyword table                     00008000
+offset mailvtab 4            % incoming table                           00009000
+offset mailptab 4            % parameter table                          00009200
+offset mailhrec 4            % number of actual records in header       00009400
+offset mailhlin 4            % number of logical lines in header        00009600
+origin 84                                                               00010000
+offset mailchn 4             % chain of actada's                        00011000
+offset mailfld 4             % head of fieldd chain                     00012490
+offset mailsfld 4            % sender fieldd pointer                    00013000
+origin 104                                                              00014290
+offset mailftxt 4            % spoolid (characters)                     00014580
+offset mailopts 1            % options                                  00015000
+offset mailflg1 1            % flags                                    00016000
+origin 112                                                              00017000
+offset cpustr 8              % rscs node name                           00018000
+offset rscsname 8            % rscs userid                              00019000
+offset mailvmid 8            % mailer machine vm userid                 00020000
+offset mailtime 16           % time of last start/reload                00021000
+offset mailvers 16           % mailer version, assembly date            00022000
+origin 184                                                              00023580
+offset mailnode 8            % origin nodename                          00024000
+offset mailuser 8            % origin userid                            00025000
+origin 240                                                              00026000
+offset mailsfb 104           % sfblok                                   00027000
+origin 1512                                                             00028000
+offset upcase 256            % upper case translate table               00029000
+origin 1940                                                             00030090
+offset maxrcvd 4             % max number of received header lines      00030180
+offset mailulen 4            % length of mailuser                       00030270
+offset mailnlen 4            % length of mailnode                       00030360
+offset mailulfs 4            % ptr to error log fscb                    00030450
+offset lcldom 4              % ptr to local-domain string               00031000
+offset cpuslen 4             % length of cpustr                         00032000
+offset rscsdom 4             % ptr to rscs-domain string                00033000
+offset maildtab 4            % domains table                            00034000
+origin 1990                                                             00035000
+offset mailflg2 1            % more flags                               00036000
+origin 2072                                                             00037000
+offset maintid  8            % maintainer userid                        00038000
+offset maintnod 8            % maintainer node                          00039000
+offset maintid2 8            % maintainer userid                        00040000
+offset maintno2 8            % maintainer node                          00041000
+offset maintid3 8            % maintainer userid                        00042000
+offset maintno3 8            % maintainer node                          00043000
+offset maintid4 8            % maintainer userid                        00044000
+offset maintno4 8            % maintainer node                          00045000
+offset maintid5 8            % maintainer userid                        00046000
+offset maintno5 8            % maintainer node                          00047000
+offset maintid6 8            % maintainer userid                        00048000
+offset maintno6 8            % maintainer node                          00049000
+offset maintid7 8            % maintainer userid                        00050000
+offset maintno7 8            % maintainer node                          00051000
+offset maintid8 8            % maintainer userid                        00052000
+offset maintno8 8            % maintainer node                          00053000
+offset maintid9 8            % maintainer userid                        00054000
+offset maintno9 8            % maintainer node                          00055000

@@ -1,0 +1,14 @@
+./ R 00074900 00074950 $ 74907 7                      10/14/88 15:50:56
+         C     R15,=F'4095'        Any full pages possible?             00074907
+         BNH   NODIAG10            ---> No                              00074914
+         AR    R15,R14             Ending                               00074921
+         BCTR  R15,0                    stack address                   00074928
+         LA    R14,4095(,R14)      Round to starting                    00074935
+         N     R14,=X'00FFF000'        page address                     00074942
+         SRL   R15,12              Round to ending
+         BCTR  R15,0                    page                            00074956
+         SLL   R15,12                        address
+         CR    R14,R15             Anything to free                     00074963
+         BP    NODIAG10            ---> No                              00074970
+         DIAG  R14,R15,X'0010'     Release pages                        00074977
+NODIAG10 DS    0H                                                       00074984

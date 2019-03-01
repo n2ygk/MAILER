@@ -1,0 +1,3 @@
+./ I 00079270          $ 79276 6                      11/29/90 14:54:05
+#define TRACE_CHECK_SENDER       0x20  /* Trace check_sender         */ 00079270
+#define TRACE_CHECK_DOMAIN       0x10  /* Trace check_domain         */ 00079270

@@ -1,0 +1,4 @@
+./ I 00503000          $ 503500 500                   02/05/91 08:19:40
+         CHR   X'45',SKIP              French accents
+./ I 00504000          $ 504500 500                   02/05/91 08:19:40
+         CHR   X'51',SKIP              French accents

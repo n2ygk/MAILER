@@ -1,0 +1,8 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R206002    Fix to STOP and QUIESCE processing
+R203006    Extend abend recovery to BSMTP code
+R202018    Remove PRINT NOGENs, make DSECTs honor SYSPARM(SUP)/SYSPARM(EXP)
+R201008    Report errors for mail not sent when multiple destinations
+*          given and only some destinations are bad
+R200012    Remove stack clearing MVCL
+*          Add DIAG 10 to purge old stack pages

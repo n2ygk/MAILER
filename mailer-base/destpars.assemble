@@ -1,0 +1,217 @@
+DESTPARS TITLE 'CUCCA VM NETWORK MAILER VERSION 1 *DESTINATION PARSER'  00001000
+*---------------------------------------------------------------------* 00002000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00003000
+*    Program Property of the Trustees of Columbia University in the   * 00004000
+*    City of New York.                                                * 00005000
+*---------------------------------------------------------------------* 00006000
+DESTPARS CSECT ,                                                        00007000
+* DESTPARS -                                                            00008000
+*  This routine parse the *destination field which contains a list      00009000
+*  of final recipient hosts of a mail file.  It builds a list of        00010000
+*  tokens, one for each destination, and sets the FIINVFLG flag         00011000
+*  to indicate that this field should not normally be written out       00012000
+*  on generation of the output header.                                  00013000
+*                                                                       00014000
+*                                                                       00015000
+* LAST EDIT: 5/2/82 BY ALAN CROSSWELL                                   00016000
+*                                                                       00017000
+* CALLED VIA -                                                          00018000
+*  CALL DESTPARS,(MAILBLOK,FIELDD,STKP,STKL)                            00019000
+         SPACE ,                                                        00020000
+PAB      DSECT ,                                                        00021000
+@MBLOK   DS    A             ADDRESS OF MAILBLOK                        00022000
+@FIELDD  DS    A             ADDRESS OF FIELD DESCRIPTOR                00023000
+@STK     DS    2F            STACK POINTER                              00024000
+         SPACE ,                                                        00025000
+* REGISTER USAGE -                                                      00026000
+R0  EQU  0 -                                                            00027000
+R1  EQU  1 -                                                            00028000
+R2  EQU  2 -                                                            00029000
+R3  EQU  3 -                                                            00030000
+R4  EQU  4 -                                                            00031000
+R5  EQU  5 -                                                            00032000
+R6  EQU  6 -                                                            00033000
+R7  EQU  7 - FIELDD BASE                                                00034000
+R8  EQU  8 - MAILBLOK BASE                                              00035000
+R9  EQU  9 - STACK POINTER                                              00036000
+R10 EQU 10 - STACK LENGTH                                               00037000
+R11 EQU 11 - PARM LIST POINTER                                          00038000
+R12 EQU 12 - PROGRAM BASE                                               00039000
+R13 EQU 13 - SAVE AREA                                                  00040000
+R14 EQU 14 - SUBROUTINE LINKAGE                                         00041000
+R15 EQU 15 - SUBROUTINE LINKAGE                                         00042000
+         SPACE                                                          00043000
+         PRINT NOGEN                                                    00044000
+         BLOCKS ,                                                       00045000
+         MAILBLOK ,                                                     00046000
+         EJECT                                                          00047000
+DESTPARS CSECT ,                                                        00048000
+         USING DESTPARS,R15  TEMPORARY ADDRESSABILITY                   00049000
+         B     EYESKIP       BRANCH OVER EYESKIP                        00050000
+MYNAME   DC    CL8'DESTPARS',CL8'&SYSDATE'                              00051000
+EYESKIP  DS    0H                                                       00052000
+         DROP  R15                                                      00053000
+         STM   R14,R12,12(R13) SAVE CALLER'S REGS                       00054000
+         LR    R12,R15       PERMANENT ADDRESSABILITY                   00055000
+         USING DESTPARS,R12                                             00056000
+         LA    R14,SAVE      MY SAVE AREA                               00057000
+         ST    R13,4(R14)    SAVE CALLER'S PTR                          00058000
+         ST    R14,8(R13)    CHAIN MINE BACK                            00059000
+         LR    R13,R14       SET MY SAVE PTR                            00060000
+         LR    R11,R1        GET A BETTER HANDLE                        00061000
+         USING PAB,R11       ADDRESS PARMS                              00062000
+         L     R8,@MBLOK     MAILBLOK                                   00063000
+         USING MAILBLOK,R8                                              00064000
+         OI    MAILFLG1,MFLGDEST  LET THEM KNOW THAT A DEST IS THERE    00065000
+         L     R1,@STK       GET ADDRESS OF STACK POINTER               00066000
+         L     R9,0(R1)      GET STACK POINTER                          00067000
+         L     R1,@STK+4     GET ADDRESS OF STACK LENGTH                00068000
+         L     R10,0(R1)     GET STACK LENGTH                           00069000
+         L     R7,@FIELDD    GET FIELDD BASE                            00070000
+         USING FIELDD,R7     ADDRESS THE FIELD DESCR                    00071000
+         OI    FIFLG1,FIINVFLG SET THIS FIELDD 'INVISIBLE'              00072000
+         L     R5,FISTR      GET STRING POINTER                         00073000
+         L     R6,FIEND      GET END OF STRING POINTER                  00074000
+         SR    R6,R5         GET REMAINING LENGTH OF STRING             00075000
+         LA    R9,7(R9)      ROUND STACK UP TO A DWORD BOUNDARY         00076000
+         N     R9,=X'FFFFFFF8'                                          00077000
+         LR    R1,R9         COPY IT                                    00078000
+         L     R2,@STK       POINT TO STACK PTR                         00079000
+         S     R1,0(R2)      GET AMOUNT ADDED                           00080000
+         SR    R10,R1        REMOVE FROM STACK LENGTH                   00081000
+         BL    NOSPACE       OUT OF SPACE!                              00082000
+         SPACE ,                                                        00083000
+*--------------------------------------------------------------------   00084000
+*  ALLOCATE THE INITIAL TOKEND.  HANG THE ADDRESS OF IT OFF OF THE      00085000
+*  CURRENT TOKEN LIST POINTED TO BE FITOK.                              00086000
+*--------------------------------------------------------------------   00087000
+         BL    NOSPACE       RATS!                                      00088000
+         L     R1,FITOK      GET FIELD NAME TOKEND                      00089000
+         USING TOKEND,R1     ADDRESS IT                                 00090000
+LOOP     EQU   *                                                        00091000
+         ICM   R2,B'1111',TOKNEXT  LOOK FOR LIST END                    00092490
+         BZ    LOOPOUT                                                  00093000
+         LR    R1,R2         CHAIN THRU FIELD NAME TOKENS               00094000
+         B     LOOP                                                     00095000
+LOOPOUT  EQU   *                                                        00096000
+         S     R10,=A(TOKSIZ) MAKE ROOM FOR THE TOKEN                   00097490
+         BL    NOSPACE       SORRY                                      00098000
+         ST    R9,TOKNEXT          HANG NEW TOKEN OFF END OF LIST       00099490
+         ST    R1,TOKPREV-TOKEND(R9) Chain backward, also               00099690
+         ST    R9,FIPARS     ALSO SET FIPARS TO POINT HERE              00100000
+         DROP  R1                                                       00101000
+         MVI   TRAPTAB+X'15',X'FF'  USE TRAPTAB FOR NEWLINES            00102000
+         MVI   TRAPTAB+C',',X'FF' ALSO TRAP ON COMMA                    00103000
+         MVI   TRAPTAB+C' ',X'FF' AND BLANK                             00104000
+*--------------------------------------------------------------------   00105000
+*  LOOP:  ALLOCATE A TOKEND                                             00106000
+*         STUFF TOKEN START ADDRESS                                     00107000
+*         SEARCH FOR NEXT NEWLINE                                       00108000
+*         STUFF TOKEN END ADDRESS                                       00109000
+*--------------------------------------------------------------------   00110000
+PLOOP    EQU   *                                                        00111000
+         USING TOKEND,R9     ADDRESS THE CURRENT TOKEN                  00112000
+         LR    R1,R5         GET STRING ADDRESS                         00113000
+         LR    R2,R6         GET STRING LENGTH                          00114000
+         BAL   R14,LTRIM     TRIM OFF LEADING BLANKS                    00115000
+         LR    R5,R1         GET UPDATED POINTER                        00116000
+         LR    R6,R2         GET UPDATED LENGTH                         00117000
+         ST    R5,TOKPTR         START ADDRESS OF THE STRING            00118980
+         MVI   TOKTYPE,TOKATM  CALL IT AN ATOM                          00119470
+         LR    R1,R5         POINT TO START OF STRING                   00120000
+         LR    R2,R6         REMAINING STRING LENGTH                    00121000
+         BAL   R14,FIND15    FIND NEXT NL, COMMA, OR BLANK              00122000
+         LR    R5,R1         GET UPDATED POINTER                        00123000
+         ST    R0,TOKLEN     SAVE LENGTH OF STRING SCANNED              00124490
+         LTR   R6,R2         GET REMAINDER LENGTH                       00125000
+         BNH   LASTLINE      FOUND LAST LINE OF FIELD                   00126000
+         S     R10,=A(TOKSIZ) ALLOCATE A NEW TOKEN                      00127490
+         BL    NOSPACE       WAAA!!!                                    00128000
+         LA    R1,TOKSIZ(R9) NEXT POINTER                               00129590
+         ST    R1,TOKNEXT         SET NEXT POINTER                      00130180
+         ST    R9,TOKPREV-TOKEND(R1) Chain backward                     00130580
+         LR    R9,R1         CHAIN ALONG                                00131000
+         B     PLOOP                                                    00132000
+LASTLINE EQU   *             DONE BUILDING TOKENS                       00133000
+         XC    TOKNEXT,TOKNEXT  CLEAR THE NEXT POINTER                  00134000
+         L     R1,@STK       GET STAK POINTER                           00135000
+         LA    R9,TOKSIZ(R9) UPDATE STACK POINTER                       00136490
+         ST    R9,0(R1)      RESTORE UPDATED STACK POINTER              00137000
+         L     R1,@STK+4                                                00138000
+         ST    R10,0(R1)     AND UPDATED STACK LENGTH                   00139000
+         SR    R15,R15       TIME TOGO HOME                             00140000
+RET      EQU   *                                                        00141000
+         MVI   TRAPTAB+X'15',0  CLEAR THE TRAP TABLE                    00142000
+         MVI   TRAPTAB+C',',0                                           00143000
+         MVI   TRAPTAB+C' ',0                                           00144000
+         L     R13,4(R13)              GET CALLER'S SAVE PTR            00145000
+         L     R14,12(R13)             GET R14                          00146000
+         LM    R0,R12,20(R13)          GET R0-R12                       00147000
+         BR    R14                     RETURN                           00148000
+         SPACE ,                                                        00149000
+*--------------------------------------------------------------------   00150000
+* FIND15 -                                                              00151000
+*  FINDS NEXT NEWLINE IN A STRING                                       00152000
+* ENTRY -                                                               00153000
+*  R1 - ADDRESS OF STRING                                               00154000
+*  R2 - LENGTH OF STRING                                                00155000
+* EXIT -                                                                00156000
+*  R0 - LENGTH OF SUBSTRING                                             00157000
+*  R1 - UPDATED TO POINTER AFTER X'15'                                  00158000
+*  R2 - REMAINING STRING LENGTH                                         00159000
+*--------------------------------------------------------------------   00160000
+FIND15   EQU   *                                                        00161000
+         STM   R4,R5,12(R13) SAVE ONLY THESE 2                          00162000
+         LR    R4,R1         GET STRING POINTER                         00163000
+         LTR   R5,R2         GET STRING LENGTH                          00164000
+         BNH   FZERO         ZERO LENGTH STRING                         00165000
+         BCTR  R5,0          -1 FOR EXECUTE                             00166000
+         LA    R1,1(R4,R5)   POINT TO END OF STRING                     00167000
+         EX    R5,TRAP15     TRAP THE X'15'                             00168000
+         LR    R0,R1         GET END POINTER                            00169000
+         SR    R0,R4         LENGTH = END-START                         00170000
+         LA    R1,1(R1)      POINT PAST THE X'15'                       00171000
+         LR    R2,R5         GET LENGTH BACK                            00172000
+         SR    R2,R0         REMAINDER LENGTH                           00173000
+         LM    R4,R5,12(R13)                                            00174000
+         BR    R14           RETURN                                     00175000
+FZERO    EQU   *                                                        00176000
+         LM    R4,R5,12(R13)                                            00177000
+         SR    R0,R0         ZERO LENGTH                                00178000
+         BR    R14                                                      00179000
+         SPACE ,                                                        00180000
+*--------------------------------------------------------------------   00181000
+*  LTRIM -                                                              00182000
+*   TRIM LEADING BLANKS FROM A STRING.                                  00183000
+*  R1 - ADDRESS OF STRING                                               00184000
+*  R2 - LENGTH OF STRING                                                00185000
+*  RETURNS UPDATED R1,R2                                                00186000
+*--------------------------------------------------------------------   00187000
+LTRIM    EQU   *                                                        00188000
+         STM   R4,R5,12(R13) PRESERVE WORK REGS                         00189000
+         LR    R4,R1         GET ADDRESS                                00190000
+         LTR   R5,R2         GET LENGTH                                 00191000
+         BZ    TRET          RETURN ALREADY                             00192000
+         BCTR  R5,0          -1 FOR EXECUTE                             00193000
+         LA    R1,0(R1,R2)   ADDRESS OF END OF STRING                   00194000
+         EX    R5,TRAPBLK    TRAP ON FIRST NON BLANK                    00195000
+         LR    R2,R1         GET UPDATED LENGTH                         00196000
+         SR    R2,R4         BY SUBTRACTING ADDRESSES                   00197000
+         SR    R5,R2         GET REMAINING LENGTH                       00198000
+         LA    R2,1(R5)      ADD ONE FOR THE BCTR THAT WAS DONE         00199000
+TRET     EQU   *                                                        00200000
+         LM    R4,R5,12(R13)                                            00201000
+         BR    R14                                                      00202000
+         SPACE ,                                                        00203000
+*--------------------------------------------------------------------   00204000
+*  ERROR EXITS                                                          00205000
+*--------------------------------------------------------------------   00206000
+NOSPACE  EQU   *                                                        00207000
+         LA    R15,12        INTERNAL BUG CAUGHT                        00208000
+         B     RET           RETURN                                     00209000
+         SPACE ,                                                        00210000
+TRAP15   TRT   0(0,R4),TRAPTAB         EXECUTED TRT                     00211000
+TRAPBLK  TRT   0(0,R4),SKIPBLKS                                         00212000
+         LTORG ,                                                        00213000
+SAVE     DS    18F                     SAVE AREA                        00214000
+         END   DESTPARS                                                 00215000

@@ -1,0 +1,38 @@
+./ R 00034000          $ 34190 190                    04/17/90 16:47:04
+         LA    R10,2048(,R12)          Create second                    00034190
+         LA    R10,2048(,R10)              base reg                     00034380
+         USING MAILER,R12,R10          Tell the assembler               00034570
+./ I 00134000          $ 134700 700                   04/17/90 16:47:04
+         MAILTRC CALL,MAILMAIN                                          00134700
+./ I 00135490          $ 135690 200                   04/17/90 16:47:04
+         MAILTRC RETURN,GETSPOOL,(R15)                                  00135690
+./ I 00148000          $ 148600 600                   04/17/90 16:47:04
+         MAILTRC CALL,MAILCMD                                           00148600
+./ R 00149590          $ 149880 290                   04/17/90 16:47:04
+         CALL  MAILCMD,((R11),TERMBUF,(R5),(R15),(R14),CMDCONS)         00149590
+         MAILTRC RETURN,MAILCMD,(R15)                                   00149990
+./ R 00160000 00162000 $ 160690 690                   04/17/90 16:47:04
+         TM    MAILCMD,MCMDCMD     Mail command processing to do?       00160690
+         BO    MCMD2               ---> Yes                             00161380
+         WRTERM '?EH'              So why are we here?                  00162070
+./ I 00165000          $ 165500 500                   04/17/90 16:47:04
+         MAILTRC CALL,MAILSMSD                                          00165500
+./ I 00166000          $ 166500 500                   04/17/90 16:47:04
+         MAILTRC RETURN,MAILSMSD,(R15)                                  00166500
+./ I 00171200          $ 171300 100                   04/17/90 16:47:04
+         MAILTRC CALL,MAILSMSD                                          00171300
+./ I 00171500          $ 171600 100                   04/17/90 16:47:04
+         MAILTRC RETURN,MAILSMSD,(R15)                                  00171600
+./ R 00177490          $ 177580 90                    04/17/90 16:47:04
+         MAILTRC CALL,MAILCMD1                                          00177580
+         CALL  MAILCMD1,((R11))    2nd level command handler            00177670
+         MAILTRC RETURN,MAILCMD1,(R15)                                  00177760
+./ I 00190400          $ 190420 20                    04/17/90 16:47:04
+         MAILTRC EXIT,(R5)                                              00190420
+         LTR   R5,R5               Return code positive?                00190440
+         BM    RETDUMP             ---> No, dump trace table            00190460
+         C     R5,=F'16'           Return code > 16?                    00190480
+         BNH   RETURN              ---> No                              00190500
+RETDUMP  EQU   *                                                        00190520
+         MAILTRC DUMP,100          Dump 100 most recent entries         00190540
+RETURN   EQU   *                                                        00190560

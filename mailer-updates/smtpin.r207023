@@ -1,0 +1,4 @@
+./ R 00179590          $ 179597 7                     12/14/90 10:24:38
+    cpcmd("CLOSE 00D FORM QUMAILER NAME BSMTP REPLY",40);               00179597
+./ R 01380490          $ 1380680 190                  12/14/90 10:24:38
+    cpcmd("CLOSE 00D FORM QUMAILER NAME ERROR MAIL",39);                01380680

@@ -1,0 +1,13 @@
+*COPY MAILEQU                                                           00010000
+         TITLE 'EQUates used in MAILER'                                 00020000
+*                                                                       00030000
+*        EQUates for the RXVGET/RXVPUT routines.                        00040000
+*                                                                       00050000
+RXVSTR   EQU  1                    Parameter is a string.               00060000
+RXVNUM   EQU  2                    Parameter is a fullword.             00070000
+*                                                                       00071000
+*        EQUates for the MAILCMD* routines.                             00072000
+*                                                                       00073000
+CMDCONS  EQU  0                    Command is from the console.         00074000
+CMDSMSG  EQU  1                    Command is from SMSG.                00075000
+CMDNET   EQU  2                    Command is from the network.         00076000

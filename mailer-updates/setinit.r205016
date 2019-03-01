@@ -1,0 +1,4 @@
+./ I 00366880          $ 366890 10                    01/15/90 14:23:08
+         DC    A(DBGFLG7-MAILBLOK,MAILTR72,DBGTBLUK)                    00366870
+./ I 00387958          $ 387959 1                     01/15/90 14:23:08
+MAILTR72 DC    Y(11),C'TBLUK-TRACE'                                     00387959

@@ -1,0 +1,51 @@
+./ I 00117150          $ 117210 60                    09/27/88 16:10:46
+         XC    MBOXP,MBOXP         Clear MBOX pointer.                  00117210
+./ R 00121690          $ 122080 390                   09/27/88 16:10:46
+         ICM   R7,B'1111',FIPARS  GET MBOX BLOCK POINTER                00122080
+./ R 00123690          $ 123780 90                    09/27/88 16:10:46
+         USING MBOX,R7     ADDRESS THE ADDRESS BLOCK                    00123780
+         ST    R7,MBOXP            Save for later use.                  00123870
+         MVC   STKP,=A(LCLSTACK)   Init stack pointer                   00123960
+         MVC   STKL,=A(L'LCLSTACK)    and length.                       00124050
+./ R 00126000 00140000 $ 126990 990                   09/27/88 16:10:46
+         DROP  R7                                                       00126990
+         ST    R5,NODEP            Set NODE pointer.
+         CALL  GENLIST,(NODEP,LSTRA,LSTRL,STKP,STKL) Expand localpart.  00127980
+         LTR   R15,R15             Did it work?                         00128970
+         BNZ   BADSFLD             No  : Bad sender.                    00129960
+         L     R4,LSTRL            Get localpart length.                00130950
+         L     R5,LSTRA            Get localpart address.               00131940
+         ST    R7,NODEP            Set NODE pointer.
+         CALL  GENLIST,(NODEP,DSTRA,DSTRL,STKP,STKL) Expand domain.     00132930
+         LTR   R15,R15             Did it work?                         00133920
+         BNZ   BADSFLD             No  : Bad sender.                    00134910
+         L     R6,LSTRL            Get domain length.                   00135900
+         L     R7,LSTRA            Get domain address.                  00136890
+./ I 00140980          $ 141020 40                    09/27/88 16:10:46
+         XC    MBOXP,MBOXP         Clear pointer to bad MBOX.           00141020
+./ I 00207000          $ 207080 80                    09/27/88 16:10:46
+         CLC   MBOXP,=A(0)         Is the MBOX pointer valid?           00207050
+         BE    TOSTR               No  : Use the strings.               00207100
+         MVC   STKP,=A(LCLSTACK)   Init stack pointer                   00207150
+         MVC   STKL,=A(L'LCLSTACK)    and length.                       00207200
+         CALL  GENMBOX,(MBOXP,TOADDR,TOLEN,STKP,STKL) Expand address.   00207250
+         L     R1,TOLEN            Get address length.                  00207300
+         BCTR  R1,0                                                     00207350
+         L     R3,TOADDR           Get address address.                 00207400
+         EX    R1,COPY             "MVC 0(*-*,R2),0(R3)"                00207450
+         B     TOPUNCH                                                  00207500
+TOSTR    DS    0H                                                       00207550
+./ I 00218000          $ 218500 500                   09/27/88 16:10:46
+TOPUNCH  DS    0H                                                       00218500
+./ I 00310500          $ 310540 40                    09/27/88 16:10:46
+TOADDR   DS    A                   Address of to-address.               00310520
+TOLEN    DS    A                   Length of to-address.                00310540
+LSTRA    DS    A                   Address of localpart.                00310560
+LSTRL    DS    F                   Length of localpart.                 00310580
+DSTRA    DS    A                   Address of domainpart.               00310600
+DSTRL    DS    F                   Length of domainpart.                00310620
+STKP     DS    A                   Stack Pointer.                       00310640
+STKL     DS    F                   Stack Length.                        00310660
+MBOXP    DS    A                   Address of MBOX for addressee.       00310680
+NODEP    DS    A                   Address of NODE for GENLIST.         00310680
+LCLSTACK DS    XL100               Local stack area.                    00310700

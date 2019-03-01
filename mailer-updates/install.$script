@@ -1,0 +1,1979 @@
+/*!*NOTE* This file is maintained using EXECUPDT and needs to be        00001000
+/*!updated before it can be processed.  To update this file use the     00002000
+/*!following command:                                                   00003000
+/*!                                                                     00004000
+/*!    EXECUPDT  fn  SCRIPT ( COMPRESS                                  00005000
+/*!                                                                     00006000
+.* *********************************************************************00007000
+.* *             MAILER Release 2 Installation Manual                  *00008000
+.* *********************************************************************00009000
+.*                                                                      00010000
+.* *********************************************************************00011000
+.* *                   Macros local to this code                       *00012000
+.* *********************************************************************00013000
+.*                                                                      00014000
+.* Macros for footnote processing                                       00015000
+.*                                                                      00016000
+.sr footnum = 0                                                         00017000
+.dm footnote begin                                                      00018000
+.sr footnum = &footnum + 1                                              00019000
+.sr *sym = (&footnum)                                                   00020000
+.if '&SYSTEMT' eq I6670  .sr *sym = &S'&footnum                         00021000
+.'ct &*sym                                                              00022000
+.fn begin                                                               00023000
+.if &SYSFNC gt 0  .sk                                                   00024000
+.of 1+&L'&footnum                                                       00025000
+&S'&footnum                                                             00026000
+.dm footnote end                                                        00027000
+.dm footend /.fn end/                                                   00028000
+.*                                                                      00029000
+.* *********************************************************************00030000
+.*                                                                      00031000
+.ll 80                                                                  00032000
+.pi 0                                                                   00033000
+.ud set \                                                               00034000
+.tb set !                                                               00035000
+.tt ////                                                                00036000
+.bt ////                                                                00037000
+.tr ^ 40                                                                00038000
+.sp 10                                                                  00039000
+.bd                             COLUMBIA VM MAILER                      00040000
+.sp 2                                                                   00041000
+.bd                                VERSION 1.24                         00042000
+.sp 4                                                                   00043000
+.bd                     INSTALLATION AND MAINTENANCE GUIDE              00044000
+.sp 2                                                                   00045000
+.sp                                                                     00046000
+                                 24 May 1982                            00047000
+.sp                                                                     00048000
+                         (last updated: 18 May 1987)                    00049000
+.sp 2                                                                   00050000
+.sp                                                                     00051000
+                              E. Alan Crosswell                         00052000
+.sp                                                                     00053000
+                          EACUS@CUVMA.COLUMBIA.EDU                      00054000
+.sp                                                                     00055000
+                        Scholarly Information Center                    00056000
+.sp                                                                     00057000
+                 Columbia University in the City of New York            00058000
+.sp 14                                                                  00059000
+.sp                                                                     00060000
+        Copyright (C) 1982, 1987 The Trustees of Columbia University    00061000
+                           in the City of New York                      00062000
+.tt //MAILER Installation and Maintenance//                             00063000
+.bt //- % -//                                                           00064000
+.pa                                                                     00065000
+.pn roman lower                                                         00066000
+.pn 1                                                                   00067000
+.fo off                                                                 00068000
+.bd Table of Contents                                                   00069000
+.tb 1 76                                                                00070000
+.in +3                                                                  00071000
+.sp                                                                     00072000
+ 1. Introduction!1                                                      00073000
+     1.1. Copyright Notice!1                                            00074000
+     1.2. Additional Terms for Waterloo C Library Object Code!2         00075000
+     1.3. Support!3                                                     00076000
+.us \ 2. \MAILER\ Maintainer and Postmaster Job Description!3           00077000
+ 3. Inventory of Installation Materials!5                               00078000
+     3.1. Object Code Distribution!5                                    00079000
+     3.2. Source Code Distribution A -- for sites with Waterloo C!6     00080000
+     3.3. Source Code Distribution B -- for sites without Waterloo C!6  00081000
+ 4. Additional Files Needed for BITNET!6                                00082000
+.us \ 5. Your \MAILER\ subscription and registration!7                  00083000
+     5.1. Subscription via LISTSERV!7                                   00084000
+     5.2. Registration :mailer tag!8                                    00085000
+ 6. Installation Procedure!9                                            00086000
+.us \ 7. Overview of \MAILER\ Operation!10                              00087000
+ 8. MAILER PROFILE!12                                                   00088000
+     8.1. Variable Declarations!12                                      00089000
+     8.2. ORIGINS Table!14                                              00090000
+     8.3. INCOMING Table!14                                             00091000
+     8.4. OUTGOING Table!15                                             00092000
+     8.5. DOMAINS Table!15                                              00093000
+     8.6. SPECIAL Table!16                                              00094000
+.us \ 9. \MAILER\ User Exits and MAILER TXTLIB!16                       00095000
+     9.1. Outgoing Exits!16                                             00096000
+         9.1.1. BITNET!17                                               00097000
+         9.1.2. BSMTP!17                                                00098000
+         9.1.3. DEFRT!19                                                00099000
+         9.1.4. LOCAL!19                                                00100000
+         9.1.5. NOMAIL!20                                               00101000
+         9.1.6. INTERNET!20                                             00102000
+         9.1.7. UTSMAIL!20                                              00103000
+     9.2. Incoming Exits!21                                             00104000
+         9.2.1. RSCSVER!21                                              00105000
+         9.2.2. (none)!21                                               00106000
+     9.3. Special Exits !21                                             00107000
+         9.3.1. FWDMAIL!22                                              00108000
+         9.3.2. RSMAIL!22                                               00109000
+         9.3.3. DISTLIST!22                                             00110000
+         9.3.4. VMMLOG!23                                               00111000
+         9.3.5. PROFS!24                                                00112000
+         9.3.6. (none)!24                                               00113000
+     9.4. Origins Exits!24                                              00114000
+.us \ 10. \MAILER\ Commands!24                                          00115000
+ 11. Maintenance!25                                                     00116000
+     11.1. New versions!25                                              00117000
+     11.2. "MAILER PROFILE" updates!26                                  00118000
+         11.2.1. Files Used by MG!26                                    00119000
+         11.2.2. Invoking MG!27                                         00120000
+         11.2.3. Examples of MG input files!28                          00121000
+         11.2.4. Cookbook!29                                            00122000
+ 12. Diagnosing Problems!31                                             00123000
+ 13. Messages!32                                                        00124000
+     13.1. Message Codes!32                                             00125000
+     13.2. BSMTP Messages!37                                            00126000
+     13.3. Miscellaneous Messages!40                                    00127000
+.in -3                                                                  00128000
+.fo on                                                                  00129000
+.pa                                                                     00130000
+.fo off                                                                 00131000
+.bd List of Figures                                                     00132000
+.in +3                                                                  00133000
+.sp                                                                     00134000
+.bd \ \Figure 1:\ Sample template file: "CUVMB MTPLATE"!28              00135000
+.bd \ \Figure 2:\ Sample local replacements file: "CUVMB MAILLCL"!29    00136000
+.in -3                                                                  00137000
+.fo on                                                                  00138000
+.pa                                                                     00139000
+.pn arabic                                                              00140000
+.pn 1                                                                   00141000
+.bd 1. Introduction                                                     00142000
+.sp                                                                     00143000
+.pp                                                                     00144000
+This document describes the installation, operation and mainteance      00145000
+.us \procedures for the Columbia University VM \MAILER\.                00146000
+Please read sections 1.1 and  1.2 on the terms under which              00147000
+.us \\MAILER\ is provided to you and destroy the files that have been   00148000
+provided if you are unable to abide by them.                            00149000
+.sp                                                                     00150000
+.pp                                                                     00151000
+Section 2, below, briefly gives a job description for the person or     00152000
+.us \persons  required to maintain \MAILER\ at your site.               00153000
+Sections following that                                                 00154000
+.us \go into the details of installing \MAILER\ the first time and      00155000
+maintaining it and the data it needs to operate on BITNET.              00156000
+The information in these sections is written with the assumption that   00157000
+the reader is conversant with the basic concepts of VM/SP and RSCS      00158000
+networking.                                                             00159000
+No attempt is made to define terms.                                     00160000
+.pp                                                                     00161000
+.us \\MAILER\ was developed by E. Alan Crosswell, an employee of        00162000
+Columbia University in the City of New York.                            00163000
+It is the property of the Trustees of Columbia University in the City of00164000
+New York.                                                               00165000
+Some portions of the code have been contributed by                      00166000
+.us \\MAILER\ users on BITNET (their names are cited within the source  00167000
+code).                                                                  00168000
+.us \\MAILER\ is written in IBM 370 Assembly language and C.            00169000
+.sp 2                                                                   00170000
+.bd 1.1. Copyright Notice                                               00171000
+.sp                                                                     00172000
+.pp                                                                     00173000
+Copyright (c) 1982, 1987, The Trustees of Columbia University in the    00174000
+City of New York.                                                       00175000
+.sp                                                                     00176000
+.pp                                                                     00177000
+Permission is granted to any individual or institution to use, copy,    00178000
+or redistribute this software so long as it is not sold for profit,     00179000
+provided that this notice and the original copyright notices are        00180000
+retained.                                                               00181000
+Columbia University makes no representations about the suitability of   00182000
+this software for any purpose.                                          00183000
+It is provided "as is" without express or implied warranty.             00184000
+.sp                                                                     00185000
+.pp                                                                     00186000
+May be used but not sold without permission.                            00187000
+.sp 2                                                                   00188000
+.bd 1.2. Additional Terms for Waterloo C Library Object Code            00189000
+.sp                                                                     00190000
+.pp                                                                     00191000
+Some C programs provided with this distribution make use of the         00192000
+Waterloo C Runtime Library, a component of Waterloo C, a licensed       00193000
+software product of WATCOM Products, Inc. of Waterloo, Ontario, Canada. 00194000
+WATCOM has granted us permission to distribute the object code for the  00195000
+runtime library to "sublicensees" so that sites without Waterloo C may  00196000
+.us \use \MAILER\ with the following terms:                             00197000
+.in +4                                                                  00198000
+.hi 3                                                                   00199000
+.sp 2                                                                   00200000
+1. That we include limitations on WATCOM's liability, limitations       00201000
+of warranty, and restrictions on further distribution similar to        00202000
+those included in our Waterloo C license agreement.                     00203000
+.sp                                                                     00204000
+2. We must maintain records of all copies of the library object         00205000
+code distributed to sublicensees.                                       00206000
+.hi                                                                     00207000
+.in -4                                                                  00208000
+.sp                                                                     00209000
+.pp                                                                     00210000
+No liability is assumed by WATCOM Products, Inc. for any special,       00211000
+direct, indirect or consequential damages, losses, costs, fees or       00212000
+expenses of any nature or kind.                                         00213000
+.sp                                                                     00214000
+.pp                                                                     00215000
+You may freely give                                                     00216000
+.us \\MAILER\ source code to others but may not redistribute the        00217000
+.us \\MAILER\ object code module (MAILER MODULE) or C object code       00218000
+library (CLIB TXTLIB) as they contain Waterloo C library object code.   00219000
+.sp 2                                                                   00220000
+.pp                                                                     00221000
+In the event that Columbia University's license with WATCOM for         00222000
+Waterloo C is terminated, you will be required to destroy any copies of 00223000
+.us \\MAILER\ object code that contain Waterloo C library object code.  00224000
+.sp 2                                                                   00225000
+.bd 1.3. Support                                                        00226000
+.sp                                                                     00227000
+.pp                                                                     00228000
+.us \\MAILER\ is supplied with documentation, parameter files, and      00229000
+source and/or object code depending on the type of distribution you have00230000
+requested.                                                              00231000
+If you have source code and make substantial modifications that are of a00232000
+generally useful nature, please send those modifications back to us so  00233000
+that they may be considered for inclusion in future versions.           00234000
+.sp                                                                     00235000
+.pp                                                                     00236000
+.us \\MAILER\ is distributed over the BITNET computer network free of   00237000
+charge to any member site.                                              00238000
+.us \Columbia University provides \MAILER\ on an as-is basis and will   00239000
+not provide any support.                                                00240000
+You are expected to have the local expertise required to install and    00241000
+.us \maintain \MAILER\ or to obtain such expertise elsewhere.           00242000
+(There are a large number of people on BITNET that have this expertise  00243000
+and who may be willing to help you.)                                    00244000
+.sp                                                                     00245000
+.us .bd \2. \MAILER\ Maintainer and Postmaster Job Description          00246000
+.sp                                                                     00247000
+.pp                                                                     00248000
+There are actually two jobs involved in running a mail service.         00249000
+One is that of maintaining and updating the mail software and databases 00250000
+and the other is to perform the duties of Postmaster.                   00251000
+.sp                                                                     00252000
+.in +2                                                                  00253000
+.us \The \MAILER\ maintainer's responsibilities include:                00254000
+.sp 2                                                                   00255000
+.in +1                                                                  00256000
+.hi 3                                                                   00257000
+.us \1.^Installation and configuration of the initial \MAILER\          00258000
+distribution.                                                           00259000
+.hi 3                                                                   00260000
+.us \2. Occassional installation of \MAILER\ software updates (typically00261000
+on the order of once or twice a year but sometimes more frequently).    00262000
+.hi 3                                                                   00263000
+3. Monthly acquisition and installation of the BITNET database used     00264000
+.us \by \MAILER\. This database is maintained by the BITNET Network     00265000
+Information Center (BITNIC) and is distributed monthly over the         00266000
+network (or sometimes by tape during periods of network instability).   00267000
+This maintenance is related to the other monthly BITNET node maintenance00268000
+work (e.g. updating the RSCS DIRECT).                                   00269000
+.hi 0                                                                   00270000
+.in -3                                                                  00271000
+.sp                                                                     00272000
+.pp                                                                     00273000
+None of these responsibilities tend to be particularly time-consum ing  00274000
+although it depends on the individual's familiarity with VM and would   00275000
+best be performed (or supervised) by a systems programmer.              00276000
+.us \There is the potential for an incorrect \MAILER\ installation to   00277000
+crash your VM system (by filling up CP SPOOL space) or to "clobber" the 00278000
+network (by causing mail loops).                                        00279000
+.sp                                                                     00280000
+.in +2                                                                  00281000
+The Postmaster's responsibilities include:                              00282000
+.in +1                                                                  00283000
+.sp 2                                                                   00284000
+.hi 3                                                                   00285000
+1. Answering local users' questions about the mail system.              00286000
+.sp                                                                     00287000
+.hi 3                                                                   00288000
+2. Responding to queries from outsiders (typically requesting help      00289000
+in reaching a particular member of your site's community).              00290000
+.sp                                                                     00291000
+.hi 3                                                                   00292000
+3. Diagnosing miscellaneous mail system errors.                         00293000
+.us \For example, \MAILER\ sends "error mail" that can't be             00294000
+automatically dealt with to the Postmaster.                             00295000
+.in -3                                                                  00296000
+.sp                                                                     00297000
+.pp                                                                     00298000
+The Postmaster should read his or her mail frequently (many do it one   00299000
+or more times daily).                                                   00300000
+The degree of work involved in being the Postmaster depends on how much 00301000
+service you want to provide to your community and outsiders.            00302000
+For example, you may be willing to spend a lot of time answering        00303000
+requests for the electronic address of Professor Smith or you may prefer00304000
+to suggest that the requestor simply call Professor Smith on the        00305000
+telephone to find out her userid.                                       00306000
+At Columbia, the daily Postmaster duties are peformed by a trained      00307000
+student with student training, back-up and difficult questions handled  00308000
+by a full-time staff member.                                            00309000
+.sp                                                                     00310000
+.bd 3. Inventory of Installation Materials                              00311000
+.sp                                                                     00312000
+.pp                                                                     00313000
+The following items have been supplied to you.                          00314000
+Please verify that they are all present.                                00315000
+Section 4 describes additional files you will need to obtain in order to00316000
+.us \use \MAILER\ on BITNET.                                            00317000
+.sp 2                                                                   00318000
+.bd 3.1. Object Code Distribution                                       00319000
+.sp 2                                                                   00320000
+.bd \\"INSTALL LISTING"\     this document.                             00321000
+.sp 2                                                                   00322000
+.bd \\"MCONFIG EXEC"\        used to configure Mailer.                  00323000
+.sp 2                                                                   00324000
+.bd \\"MAILER TXTLIB"\       library of exit routines.                  00325000
+.sp 2                                                                   00326000
+.hi 22                                                                  00327000
+.bd \\"MAILER MODULE"\       main program.                              00328000
+Contains licensed software (see section 1.2, above).                    00329000
+.sp 2                                                                   00330000
+.bd \\"MAILER HELPCMS"\      general command description.               00331000
+.sp 2                                                                   00332000
+.bd \\"MAILER HELPPRIV"\     privileged command description.            00333000
+.sp 2                                                                   00334000
+.hi 22                                                                  00335000
+.bd \\"PROFILE EXEC"\        to                                         00336000
+.us \run \MAILER\ as an AUTOLOG'd disconnected virtual machine.         00337000
+.sp 2                                                                   00338000
+.hi 22                                                                  00339000
+.bd \\"SITEOPTS EXEC"\       to set site-specific options.              00340000
+The default options will probably be fine for you.                      00341000
+.sp 2                                                                   00342000
+.hi 22                                                                  00343000
+.bd \\"PLM LISTING"\^^^^^^^^                                            00344000
+.us \\MAILER\ Program Logic Manual (usually not up to date).            00345000
+.sp 2                                                                   00346000
+.hi 22                                                                  00347000
+.bd \\"MG MODULE"\^^^^^^^^^^^program to facilitate automatic            00348000
+regeneration of "MAILER PROFILE" from "MAILER MTPLATE" and "MAILER      00349000
+MAILLCL".                                                               00350000
+Contains licensed software.                                             00351000
+See section 1.2, above.                                                 00352000
+.hi 0                                                                   00353000
+.pa                                                                     00354000
+.bd 3.2. Source Code Distribution A -- for sites with Waterloo C        00355000
+.sp                                                                     00356000
+.pp                                                                     00357000
+The source code distribution is sent to you as the contents of three    00358000
+disks and is free of the Waterloo C library restrictions.               00359000
+This means you                                                          00360000
+.us \will need a Waterloo C compiler to modify and rebuild \MAILER\.    00361000
+.in +3                                                                  00362000
+.sp 2                                                                   00363000
+1. Base source.                                                         00364000
+.sp                                                                     00365000
+2. Updates and CNTRL files.                                             00366000
+.sp                                                                     00367000
+3. Miscellaneous execs and maintenance tools.                           00368000
+.in -3                                                                  00369000
+.sp 2                                                                   00370000
+.bd 3.3. Source Code Distribution B -- for sites without Waterloo C     00371000
+.sp                                                                     00372000
+This distribution contains everything in source distribution A as well  00373000
+as the following files:                                                 00374000
+.sp 2                                                                   00375000
+.hi 22                                                                  00376000
+.bd \\"MAILGEN TXTLIB"\      Library of TEXTs for all                   00377000
+.us \\MAILER\ assembler and C sources.                                  00378000
+.sp 2                                                                   00379000
+.hi 22                                                                  00380000
+.bd \\"CLIB TXTLIB"\         Waterloo C runtime library.                00381000
+This is bound by the WATCOM sublicense terms.                           00382000
+.hi 0                                                                   00383000
+.sp                                                                     00384000
+.bd 4. Additional Files Needed for BITNET                               00385000
+.pp                                                                     00386000
+.us \Besides the files provided with \MAILER\, you will need to         00387000
+obtain several other files from BITNIC which are part of the database of00388000
+mail system information.                                                00389000
+You will need to obtain a new copy of these files each time they become 00390000
+available (once monthly).                                               00391000
+.sp 2                                                                   00392000
+.hi 22                                                                  00393000
+.bd \\"XMAILER NAMES"\       The subset of the node information database00394000
+necessary to generate a new MAILER PROFILE.                             00395000
+.sp 2                                                                   00396000
+.hi 22                                                                  00397000
+.bd \\"MAILER NAMES"\        "Mail-only" host names which represent     00398000
+.us \systems reachable by \MAILER\ which are not actual BITNET nodes    00399000
+(and are therefore not in the nodes database).                          00400000
+.sp 2                                                                   00401000
+.hi 22                                                                  00402000
+.bd \\"DOMAIN NAMES"\        Information about Internet domains.        00403000
+.hi 0                                                                   00404000
+.sp 2                                                                   00405000
+.sp                                                                     00406000
+.us \bd 5. Your \MAILER\ subscription and registration                  00407000
+.pp                                                                     00408000
+.us \Distribution of \MAILER\ updates was formerly based on a           00409000
+subscription in the node information database maintained by the BITNET  00410000
+Network Information Center (BITNIC).                                    00411000
+This same database is used to register the existence of your            00412000
+.us \\MAILER\ virtual machine so that other mailers know about it.      00413000
+The                                                                     00414000
+.us \":inform\X\" and ":info\X\" tags were used for your \MAILER\       00415000
+subscription.                                                           00416000
+The                                                                     00417000
+.us \":mailer" tag registers your node's \MAILER\.                      00418000
+Updated registration information is distributed once monthly by BITNIC  00419000
+.bd \in the \"XMAILER NAMES"\ file (see section 4).                     00420000
+.pp                                                                     00421000
+.us \ The ":mailer" tag is still used to register your \MAILER\, but    00422000
+Eric Thomas' Revised LISTSERV is now the system used to maintain your   00423000
+.us \\MAILER\ subscription.                                             00424000
+All previously ":info/:inform"-subscribed users have been moved to      00425000
+LISTSERV.                                                               00426000
+.sp 2                                                                   00427000
+.bd 5.1. Subscription via LISTSERV                                      00428000
+.pp                                                                     00429000
+.us \To maintain your "subscription" for \MAILER\ bug fixes and         00430000
+enhancements, you need to subscribe to the "MAILDIST" mailing list      00431000
+provided by LISTSERV at CUVMA.                                          00432000
+By default, your subscription to this list will only get you mail       00433000
+.us \announcing new \MAILER\ file shipments.                            00434000
+To get the files as well, you will want to change your subscription     00435000
+options to include files.                                               00436000
+.us \In this manner, you can hear about \MAILER\ changes without        00437000
+actually getting the code distribution if someone else at your site has 00438000
+that responsibility.                                                    00439000
+.pp                                                                     00440000
+.us \To subscribe to the \MAILER\ distribution (by the time you         00441000
+receive this document you are already subscribed) send the following    00442000
+command as a message or mail to LISTSERV at CUVMA:                      00443000
+.in +4                                                                  00444000
+.sp 2                                                                   00445000
+SUBSCRIBE MAILDIST your name                                            00446000
+.in -4                                                                  00447000
+.sp 2                                                                   00448000
+.pp                                                                     00449000
+To get the code distribution as well as announcements, after            00450000
+subscribing, send:                                                      00451000
+.in +4                                                                  00452000
+.sp 2                                                                   00453000
+SET MAILDIST FILES                                                      00454000
+.in -4                                                                  00455000
+.sp 2                                                                   00456000
+.pp                                                                     00457000
+.us \If you maintain the \MAILER\ for multiple machines, you need       00458000
+only do this for one of them.                                           00459000
+This will keep the flow of unneccessary files to a minimum.             00460000
+.sp 2                                                                   00461000
+.bd 5.2. Registration :mailer tag                                       00462000
+.pp                                                                     00463000
+.us \Finally, to tell the rest of us that you have a \MAILER\, you      00464000
+.bd \need to set up the \:mailer\ field.                                00465000
+.us \Initially, when you first get \MAILER\ (or beforehand), the field  00466000
+should read:                                                            00467000
+.in +4                                                                  00468000
+.sp 2                                                                   00469000
+.us \:mailer.\vmid\ DEFRT 1                                             00470000
+.in -4                                                                  00471000
+.sp 2                                                                   00472000
+.us \where \vmid\ is the userid of your \MAILER\ machine.               00473000
+.us \This will allow you to send mail via other sites' \Mailers\ to try 00474000
+things out.                                                             00475000
+.bd \Normally, you would need to wait until the new \"XMAILER NAMES"\   00476000
+file has been distributed and other sites have had time to update their 00477000
+Profiles.                                                               00478000
+If you send to a                                                        00479000
+.us \\MAILER\ site and get return mail saying "Validity check failed,"  00480000
+then that site hasn't updated its Profile yet.                          00481000
+(See section 13 for a list of the various messages generated by         00482000
+.us \\MAILER\.)                                                         00483000
+.pp                                                                     00484000
+Since this has become more and more of a problem as the size of the     00485000
+network has grown and the lag time between distributions of new versions00486000
+.bd \of \"XMAILER NAMES"\ has increased, the initial \"MAILER PROFILE"\ 00487000
+.us \that is generated by MCONFIG for your initial \MAILER\ installation00488000
+is set up to bypass all other mailers.                                  00489000
+This is not an ideal solution since you lose some of the benefits of    00490000
+.us \running \MAILER\, but at least you won't get a lot of "Validity    00491000
+check" mail returned.                                                   00492000
+.bd \Once a new \"XMAILER NAMES"\ has been distributed that lists your  00493000
+site as having a Mailer (or if your site is already listed that way)    00494000
+.bd \then you can regenerate the \"MAILER PROFILE"\ as described below. 00495000
+.pp                                                                     00496000
+.us \Once you have put \MAILER\ into production use (i.e. it is         00497000
+always logged on) you will want to change the field to read:            00498000
+.in +4                                                                  00499000
+.sp 2                                                                   00500000
+.us \:mailer.\vmid                                                      00501000
+.in -4                                                                  00502000
+.sp 2                                                                   00503000
+.us \This will cause other \Mailers\ to send mail for your site via your00504000
+.us \\MAILER\ rather than via direct RSCS routing.                      00505000
+.sp                                                                     00506000
+.bd 6. Installation Procedure                                           00507000
+.in +4                                                                  00508000
+.sp                                                                     00509000
+.hi 4                                                                   00510000
+1.^^Create a VM userid                                                  00511000
+.footnote                                                               00512000
+Please don't change the userid without first updating your node data    00513000
+base entry and waiting for it to be redistributed to all                00514000
+.us \\MAILER\ sites.                                                    00515000
+You  may end up having to run two copies of                             00516000
+.us \\MAILER\ during the transition                                     00517000
+period; one under the old name and                                      00518000
+one under the new name to avoid any disruption in mail traffic.         00519000
+.footend                                                                00520000
+.us \for the \MAILER\ disconnected machine .                            00521000
+It should have a virtual storage size of 1M and a 191 disk of adequate  00522000
+size to hold the largest mail file you anticipate receiving.            00523000
+If you give it the appropriate CP privilege class                       00524000
+.bd \for the \MSGNOH\ command then it will use that command to send     00525000
+messages.                                                               00526000
+.bd If not, it will use \MSG\.                                          00527000
+.sp                                                                     00528000
+.hi 4                                                                   00529000
+2.^^Obtain write access to a CMS minidisk to which                      00530000
+.us \\MAILER\ disconnected virtual machine will have read access.       00531000
+It is recommend that this be other than the A-disk.                     00532000
+.us \\MAILER\ requires a writeable A-disk for various temporary files it00533000
+creates.                                                                00534000
+The disk that the                                                       00535000
+.us \\MAILER\ parameter files and TXTLIB reside on would best be owned  00536000
+.us \by the \MAILER\ maintainer.                                        00537000
+This will allow ease of future updates without interrupting normal      00538000
+operations.                                                             00539000
+.sp                                                                     00540000
+.hi 4                                                                   00541000
+3.^^Copy the supplied files to the disk.                                00542000
+.sp                                                                     00543000
+.hi 4                                                                   00544000
+4.^^Obtain access to a disk containing the files listed in section 4 (or00545000
+.us \put them on the same disk \MAILER\ is on).                         00546000
+.sp                                                                     00547000
+.hi 4                                                                   00548000
+5.^^Run                                                                 00549000
+.bd \\MCONFIG\.                                                         00550000
+It is self-explanatory.                                                 00551000
+.sp                                                                     00552000
+.hi 4                                                                   00553000
+.us \6.^^\MAILER\  is  now  ready  to  run.                             00554000
+.bd \The \"PROFILE EXEC"\ supplied is designed for AUTOLOG use.         00555000
+.us \The best way to run \MAILER\ is to have                            00556000
+.us \\VMUTIL\ or \AUTOLOG1\ AUTOLOG it.                                 00557000
+You may however log on directly and start it that way.                  00558000
+.hi 0                                                                   00559000
+.in -4                                                                  00560000
+.sp 2                                                                   00561000
+.us \bd 7. Overview of \MAILER\ Operation                               00562000
+.sp                                                                     00563000
+.us \This is a brief description of what \MAILER\ does.                 00564000
+When first started,                                                     00565000
+.us \\MAILER\ reads the Mailer Profile, allocates various tables, and   00566000
+loads any user exits that are not built in. It then goes into a wait    00567000
+state, waiting for the arrival of a reader file, an SMSG interrupt, or  00568000
+a console interrupt.                                                    00569000
+.pp                                                                     00570000
+If the interrupt was an SMSG or from console typein, the command parser 00571000
+is invoked to process the user command. For reader interrupts, each file00572000
+in the reader is read and processed, usually resulting in the generation00573000
+of outgoing punch spool files.                                          00574000
+.pp                                                                     00575000
+A valid reader file can be one of:                                      00576000
+.in +4                                                                  00577000
+.hi 3                                                                   00578000
+1. An RFC822 mail file.                                                 00579000
+A mail file is a PUNCH spool file containing a header seperated by a    00580000
+blank record from the text of the message.                              00581000
+The syntax specification for the header format is derived from the      00582000
+.us \\Standard for the Format of ARPA Internet Text Messages,           00583000
+DARPA Request for Comments                                              00584000
+NOTE: Only a subset of RFC822 is supported by MAILER.                   00585000
+Specifically, it fails to properly parse nested parentheses and         00586000
+route-lists.                                                            00587000
+The various Internet RFC's are available as                             00588000
+.bd \\"RFCxxx STANDARD"\ from NICSERVE@BITNIC.                          00589000
+.sp                                                                     00590000
+.hi 3                                                                   00591000
+2. A Batch Simple Mail Transfer Protocol (BSMTP) request.               00592000
+A BSMTP request is differentiated from an RFC822 mail file by having the00593000
+first record start with the text "HELO ".                               00594000
+This is the first command of an SMTP dialog and looks sufficiently      00595000
+different from a mail file to be easily identified.                     00596000
+.sp                                                                     00597000
+.hi 3                                                                   00598000
+3. A reply to a BSMTP request previsouly generated.                     00599000
+A BSMTP reply is identified by having the first record start with 3     00600000
+digits (e.g. "220").                                                    00601000
+.sp                                                                     00602000
+.hi 0                                                                   00603000
+.in -4                                                                  00604000
+.pp                                                                     00605000
+For  both mail files and BSMTP requests,                                00606000
+.us \\MAILER\ does essentially the same thing.                          00607000
+It parses the mail or BSMTP request to obtain a list of recipients.     00608000
+In the case of BSMTP, this is simple -- each recipient is identified by 00609000
+a RCPT command.                                                         00610000
+For RFC822 mail, it is a little more difficult to determine             00611000
+.us \\which\ addresses should be acted upon.                            00612000
+This is one reason that BSMTP                                           00613000
+.us \support was added to \MAILER\.                                     00614000
+Another reson is that BSMTP has become the de-facto standard for        00615000
+interoperation of various mail systems on BITNET.                       00616000
+Various table entries in the Mailer Profile determine exactly how the   00617000
+mail is sent to the list of recipients.                                 00618000
+Specifically, the INCOMING table lists which other mailers your         00619000
+.us \\MAILER\ knows about and will trust.                               00620000
+Anyone not listed in the INCOMING table must send a mail file with a    00621000
+Sender: or From: field that is consistent with the file's RSCS origin   00622000
+node and userid.                                                        00623000
+.pp                                                                     00624000
+.us \The function of \MAILER\ is described in further detail in the     00625000
+.us \\MAILER Program Logic Manual\, "PLM LISTING."                      00626000
+.sp                                                                     00627000
+.bd 8. MAILER PROFILE                                                   00628000
+.sp                                                                     00629000
+.bd \The \"MAILER PROFILE"\ CMS file contains the parameters used to    00630000
+.us \initialize the \MAILER\ routing tables and set other variables and 00631000
+option flags.                                                           00632000
+You may want to add or remove names from the list of special userids not00633000
+to receive mail.                                                        00634000
+See section 11.2, below, for the procedures for modifying and           00635000
+automatically regenerating the "MAILER PROFILE".                        00636000
+.pp                                                                     00637000
+You can specify a different name for the Profile when invoking          00638000
+.us \\MAILER\.                                                          00639000
+The syntax is:                                                          00640000
+.in +4                                                                  00641000
+.sp 2                                                                   00642000
+.us \MAILER [\fn\ [\ft\ [\fm\]]]                                        00643000
+.sp 2                                                                   00644000
+.in -4                                                                  00645000
+.us \The default values for \fn\, \ft\, and \fm\ are                    00646000
+.bd \\MAILER\, \PROFILE\, and \*\, respectively.                        00647000
+If, for example, your system has shared dasd between two cpu's (as ours 00648000
+.us \does), your "PROFILE EXEC" can invoke \MAILER\ with different      00649000
+Profile names depending on the cpuid.                                   00650000
+This allows you to have a single disk containing the                    00651000
+.us \\MAILER\ program, txtlib, and profiles.                            00652000
+.pp                                                                     00653000
+The parts of the Mailer Profile are described below:                    00654000
+.sp 2                                                                   00655000
+.bd 8.1. Variable Declarations                                          00656000
+.sp                                                                     00657000
+You may declare a variable at any time within the Profile by entering:  00658000
+.in +4                                                                  00659000
+.sp 2                                                                   00660000
+.us \variable\_\name=value\                                             00661000
+.sp 2                                                                   00662000
+.in -4                                                                  00663000
+For example:                                                            00664000
+.in +4                                                                  00665000
+.sp 2                                                                   00666000
+rscsname=RSCS                                                           00667000
+.sp 2                                                                   00668000
+.in -4                                                                  00669000
+.pp                                                                     00670000
+All variables declared this way are then available to any user exit to  00671000
+obtain their value.                                                     00672000
+.us \Some variable names have special meaning to \MAILER\:              00673000
+.sp 2                                                                   00674000
+.hi 16                                                                  00675000
+RSCSname^^^^^^^^VMID of the RSCS/Networking server.                     00676000
+Files received from this userid are assumed to be from the RSCS network.00677000
+The file's TAG text is parsed for the network origin node and userid.   00678000
+Files destined to the RSCS network are sent to this VMID.               00679000
+.sp 2                                                                   00680000
+.hi 16                                                                  00681000
+RSCSalt^^^^^^^^^VMID of a secondary RSCS/Networking server.             00682000
+This is useful if you need to run two different RSCS's for some reason. 00683000
+.us \\MAILER\ will always send files to the primary RSCS (\rscsname\),  00684000
+but will accept files from this RSCS as being from the network.         00685000
+.sp 2                                                                   00686000
+.hi 16                                                                  00687000
+ThisNode^^^^^^^^RSCS node name for the machine                          00688000
+.us \\MAILER\ is running on.                                            00689000
+.sp 2                                                                   00690000
+.hi 16                                                                  00691000
+RSCS-Domain^^^^^The default domain name to concatenate with the RSCS    00692000
+node name when domain-style names are needed.                           00693000
+.sp 2                                                                   00694000
+.hi 16                                                                  00695000
+Local-Domain^^^^An optional domain name for the machine                 00696000
+.us \\MAILER\ is running on if you want something different from the    00697000
+.us \concatenation of the RSCS node name and \RSCS\-\Domain\.           00698000
+.sp 2                                                                   00699000
+.hi 16                                                                  00700000
+MaintUser^^^^^^^VMID of the                                             00701000
+.us \\MAILER\ maintainer.                                               00702000
+This user is allowed to send privileged commands via CP SMSG and will   00703000
+.us \also receive files that \MAILER\ has trouble with.                 00704000
+.sp 2                                                                   00705000
+.hi 16                                                                  00706000
+MaintNode^^^^^^^RSCS node name of the                                   00707000
+.us \\MAILER\ maintainer.                                               00708000
+.us \For best results, this should be the same as \ThisNode\.           00709000
+.sp 2                                                                   00710000
+.hi 16                                                                  00711000
+Supply-Default-Fields                                                   00712000
+.br                                                                     00713000
+May have the value True or False, but leave it false since its          00714000
+functionality has not been implemeneted.                                00715000
+.sp 2                                                                   00716000
+.hi 16                                                                  00717000
+Allow-Unknown-Nodes                                                     00718000
+May have the value True or False.                                       00719000
+.us \If True, then \MAILER\ will attempt to deliver mail to hosts that  00720000
+are not listed in it's tables.                                          00721000
+.us \Useful when RSCS route updates get done before \MAILER\ Profile    00722000
+updates.                                                                00723000
+When False, can be used to restrict the list of sites that you may      00724000
+exchange mail with.                                                     00725000
+.sp 2                                                                   00726000
+.hi 16                                                                  00727000
+Allow-Charlatans                                                        00728000
+.br                                                                     00729000
+If true, BSMTP requests are allowed to give a domain name on the HELO   00730000
+command and/or a FROM address on the MAIL command which do not appear to00731000
+correspond to the RSCS origin.                                          00732000
+For a charlatan HELO, the "Received:" header line lists that actual RSCS00733000
+origin in the comment (in parentheses) following the "from domain."     00734000
+For a charlatan FROM, an "X-Delivery-Notice:" is added to the mail      00735000
+header.                                                                 00736000
+.sp 2                                                                   00737000
+.hi 16                                                                  00738000
+Msgcmd^^^^^^^^^^The CP message command to use instead of MSGNOH or MSG. 00739000
+Used only by the LOCAL exit.                                            00740000
+.sp 2                                                                   00741000
+.hi 16                                                                  00742000
+Msgprefix^^^^^^^The prefix other than "*" to preceed messages with Used 00743000
+only by the LOCAL exit.                                                 00744000
+.sp 2                                                                   00745000
+.hi 16                                                                  00746000
+Verbose-Logging^If true, all BSMTP commands and responses are printed on00747000
+the console.                                                            00748000
+.hi 0                                                                   00749000
+.sp 2                                                                   00750000
+.bd 8.2. ORIGINS Table                                                  00751000
+.sp                                                                     00752000
+Entries in the ORIGINS table are keyed by the VM userid.                00753000
+Any reader file from a user listed in the table causes the associated   00754000
+ORIGINS user exit program to be invoked prior to any other processing of00755000
+the file.                                                               00756000
+The list of available ORIGINS exits is listed in section 9.4 below.     00757000
+.sp 2                                                                   00758000
+.bd 8.3. INCOMING Table                                                 00759000
+.sp                                                                     00760000
+Entries in the INCOMING table are keyed by RSCS origin node and userid. 00761000
+After a file is received and its mail header has been parsed, the       00762000
+INCOMING user exit program is invoked.                                  00763000
+A typical use of an INCOMING exit is to do validation of mail to prevent00764000
+forged "From:" userids.                                                 00765000
+The list of available INCOMING exits is listed in section 9.2 below.    00766000
+.sp 2                                                                   00767000
+.sp                                                                     00768000
+.bd 8.4. OUTGOING Table                                                 00769000
+.sp                                                                     00770000
+Entries in the OUTGOING table are keyed by host name.                   00771000
+For this discussion,                                                    00772000
+.us \\host name\ is defined as everything to the right of the at-sign   00773000
+in a mail address.                                                      00774000
+.bd \For example, in the address \EACUS@CUVMA\, \CUVMA\  is  the        00775000
+.bd \host name and, in the address \John_Smith@Newcastle.MAILNET\,      00776000
+.bd \\Newcastle.MAILNET\ is the hostname.                               00777000
+.pp                                                                     00778000
+When mail is to be sent to a particular address,                        00779000
+.us \\MAILER\ looks up the hostname in the OUTGOING table and then      00780000
+invokes the OUTGOING user exit program.                                 00781000
+.us \If the  hostname  can't  be  found  and  the  \Allow-Unknown-Nodes\00782000
+.bd \variable is \True\, then                                           00783000
+.us \\MAILER\ looks for the special OUTGOING entry with the             00784000
+.bd \key "\*DEFAULT*\" and invokes the user exit for that entry.        00785000
+(See the description of the DOMAINS table, below, for an exception).    00786000
+The list of available OUTGOING exits is in section 9.1, below.          00787000
+.sp 2                                                                   00788000
+.bd 8.5. DOMAINS Table                                                  00789000
+.sp                                                                     00790000
+The DOMAINS table is an optional table that has the same basic          00791000
+functionality as the OUTGOING table.                                    00792000
+The difference is that the key for an entry in the DOMAINS table need   00793000
+not match the hostname exactly.                                         00794000
+It need only match the right-hand end.                                  00795000
+.us \When a DOMAINS table is defined, \MAILER\ first searces the        00796000
+OUTGOING table and, failing to find a match there, searches the DOMAINS 00797000
+table before finally giving up and going with the  "*DEFAULT*" entry.   00798000
+The DOMAINS and OUTGOING tables use the same exits.                     00799000
+.sp 2                                                                   00800000
+.bd 8.6. SPECIAL Table                                                  00801000
+.sp                                                                     00802000
+The key to an entry in the SPECIAL table is a username, that is,        00803000
+everything to the left of the at-sign in a mail address.                00804000
+The SPECIAL table can be used to implement userid aliases of up to 255  00805000
+characters in length, mailing lists, automatic mail forwarding, etc.    00806000
+Note that the SPECIAL table is never searched by the                    00807000
+.us \\MAILER\ proper.                                                   00808000
+It is only used if an OUTGOING exit (like LOCAL) chooses to.            00809000
+A list of SPECIAL user exits is in section 9.3.                         00810000
+.sp 2                                                                   00811000
+.bd \9. \MAILER\ User Exits and MAILER TXTLIB                           00812000
+.sp                                                                     00813000
+.us \The commonly used user exit programs are built into \MAILER\.      00814000
+Others reside in MAILER TXTLIB and are dynamically loaded by            00815000
+.us \\MAILER\ when referenced in one of the tables at initialization.   00816000
+.sp 2                                                                   00817000
+.bd 9.1. Outgoing Exits                                                 00818000
+.sp                                                                     00819000
+These exit names are used in the Profile OUTGOING and DOMAINS tables.   00820000
+In addition to these standard exits, several sites have implemented     00821000
+their own local exits for various functions such as gatewaying mail over00822000
+"home grown" or otherwise strange links to other systems.               00823000
+Each exit has a type and a (sometimes optional) 8 character parameter.  00824000
+.pp                                                                     00825000
+There are three types of OUTGOING exit which determine exactly when the 00826000
+exit is invoked and with what information.                              00827000
+Some exits may be used as different types if they are properly written  00828000
+although they generally are  written to be of a specific type.          00829000
+The three types are:                                                    00830000
+.sp 2                                                                   00831000
+.hi 4                                                                   00832000
+1^^^Called once per recipient address.                                  00833000
+.sp                                                                     00834000
+.hi 4                                                                   00835000
+2^^^Called once for all recipients having the same server node/userid   00836000
+pair and exit name.                                                     00837000
+.sp 2                                                                   00838000
+.hi 4                                                                   00839000
+3^^^Same as type 2 but complete information about all recipients is     00840000
+available.                                                              00841000
+This includes having different exit parameters available to the same    00842000
+exit (e.g. BSMTP parameters).                                           00843000
+.hi 0                                                                   00844000
+.sp                                                                     00845000
+.us \The OUTGOING exits provide with \MAILER\ are:                      00846000
+.sp 2                                                                   00847000
+.bd 9.1.1. BITNET                                                       00848000
+.sp                                                                     00849000
+This obsolete type 2 exit sends a file to another RSCS node assumed to  00850000
+.us \be running \MAILER\.                                               00851000
+The file is sent to the server node/userid listed in the table.         00852000
+BITNET has been superseded by the BSMTP exit.                           00853000
+.sp 2                                                                   00854000
+.bd 9.1.2. BSMTP                                                        00855000
+.sp                                                                     00856000
+This type 3 exit sends a Batch Simple Mail Transfer Protocol            00857000
+.footnote                                                               00858000
+a store-and-forward version of the ARPANET SMTP service defined by J.   00859000
+Postel in DARPA Request for Comments                                    00860000
+.footend                                                                00861000
+data stream to the server node/userid from the table.                   00862000
+A RCPT command is generated for each recipient that caused the exit to  00863000
+be invoked.                                                             00864000
+The usual domain name used to identify the sending host in the HELO     00865000
+command is either                                                       00866000
+.us \\Local-Domain\ or the concatenation of \ThisNode\ and              00867000
+.us \\RSCS-Domain\.                                                     00868000
+.sp                                                                     00869000
+The optional parameter to BSMTP can be one of:                          00870000
+.sp 2                                                                   00871000
+.hi 16                                                                  00872000
+.us \var\^^^^^^^^^^^^^A variable name.                                  00873000
+The value of the variable is used as the HELO domain instead of the     00874000
+default described above.                                                00875000
+.sp 2                                                                   00876000
+.hi 16                                                                  00877000
+.dc cont +                                                              00878000
+.bd @+                                                                  00879000
+.us \\var\^^^^^^^^^^^^A variable name preceded by an at-sign.           00880000
+.dc cont off                                                            00881000
+This is used to do BSMTP routing to another BSMTP server that supports  00882000
+the BSMTP source route.                                                 00883000
+.us \\MAILER\ does not support this construct, but others such as the   00884000
+Wiscnet SMTP server do.                                                 00885000
+.us \The value of \var\ is inserted in the source route portion of each 00886000
+RCPT TO: address.                                                       00887000
+.sp 2                                                                   00888000
+.hi 16                                                                  00889000
+.dc cont +                                                              00890000
+.bd %+                                                                  00891000
+.us \\var\^^^^^^^^^^^^A variable name preceded by a percent-sign.       00892000
+This is used to perform the ubiquitous "percent routing hack" that is   00893000
+widely used but is not documented in any mail standard.                 00894000
+The RCPT TO address is rewritten by changing the at-sign to a percent   00895000
+.us \and appending the value of \var\ to the end of the address.        00896000
+.hi 0                                                                   00897000
+.pp                                                                     00898000
+Note that for the at-sign and percent forms of the parameter, that the  00899000
+variable name must be 7 characters or less.                             00900000
+For the other form, the name must be 8 characters or less.              00901000
+.pp                                                                     00902000
+Examples of the four flavors of BSMTP (vanilla and three types of       00903000
+parameter) follow:                                                      00904000
+.sp 2                                                                   00905000
+.in +4                                                                  00906000
+ via20B=@CU20B.COLUMBIA.EDU                                             00907000
+ viaDEC=@DECWRL.DEC.COM                                                 00908000
+ funnydom=BLAH.BLAH.EDU                                                 00909000
+  ...                                                                   00910000
+ OUTGOING:                                                              00911000
+ ;domain  node   userid   exit   type parameter                         00912000
+.sp                                                                     00913000
+ CUVMA    CUVMA  MAILER   BSMTP  3                                      00914000
+ CUTC20   CUVMA  SMTPSERV BSMTP  3    @via20B                           00915000
+ FROTZ    XYZZY  FUZZNET  BSMTP  3    funnydom                          00916000
+  ...                                                                   00917000
+.sp                                                                     00918000
+ DOMAINS:                                                               00919000
+ .DEC     WISCVM SMTPSERV BSMTP  3    %viaDEC                           00920000
+  ...                                                                   00921000
+.in -4                                                                  00922000
+.pp                                                                     00923000
+Given the following sample addresses, these RCPT TO's would be created: 00924000
+.sp 2                                                                   00925000
+JOE@CUVMA^^^^^^RCPT^TO:<JOE@CUVMA>                                      00926000
+.sp                                                                     00927000
+JOE@CUTC20^^^^^RCPT^TO:<@CU20B.COLUMBIA.EDU:JOE@CUTC20>                 00928000
+.sp                                                                     00929000
+JOE@DEC123.DEC^RCPT^TO:<JOE%DEC123.DEC@DECWRL.DEC.COM>                  00930000
+.sp 2                                                                   00931000
+.bd 9.1.3. DEFRT                                                        00932000
+.sp                                                                     00933000
+This type 1 exit sends a file directly to the intended recipient on a   00934000
+.us \remote RSCS node not running \MAILER\.                             00935000
+The file name is set to that of the sender (truncated to 8 characters). 00936000
+The file type is set to "MAIL", the class to "M", and the distribution  00937000
+code to the host name of the sender.                                    00938000
+.pp                                                                     00939000
+DEFRT will generally refuse to deliver mail to userids more than 8      00940000
+characters long since this is the VM implementation limit.              00941000
+An optional                                                             00942000
+.bd \parameter, \TRUNCATE\, may be supplied which allows longer names.  00943000
+The first 8 characters are used in this case.                           00944000
+This facility is meant to be used in conjunction with VAX/VMS systems   00945000
+.us \running \jnet\ and UNIX systems running \UREP\.                    00946000
+DEFRT ignores the server node/userid information in the table entry.    00947000
+.sp 2                                                                   00948000
+.bd 9.1.4. LOCAL                                                        00949000
+.sp                                                                     00950000
+This type 1 exit sends mail to a local user on the system running       00951000
+.us \\MAILER\.                                                          00952000
+It sets the file name, etc. as in DEFRT above.                          00953000
+It also sets the file's TAG to look like one RSCS would generate.       00954000
+This allows a modified RDRLIST or RECEIVE exec to determine the origin  00955000
+of a remote file in the same manner as for files from RSCS.             00956000
+.pp                                                                     00957000
+.bd \ The optional \PROFS\ parameter will cause a PROFS Subject record  00958000
+to be appended to the end of the file so that PROFS mail may be used.   00959000
+Kudos to Peter Day of Emory University.                                 00960000
+See also the PROFS SPECIAL exit.                                        00961000
+.sp                                                                     00962000
+.bd 9.1.5. NOMAIL                                                       00963000
+.sp                                                                     00964000
+This type 2 exit is used for RSCS nodes that can't handle mail.         00965000
+It logs an error message and causes the mail to be returned.            00966000
+The required parameter is the host name to give in the error mail.      00967000
+It sends mail back that essentially says, "Mail service for             00968000
+.us \\parameter\ is not available."                                     00969000
+.sp 2                                                                   00970000
+.bd 9.1.6. INTERNET                                                     00971000
+.sp                                                                     00972000
+This type 1 exit was written by Henry Nussbacher of the Weizmann        00973000
+Institute, Rehovot, Israel and is based on the DEFRT exit as well as the00974000
+old BSMTP exit written by Arthur Ecock of the City University of New    00975000
+York.                                                                   00976000
+Reg Quinton and Jeffrey Honig have also contributed code to it.         00977000
+INTERNET is used in the "*DEFAULT*" position of the Profile OUTGOING    00978000
+table.                                                                  00979000
+It searches for host names ending in ".ARPA", ".UUCP", ".DEC", and so   00980000
+on and routes via the appropriate gateway.                              00981000
+.us \Much of INTERNET's capability is now in the mainline \MAILER\ code 00982000
+(using the DOMAINS table) and the BSMTP exit (using the at-sign and     00983000
+percent-preceded parameters).                                           00984000
+.pp                                                                     00985000
+.bd \Specifying the optional \RETURN\ parameter causes mail lacking a   00986000
+domain-style recipient address (i.e. without dots) to be returned with  00987000
+the error "Unknown Host" rather than attempting to send the mail via    00988000
+RSCS (which will generally result in returned mail unless RSCS knows of 00989000
+.us \some node names that \MAILER\ doesn't).                            00990000
+.sp 2                                                                   00991000
+.bd 9.1.7. UTSMAIL                                                      00992000
+.sp                                                                     00993000
+This exit will send mail to users on a UTS guest running on the same    00994000
+.us \machine  as  \MAILER\.                                             00995000
+.us \It submits a UTS \uux\ file which invokes the \rmail\(3) program to00996000
+enter the mail into the UTS mail system.                                00997000
+The required parameter is the vmid of the UTS guest.                    00998000
+.footnote                                                               00999000
+UTSMAIL has not been tested with or modified to support UTS/V's         01000000
+.us \\sendmail\ system.                                                 01001000
+.footend                                                                01002000
+.sp 2                                                                   01003000
+.bd 9.2. Incoming Exits                                                 01004000
+.sp 2                                                                   01005000
+.bd 9.2.1. RSCSVER                                                      01006000
+.sp                                                                     01007000
+This incoming exit is used to validate files from sites not running     01008000
+.us \\MAILER\.                                                          01009000
+The sender name and host are checked to see if they match the RSCS      01010000
+origin in the tag text. This exit is used in the "*DEFAULT*" position of01011000
+the Incoming table and allows users on other systems not running        01012000
+.us \\MAILER\ to use your \MAILER\ to send mail.                        01013000
+.sp 2                                                                   01014000
+.bd 9.2.2. (none)                                                       01015000
+.sp                                                                     01016000
+Not specifying an Incoming exit causes the built in validation code to  01017000
+execute.                                                                01018000
+This is used to indicate the names of other trusted Mailers (which are  01019000
+allowed to send a file with a "From:" or "Sender:" which differ from    01020000
+their vmid and RSCS node name).                                         01021000
+.sp 2                                                                   01022000
+.bd 9.3. Special Exits                                                  01023000
+.sp                                                                     01024000
+Special table exits are used to define local user name aliases like     01025000
+POSTMASTER and/or mailing list names among other things.                01026000
+.sp 2                                                                   01027000
+.bd 9.3.1. FWDMAIL                                                      01028000
+.sp                                                                     01029000
+This exit provides mail forwarding.                                     01030000
+The list of recipients to forward to must be defined with a variable    01031000
+assignment in the Profile.                                              01032000
+The variable name must be 8 characters or less and is supplied as the   01033000
+required parameter.                                                     01034000
+.sp 2                                                                   01035000
+.bd 9.3.2. RSMAIL                                                       01036000
+.sp                                                                     01037000
+This exit provides mail resending.                                      01038000
+This is similar to forwarding and the list of recipients is supplied in 01039000
+the same way as for FWDMAIL.                                            01040000
+The difference between the two is that FWDMAIL creates a new mail header01041000
+while RSMAIL simply adds "Resent-To", "Resent-From", and "Resent-Cc"    01042000
+fields to the original header.                                          01043000
+.pp                                                                     01044000
+An example of using FWDMAIL or RSMAIL follows:                          01045000
+.sp 2                                                                   01046000
+.in +4                                                                  01047000
+ people=SMITH@CUVMA,JONES@CUVMB                                         01048000
+ alan=EACUS@CUVMA                                                       01049000
+  ...                                                                   01050000
+ SPECIAL:                                                               01051000
+ CROSSWELL  RSMAIL  1  alan                                             01052000
+ FOO-L      RSMAIL  1  people                                           01053000
+.in -4                                                                  01054000
+.sp 2                                                                   01055000
+.bd 9.3.3. DISTLIST                                                     01056000
+.sp                                                                     01057000
+DISTLIST uses BSMTP to re-distribute mail to a list of recipients       01058000
+contained in a file named                                               01059000
+.us .bd "parameter                                                      01060000
+.bd \\DISTLIST"\.                                                       01061000
+The file should be RECFM V and have one address per line.               01062000
+This exit does not edit or add anything to the mail header at all (other01063000
+than having the side effect of causing an additional "Received:" header 01064000
+to be added) and could be very useful for distribution of large mailing 01065000
+lists.                                                                  01066000
+The only restriction on the use of this exit is that all the recipients 01067000
+listed must be reachable with BSMTP.                                    01068000
+That is, it must not matter that the recipient's address does not appear01069000
+in the "To:" line of the RFC822 mail.                                   01070000
+This restriction is satisfied for LOCAL and DEFRT distribution as well  01071000
+as any mail server that is defined in OUTGOING/DOMAINS with the BSMTP   01072000
+exit.                                                                   01073000
+In other words, if a recipient is reached with the BITNET exit, then the01074000
+mail will most likely be returned to the sender with an error of "No    01075000
+recipients for this node."                                              01076000
+.pp                                                                     01077000
+.bd \For a file named \"SAMPLE\ \DISTLIST"\:                            01078000
+.sp 2                                                                   01079000
+.in +4                                                                  01080000
+ SMITH@CUVMA                                                            01081000
+ JONES@CUVMB                                                            01082000
+.in -4                                                                  01083000
+.pp                                                                     01084000
+An example profile entry would be:                                      01085000
+.sp 2                                                                   01086000
+.in +4                                                                  01087000
+ SPECIAL:                                                               01088000
+ SOME-GROUP  DISTLIST 1 SAMPLE                                          01089000
+.in -4                                                                  01090000
+.sp 2                                                                   01091000
+.bd 9.3.4. VMMLOG                                                       01092000
+.sp                                                                     01093000
+This exit appends mail to a file in the format used by the Columbia VMM 01094000
+mail program (written by Vace Kundakci) and is used at Columbia to      01095000
+provide bulletin boards.                                                01096000
+The required parameter specifies the file name of the VMMLOG file.      01097000
+Additionally, the file mode of the VMMLOG file may be specified as a    01098000
+.us \variable named "\parameter\-mail-disk".                            01099000
+For example:                                                            01100000
+.sp 2                                                                   01101000
+.in +4                                                                  01102000
+ bboard-mail-disk=G                                                     01103000
+ ...                                                                    01104000
+ SPECIAL:                                                               01105000
+ bboard   VMMLOG   1 BBOARD                                             01106000
+.in -4                                                                  01107000
+.sp 2                                                                   01108000
+.bd 9.3.5. PROFS                                                        01109000
+.sp                                                                     01110000
+The PROFS exit does the same thing as the LOCAL OUTGOING exit with the  01111000
+PROFS parameter.                                                        01112000
+You would use this exit when most users get the standard LOCAL treatment01113000
+but a specific list of users (which you enumerate in the SPECIAL table) 01114000
+want mail delivered in PROFS format.                                    01115000
+.sp 2                                                                   01116000
+.bd 9.3.6. (none)                                                       01117000
+.sp                                                                     01118000
+Omitting the exit name causes the built in exit to be invoked which     01119000
+disallows mail to the given user name.                                  01120000
+Use this approach to prevent mail from being sent to specific users like01121000
+CMSBATCH and SYSTEM.                                                    01122000
+.sp 2                                                                   01123000
+.bd 9.4. Origins Exits                                                  01124000
+.sp                                                                     01125000
+The Origins table lists exits to be invoked based on origin userid.     01126000
+The exit is given control immediately after the file has been received  01127000
+and prior to any other processing has been performed.                   01128000
+This is unlike the Incoming exit which is not invoked until the mail    01129000
+header has been read in and parsed.                                     01130000
+An Origins exit can be used to do arbitrary processing of an input file 01131000
+based on origin userid.                                                 01132000
+.sp 2                                                                   01133000
+.hi 16                                                                  01134000
+.us \none\^^^^^^^^^^^^Leaving the exit name blank causes the built in   01135000
+exit to be invoked which causes the received file to be purged and a    01136000
+message sent to the originating userid.                                 01137000
+This is useful to dissallow users like CMSBATCH from sending any files  01138000
+.us \to \MAILER\ and guarantees that no error mail files will be sent   01139000
+back to those users.                                                    01140000
+.hi 0                                                                   01141000
+.sp 2                                                                   01142000
+.bd 1                                                                   01143000
+.us \10. \MAILER\ Commands                                              01144000
+.sp                                                                     01145000
+.us \The \MAILER\ accepts commands via CP SMSG or from the console.     01146000
+Certain commands are restricted to SMSGs from the Maintainer (as defined01147000
+.bd \in \"MAILER PROFILE"\) or console commands.                        01148000
+Other commands are available to general users via SMSG.                 01149000
+SMSG replies are sent back to the issuer via CP MSGNOH if the           01150000
+.us \\MAILER\ has the necessary privileges.                             01151000
+If not, CP MSG is used.                                                 01152000
+Help on commands may be obtained by use of "?" in commands and          01153000
+subcommands.                                                            01154000
+For example, "CP SMSG MAILER ?" will cause a list of the valid general  01155000
+commands to be sent back.                                               01156000
+.pp                                                                     01157000
+Privileged commands are described in "MAILER HELPPRIV".                 01158000
+These are designed for debugging purposes and to aid general            01159000
+maintenance.                                                            01160000
+.sp 2                                                                   01161000
+.bd 11. Maintenance                                                     01162000
+.sp                                                                     01163000
+.us \New versions of \MAILER\ and exits will be sent to you from time to01164000
+time.                                                                   01165000
+Additionally, you are expected to keep your site's "MAILER PROFILE" up  01166000
+to date.                                                                01167000
+.sp 2                                                                   01168000
+.bd 11.1. New versions                                                  01169000
+.sp                                                                     01170000
+New versions will be sent to you preceded by mail describing the reason 01171000
+for the new version.                                                    01172000
+Right now, these files are generally sent with the Cornell CARD utility 01173000
+(which has been supplied to you).                                       01174000
+To install a new "MAILER MODULE", simply rename the old "MAILER MODULE" 01175000
+.us \(for backup purposes), CARD LOAD the new one and restart \MAILER\. 01176000
+.pp                                                                     01177000
+TEXT files are sent out as replacements for members of "MAILER TXTLIB". 01178000
+Use the appropriate TXTLIB DEL and TXTLIB ADD commands to install new   01179000
+TEXT files.                                                             01180000
+.us \See the \CMS Command and Macro Reference\ for details.             01181000
+.sp 2                                                                   01182000
+.bd 11.2. "MAILER PROFILE" updates                                      01183000
+.sp                                                                     01184000
+.bd \ The \MG\ program can be used to automate regeneration of your     01185000
+site's "MAILER PROFILE" which must usually be done once a month when the01186000
+latest "NAMES" files become available.                                  01187000
+Using MG, you only have to make site-specific changes once, when you    01188000
+.us \first install \MAILER\.                                            01189000
+.sp 2                                                                   01190000
+.bd 11.2.1. Files Used by MG                                            01191000
+.sp                                                                     01192000
+MG uses four or more input files:                                       01193000
+.sp 2                                                                   01194000
+.hi 16                                                                  01195000
+"*^NAMES"^^^^^^^^^^^^^The NAMES files previously described in section 4.01196000
+.sp 2                                                                   01197000
+.hi 16                                                                  01198000
+.us \"\name\^MTPLATE"^^^^^^^^The template file used by MG to build      01199000
+.us \"\name\ PROFILE".                                                  01200000
+This file looks just like the Profile with the exception that the       01201000
+incoming, outgoing and domains table lines are replaced by the words    01202000
+.bd \%incoming\, \%outgoing\ and \%domains\, respectively. MG replaces  01203000
+these lines with the appropriate information taken from "XMAILER NAMES",01204000
+"MAILER NAMES", "DOMAIN NAMES", and                                     01205000
+.us \"\name\ MAILLCL".                                                  01206000
+.bd \You can also use "\%include\                                       01207000
+.us \\fn\.\ft\.\fm\" to cause a file to be included in the output       01208000
+Profile.                                                                01209000
+.sp 2                                                                   01210000
+.hi 16                                                                  01211000
+.us \"\name\^MAILLCL"^^^^^^^^This file consists of the lines in the     01212000
+OUTGOING and DOMAINS tables that will be different for your site.       01213000
+That is, the entry or entries for the local system.                     01214000
+For example, for the site CUVMB, the Outgoing line for CUVMB specifies  01215000
+the BITNET exit in all other sites' Profiles and the LOCAL exit for     01216000
+CUVMB's Profile.                                                        01217000
+.us \Entries in "\name\ MAILLCL" should follow the same syntax as lines 01218000
+in the Outgoing table.                                                  01219000
+No comments or blank lines are permitted.                               01220000
+.hi 0                                                                   01221000
+.pp                                                                     01222000
+.us \\Name\, above, is typically                                        01223000
+.bd \\MAILER\, but you may use any convenient name.                     01224000
+.sp 2                                                                   01225000
+.bd 11.2.2. Invoking MG                                                 01226000
+.sp                                                                     01227000
+To run MG, type:                                                        01228000
+.sp 2                                                                   01229000
+.in +4                                                                  01230000
+.us \MG [-i] \name\ [\alternate NAMES file n\mes\]                      01231000
+.in -4                                                                  01232000
+.sp 2                                                                   01233000
+.us \\NAMES\ file names preceded by a "-d" are used for the DOMAINS     01234000
+table.                                                                  01235000
+Others are used for the OUTGOING and INCOMING tables.                   01236000
+.pp                                                                     01237000
+The typical invocation of MG is:                                        01238000
+.sp 2                                                                   01239000
+.in +4                                                                  01240000
+MG MAILER                                                               01241000
+.in -4                                                                  01242000
+.pp                                                                     01243000
+An example of using a different Outgoing/Incoming NAMES file is:        01244000
+.sp 2                                                                   01245000
+.in +4                                                                  01246000
+MG MAILER NEWBIT.NAMES.G MAILER.NAMES                                   01247000
+.in -4                                                                  01248000
+.pp                                                                     01249000
+Finally, an example of using a different DOMAINS NAMES file is:         01250000
+.sp 2                                                                   01251000
+.in +4                                                                  01252000
+MG MAILER -d NEWDOM.NAMES                                               01253000
+.in -4                                                                  01254000
+.sp 2                                                                   01255000
+[Note the use of OS-style "dot" notation for file names.]               01256000
+.pp                                                                     01257000
+You will normally not need the "-i" switch to MG which tells it to set  01258000
+up an "initial distribution" profile -- that is, a profile for a Mailer 01259000
+that  other Mailers do not yet have in their INCOMING tables.           01260000
+The default list of NAMES files used by MG is: "XMAILER.NAMES           01261000
+MAILER.NAMES -d DOMAIN.NAMES".                                          01262000
+.pp                                                                     01263000
+MG will also accept EARN-style "NODES" files which differ only slightly 01264000
+from the BITNET "NAMES" files.                                          01265000
+So, if you prefer to use the EARN node administration tools, you may do 01266000
+so.                                                                     01267000
+.sp 2                                                                   01268000
+.bd 11.2.3. Examples of MG input files                                  01269000
+.sp                                                                     01270000
+.bx on 2 76                                                             01271000
+.sp 2                                                                   01272000
+.ce 1                                                                   01273000
+.bd \\Figure\ \1:\ Sample template file: "CUVMB MTPLATE"                01274000
+.sp 2                                                                   01275000
+     ; CUVMB MTPLATE - template used to build CUVMB PROFILE             01276000
+.sp                                                                     01277000
+     rscsname=RSCS                ; name of rscs/networking vm userid   01278000
+     RSCS-Domain=.BITNET          ; the RSCS network is called BITNET   01279000
+     thisnode=CUVMB               ; local node name                     01280000
+     Local-Domain=CUVMB.COLUMBIA.EDU ; this as well as CUVMB.BITNET     01281000
+     maintuser=EACUS              ; userid of maintainer                01282000
+     maintnode=CUVMB              ; node name of maintainer             01283000
+     supply-default-fields=FALSE  ; leave FALSE (not yet implemented)   01284000
+     allow-unknown-nodes=TRUE     ; allows nodes not in my table but    01285000
+                                  ; known to RSCS to exchange mail.     01286000
+     POSTMAST=EACUS@CUVMA         ; Person for mail system questions    01287000
+     BITINFO=EACUS@CUVMA          ; BITNET Info id                      01288000
+.sp                                                                     01289000
+     ; local origins whose files I want to throw away:                  01290000
+.sp                                                                     01291000
+     ORIGINS:                                                           01292000
+     CMSBAT01                                                           01293000
+     CMSBAT02                                                           01294000
+     CMSBAT03                                                           01295000
+     CMSBAT04                                                           01296000
+     CMSBAT05                                                           01297000
+     END ORIGINS                                                        01298000
+.sp                                                                     01299000
+     INCOMING:                                                          01300000
+     ; Node   Userid   Exit                                             01301000
+     ;------- -------- ---------                                        01302000
+.bd     %incoming                                                       01303000
+     *DEFAULT*      *DEFAULT*     RSCSVER   ; standard RSCS tag checking01304000
+     END INCOMING                                                       01305000
+     ; Table of mail nodes that I can send to.                          01306000
+.sp                                                                     01307000
+     OUTGOING:                                                          01308000
+     ; Alias name     Node     Userid   Exit     Type Parm              01309000
+     ; ----------     -------- -------- -------- ---- --------          01310000
+.bd     %outgoing                                                       01311000
+     CUVMB.COLUMBIA.EDU   *       *     LOCAL     1                     01312000
+     *DEFAULT*        *DEFAULT*   ?     INTERNET  1                     01313000
+     END OUTGOING                                                       01314000
+     ; Domains                                                          01315000
+.sp                                                                     01316000
+     DOMAINS:                                                           01317000
+.bd     %domains                                                        01318000
+     END DOMAINS                                                        01319000
+     ; Local addresses to receive "special handling":                   01320000
+.sp                                                                     01321000
+     SPECIAL:                                                           01322000
+     SYSTEM                        ; prevent punched decks              01323000
+     POSTMASTER RSMAIL 1 POSTMAST  ; Person for mail questions          01324000
+     BITINFO    RSMAIL 1 BITINFO   ; Person for BITinfo questions       01325000
+     END SPECIAL                                                        01326000
+.sp 2                                                                   01327000
+.sp                                                                     01328000
+.bx off                                                                 01329000
+.sp 2                                                                   01330000
+.bx on 2 76                                                             01331000
+.sp 2                                                                   01332000
+.sp 2                                                                   01333000
+.ce 1                                                                   01334000
+.bd \\Figure\ \2:\ Sample local replacements file: "CUVMB MAILLCL"      01335000
+.sp 2                                                                   01336000
+     CUVMB     *      *      LOCAL   1                                  01337000
+     CUUTSA    *      *      UTSMAIL 1  UNIXA                           01338000
+.sp 2                                                                   01339000
+.sp                                                                     01340000
+.bx off                                                                 01341000
+.sp 2                                                                   01342000
+.bd 11.2.4. Cookbook                                                    01343000
+.sp                                                                     01344000
+.pa                                                                     01345000
+.pa                                                                     01346000
+.us \ The cookbook approach to build your \MAILER\ Profile with MG      01347000
+follows.                                                                01348000
+This is done for you by the MCONFIG EXEC.                               01349000
+.pp                                                                     01350000
+The first time only:                                                    01351000
+.sp 2                                                                   01352000
+.in +4                                                                  01353000
+.hi 3                                                                   01354000
+.us \ 1. Create a "\name\ MTPLATE" file similar to the one in figure 1. 01355000
+.sp                                                                     01356000
+.hi 3                                                                   01357000
+.us \ 2. Create a "\name\ MAILLCL" file with a single line in it:       01358000
+.sp 2                                                                   01359000
+.in +4                                                                  01360000
+.us \\SITENAME\  *        *        LOCAL     1                          01361000
+.in -4                                                                  01362000
+.sp                                                                     01363000
+.hi 3                                                                   01364000
+3. Get yourself added onto the list of people that are informed when a  01365000
+new copy of the various NAMES files arrive at your site (or you can     01366000
+"poll" NICSERVE@BITNIC for new versions).                               01367000
+The files are huge, so try to find them on your system first before     01368000
+obtaining them from NICSERVE.                                           01369000
+.hi 0                                                                   01370000
+.in -4                                                                  01371000
+.pp                                                                     01372000
+Each time a new "XMAILER", "MAILER" or "DOMAIN NAMES" file becomes      01373000
+available:                                                              01374000
+.in +4                                                                  01375000
+.sp 2                                                                   01376000
+.hi 3                                                                   01377000
+1. Obtain read access to the NAMES files on any accessed disk.          01378000
+.sp                                                                     01379000
+.hi 3                                                                   01380000
+.us \2. Obtain read access to "\name\ MTPLATE" and "\name\ MAILLCL" on  01381000
+any accessed disk.                                                      01382000
+.sp                                                                     01383000
+.hi 3                                                                   01384000
+    3. Type:                                                            01385000
+.in +4                                                                  01386000
+.sp 2                                                                   01387000
+.us \MG \name                                                           01388000
+.in -4                                                                  01389000
+.sp 2                                                                   01390000
+.hi 3                                                                   01391000
+.us \4. When MG is done, a new file, "\name\ PROFILE A1" will have been 01392000
+created.                                                                01393000
+.sp                                                                     01394000
+.hi 3                                                                   01395000
+.us \5. Compare "\name\ PROFILE A1" to "MAILER PROFILE" on the disk that01396000
+.us \\MAILER\ reads when it starts up to check for any discrepancies.   01397000
+You should see only a list of new BITNET sites plus some sites          01398000
+.us \that have put \MAILER\ into production use recently.               01399000
+.sp                                                                     01400000
+.hi 3                                                                   01401000
+.us \6. If you are satisfied with the new "\name\ PROFILE", replace     01402000
+"MAILER PROFILE" with it (after making a backup copy).                  01403000
+Occasionally, the data provided by BITNIC is incorrect and              01404000
+.us \\MAILER\ will find a fatal error in the new PROFILE so you will    01405000
+have to revert to the previous version.                                 01406000
+.sp                                                                     01407000
+.hi 3                                                                   01408000
+7. Tell Mailer to re-access the disk reload (see the example            01409000
+below).                                                                 01410000
+.in -4                                                                  01411000
+.pp                                                                     01412000
+.us \The suggested way to install a new "MAILER PROFILE" while \MAILER\ 01413000
+is running is as follows:                                               01414000
+.in 4                                                                   01415000
+.sp 2                                                                   01416000
+.hi 3                                                                   01417000
+1. Obtain write access to the minidisk containing the "MAILER           01418000
+.us \PROFILE" (assuming the \MAILER\ has read-only access).             01419000
+.sp                                                                     01420000
+.hi 3                                                                   01421000
+2. Make the needed changes to the file.                                 01422000
+.sp                                                                     01423000
+.hi 3                                                                   01424000
+.us \3. Tell \MAILER\ to reaccess the disk. For example, if the disk is 01425000
+linked at 193 as the B disk, issue the following commands (User         01426000
+typein prefixed by "."):                                                01427000
+.sp 2                                                                   01428000
+.in +4                                                                  01429000
+ .CP SMSG MAILER CMS ACC 193 B                                          01430000
+ | CMS command accepted.                                                01431000
+ | R(00000) for: ACC 193 B                                              01432000
+ .CP SMSG MAILER RELOAD                                                 01433000
+ | Reload command accepted.                                             01434000
+.in -4                                                                  01435000
+.sp 2                                                                   01436000
+(These commands will only be accepted by the userid listed as           01437000
+.us \the \MAILER\ maintainer in the profile.)                           01438000
+.hi 0                                                                   01439000
+.in -4                                                                  01440000
+.sp 2                                                                   01441000
+.bd 12. Diagnosing Problems                                             01442000
+.sp                                                                     01443000
+.us \\MAILER\ breaks from time to time.                                 01444000
+Typically, some error will occur from which it thinks it can't recover, 01445000
+so it will exit.                                                        01446000
+This generally leads to                                                 01447000
+.us \\MAILER\ logging out if you use the standard PROFILE EXEC.         01448000
+If this happens, take a look at the topmost file in                     01449000
+.us \\Mailer\'\s\ reader.                                               01450000
+This is usually the culprit.                                            01451000
+Most errors have to do with wild syntax in a file that causes           01452000
+.us \\MAILER\ to crash due to some "impossible case" happening in the   01453000
+header parsing module (which is admittedly a sloppy job).               01454000
+.pp                                                                     01455000
+.us \Transfer this file away from \MAILER\ and log it back in.          01456000
+It will probably run just fine.                                         01457000
+Take a look at the file and if you can't figure out why it              01458000
+.us \caused \MAILER\ to break down, then try asking someone else on     01459000
+BITNET (such as the members of the XMAILER or MAIL-L mailing lists).    01460000
+.sp 2                                                                   01461000
+.bd 13. Messages                                                        01462000
+.sp                                                                     01463000
+.us \\MAILER\ generates messages on the console, as messages sent to    01464000
+users within mail reporting an error, and as BSMTP replies.             01465000
+Most messages use the standard CMS format of                            01466000
+.us \\CCCMMMNNNT\ where \CCC\ is "MAI" for \MAILER\, \MMM\ is the       01467000
+.us \particular \MAILER\ module issuing the message, \NNN\ is the       01468000
+.us \message number,  and  \T\  is  one of three standard message types 01469000
+and two additional types:                                               01470000
+.sp 2                                                                   01471000
+I^^^^^^^^^^^^^^^Informational.                                          01472000
+.sp 2                                                                   01473000
+W^^^^^^^^^^^^^^^Warning.                                                01474000
+.sp 2                                                                   01475000
+E^^^^^^^^^^^^^^^Error.                                                  01476000
+.sp 2                                                                   01477000
+U^^^^^^^^^^^^^^^Report error to user within error mail.                 01478000
+.sp 2                                                                   01479000
+.hi 16                                                                  01480000
+X^^^^^^^^^^^^^^^Send RSCS MSG to mail sender (e.g. who the mail is      01481000
+"From:").                                                               01482000
+.pp                                                                     01483000
+The message code is never put in error mail or sent as a CP or RSCS MSG 01484000
+but is written to the console depending on the CP EMSG setting.         01485000
+.sp 2                                                                   01486000
+.bd 13.1. Message Codes                                                 01487000
+.sp                                                                     01488000
+The following messages with message numbers are generated by            01489000
+.us \\MAILER\ proper and the various user exits:                        01490000
+.sp 2                                                                   01491000
+.hi 4                                                                   01492000
+.us \MAILER000E Unable to obtain file '\fn\ \ft\ \fm\', RC=\nnnn        01493000
+.sp 2                                                                   01494000
+.hi 4                                                                   01495000
+.us \MAILER001I CUCCA VM Network MAILER \version\ \date\ Copyright (c)  01496000
+1982,1987 Columbia University                                           01497000
+.sp 2                                                                   01498000
+.hi 4                                                                   01499000
+MAILER002E Routing file not lrecl 80 and recfm F.                       01500000
+.sp 2                                                                   01501000
+.hi 4                                                                   01502000
+.us \MAILER003E Stack overflow in \routine                              01503000
+.br                                                                     01504000
+.us \\MAILER\ did not have adequate virtual storage available to process01505000
+the mail.                                                               01506000
+This may be caused by a garbage file in the reader, a mail file with a  01507000
+very large header, or the virtual machine size is too small.            01508000
+.sp 2                                                                   01509000
+.hi 4                                                                   01510000
+.us \MAILER004I MAILER running on \node                                 01511000
+.sp 2                                                                   01512000
+.hi 4                                                                   01513000
+ MAILER005I Initialization complete.                                    01514000
+.sp 2                                                                   01515000
+.hi 4                                                                   01516000
+ MAILER006I MAILER waiting for work.                                    01517000
+.sp 2                                                                   01518000
+.hi 4                                                                   01519000
+.us \MAILER007E MAILER stopping due to error \nn                        01520000
+.br                                                                     01521000
+Look for a previous error message which indicates the specific nature   01522000
+of the error.                                                           01523000
+.sp 2                                                                   01524000
+.hi 4                                                                   01525000
+.us \MAILER008E DIAG 14 RC=\nnnn                                        01526000
+.br                                                                     01527000
+CP Diagnose X'14' failed.                                               01528000
+This "never happens" except when the CP SPOOL is in a mess.             01529000
+.sp 2                                                                   01530000
+.hi 4                                                                   01531000
+.us \MAILER009I Received file \spoolid\ sender: \vmid\ from: \node\     01532000
+<userid>                                                                01533000
+.sp 2                                                                   01534000
+.hi 4                                                                   01535000
+.us \MAILER010E RDCARD RC=\nnnn                                         01536000
+.br                                                                     01537000
+.us \See message 008, above and the \CMS Command and Macro Reference\   01538000
+for the RDCARD macro return codes.                                      01539000
+.sp 2                                                                   01540000
+.hi 4                                                                   01541000
+.us \MAILER011I \nnnn\ bytes of stack space.                            01542000
+.br                                                                     01543000
+After initializing (allocating tables and loading user exits),          01544000
+.us \\MAILER\ allocates the rest of available contiguous virtual storage01545000
+for use as a stack for mail processing tasks.                           01546000
+.sp 2                                                                   01547000
+.hi 4                                                                   01548000
+.us \MAILER012I '\name\' not in routing table.                          01549000
+.sp 2                                                                   01550000
+.hi 4                                                                   01551000
+.us \MAILER013W Distrib exit '\name\' RC=\nnnn                          01552000
+.br                                                                     01553000
+The named exit set a non-zero return code.                              01554000
+See if the exit generated any error messages preceding this one.        01555000
+.sp 2                                                                   01556000
+.hi 4                                                                   01557000
+.us \MAILER014W Invalid entry in '\file name\', line \lineno\           01558000
+.sp 2                                                                   01559000
+.hi 4                                                                   01560000
+.us \MAILER015W Table add error \nn\, line \lineno                      01561000
+.br                                                                     01562000
+An error code was returned from the function that adds entries to one   01563000
+.us \of the several tables \MAILER\ uses.                               01564000
+.us \See what line \lineno\ contains and hopefully that will tell you   01565000
+what went wrong.                                                        01566000
+.sp 2                                                                   01567000
+.hi 4                                                                   01568000
+.us \MAILER016E \name\ table is empty                                   01569000
+.sp 2                                                                   01570000
+.hi 4                                                                   01571000
+.us \MAILER017E User exit '\name\' load error \nn                       01572000
+.br                                                                     01573000
+.us \\Nn\ is the return code from the CMS LOAD command.                 01574000
+.us \\MAILER\ dynamically loads user exits by issuing a "LOAD \name\    01575000
+.us \(ORIGIN \some\ \address\).                                         01576000
+These exits must not contain any unresolved external references (much   01577000
+like RSCS exits).                                                       01578000
+(Exit developers should see the CMS PRELOAD command).                   01579000
+.sp 2                                                                   01580000
+.hi 4                                                                   01581000
+.us \MAILER018I User exit '\name\' loaded at \hex\ \address             01582000
+.br                                                                     01583000
+Useful for determining the source of abends.                            01584000
+.sp 2                                                                   01585000
+.hi 4                                                                   01586000
+.us \MAILER019U Unknown network sender: \node userid\                   01587000
+.br                                                                     01588000
+A user not registered as a trusted mailer tried to send mail containing 01589000
+other than his own node name and userid as the sender.                  01590000
+See also mesage 021.                                                    01591000
+.sp 2                                                                   01592000
+.hi 4                                                                   01593000
+MAILER020U Outgoing mail has no FROM: or SENDER: field.                 01594000
+.br                                                                     01595000
+The RFC822 mail header is missing a required field.                     01596000
+.sp 2                                                                   01597000
+.hi 4                                                                   01598000
+MAILER021U FROM: or SENDER: inconsistent with spool file origin.        01599000
+.br                                                                     01600000
+See message 019.                                                        01601000
+.sp 2                                                                   01602000
+.hi 4                                                                   01603000
+.us \MAILER022E Invalid exit type '\type\' for '\exit name\'            01604000
+.sp 2                                                                   01605000
+MAILER023U Required DATE is not present.                                01606000
+.br                                                                     01607000
+See message 020.                                                        01608000
+.sp 2                                                                   01609000
+.hi 4                                                                   01610000
+MAILER024U Validity check failed.                                       01611000
+.br                                                                     01612000
+See message 019.                                                        01613000
+.sp 2                                                                   01614000
+.hi 4                                                                   01615000
+MAILER025U Message syntax is unrecognizable.                            01616000
+.br                                                                     01617000
+Something other than a PUNCH file containg RFC822 mail, BSMTP, or a     01618000
+.us \BSMTP reply appeared in \MAILER\'s reader.                         01619000
+The usual culprit is a NETDATA file.                                    01620000
+.sp 2                                                                   01621000
+.hi 4                                                                   01622000
+.us \MAILER026U Internal error in \routine                              01623000
+.sp 2                                                                   01624000
+.hi 4                                                                   01625000
+.us \MAILER027U Unknown host: \name\...                                 01626000
+.sp 2                                                                   01627000
+.hi 4                                                                   01628000
+MAILER028U Error loop detected.                                         01629000
+.us \\MAILER\ has determined that further transmission of a piece of    01630000
+error mail will result in it being sent to another mail server which    01631000
+would cause a mail loop.                                                01632000
+Instead, the mail is sent to the maintainer to deal with.               01633000
+.sp 2                                                                   01634000
+.hi 4                                                                   01635000
+.us \MAILER029I Returning file to \user\ AT \node                       01636000
+.sp 2                                                                   01637000
+.hi 4                                                                   01638000
+.us \MAILER030U Syntax error in field- \fieldname                       01639000
+.sp 2                                                                   01640000
+.hi 4                                                                   01641000
+.us \MAILER031U '\name\...' is too long to be a VM userid.              01642000
+.sp 2                                                                   01643000
+.hi 4                                                                   01644000
+.us \MAILER032U No such local user: \vmid                               01645000
+.sp 2                                                                   01646000
+.hi 4                                                                   01647000
+.us \MAILER033U Mail to \vmid\ is not allowed.                          01648000
+.br                                                                     01649000
+.us \\Vmid\ is in the SPECIAL table.                                    01650000
+.sp 2                                                                   01651000
+.hi 4                                                                   01652000
+.us \MAILER034X Mail sent to \user\ at \node                            01653000
+.sp 2                                                                   01654000
+.hi 4                                                                   01655000
+ MAILER035U File is not a PUNCH file.                                   01656000
+.sp 2                                                                   01657000
+.hi 4                                                                   01658000
+.us \MAILER036U RSCS rejected mail w/tag: \tag\ \text\.... Is the       01659000
+hostname misspelled?                                                    01660000
+.br                                                                     01661000
+.us \A file generated by \MAILER\ was apparently transferred back from  01662000
+RSCS, indicating that a non-existent node was specificied.              01663000
+Be careful with this one since a user may also fool                     01664000
+.us \\MAILER\ by transferring a mail file that he has received after    01665000
+playing around with the TAG.                                            01666000
+.sp 2                                                                   01667000
+.hi 4                                                                   01668000
+MAILER037U Another network mailer sent an invalid file.                 01669000
+.sp 2                                                                   01670000
+.hi 4                                                                   01671000
+MAILER038I Mailer stopping.                                             01672000
+.sp 2                                                                   01673000
+.hi 4                                                                   01674000
+MAILER039I Mailer reloading.                                            01675000
+.sp 2                                                                   01676000
+.hi 4                                                                   01677000
+.us \MAILER040X Mail sent to \netname\ node \name                       01678000
+.sp 2                                                                   01679000
+.hi 4                                                                   01680000
+.us \MAILER041U Mail service is not available for \name                 01681000
+.br                                                                     01682000
+Message generated by NOMAIL exit.                                       01683000
+.sp 2                                                                   01684000
+.hi 4                                                                   01685000
+MAILER042I Mail processing not active.                                  01686000
+.br                                                                     01687000
+.us \\MAILER\ has been quiesced.                                        01688000
+It will accept and respond to SMSG or console commands but will not     01689000
+process any files that arrive in its reader.                            01690000
+.sp 2                                                                   01691000
+.hi 4                                                                   01692000
+.us \MAILER043I \nnnn\ recipient blocks.                                01693000
+.sp 2                                                                   01694000
+.hi 4                                                                   01695000
+MAILER044U No recipients for this node.                                 01696000
+.br                                                                     01697000
+RFC822 mail was received from a remote sender (e.g. sent by another     01698000
+.us \ \MAILER\ with the BITNET exit                                     01699000
+.sp 2                                                                   01700000
+.hi 4                                                                   01701000
+.us \MAILER045E Can't ready reader 00C.  CP RC=\nnnn                    01702000
+.br                                                                     01703000
+See message 008.                                                        01704000
+.sp 2                                                                   01705000
+.hi 4                                                                   01706000
+MAILER046U Auto-forwarding error.                                       01707000
+.sp 2                                                                   01708000
+.hi 4                                                                   01709000
+.us \MAILER047X Mail for \parm\ auto-forwarded to \value                01710000
+.sp 2                                                                   01711000
+.hi 4                                                                   01712000
+MAILER048U Transferred files not allowed. Was it a bad RSCS node or user01713000
+CP TRANSFER?                                                            01714000
+.sp 2                                                                   01715000
+.hi 4                                                                   01716000
+.us \MAILER049X File \vmid\ \spoolid\ rejected.                         01717000
+.br                                                                     01718000
+Generated by default ORIGINS exit.                                      01719000
+.sp 2                                                                   01720000
+.hi 4                                                                   01721000
+.us \MAILER050E \routine\ RC=\nnnn                                      01722000
+.sp 2                                                                   01723000
+.hi 4                                                                   01724000
+.us \MAILER051U Unknown domain: \domain\...                             01725000
+.sp 2                                                                   01726000
+.hi 4                                                                   01727000
+.us \MAILER052X Mail sent to \nnnn\ recipients in distribution list     01728000
+.us \\name\                                                             01729000
+.sp 2                                                                   01730000
+.hi 4                                                                   01731000
+.us \MAILER053U Error \nn\ processing distribution list \name           01732000
+.sp 2                                                                   01733000
+.hi 4                                                                   01734000
+MAILER054I BSMTP request transaction start.                             01735000
+.sp 2                                                                   01736000
+.hi 4                                                                   01737000
+MAILER055I BSMTP request transaction end.                               01738000
+.br                                                                     01739000
+.us \MAILER056I BSMTP reply sent to \node userid\                       01740000
+.sp 2                                                                   01741000
+.hi 4                                                                   01742000
+MAILER057I BSMTP reply transaction start.                               01743000
+.sp 2                                                                   01744000
+.hi 4                                                                   01745000
+MAILER058I BSMTP reply transaction end.                                 01746000
+.sp 2                                                                   01747000
+.hi 4                                                                   01748000
+MAILER059I Error mail sent.                                             01749000
+.sp 2                                                                   01750000
+.hi 4                                                                   01751000
+MAILER060E BSMTP reply syntax unrecognizable. Reply ignored.            01752000
+.sp 2                                                                   01753000
+.hi 4                                                                   01754000
+MAILER061E BSMTP reply contains multiple "050 MAIL FROM" lines. Reply   01755000
+ignored.                                                                01756000
+.sp 2                                                                   01757000
+.hi 4                                                                   01758000
+ MAILER062E A-disk not writeable.                                       01759000
+.sp 2                                                                   01760000
+.hi 4                                                                   01761000
+MAILER063U Mail aborted. Maximum hop count exceeded.                    01762000
+.br                                                                     01763000
+The BSMTP processing code counts "Received:" headers and refuses to     01764000
+further send any mail that has more than 50 of them.                    01765000
+This is an attempt to curtail mail loops caused by recursive            01766000
+distribution lists, etc.                                                01767000
+.sp 2                                                                   01768000
+.hi 4                                                                   01769000
+.us \MAILER064W Duplicate table entry (line \nnnn\) ignored.            01770000
+.br                                                                     01771000
+.us \The entry on line \nnnn\ of the profile has not been added to the  01772000
+current table being defined because it was previsously entered into the 01773000
+table.                                                                  01774000
+.sp 2                                                                   01775000
+.hi 4                                                                   01776000
+.us \MAILER065U File is corrupt: \file name                             01777000
+.sp 2                                                                   01778000
+.hi 4                                                                   01779000
+.us \MAILER066X Mail appended to \name\ bulletin board.                 01780000
+.hi 0                                                                   01781000
+.sp 2                                                                   01782000
+.bd 13.2. BSMTP Messages                                                01783000
+.sp                                                                     01784000
+The following messages are generated by the BSMTP processor in response 01785000
+to the command or condition indicated.                                  01786000
+These messages appear in the BSMTP reply (when sent) and on the console:01787000
+.sp 2                                                                   01788000
+(initial)                                                               01789000
+.in +6                                                                  01790000
+.sp 2                                                                   01791000
+.us \220 <\domain\> Columbia MAILER <\version\> BSMTP service ready.    01792000
+.in -6                                                                  01793000
+.sp 2                                                                   01794000
+(any)                                                                   01795000
+.in +6                                                                  01796000
+.sp 2                                                                   01797000
+.hi 4                                                                   01798000
+500 Command out of sequence.                                            01799000
+.sp 2                                                                   01800000
+.hi 4                                                                   01801000
+500 Command ignored due to a previous error.                            01802000
+.sp 2                                                                   01803000
+.hi 4                                                                   01804000
+421 Service not available (internal error).                             01805000
+.br                                                                     01806000
+Typically caused by a failure to obtain needed virtual storage.         01807000
+.sp 2                                                                   01808000
+.hi 4                                                                   01809000
+501 Parameter syntax error.                                             01810000
+.sp 2                                                                   01811000
+.hi 4                                                                   01812000
+553 Mailbox syntax error.                                               01813000
+.sp 2                                                                   01814000
+.hi 4                                                                   01815000
+554 Mail aborted. Maximum hop count exceeded.                           01816000
+.hi 0                                                                   01817000
+.in -6                                                                  01818000
+.sp 2                                                                   01819000
+HELO                                                                    01820000
+.in +6                                                                  01821000
+.sp 2                                                                   01822000
+.hi 4                                                                   01823000
+.us \250 <\my\ \domain\> Hello <\sender\'\s\ \domain\>                  01824000
+.sp 2                                                                   01825000
+.hi 4                                                                   01826000
+.us \250 <\my\ \domain\> You are a                                      01827000
+charlatan;                                                              01828000
+.us \<\sender\'\s\ \domain\> is                                         01829000
+.us \bogus for a file with RSCS origin <\node\> <\userid\>              01830000
+.br                                                                     01831000
+However, the mail will be allowed to continue as the allow-charlatans   01832000
+variable is True.                                                       01833000
+.sp 2                                                                   01834000
+.hi 4                                                                   01835000
+.us \501 <\sender\'\s\ \domain\> is bogus for a file with RSCS origin   01836000
+.us \<\node\> <\userid\>                                                01837000
+.br                                                                     01838000
+Allow-Charlatans is False.                                              01839000
+.hi 0                                                                   01840000
+.in -6                                                                  01841000
+.sp 2                                                                   01842000
+ MAIL                                                                   01843000
+.in +6                                                                  01844000
+.sp 2                                                                   01845000
+.hi 4                                                                   01846000
+.us \250 <\mailbox\>... sender OK.                                      01847000
+.sp 2                                                                   01848000
+.hi 4                                                                   01849000
+.us \501 <\mailbox\> does not correpsond to RSCS origin of <\node\>     01850000
+.us \<\userid\>                                                         01851000
+.hi 0                                                                   01852000
+.in -4                                                                  01853000
+.sp 2                                                                   01854000
+RCPT                                                                    01855000
+.in +4                                                                  01856000
+.sp 2                                                                   01857000
+.hi 4                                                                   01858000
+.us \250 <\mailbox\>... recipient OK.                                   01859000
+.sp 2                                                                   01860000
+.hi 4                                                                   01861000
+550 Mailbox not found.                                                  01862000
+.br                                                                     01863000
+.us \\MAILER\ was unable to find an OUTGOING/DOMAINS table entry for the01864000
+given hostname.                                                         01865000
+.hi 0                                                                   01866000
+.in -6                                                                  01867000
+.sp 2                                                                   01868000
+DATA                                                                    01869000
+.in +6                                                                  01870000
+.sp 2                                                                   01871000
+.hi 4                                                                   01872000
+354 Start mail input. End with <crlf>.<crlf>                            01873000
+.br                                                                     01874000
+Everything up until a line with a lone dot is read in as the mail data. 01875000
+Possible response after the dot is received are:                        01876000
+.sp 2                                                                   01877000
+.hi 4                                                                   01878000
+250 Mail accepted for delivery.                                         01879000
+.sp 2                                                                   01880000
+.hi 4                                                                   01881000
+552 DATA aborted: out of disk space.                                    01882000
+.sp 2                                                                   01883000
+.hi 4                                                                   01884000
+451 DATA aborted: CMS filesystem error.                                 01885000
+.sp 2                                                                   01886000
+.hi 4                                                                   01887000
+554-Mail not delivered to some or all recipients:                       01888000
+.br                                                                     01889000
+This message is followed by one or more of the "U"-type messages        01890000
+listed above, each on a line starting with "554".                       01891000
+.hi 0                                                                   01892000
+.in -6                                                                  01893000
+.sp 2                                                                   01894000
+RSET                                                                    01895000
+.in +6                                                                  01896000
+.sp 2                                                                   01897000
+.hi +4                                                                  01898000
+250 Service reset OK.                                                   01899000
+.hi 0                                                                   01900000
+.in -6                                                                  01901000
+.sp 2                                                                   01902000
+NOOP                                                                    01903000
+.in +6                                                                  01904000
+.sp 2                                                                   01905000
+.hi 4                                                                   01906000
+250 Ok                                                                  01907000
+.hi 0                                                                   01908000
+.in -6                                                                  01909000
+.sp 2                                                                   01910000
+QUIT                                                                    01911000
+.in +6                                                                  01912000
+.sp 2                                                                   01913000
+.hi 4                                                                   01914000
+.us \221 <\my\ \domain\> Columbia MAILER BSMTP service done.            01915000
+.hi 0                                                                   01916000
+.in -6                                                                  01917000
+.sp 2                                                                   01918000
+VERB                                                                    01919000
+.in +6                                                                  01920000
+.sp 2                                                                   01921000
+250 Verbose mode ON.                                                    01922000
+.br                                                                     01923000
+.hi 4                                                                   01924000
+250 Verbose mode OFF.                                                   01925000
+.hi 0                                                                   01926000
+.in -6                                                                  01927000
+.sp 2                                                                   01928000
+TICK                                                                    01929000
+.in +6                                                                  01930000
+.sp 2                                                                   01931000
+.hi 4                                                                   01932000
+.us \250 <\ticket\>... That's the ticket.                               01933000
+.hi 0                                                                   01934000
+.in -6                                                                  01935000
+.sp 2                                                                   01936000
+RPLY                                                                    01937000
+.sp 2                                                                   01938000
+.hi 4                                                                   01939000
+250 Error replies will be sent as mail.                                 01940000
+.br                                                                     01941000
+Overrides whatever default is in effect and causes errors to be         01942000
+reported to the user (person in the MAIL FROM) in mail.                 01943000
+.sp 2                                                                   01944000
+.hi 4                                                                   01945000
+250 Error replies will be sent as smtp.                                 01946000
+.br                                                                     01947000
+Overrides whatever default in in effect and causes errors to be         01948000
+reported to the mail server (spool file origin) in a BSMTP reply.       01949000
+.hi 0                                                                   01950000
+.in -6                                                                  01951000
+.sp 2                                                                   01952000
+:REA                                                                    01953000
+.in +6                                                                  01954000
+.sp 2                                                                   01955000
+.hi 4                                                                   01956000
+200 :READ card ignored.                                                 01957000
+.us \Makes life easier for people who test \MAILER\ with the CMS PUNCH  01958000
+command.                                                                01959000
+.hi 0                                                                   01960000
+.in -6                                                                  01961000
+.sp 2                                                                   01962000
+(others)                                                                01963000
+.in +6                                                                  01964000
+.sp 2                                                                   01965000
+.hi 4                                                                   01966000
+500 Invalid command.                                                    01967000
+.hi 0                                                                   01968000
+.in -6                                                                  01969000
+.sp 2                                                                   01970000
+.bd 13.3. Miscellaneous Messages                                        01971000
+.sp 2                                                                   01972000
+.hi 4                                                                   01973000
+.us \* New mail from <\address\>                                        01974000
+.br                                                                     01975000
+Generated by LOCAL and PROFS exits and sent to the mail recipient via   01976000
+CP MSGNOH, MSG, or whatever command is specified as Msgcmd.             01977000
+The message is prefixed by "*" unless specified as Msgprefix.           01978000
+.hi 0                                                                   01979000

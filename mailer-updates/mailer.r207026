@@ -1,0 +1,8 @@
+./ R 00030700 00031690 $ 30890 190                    03/28/91 18:37:57
+  |      FORWARD <MAIL>   ADD       destaddr                           |00030700
+  |              <MAIL>   DELETE    destaddr | ALL                     |00031690
+  |              FILES    destid    < CLASS classlist >                |00031690
+  |                                 <         '*'     >                |00031690
+  |                                 < DELETE >                         |00031690
+  |                                 < LOGGEDON | ANYTIME >             |00031690
+  |                                 < LOGGEDOFF >                      |00031690

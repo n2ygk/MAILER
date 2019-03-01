@@ -1,0 +1,64 @@
+./ R 00965490          $ 965680 190                   03/04/91 10:14:37
+This builtin type 2 exit is used for destinations that can't handle mail00965490
+./ R 00967000 00969000 $ 967030 30                    03/04/91 10:14:37
+It sends mail back that says, "Mail service is not available for        00967020
+.us \\service\."                                                        00967040
+The value of "service" is filled in from the parameter.                 00967060
+.sp 1                                                                   00967080
+1.^^If the parameter is not present, the destination address will be    00967100
+used.                                                                   00967120
+Given:                                                                  00967140
+.in +.33i                                                               00967160
+.sp 1                                                                   00967180
+.ce SYSTEM    *     *   NOMAIL                                          00967200
+.in -.33i                                                               00967220
+.sp 1                                                                   00967240
+Mail addressed to "<SYSTEM@node>" returns                               00967260
+.in +.33i                                                               00967280
+.sp 1                                                                   00967300
+Mail service is not available for <system@node>                         00967320
+.in -.33i                                                               00967340
+.sp 1                                                                   00967360
+2.^^If the parameter is an '@' then only the host portion of the address00967380
+will be used (everything after the '@').                                00967400
+Given:                                                                  00967420
+.in +.33i                                                               00967440
+.sp 1                                                                   00967460
+.ce SYSTEM    *     *   NOMAIL   @                                      00967480
+.in -.33i                                                               00967500
+.sp 1                                                                   00967520
+Mail addressed to "<SYSTEM@node>" returns                               00967540
+.in +.33i                                                               00967560
+.sp 1                                                                   00967580
+Mail service is not available for node                                  00967600
+.in -.33i                                                               00967620
+.sp 1                                                                   00967640
+3.^^If the parameter is present but no value is coded for it, the       00967660
+parameter will be used.                                                 00967680
+Given:                                                                  00967700
+.in +.33i                                                               00967720
+.sp 1                                                                   00967740
+.ce SYSTEM    *     *   NOMAIL   SYSTEM                                 00967760
+.in -.33i                                                               00967780
+.sp 1                                                                   00967800
+Mail addressed to "<SYSTEM@node>" returns                               00967820
+.in +.33i                                                               00967840
+.sp 1                                                                   00967860
+Mail service is not available for SYSTEM                                00967880
+.in -.33i                                                               00967900
+.sp 1                                                                   00967920
+4.^^If the parameter is present and a value has been coded for it the   00967940
+parameter value will be used.                                           00967960
+Given:                                                                  00967980
+.in +.33i                                                               00968000
+.sp 1                                                                   00968020
+.ce system = userid_system                                              00968040
+.sp 1                                                                   00968060
+.ce SYSTEM    *     *   NOMAIL   SYSTEM                                 00968080
+.in -.33i                                                               00968100
+.sp 1                                                                   00968120
+Mail addressed to "<SYSTEM@node>" returns                               00968140
+.in +.33i                                                               00968160
+.sp 1                                                                   00968180
+Mail service is not available for USERID_SYSTEM                         00968200
+.in -.33i                                                               00968220

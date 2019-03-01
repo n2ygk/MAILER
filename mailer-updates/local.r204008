@@ -1,0 +1,12 @@
+./ R 00022170          $ 22172 2                      11/14/89 14:00:38
+*  processing.  The sender of the mail will receive a message (assuming 00022170
+*  they are on the NJE network) indicating that the mail is being
+*  forwarded.
+./ R 00105180          $ 105183 3                     11/14/89 14:00:38
+         BNZ   CHKLCLF             ---> No, see if local forward        00105180
+         LOG   LCL077,(CA,RECVR)   Tell sender about forward            00279000
+         B     RET0
+         SPACE 1
+CHKLCLF  EQU   *
+./ I 00267000          $ 267500 500                   11/14/89 14:00:38
+RET0     EQU   *

@@ -1,0 +1,124 @@
+DBG      TITLE 'MAILDBG - MAILER general purpose debugging routines'    00001000
+**************************************************************          00002000
+*                                                            *          00003000
+* Module Name:                                               *          00004000
+*                                                            *          00005000
+*        MAILDBG                                             *          00006000
+*                                                            *          00007000
+* Function:                                                  *          00008000
+*                                                            *          00009000
+*        Subroutines to display various control blocks.      *          00010000
+*                                                            *          00011000
+* Attributes:                                                *          00012000
+*                                                            *          00013000
+*        Reentrant                                           *          00014000
+*                                                            *          00015000
+* Entry Points:                                              *          00016000
+*                                                            *          00017000
+*        SHOWTOKS    Display TOKEND chain                    *          00018000
+*                                                            *          00019000
+* Entry Conditions:                                          *          00020000
+*                                                            *          00021000
+*        SHOWTOKS:                                           *          00022000
+*          R1  = parmlist ptr                                *          00023000
+*          R15 = A(SHOWTOKS)                                 *          00024000
+*          R14 = return address                              *          00025000
+*          R13 = register save area                          *          00026000
+*                                                            *          00027000
+* Sample Invocation:                                         *          00028000
+*                                                            *          00029000
+*        CALL SHOWTOKS,(tokend)                              *          00030000
+*             tokend - address of first TOKEND to display    *          00031000
+*                                                            *          00032000
+* Exit Conditions:                                           *          00033000
+*                                                            *          00034000
+*        Normal                                              *          00035000
+*                                                            *          00036000
+*              R15 = 0    display complete, no errors        *          00037000
+*                                                            *          00038000
+*        Error                                               *          00039000
+*                                                            *          00040000
+*              R15 = 4    display complete, some error found *          00041000
+*                         displaying TOKENDS (bad TOKNEXT    *          00042000
+*                         pointer, etc.)                     *          00043000
+*                                                            *          00044000
+* Calls to other routines, etc:                              *          00045000
+*                                                            *          00046000
+*        None                                                *          00047000
+*                                                            *          00048000
+* External References:                                       *          00049000
+*                                                            *          00050000
+*        None                                                *          00051000
+*                                                            *          00052000
+* Work Areas:                                                *          00053000
+*                                                            *          00054000
+* Operation:                                                 *          00055000
+*                                                            *          00056000
+*        SHOTOKS:                                            *          00057000
+*          Chain through the TOKEND chain starting at the    *          00058000
+*          first TOKEND pointed to by the parameter list.    *          00059000
+*          Display TOKEND address, type and character string *          00060000
+*          it points to.                                     *          00061000
+*                                                            *          00062000
+**************************************************************          00063000
+         EJECT ,                                                        00064000
+*------------------------------------------------------------*          00065000
+*        Local dynamic variables                             *          00066000
+*                                                            *          00067000
+*        A register save area and local variables are        *          00068000
+*        allocated from the high end of the stack.  R13 is   *          00069000
+*        used as the base of this area so that programs      *          00070000
+*        called by this one see standard OS linkage.         *          00071000
+*        standard OS linkage.                                *          00072000
+*                                                            *          00073000
+*------------------------------------------------------------*          00074000
+LOCALS   DSECT ,             local variables                            00075000
+SAVE     DS    18F           register save area                         00076000
+STACK    DS    A             address of stack                           00077000
+STKSIZ   DS    F             length                                     00078000
+PLIST    DS    A             main plist pointer                         00079000
+LOCSIZE  EQU   *-LOCALS      length of this dsect                       00080000
+         EJECT ,                                                        00081000
+*------------------------------------------------------------*          00082000
+*        Control block definitions                           *          00083000
+*------------------------------------------------------------*          00084000
+         BLOCKS ,                                                       00085000
+         REGEQU ,                                                       00086000
+         SPACE 1                                                        00087000
+         PRINT NOGEN                                                    00088000
+         NUCON DSECT                                                    00089000
+         PRINT GEN                                                      00090000
+         EJECT ,                                                        00091000
+MAILDBG  CSECT ,                                                        00092000
+SHOWTOKS MENTRY STK=NONE                                                00093000
+         ICM   R2,B'1111',0(R1)    Get first TOKEND address             00094000
+         BZ    STOKS900            ---> Zero is a bad address           00095000
+         USING TOKEND,R2                                                00096000
+STOKS010 DS    0H                                                       00097000
+         USING NUCON,R0                                                 00098000
+         C     R2,VMSIZE           Beyond VM size?                      00099000
+         BH    STOKS900            ---> Yes                             00100000
+         DROP  R0                                                       00101000
+         L     R3,TOKPTR           Get string address                   00102000
+         L     R4,TOKLEN               and length                       00103000
+         LINEDIT TEXT='SHOWTOKS: TOKEND@........ -> ...................+00104000
+               ..............................',                        +00105000
+               SUB=(HEX,(R2),CHARA,((R3),(R4))),                       +00106000
+               DOT=NO,COMP=NO,RENT=NO                                   00107000
+         SPACE 1                                                        00108000
+         ICM   R2,B'1111',TOKNEXT  To next token                        00109000
+         BZ    STOKS999            End of list of tokens                00110000
+         B     STOKS010                                                 00111000
+         DROP  R2                                                       00112000
+         SPACE 1                                                        00113000
+STOKS900 DS    0H                                                       00114000
+         LINEDIT TEXT='SHOWTOKS: Bad TOKNEXT address (........)',      +00115000
+               SUB=(HEX,(R2)),                                         +00116000
+               DOT=NO,COMP=NO,RENT=NO                                   00117000
+         LA    R15,4               Remember there was a problem         00118000
+         SPACE 1                                                        00119000
+STOKS999 MRET  0                                                        00120000
+         EJECT ,                                                        00121000
+         LTORG ,                                                        00122000
+         SPACE 3                                                        00123000
+         END                                                            00124000

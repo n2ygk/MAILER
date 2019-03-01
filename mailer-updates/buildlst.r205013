@@ -1,0 +1,112 @@
+./ I 00231490          $ 231520 30                    01/12/90 16:39:27
+         SPACE 1
+         TM    DBGFLG7,DBGBLDLS    Tracing?                             00231530
+         BNO   BLDLOOP1            ---> No                              00231570
+         LINEDIT TEXT='BUILDLST:  **** Building of ACTADRs begins ****'X00231610
+               ,DOT=NO                                                  00231650
+./ I 00234000          $ 234200 200                   01/12/90 16:39:27
+         SPACE 1
+         TM    DBGFLG7,DBGBLDLS    Tracing?                             00234400
+         BNO   BLDLOOP2            ---> No                              00234800
+         LINEDIT TEXT='BUILDLST:  **** Start work on new address ****' X00235200
+               DOT=NO                                                   00235600
+         SPACE 1
+./ I 00238640          $ 238660 20                    01/12/90 16:39:27
+         SPACE 1
+         TM    DBGFLG7,DBGBLDLS    Tracing?                             00238480
+         BNO   BLDDBG01            ---> No                              00238510
+         LINEDIT TEXT='BUILDLST:  Found a route list',DOT=NO            00238540
+BLDDBG01 EQU   *                                                        00238570
+         SPACE 1
+./ R 00239470 00239480 $ 239471 1                     01/12/90 16:39:27
+         SPACE 1
+         TM    DBGFLG7,DBGBLDLS    Tracing?                             00239461
+         BNO   BLDDBG02            ---> No                              00239462
+         L     R14,=A(LCLSTACK)    String address                       00239463
+         L     R15,FAKETOKL        String length                        00239464
+         LINEDIT TEXT='BUILDLST:  Route address <......................X00239465
+               .............................................>',        X00239466
+               SUB=(CHARA,((14),(15))),DOT=NO,COMP=YES                  00239467
+BLDDBG02 EQU   *                                                        00239468
+         SPACE 1
+         CALL  CHKLOCAL,((R11),LCLSTACK,FAKETOKL)                       00239470
+         LTR   R15,R15             Local routeaddr?                     00239480
+./ R 00239496 00239500 $ 239497 1                     01/12/90 16:39:27
+         SPACE 1
+         TM    DBGFLG7,DBGBLDLS    Tracing?                             00239494
+         BNO   BLDDBG03            ---> No                              00239495
+         LINEDIT TEXT='BUILDLST:  Destination is local host, removing rX00239496
+               oute address',                                          X00239497
+               DOT=NO                                                   00239498
+BLDDBG03 EQU   *                                                        00239499
+         SPACE 1
+BLDRTLCL EQU   *                   Routeaddress for local system        00239496
+         ST    R8,DELMBOX          Store MBOX address                   00239500
+./ I 00239780          $ 239800 20                    01/12/90 16:39:27
+         TM    DBGFLG7,DBGBLDLS    Tracing?                             00239810
+         BNO   BLDDBG04            ---> No                              00239840
+         LINEDIT TEXT='BUILDLST:  No route list found',                X00239870
+               DOT=NO                                                   00239900
+BLDDBG04 EQU   *                                                        00239930
+         SPACE 1
+./ I 00240350          $ 240370 20                    01/12/90 16:39:27
+         SPACE 1
+         TM    DBGFLG7,DBGBLDLS    Tracing?                             00240380
+         BNO   BLDDBG05            ---> No                              00240410
+         LINEDIT TEXT='BUILDLST:  No host name, using default',        X00240440
+               DOT=NO                                                   00240470
+BLDDBG05 EQU   *                                                        00240500
+./ I 00255040          $ 255060 20                    01/12/90 16:39:27
+         SPACE 1
+         TM    DBGFLG7,DBGBLDLS    Tracing?                             00255070
+         BNO   BLDDBG06            ---> No                              00255100
+         L     R14,=A(LCLSTACK)    String address                       00255130
+         L     R15,FAKETOKL        String length                        00255160
+         LINEDIT TEXT='BUILDLST:  Destination address <................X00255190
+               ...................................................>',  X00255220
+               SUB=(CHARA,((14),(15))),DOT=NO                           00255250
+BLDDBG06 EQU   *                                                        00255280
+         SPACE 1
+./ I 00271250          $ 271260 10                    01/12/90 16:39:27
+         SPACE 1
+         TM    DBGFLG7,DBGBLDLS    Tracing?                             00271251
+         BNO   BLDDBG07            ---> No                              00271252
+         LINEDIT TEXT='BUILDLST:  Found ROUTD for >....................X00271253
+               ...........................................<',          X00271254
+               SUB=(CHARA,((R3),(R2))),DOT=NO,COMP=YES                  00271255
+BLDDBG07 EQU   *                                                        00271256
+         SPACE 1
+./ I 00285000          $ 285100 100                   01/12/90 16:39:27
+         SPACE 1
+         TM    DBGFLG7,DBGBLDLS    Tracing?                             00285200
+         BNO   BLDLCL              ---> No                              00285400
+         LINEDIT TEXT='BUILDLST:  Routing file from network',          X00285600
+               DOT=NO                                                   00285800
+         SPACE 1
+./ I 00299000          $ 299100 100                   01/12/90 16:39:27
+         SPACE 1
+         TM    DBGFLG7,DBGBLDLS    Tracing?                             00299100
+         BNO   BLDDBG08            ---> No                              00299200
+         LINEDIT TEXT='BUILDLST:  **** All ACTADRs built ****',        X00299300
+               DOT=NO                                                   00299400
+BLDDBG08 EQU   *                                                        00299500
+         SPACE 1
+./ I 00347000          $ 347050 50                    01/12/90 16:39:27
+         SPACE 1
+         TM    DBGFLG7,DBGBLDLS    Tracing?                             00347050
+         BNO   BLDDBG10            ---> No                              00347100
+         LINEDIT TEXT='BUILDLST: Adding ........@........ to ACTADR chaX00347150
+               in',                                                    X00347200
+               SUB=(CHARA,RTUSER,CHARA,RTROUTE),DOT=NO,RENT=NO          00347250
+         LA    R14,1               Set type 1 exit                      00347300
+         TM    RTFLAGS,RTP1        Is it type 1?                        00347350
+         BO    BLDDBG09            ---> Yes                             00347400
+         LA    R14,2               Set type 2 exit                      00347450
+         TM    RTFLAGS,RTP2        Is it type 2?                        00347500
+         BO    BLDDBG09            ---> Yes                             00347550
+         LA    R14,3               Must be type 3 exit                  00347600
+BLDDBG09 EQU   *                                                        00347650
+         LINEDIT TEXT='BUILDLST:     using ........ exit (type ..)',   X00347700
+               SUB=(CHARA,RTPROG,DEC,(R14)),DOT=NO,COMP=NO,RENT=NO      00347750
+BLDDBG10 EQU   *                                                        00347800
+         SPACE 1

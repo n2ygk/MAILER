@@ -1,0 +1,6 @@
+         MACRO                                                          00001000
+&LABEL   MRET  ,                                                        00002000
+.*  Return from procedure defined with MENTRY, MPEND.                   00003000
+         GBLC  &RETURN                                                  00004000
+&LABEL   B     &RETURN       return                                     00005000
+         MEND  ,                                                        00006000

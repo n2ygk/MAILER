@@ -1,0 +1,18 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R208000    Change version to 2.08
+R207999    Change version to 2.08 Beta
+R207000    Change version to 2.07
+R206000    Change version to 2.06
+R205000    Change version to 2.05
+R204000    Change version to 2.04
+R203034    Fix parameter parsing bug in MG (-d switch causes incorrect
+*          decrement).  Fix thanks to  Christian J. Reichetzeder
+*          (REICHETZ@AWIIMC11)
+R203018    Fix case sensitivity problems.
+R203012    Drop support of TRUNCATE for DEFRT
+*          Add support of RETURN for DEFRT
+R203009    Change version to 2.03B
+R203007    Change version to 2.03A and fix up length of verion field
+*          problem (reported by Waterloo).
+R202020    Change MAILER version to 2.03
+R202015    Make MG compatible with Waterloo C 3.0

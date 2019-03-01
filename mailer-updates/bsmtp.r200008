@@ -1,0 +1,4 @@
+./ R 00132500          $ 132690 190                   10/05/88 10:15:44
+STUFFIT  EQU   *                  <- get here if Local-Host1 was set.   00132500
+./ R 00140300          $ 140390 90                    10/05/88 10:15:44
+         ICM   R5,B'1111',LCLHOST1 See if Local-Host1 was set           00140300

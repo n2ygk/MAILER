@@ -1,0 +1,921 @@
+/* ****************************************************************** */00001000
+/*  MAILLIST - Implement the MAILLIST command                         */00002000
+/* ****************************************************************** */00003000
+/*                                                                    */00004000
+/*  Privileged command syntax (mail maintainers only):                */00005000
+/*                                                                    */00006000
+/*     MAILLIST CREATE   listid  listowner < listowner < ... >>       */00007000
+/*              DESTROY  listid                                       */00008000
+/*                                                                    */00009000
+/*  Command syntax for list owner or mail maintainers:                */00010000
+/*                                                                    */00011000
+/*     MAILLIST ADD      listid  destid                               */00012000
+/*-             ADDOWNER listid  listowner < listowner < ... >>       */00013000
+/*              DELETE   listid  destid                               */00014000
+/*-             DELOWNER listid  listowner < listowner < ... >>       */00015000
+/*                                ALL                                 */00016000
+/*                                                                    */00017000
+/*  Command syntax for general users:                                 */00018000
+/*                                                                    */00019000
+/*     MAILLIST LIST     listid                                       */00020000
+/*                                                                    */00021000
+/*                                                                    */00022000
+/*  This EXEC provides the code to maintain mail distribution lists.  */00023000
+/*  It modifies the contents of a file identified as 'listid MAILLIST'*/00024000
+/*  which is kept on MAILER's 191 disk.                               */00025000
+/*                                                                    */00026000
+/*  A list must be initially created by a user recognized as a mail   */00027000
+/*  maintainer.  Once the list is created, the list owners or a       */00028000
+/*  mail maintainer may modify its contents.  List owners must        */00029000
+/*  reside on the NJE network.                                        */00030000
+/*                                                                    */00031000
+/*  This code expects that the 'destid' will be in standard RFC822    */00032000
+/*  format OR specified as 'userid AT node'.  All other formats       */00033000
+/*  should be rejected.                                               */00034000
+/*                                                                    */00035000
+/*  MAILLIST uses comment lines in the file for control information.  */00036000
+/*  Comment lines are identified by having an '*' as the first        */00037000
+/*  non-blank character on the line.                                  */00038000
+/*                                                                    */00039000
+/*  The first line of the MAILLIST fils is always a comment and       */00040000
+/*  contains:                                                         */00041000
+/*                                                                    */00042000
+/*  *  Created: mm/dd/yy hh:mm:ss    Updated: mm/dd/yy hh:mm:ss       */00043000
+/*                                                                    */00044000
+/*  Scattered throughout the remainder of the file are owner          */00045000
+/*  comments:                                                         */00046000
+/*                                                                    */00047000
+/*  *  Owner: user@node <user@node <...>>                             */00048000
+/*                                                                    */00049000
+/*  Owner lines are added and deleted as required to hold the entire  */00050000
+/*  list of owners for this distribution list.  These ids are *NOT*   */00051000
+/*  kept in sorted order.                                             */00052000
+/*                                                                    */00053000
+/* ****************************************************************** */00054000
+                                                                        00055000
+address COMMAND                              /* Set environment       */00056000
+                                                                        00057000
+signal on halt                               /* Set traps             */00058000
+signal on syntax                                                        00059000
+signal on novalue                                                       00060000
+                                                                        00061000
+parse arg '(' requestorid '@' requestornode ')'  maintainer ,           00062000
+          cmdstring                          /*                       */00063000
+cmdstring = strip(cmdstring)                 /*                       */00064000
+if translate(word(cmdstring,1)) = 'MAILLIST'  then                      00065000
+   cmdstring = subword(cmdstring,2)          /*                       */00066000
+                                                                        00067000
+/*  Set some defaults  */                                               00068000
+                                                                        00069000
+console = 0                                  /* Not from console      */00070000
+exitrc  = 0                                  /*                       */00071000
+msgcmd  = 'MSGNOH'                           /*                       */00072000
+operations = 'ADD ADDOWNER CREATE DELETE DELOWNER DESTROY LIST'         00073000
+requestor = '*CONSOLE*'                      /*                       */00074000
+                                                                        00075000
+'IDENTIFY (LIFO'                             /*                       */00076000
+parse upper pull . . localnode .             /*                       */00077000
+                                                                        00078000
+/*  Determine source of request */                                      00079000
+                                                                        00080000
+select                                                                  00081000
+   when  requestorid = '*' & ,               /*                       */00082000
+         requestornode = ''  then            /*                       */00083000
+      console = 1                            /*                       */00084000
+   when  requestornode = ''  then  do        /*                       */00085000
+      requestornode = localnode              /*                       */00086000
+      requestor = space(requestorid'@'requestornode,0)                  00087000
+      end                                                               00088000
+   when  requestornode <> ''  then           /*                       */00089000
+      requestor = space(requestorid'@'requestornode,0)                  00090000
+   otherwise  do                             /*                       */00091000
+      say 'Distlist:  Invalid combination'    /*                      */00092000
+      say '        :  Requestorid   = "'requestorid'"                   00093000
+      say '        :  Requestornode = "'requestornode'"                 00094000
+      say ' '                                                           00095000
+      exit 8                                                            00096000
+      end                                                               00097000
+   end                                                                  00098000
+                                                                        00099000
+/* A little debugging code */                                           00100000
+                                                                        00101000
+parse arg original                           /*                       */00102000
+if maintainer  then  mflag = '(maintainer)'  /*                       */00103000
+else  mflag = ''                             /*                       */00104000
+say 'Distlist:  Cmd       = "'strip(original)'"'                        00105000
+say '        :  Requestor = "'requestor'"' mflag                        00106000
+say '        :  Cmdline   = "'cmdstring'"'                              00107000
+                                                                        00108000
+                                                                        00109000
+/* Do some command checking */                                          00110000
+                                                                        00111000
+if cmdstring = ''  then  do                  /*                       */00112000
+   if maintainer  then                       /*                       */00113000
+      call msg 'No action (ADD, ADDOWNER, CREATE, DELETE, DELOWNER' ,   00114000
+               'DESTROY or LIST) has been specified'                    00115000
+   else                                      /*                       */00116000
+      call msg 'No action (ADD, DELETE or LIST) has been specified'     00117000
+   exitrc = 8                                /*                       */00118000
+   signal exit                               /*                       */00119000
+   end                                                                  00120000
+                                                                        00121000
+parse upper var cmdstring operation .                                   00122000
+if find(operations,operation) = 0  then  do  /*                       */00123000
+   call msg 'The "'operation'" request is not supported'                00124000
+   exitrc = 8                                /*                       */00125000
+   signal exit                               /*                       */00126000
+   end                                                                  00127000
+                                                                        00128000
+interpret  'call' operation                  /*                       */00129000
+exitrc = result                              /*                       */00130000
+                                                                        00131000
+exit:  exit exitrc                           /*                       */00132000
+                                                                        00133000
+/* ******************* */                                               00134000
+/*  Internal routines  */                                               00135000
+/* ******************* */                                               00136000
+                                                                        00137000
+                                                                        00138000
+/* ****************************************************************** */00139000
+/*                                                                    */00140000
+/*  Add will add a new userid to the distribution list                */00141000
+/*                                                                    */00142000
+/*  The address is assumed to be in valid RFC821 format (i.e. just    */00143000
+/*  a machine address, no comments or names).  If the address passes  */00144000
+/*  validation (which may also modify it to standardize the format    */00145000
+/*  of addresses in the table) it will then be verfied for uniqueness.*/00146000
+/*  If this address is (apparently) new then it will be added to the  */00147000
+/*  file.                                                             */00148000
+/*                                                                    */00149000
+/* ****************************************************************** */00150000
+                                                                        00151000
+Add:  procedure ,  /* Do processing for an ADD operation */             00152000
+      expose cmdstring console maillist. maintainer msgcmd ,            00153000
+      requestor                                                         00154000
+                                                                        00155000
+parse var cmdstring . listid destination     /*                       */00156000
+upper listid                                 /*                       */00157000
+                                                                        00158000
+call readdistlist                                                       00159000
+if result <> 0  then  do                                                00160000
+   exitrc = result                           /*                       */00161000
+   call msg listid 'distribution list does not exist'                   00162000
+   return exitrc                                                        00163000
+   end                                                                  00164000
+                                                                        00165000
+if ^owner(requestor) & ^maintainer  then                                00166000
+   call msg 'You are not authorized to add users to the' listid ,       00167000
+      'distribution list'                                               00168000
+                                                                        00169000
+dest = validdest(destination)                                           00170000
+if dest <> ''  then  do                                                 00171000
+   destination = dest                                                   00172000
+   exitrc = 0                                /*                       */00173000
+   end                                                                  00174000
+else  do                                     /*                       */00175000
+   call msg '"'destination'" is not valid: ' failure                    00176000
+   return 8                                  /*                       */00177000
+   end                                                                  00178000
+                                                                        00179000
+matches = addresscan(destination)            /* Look for matches      */00180000
+if matches = 0  then  do                     /* Found 1 or more       */00181000
+   call addone(destination)                                             00182000
+   exitrc = writedistlist()                                             00183000
+   end                                                                  00184000
+else  do                                     /* No matches            */00185000
+   call msg '"'destination'" is a duplicate address'                    00186000
+   exitrc = 4                                                           00187000
+   end                                                                  00188000
+                                                                        00189000
+if exitrc = 0  then                          /* Info message to send  */00190000
+   call msg 'Distlist:  Added' destination                              00191000
+                                                                        00192000
+return exitrc                                                           00193000
+                                                                        00194000
+                                                                        00195000
+/* *****************************************************************  */00196000
+/*                                                                    */00197000
+/*  Add a user to the distribution list                               */00198000
+/*                                                                    */00199000
+/* *****************************************************************  */00200000
+                                                                        00201000
+Addone:  procedure ,                                                    00202000
+         expose console foruser maillist. requestor                     00203000
+                                                                        00204000
+parse arg destination                        /* New destination       */00205000
+last = maillist.0 + 1                        /* New number of lines   */00206000
+call updatehdr                               /* Set update date       */00207000
+maillist.last = destination                  /* Put in new dest.      */00208000
+maillist.0 = last                            /* Update count          */00209000
+                                                                        00210000
+return 0                                                                00211000
+                                                                        00212000
+                                                                        00213000
+/* *****************************************************************  */00214000
+/*                                                                    */00215000
+/*  Add an owner to the distribution list                             */00216000
+/*                                                                    */00217000
+/* *****************************************************************  */00218000
+                                                                        00219000
+Addoneowner:  procedure ,                                               00220000
+              expose console maillist. msgcmd requestor                 00221000
+                                                                        00222000
+parse arg ownerid                            /* New owner             */00223000
+if owner(ownerid)  then  do                  /* Have a duplicate      */00224000
+   call msg ownerid 'is already an owner'    /* Tell requestor        */00225000
+   exitrc = 4                                                           00226000
+   end                                                                  00227000
+else  do                                     /* Have a new owner      */00228000
+   last = maillist.0 + 1                     /* New number of lines   */00229000
+   call updatehdr                            /* Set update date       */00230000
+   maillist.last = '*  Owner: ' ownerid      /* Put in new dest.      */00231000
+   maillist.0 = last                         /* Update count          */00232000
+   exitrc = 0                                                           00233000
+   end                                                                  00234000
+                                                                        00235000
+return exitrc                                                           00236000
+                                                                        00237000
+                                                                        00238000
+/* ****************************************************************** */00239000
+/*                                                                    */00240000
+/*  Add owners to the distribution list                               */00241000
+/*                                                                    */00242000
+/*  The address is assumed to be in valid RFC821 format (i.e. just    */00243000
+/*  a machine address, no comments or names).  If the address passes  */00244000
+/*  validation (which may also modify it to standardize the format    */00245000
+/*  of addresses in the table) it will then be verfied for uniqueness.*/00246000
+/*  If this address is (apparently) new then it will be added to the  */00247000
+/*  file.                                                             */00248000
+/*                                                                    */00249000
+/* ****************************************************************** */00250000
+                                                                        00251000
+AddOwner:  procedure ,  /* Do processing for an ADDOWNER operation */   00252000
+           expose cmdstring console maillist. maintainer msgcmd ,       00253000
+           requestor                                                    00254000
+                                                                        00255000
+parse var cmdstring . listid owners          /*                       */00256000
+upper listid                                 /*                       */00257000
+                                                                        00258000
+if owners = ''  then  do                                                00259000
+   call msg 'No owner provided for list, default of' requestor 'will' , 00260000
+      'be used'                                                         00261000
+   owners = requestor                                                   00262000
+   end                                                                  00263000
+                                                                        00264000
+call readdistlist                                                       00265000
+if result <> 0  then  do                                                00266000
+   exitrc = result                           /*                       */00267000
+   call msg listid 'distribution list does not exist'                   00268000
+   return exitrc                                                        00269000
+   end                                                                  00270000
+                                                                        00271000
+if ^owner(requestor) & ^maintainer  then                                00272000
+   call msg 'You are not authorized to add owners to the' listid ,      00273000
+      'distribution list'                                               00274000
+                                                                        00275000
+owners.0 = 0                                 /* Initialize            */00276000
+call scanowners(owners)                      /* Build list            */00277000
+                                                                        00278000
+do i=1 for owners.0                          /*                       */00279000
+   call addoneowner(owners.i)                /*                       */00280000
+   if result <> 0  then  owners.0 = owners.0 - 1 /* Duplicate         */00281000
+   end                                                                  00282000
+                                                                        00283000
+exitrc = writedistlist()                                                00284000
+if exitrc = 0  then                                                     00285000
+   call msg 'Distlist:  Added' owners.0 'new list owner(s)'             00286000
+                                                                        00287000
+return exitrc                                                           00288000
+                                                                        00289000
+                                                                        00290000
+/* *****************************************************************  */00291000
+/*                                                                    */00292000
+/*  AddresScan will scan the address file looking for matching        */00293000
+/*     addresses                                                      */00294000
+/*                                                                    */00295000
+/*  The address to be scanned for is passed as the argument to        */00296000
+/*  AddresScan.  The addresses to be scanned must be placed in the    */00297000
+/*  REXX stem 'maillist.' before calling AddresScan.                  */00298000
+/*                                                                    */00299000
+/*  Lines that match are flagged in the REXX stem 'matching.'         */00300000
+/*                                                                    */00301000
+/* *****************************************************************  */00302000
+                                                                        00303000
+AddresScan:  procedure , /* Scan address file for matching addresses */ 00304000
+             expose matching. maillist.                                 00305000
+                                                                        00306000
+parse upper arg destination                                             00307000
+destination = strip(destination)                                        00308000
+                                                                        00309000
+matches = 0                                                             00310000
+                                                                        00311000
+do i=1 for maillist.0                                                   00312000
+   matching.i = 0                            /* Set default value     */00313000
+   if left(word(maillist.i,1),1) = '*'  then  iterate                   00314000
+   if translate(maillist.i) = destination  then  do                     00315000
+      matches = matches + 1                  /*                       */00316000
+      matching.i = 1                         /*                       */00317000
+      end                                                               00318000
+   end                                                                  00319000
+                                                                        00320000
+return matches                                                          00321000
+                                                                        00322000
+                                                                        00323000
+/* *****************************************************************  */00324000
+/*                                                                    */00325000
+/*  Create a new distribution list                                    */00326000
+/*                                                                    */00327000
+/*  Create will build the initial headers for the list                */00328000
+/*                                                                    */00329000
+/* *****************************************************************  */00330000
+                                                                        00331000
+                                                                        00332000
+Create:  procedure ,  /* Create a distribution list  */                 00333000
+         expose cmdstring console maintainer msgcmd requestor           00334000
+                                                                        00335000
+parse upper var cmdstring . listid owners                               00336000
+upper listid                                 /*                       */00337000
+                                                                        00338000
+if ^maintainer  then  do                                                00339000
+   call msg 'You are not authorized to create a distribution list'      00340000
+   return 8                                                             00341000
+   end                                                                  00342000
+                                                                        00343000
+if listid = ''  then  do                                                00344000
+   call msg 'Distribution list name not given'                          00345000
+   exit 8                                                               00346000
+   end                                                                  00347000
+                                                                        00348000
+if exists(listid 'MAILLIST A')  then  do                                00349000
+   call msg '"'listid 'distribution list already exists'                00350000
+   return 8                                                             00351000
+   end                                                                  00352000
+                                                                        00353000
+if owners = ''  then  do                                                00354000
+   call msg 'No owner provided for list, default of' requestor 'will' , 00355000
+      'be used'                                                         00356000
+   owners = requestor                                                   00357000
+   end                                                                  00358000
+                                                                        00359000
+owners.0 = 0                                                            00360000
+call scanowners(owners)                                                 00361000
+                                                                        00362000
+maillist.0 = 1                                                          00363000
+maillist.1 = '*  Created: ' date('U') time() ,                          00364000
+             '   Updated: ' date('U') time()                            00365000
+                                                                        00366000
+do i=2 for owners.0                                                     00367000
+   call addoneowner(value('OWNERS.'i-1))                                00368000
+   end                                                                  00369000
+                                                                        00370000
+call writedistlist                                                      00371000
+if result = 0  then  do                                                 00372000
+   call msg '"'listid 'MAILLIST" file created'                          00373000
+   if owners.0 = 0  then                                                00374000
+      call msg listid 'distribution list has no owners'                 00375000
+   end                                                                  00376000
+                                                                        00377000
+return result                                                           00378000
+                                                                        00379000
+                                                                        00380000
+/* *****************************************************************  */00381000
+/*                                                                    */00382000
+/*  Delete will delete one or more addresses from the distribution    */00383000
+/*  list.                                                             */00384000
+/*                                                                    */00385000
+/*  The address is assumed to be in valid RFC821 format (i.e. just    */00386000
+/*  a machine address, no comments or names).  If the address passes  */00387000
+/*  validation (which may also modify it to standardize the format    */00388000
+/*  of addresses in the table) it will then be verified for existence.*/00389000
+/*  All matching addresses in the file will be deleted.               */00390000
+/*                                                                    */00391000
+/*  An address of '<*>' will be taken to mean the local user.         */00392000
+/*                                                                    */00393000
+/*  An address of 'ALL' will mean to delete all entries (ALL is a     */00394000
+/*  restricted userid under VM since it would affect the WNG and      */00395000
+/*  MSG commands operation).                                          */00396000
+/*                                                                    */00397000
+/* *****************************************************************  */00398000
+                                                                        00399000
+Delete:  procedure ,  /* Do processing for a DELETE operation */        00400000
+         expose cmdstring console maillist. maintainer msgcmd ,         00401000
+         requestor                                                      00402000
+                                                                        00403000
+parse var cmdstring . listid destination     /*                       */00404000
+upper listid                                 /*                       */00405000
+                                                                        00406000
+call readdistlist                                                       00407000
+if result <> 0  then  do                                                00408000
+   exitrc = result                           /*                       */00409000
+   call msg listid 'distribution list does not exist'                   00410000
+   return exitrc                                                        00411000
+   end                                                                  00412000
+                                                                        00413000
+if ^owner(requestor) & ^maintainer  then                                00414000
+   call msg 'Your are not authorized to delete users from the' listid , 00415000
+      'distribution list'                                               00416000
+                                                                        00417000
+if translate(destination) = 'ALL'  then      /*                       */00418000
+   return deleteall()                        /*                       */00419000
+                                                                        00420000
+dest = validdest(destination)                                           00421000
+if dest <> ''  then  do                                                 00422000
+   destination = dest                                                   00423000
+   exitrc = 0                                /*                       */00424000
+   end                                                                  00425000
+else  do                                     /*                       */00426000
+   call msg '"'destination'" is not valid: ' failure                    00427000
+   exitrc = 8                                /*                       */00428000
+   end                                                                  00429000
+                                                                        00430000
+matches = addresscan(destination)                                       00431000
+if matches > 0  then  do                                                00432000
+   call updatehdr                            /* Set update date       */00433000
+   call msg 'Distlist: ' matches 'id(s) deleted'                        00434000
+   j=0                                       /* Initialize counter    */00435000
+   do i=1 to maillist.0                      /* Loop though all lines */00436000
+      if matching.i  then                    /* This one being dropped*/00437000
+         call msg '    ' maillist.i          /*   so tell requestor   */00438000
+      else  do                               /* This one being kept   */00439000
+         j=j+1                               /* Increment line ctr    */00440000
+         if j<>i  then                       /* If 1 or more dropped  */00441000
+            maillist.j = maillist.i          /*   copy line forward   */00442000
+         end                                                            00443000
+      end                                                               00444000
+   maillist.0 = j                            /* Update line count     */00445000
+   call writedistlist                        /* Rewrite file          */00446000
+   end                                                                  00447000
+else                                                                    00448000
+   call msg 'Distlist:  No destinations match address requested'        00449000
+                                                                        00450000
+return exitrc                                                           00451000
+                                                                        00452000
+                                                                        00453000
+/* *****************************************************************  */00454000
+/*                                                                    */00455000
+/*  DeleteAll will delete all list members (but not the list owners)  */00456000
+/*  from the control file.                                            */00457000
+/*                                                                    */00458000
+/* *****************************************************************  */00459000
+                                                                        00460000
+DeleteAll:  procedure ,  /* Do processing for a DELETE * operation */   00461000
+            expose cmdstring console listid maillist. msgcmd requestor  00462000
+                                                                        00463000
+call msg 'Deleting all ids on list'          /* Header msg            */00464000
+j=0                                          /* Initialize counter    */00465000
+do i=1 to maillist.0                         /* Loop though all lines */00466000
+   if left(word(maillist.i,1),1) <> '*'  then/* This one being dropped*/00467000
+      call msg '    ' maillist.i             /*   so tell requestor   */00468000
+   else  do                                  /* This one being kept   */00469000
+      j=j+1                                  /* Increment line ctr    */00470000
+      if j<>i  then                          /* If 1 or more dropped  */00471000
+         maillist.j = maillist.i             /*   copy line forward   */00472000
+      end                                                               00473000
+   end                                                                  00474000
+                                                                        00475000
+call msg 'Distlist: ' maillist.0-j 'id(s) deleted'                      00476000
+maillist.0 = j                               /* Update line count     */00477000
+                                                                        00478000
+call writedistlist                           /* Rewrite file          */00479000
+                                                                        00480000
+return result                                                           00481000
+                                                                        00482000
+                                                                        00483000
+/* *****************************************************************  */00484000
+/*                                                                    */00485000
+/*  Delete an owner from the distribution list                        */00486000
+/*                                                                    */00487000
+/*  This process will also compress out the deleted lines.            */00488000
+/*                                                                    */00489000
+/* *****************************************************************  */00490000
+                                                                        00491000
+DelOneOwner:  procedure ,                                               00492000
+              expose console maillist. msgcmd requestor                 00493000
+                                                                        00494000
+parse upper arg ownerid                      /* Id to delete          */00495000
+                                                                        00496000
+deletedone = 0                                                          00497000
+j=1                                                                     00498000
+do i=1 for maillist.0                                                   00499000
+   if left(word(maillist.i,1),1) = '*'  then  do                        00500000
+      parse upper var maillist.i '*' type ':' info                      00501000
+      if type = 'OWNER' & strip(info) = ownerid  then  do               00502000
+         maillist.0 = maillist.0-1                                      00503000
+         deletedone = 1                                                 00504000
+         iterate                                                        00505000
+         end                                                            00506000
+      end                                                               00507000
+   if j<i  then  maillist.j = maillist.i                                00508000
+   j=j+1                                                                00509000
+   end                                                                  00510000
+                                                                        00511000
+return deletedone                                                       00512000
+                                                                        00513000
+                                                                        00514000
+/* ****************************************************************** */00515000
+/*                                                                    */00516000
+/*  Delete owners from the distribution list                          */00517000
+/*                                                                    */00518000
+/*  The address is assumed to be in valid RFC821 format (i.e. just    */00519000
+/*  a machine address, no comments or names).  If the address passes  */00520000
+/*  validation (which may also modify it to standardize the format    */00521000
+/*  of addresses in the table) it will then be compared against all   */00522000
+/*  the owners and deletion done if a match is found.                 */00523000
+/*                                                                    */00524000
+/* ****************************************************************** */00525000
+                                                                        00526000
+DelOwner:  procedure ,  /* Do processing for an DELOWNER operation */   00527000
+           expose cmdstring console maillist. maintainer msgcmd ,       00528000
+           requestor                                                    00529000
+                                                                        00530000
+parse var cmdstring . listid owners          /*                       */00531000
+upper listid                                 /*                       */00532000
+                                                                        00533000
+if owners = ''  then  do                                                00534000
+   call msg 'No owner id(s) provided for deletion'                      00535000
+      'be used'                                                         00536000
+   return 8                                                             00537000
+   end                                                                  00538000
+                                                                        00539000
+call readdistlist                                                       00540000
+if result <> 0  then  do                                                00541000
+   exitrc = result                           /*                       */00542000
+   call msg listid 'distribution list does not exist'                   00543000
+   return exitrc                                                        00544000
+   end                                                                  00545000
+                                                                        00546000
+if ^owner(requestor) & ^maintainer  then                                00547000
+   call msg 'You are not authorized to delete owners from the' listid , 00548000
+      'distribution list'                                               00549000
+                                                                        00550000
+owners.0 = 0                                 /* Initialize            */00551000
+call scanowners(owners)                      /* Build list            */00552000
+                                                                        00553000
+do i=1 for owners.0                          /*                       */00554000
+   if ^deloneowner(owners.i)  then  do       /*                       */00555000
+      call msg owners.i 'was not a list owner'                          00556000
+      owners.0 = owners.0 - 1                                           00557000
+      end                                                               00558000
+   end                                                                  00559000
+                                                                        00560000
+exitrc = writedistlist()                                                00561000
+if exitrc = 0  then                                                     00562000
+   call msg 'Distlist:  Deleted' owners.0 'list owner(s)'               00563000
+                                                                        00564000
+return exitrc                                                           00565000
+                                                                        00566000
+                                                                        00567000
+Exists:  procedure  /* Check for existance of a file */                 00568000
+                                                                        00569000
+parse upper arg fn ft fm .                   /*                       */00570000
+                                                                        00571000
+if fn = ''  then  exit 0                     /*                       */00572000
+if ft = ''  then  exit 0                     /*                       */00573000
+if fm = ''  then  fm = '*'                   /*                       */00574000
+                                                                        00575000
+'ESTATE' fn ft fm                            /*                       */00576000
+if rc = 0  then  return 1                    /*                       */00577000
+return 0                                                                00578000
+                                                                        00579000
+                                                                        00580000
+/* *****************************************************************  */00581000
+/*                                                                    */00582000
+/*  Destroy (totally remove) a distribution list                      */00583000
+/*                                                                    */00584000
+/* *****************************************************************  */00585000
+                                                                        00586000
+                                                                        00587000
+Destroy:  procedure ,                                                   00588000
+          expose cmdstring console maintainer msgcmd requestor          00589000
+                                                                        00590000
+parse upper var cmdstring . listid .                                    00591000
+upper listid                                 /*                       */00592000
+                                                                        00593000
+if ^maintainer  then  do                                                00594000
+   call msg 'You are not authorized to create a distribution list'      00595000
+   return 8                                                             00596000
+   end                                                                  00597000
+                                                                        00598000
+if listid = ''  then  do                                                00599000
+   call msg 'Distribution list name not given'                          00600000
+   exit 8                                                               00601000
+   end                                                                  00602000
+                                                                        00603000
+if ^exists(listid 'MAILLIST A')  then  do                               00604000
+   call msg '"'listid 'distribution list does not exist'                00605000
+   return 8                                                             00606000
+   end                                                                  00607000
+                                                                        00608000
+'ERASE' listid 'MAILLIST A'                                             00609000
+call msg '"'listid 'MAILLIST" file erased'                              00610000
+                                                                        00611000
+return 0                                                                00612000
+                                                                        00613000
+                                                                        00614000
+/* *****************************************************************  */00615000
+/*                                                                    */00616000
+/*  List will list the address file                                   */00617000
+/*                                                                    */00618000
+/*  If the request is from the console, the file is typed, otherwise  */00619000
+/*  it is sent to the requestor (using the CMS SENDFILE command).     */00620000
+/*                                                                    */00621000
+/* *****************************************************************  */00622000
+                                                                        00623000
+List:  procedure ,  /* Do processing for a LIST operation */            00624000
+       expose cmdstring console msgcmd requestor                        00625000
+                                                                        00626000
+parse var cmdstring . listid extra           /*                       */00627000
+upper listid                                 /*                       */00628000
+                                                                        00629000
+if extra <> ''  then  do                     /*                       */00630000
+   call msg 'Too many operands on LIST command'                         00631000
+   return 8                                                             00632000
+   end                                                                  00633000
+                                                                        00634000
+if ^exists(listid 'MAILLIST A')  then  do                               00635000
+   call msg listid 'distribution list does not exist'                   00636000
+   exitrc = 4                                                           00637000
+   end                                                                  00638000
+else  do                                                                00639000
+   if console  then  do                                                 00640000
+      say 'Distlist: ' listid 'distribution list'                       00641000
+      'TYPE' listid 'MAILLIST A'                                        00642000
+      say 'Distlist:  End of forwarding distribution list'              00643000
+      end                                                               00644000
+   else  do                                  /*                       */00645000
+      call msg 'Sending a copy of distribution list to you'             00646000
+      parse var requestor userid '@' node /*                       */   00647000
+      if node = ''  then                  /*                       */   00648000
+         'EXEC SENDFILE' listid 'MAILLIST A TO' userid                  00649000
+      else                                /*                       */   00650000
+         'EXEC SENDFILE' listid 'MAILLIST A TO' userid 'AT' node        00651000
+      end                                                               00652000
+   exitrc = 0                                /*                       */00653000
+   end                                                                  00654000
+                                                                        00655000
+return exitrc                                /*                       */00656000
+                                                                        00657000
+                                                                        00658000
+/* *****************************************************************  */00659000
+/*                                                                    */00660000
+/*  MSG sends a msg to the requestor                                  */00661000
+/*                                                                    */00662000
+/*  Operation is effected by the location of the request;  on the     */00663000
+/*  console, a local user or a network user.                          */00664000
+/*                                                                    */00665000
+/* *****************************************************************  */00666000
+                                                                        00667000
+Msg:  procedure , /* Send reply to requestor */                         00668000
+      expose console msgcmd requestor                                   00669000
+                                                                        00670000
+parse arg msgstring                                                     00671000
+                                                                        00672000
+if console  then                                                        00673000
+   say msgstring                                                        00674000
+else  do                                                                00675000
+   parse var requestor userid '@' node                                  00676000
+   if node = ''  then  do                                               00677000
+      'CP' msgcmd userid msgstring                                      00678000
+      if rc <> 0 & ,                         /* Behave like msg code  */00679000
+         msgcmd = 'MSGNOH'  then             /*    in MAILER          */00680000
+         'CP MSG' userid msgstring                                      00681000
+      end                                                               00682000
+   else                                                                 00683000
+      'EXEC TELL' userid 'AT' node msgstring                            00684000
+   end                                                                  00685000
+                                                                        00686000
+return 0                                                                00687000
+                                                                        00688000
+                                                                        00689000
+/* *****************************************************************  */00690000
+/*                                                                    */00691000
+/*  Determine if supplied userid is an owner of the list              */00692000
+/*                                                                    */00693000
+/* *****************************************************************  */00694000
+                                                                        00695000
+Owner:  procedure  expose maillist.                                     00696000
+owner = 0                                    /* Default to no         */00697000
+                                                                        00698000
+parse upper arg userid                                                  00699000
+userid = strip(userid)                                                  00700000
+                                                                        00701000
+do i=1 to maillist.0                                                    00702000
+   if left(word(maillist.i,1),1) = '*'  then  do                        00703000
+      parse upper var maillist.i '*' type ':' info                      00704000
+      if type = 'OWNER' & strip(info) = userid  then  do                00705000
+         owner = 1                                                      00706000
+         leave                                                          00707000
+         end                                                            00708000
+      end                                                               00709000
+   end                                                                  00710000
+                                                                        00711000
+return owner                                                            00712000
+                                                                        00713000
+                                                                        00714000
+/* *****************************************************************  */00715000
+/*                                                                    */00716000
+/*  Read distribution list file from disk                             */00717000
+/*                                                                    */00718000
+/* *****************************************************************  */00719000
+                                                                        00720000
+ReadDistList:  procedure expose listid maillist.                        00721000
+                                                                        00722000
+If ^exists(listid 'MAILLIST A')  then  return 28                        00723000
+'EXECIO * DISKR' listid 'MAILLIST A (FINIS STEM MAILLIST.'              00724000
+                                                                        00725000
+return rc                                                               00726000
+                                                                        00727000
+                                                                        00728000
+/* *****************************************************************  */00729000
+/*                                                                    */00730000
+/*  ScanOwners scans an owner list and converts it to standard        */00731000
+/*  format.                                                           */00732000
+/*                                                                    */00733000
+/* *****************************************************************  */00734000
+                                                                        00735000
+ScanOwners:  procedure  expose owners. requestor                        00736000
+parse arg ownerlist                                                     00737000
+i = owners.0                                                            00738000
+                                                                        00739000
+do while ownerlist <>  ''                                               00740000
+   If words(ownerlist) > 2  & ,                                         00741000
+      translate(word(ownerlist,2)) = 'AT'  then  do                     00742000
+      ownerlist = word(ownerlist,1)'@'subword(ownerlist,3)              00743000
+      end                                                               00744000
+   parse var ownerlist nextowner ownerlist                              00745000
+   dest = validdest(nextowner)                                          00746000
+   if dest = ''  then                                                   00747000
+      call msg 'MAILLIST:  Invalid network address ("'nextowner'")'     00748000
+   else  do                                                             00749000
+      i = i + 1                                                         00750000
+      owners.i = dest                                                   00751000
+      owners.0 = i                                                      00752000
+      end                                                               00753000
+   end                                                                  00754000
+                                                                        00755000
+return                                                                  00756000
+                                                                        00757000
+                                                                        00758000
+/* *****************************************************************  */00759000
+/*                                                                    */00760000
+/*  UpDateHdr will set the Update date/time field in the header       */00761000
+/*                                                                    */00762000
+/* *****************************************************************  */00763000
+                                                                        00764000
+UpDateHdr:  procedure  expose  maillist.                                00765000
+                                                                        00766000
+parse var maillist.1 oldpart 'Updated:' .    /* Get creation date     */00767000
+maillist.1 = oldpart || 'Updated:' date('U') time()                     00768000
+                                                                        00769000
+return                                                                  00770000
+                                                                        00771000
+/* *****************************************************************  */00772000
+/*                                                                    */00773000
+/*  ValidDest will validate an address against RFC822 (I hope).       */00774000
+/*                                                                    */00775000
+/*  The address to be check is passed in the REXX variable            */00776000
+/*  'destination'.  This value may be changed during the validation   */00777000
+/*  process so that all addresses will be in a standard form.         */00778000
+/*                                                                    */00779000
+/*  If there is a problem with the address, the reason for the        */00780000
+/*  failure will be returned in the exposed variable 'failure'        */00781000
+/*                                                                    */00782000
+/* *****************************************************************  */00783000
+                                                                        00784000
+ValidDest:  procedure , /* Validate a destination address */            00785000
+            expose failure                                              00786000
+                                                                        00787000
+parse arg destination                        /* Starting address      */00788000
+workdest = strip(destination)                /*                       */00789000
+                                                                        00790000
+if workdest = '*'  then  do                  /* To user?              */00791000
+   destination = '<*>'                       /* Yes, kludge address   */00792000
+   return 1                                  /*                       */00793000
+   end                                                                  00794000
+                                                                        00795000
+failure = ''                                 /*                       */00796000
+routeaddr = ''                               /*                       */00797000
+userid = ''                                  /*                       */00798000
+domain = ''                                  /*                       */00799000
+quoted.0 = 0                                 /*                       */00800000
+                                                                        00801000
+do while left(workdest,1) = '<'              /* Strip any hairpins    */00802000
+   if right(workdest,1) <> '>'  then  do     /*                       */00803000
+      failure = '"<" missing matching ">"'   /*                       */00804000
+      return 0                               /*                       */00805000
+      end                                                               00806000
+   else                                      /*                       */00807000
+      workdest = substr(workdest,2,length(workdest)-2)                  00808000
+   end                                                                  00809000
+                                                                        00810000
+do i=1                                       /* Remove quoted strings */00811000
+   first = pos('"',workdest)                 /*                       */00812000
+   if first = 0  then  leave                 /*                       */00813000
+   second = pos('"',workdest,first+1)        /*                       */00814000
+   if second = 0  then  do                   /* Not matched           */00815000
+      failure = 'Missing ending quote on quoted string'                 00816000
+      return 0                               /*                       */00817000
+      end                                                               00818000
+   quoted.0 = i                              /*                       */00819000
+   quoted.i = substr(workdest,first+1,second-first-1)                   00820000
+   workdest = delstr(workdest,first,second-first+1) /* Delete quote   */00821000
+   workdest = insert(d2c(i),workdest,first-1)/* Insert flag           */00822000
+   end                                                                  00823000
+                                                                        00824000
+/* May have an RFC733 address at this point.  The only problem is the */00825000
+/* use of ' AT ' for '@' in 733.  See if this is the case and convert */00826000
+/* to valid RFC822 form.                                              */00827000
+                                                                        00828000
+if words(workdest) = 3  then  do             /* Possible RFC733 format*/00829000
+   if translate(word(workdest,2)) = 'AT'  then  /* It is 733 format   */00830000
+      workdest = word(workdest,1)'@'word(workdest,3)                    00831000
+   end                                                                  00832000
+                                                                        00833000
+/* Have <routeaddr:>userid<@node> at this point with quoted strings   */00834000
+/* hidden as unprintable values.                                      */00835000
+                                                                        00836000
+if pos(':',workdest) > 0  then               /*                       */00837000
+   parse var workdest routeaddr ':' userid '@' domain                   00838000
+else                                         /*                       */00839000
+   parse var workdest userid '@' domain                                 00840000
+                                                                        00841000
+if routeaddr <> '' & domain = ''  then  do   /*                       */00842000
+   routeaddr = reverse(routeaddr)            /*                       */00843000
+   parse var routeaddr domain '@' routeaddr                             00844000
+   domain = reverse(domain)                  /*                       */00845000
+   if left(routeaddr,1) = ','  then                                     00846000
+      routeaddr = substr(routeaddr,2)                                   00847000
+   routeaddr = reverse(routeaddr)            /*                       */00848000
+   end                                                                  00849000
+                                                                        00850000
+select                                       /*                       */00851000
+   when routeaddr = '' & domain = ''  then  do  /*                    */00852000
+      'IDENTIFY (LIFO'                                                  00853000
+      parse upper pull . . domain .                                     00854000
+      destination = '<'userid'@'strip(domain)'>'                        00855000
+      end                                                               00856000
+   when routeaddr = '' & domain <> '' then  do  /*                    */00857000
+      upper domain                           /*                       */00858000
+      destination = '<'userid'@'domain'>'    /*                       */00859000
+      end                                                               00860000
+   otherwise  do                             /*                       */00861000
+      upper routeaddr domain                 /*                       */00862000
+      destination = '<'routeaddr':'userid'@'domain'>'                   00863000
+      end                                                               00864000
+   end                                       /*                       */00865000
+                                                                        00866000
+do i=1 to quoted.0                           /* Put back quoted       */00867000
+   spot = pos(d2c(i),destination)            /*    strings            */00868000
+   destination = delstr(destination,spot,1)                             00869000
+   destination = insert('"'quoted.i'"',destination,spot-1)              00870000
+   end                                                                  00871000
+                                                                        00872000
+return destination                                                      00873000
+                                                                        00874000
+                                                                        00875000
+/* *****************************************************************  */00876000
+/*                                                                    */00877000
+/*  Write distribution list file back to disk                         */00878000
+/*                                                                    */00879000
+/* *****************************************************************  */00880000
+                                                                        00881000
+WriteDistList:  procedure expose listid maillist.                       00882000
+                                                                        00883000
+If exists(listid 'MAILLIST A')  then  'ERASE' listid 'MAILLIST A'       00884000
+'EXECIO' maillist.0 'DISKW' listid 'MAILLIST A (FINIS STEM MAILLIST.'   00885000
+exitrc = rc                                                             00886000
+if rc = 0  then                                                         00887000
+   'EXECDROP' listid 'MAILLIST'                                         00888000
+                                                                        00889000
+return exitrc                                                           00890000
+                                                                        00891000
+                                                                        00892000
+/* **************** */                                                  00893000
+/*  Error handlers  */                                                  00894000
+/* **************** */                                                  00895000
+                                                                        00896000
+HALT:                                                                   00897000
+parse source . . myname .                                               00898000
+say "Halt in" myname "line" sigl":"                                     00899000
+say sourceline(sigl)                                                    00900000
+exitrc = 16                                                             00901000
+signal errexit                                                          00902000
+                                                                        00903000
+NOVALUE:                                                                00904000
+parse source . . myname .                                               00905000
+say "NOVALUE error in" myname "line" sigl":"                            00906000
+say sourceline(sigl)                                                    00907000
+exitrc = 16                                                             00908000
+signal errexit                                                          00909000
+                                                                        00910000
+SYNTAX:                                                                 00911000
+parse source . . myname .                                               00912000
+say "SYNTAX error in" myname "line" sigl": " errortext(rc)              00913000
+say sourceline(sigl)                                                    00914000
+exitrc = 16                                                             00915000
+signal errexit                                                          00916000
+                                                                        00917000
+ERREXIT:                                                                00918000
+trace ?r                                                                00919000
+nop                                                                     00920000
+exit exitrc                                                             00921000

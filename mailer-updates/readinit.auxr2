@@ -1,0 +1,12 @@
+* * * * * * * * * * * * * * * * AUXR2 * * * * * * * * * * * * * * * * *
+R208004    Handle RECFM=V mailer profile correctly
+R207004    Handle a partial match as doesn't exist when building
+*          OUTGOING tables
+R205025    Display duplicate entry when MAIRDI064W msg issued
+R204005    Fix code in READINIT to properly reset TRAPTAB when looking
+*          for a comment
+R203029    Correct comments so they make sense in READINIT
+R202018    Remove PRINT NOGENs, make DSECTs honor SYSPARM(SUP)/SYSPARM(EXP)
+R202005    Correctly handle null keywords in MAILER profile
+*          Adopted solution is to ignore keywords with no value field
+*          (i.e.  Local-Domain=      ;Local domain name)

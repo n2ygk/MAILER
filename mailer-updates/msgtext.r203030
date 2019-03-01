@@ -1,0 +1,28 @@
+./ R 00010950          $ 10960 10                     09/27/89 16:15:36
+         DC    A(75)         HIGHEST MESSAGE NUMBER DEFINED      [1.24] 00010960
+./ R 00014960          $ 14970 10                     09/27/89 16:15:36
+         DC A(M65,M66,M67,M68,M69,M70,M71,M72,M73,M74,M75)              00014970
+./ I 00196950          $ 196990 40                    09/27/89 16:15:36
+         SPACE 1                                                        00196990
+T72      DC    AL1(LT72),C'MAILER072W Local-Host not found in OUTGOING X00197030
+               table:'                                                  00197070
+         DC    XL1'15'                                                  00197110
+         DC    CL30' '                                                  00197150
+         DC    CL40'Domain.name.here'                                   00197190
+LT72     EQU   *-T72-1                                                  00197230
+M72      DC    A(T72),AL1(3,3,81,40,0)                                  00197270
+         SPACE 1                                                        00197310
+T73      DC    AL1(LT73),C'MAILER073W Local-Host also not found in DOMAX00197350
+               INS table'                                               00197390
+LT73     EQU   *-T73-1                                                  00197430
+M73      DC    A(T73),AL1(3,3,0)                                        00197470
+         SPACE 1                                                        00197510
+T74      DC    AL1(LT74),C'MAILER074W Local-Host will be processed in DX00197550
+               OMAINS table'                                            00197590
+LT74     EQU   *-T74-1                                                  00197630
+M74      DC    A(T74),AL1(3,3,0)                                        00197670
+         SPACE 1                                                        00197710
+T75      DC    AL1(LT75),C'MAILER075I '                                 00197750
+         DC    CL80'String goes here'                                   00197790
+LT75     EQU   *-T75-1                                                  00197830
+M75      DC    A(T75),AL1(3,3,11,80,0)                                  00197870

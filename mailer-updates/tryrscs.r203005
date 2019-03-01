@@ -1,0 +1,57 @@
+./ R 00193550          $ 193557 7                     03/16/89 14:55:30
+         BE    GETNODE           ---> No, continue                      00193557
+         MVC   NODEA,MBXDML      Store node address                     00193564
+         LA    R14,STACKP        Stack pointer address ptr              00193571
+         LA    R15,STACKP+4      Stack size address ptr                 00193578
+         CALL  GENLIST,(NODEA,LSTRA,LSTRL,(14),(15))                    00193585
+*                                Expand local part                      00193592
+         LTR   R15,R15           Successful?                            00193599
+         BNZ   FAIL              ---> No, call it bad RSCS node name    00193606
+         L     R4,LSTRL          Length of string                       00193613
+         BCTR  R4,0              Decrement for later EXs                00193620
+         L     R2,LSTRA          Address of string                      00193627
+         EX    R4,UPIT           Uppercase domain name                  00193634
+FINDDOT  DS    0H                                                       00193641
+         CLI   0(R2),C'.'        This the period?                       00193648
+         BE    FOUNDDOT          ---> Yes                               00193655
+         LA    R2,1(,R2)         Bump ptr                               00193662
+         BCT   R4,FINDDOT        ---> Try again                         00193669
+         WRTERM '**> TRYRSCS logic error 1'                             00193676
+         B     FAIL              ---> Should never have gotten here     00193683
+         SPACE 1                                                        00193690
+FOUNDDOT DS    0H                                                       00193697
+         LA    R5,1(,R2)         Skip over '.'                          00193704
+         BCTR  R4,0              Fix up length                          00193711
+* R4 - Length of domain string after first '.' minus 1                  00193718
+* R5 - Address of first character of domain string after '.'            00193725
+         SPACE 1                                                        00193732
+         LA    R14,L'RSCSDOM/4   Number of RSCS-Domains.                00193739
+         LA    R15,RSCSDOM       First RSCS-Domain.                     00193746
+DOMLOOP0 DS    0H                                                       00193753
+         ICM   R3,B'1111',0(R15) no RSCS domain string defined?         00193760
+         BZ    FAIL              ---> No match found                    00193767
+         SR    R0,R0             get a zero                             00193774
+         IC    R0,0(R1)          get length of domain string            00193781
+         S     R0,=F'1'          decrement                              00193788
+* R0 - Length of RSCS domain string minus 1                             00193795
+* R3 - Start of RSCS domain string                                      00193802
+         CR    R0,R4             lengths match?                         00193809
+         BNE   DOMNEXT           ---> No                                00193816
+         LA    R2,WORK           Point to work area                     00193823
+         MVI   0(R2),C' '        Clear work area                        00193830
+         MVC   1(L'WORK-1,R2),0(R2)     to blanks                       00193837
+         EX    R4,COPY           Copy RSCS domain into work area        00193844
+         EX    R4,UPIT           Uppercase it                           00193851
+         EX    R4,CLCIT          Compare                                00193858
+         BE    GETNODE           ---> Have match, ignore domain stuff   00193865
+         SPACE 1                                                        00193872
+DOMNEXT  DS    0H                                                       00193879
+         LA    R15,4(,R15)         Try the next RSCS-Domain             00193886
+         BCT   R14,DOMLOOP0           if there is one.                  00193893
+         B     FAIL              ---> Bad RSCS node name                00193900
+         SPACE 1                                                        00193907
+GETNODE  DS    0H                                                       00193914
+./ I 00536000          $ 536500 500                   03/16/89 14:55:30
+CLCIT    CLC   0(0,R2),0(R5)                                            00536500
+./ R 00560000          $ 560890 890                   03/16/89 14:55:30
+WORK     DS    CL255                                                    00560890

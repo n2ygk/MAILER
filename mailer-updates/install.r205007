@@ -1,0 +1,9 @@
+./ I 01782666          $ 1782667 1                    03/16/90 14:59:44
+.sp 2                                                                   01782654
+MAILER078U Outgoing mail has multiple FROM: or SENDER: fields.          01782656
+.in +4                                                                  01782658
+.sp 1                                                                   01782660
+.bd \\MAILER\ could not deliver this mail because the headers are       01782662
+logically invalid (you can't have more than 1 FROM: and/or 1 SENDER:
+field).                                                                 01782664
+.in -4                                                                  01782666

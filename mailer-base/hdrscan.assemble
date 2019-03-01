@@ -1,0 +1,523 @@
+*[1.16] added support for RESENT- fields.                               00001000
+*[1.11] 3/29/83 - Fix incorrect handling of non-existent header.        00002000
+HDR      TITLE 'CUCCA VM NETWORK MAILER - VERSION 1 -   HDRSCAN  -     *00003000
+               SCAN IN-CORE MESSAGE HEADER FIELDS'                      00004000
+*---------------------------------------------------------------------* 00005000
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         * 00006000
+*    Program Property of the Trustees of Columbia University in the   * 00007000
+*    City of New York.                                                * 00008000
+*---------------------------------------------------------------------* 00009000
+HDRSCAN  CSECT ,                                                        00010000
+*  HDRSCAN -                                                            00011000
+*  This routine will build a tbluk table consisting of all the          00012000
+*  fields found in the message header.  Once entered in this            00013000
+*  way, other routines may call tbluk with the requested                00014000
+*  field name and determine if the field exists and if so,              00015000
+*  the start and end addresses of the data.                             00016000
+*                                                                       00017000
+*  This routine also builds a linked list of field descriptors          00018000
+*  (FIELDD) which describe the fields.  The dispatch value in           00019000
+*  the tbluk table is the address of the FIELDD for the given           00020000
+*  field name.                                                          00021000
+*                                                                       00022000
+*  Also, a field parser is called for each field and the resulting      00023000
+*  parse list is put into the FIELDD for that field.  The parser        00024000
+*  for each field is determined by a table (below).  Those fields       00025000
+*  that do not have defined parsers are assumed to be text fields       00026000
+*  (such as SUBJECT:) and will be parsed by a default parser which      00027000
+*  simply returns one token per line of text in the field.  For         00028000
+*  example, a 3 line subject will result in 3 tokens.                   00029000
+*                                                                       00030000
+* The crlf defined in rfc733 (arpa message format standard)             00031000
+* is represented by the newline character x'15'.                        00032000
+* a field name is found if it:                                          00033000
+*   1) is before the first double-newline (x'1515') which               00034000
+*      signifies the end of message header and start of text.           00035000
+*   2) is immediately preceded by a newline (in other words,            00036000
+*      flush to the left margin).                                       00037000
+*                                                                       00038000
+*  LAST EDIT: 4/12/82 BY ALAN CROSSWELL                                 00039000
+*                                                                       00040000
+*  CALLED VIA - CALL HDRSCAN,(MAILBLOK)                                 00041000
+*      MAILBLOK=ADDRESS OF MAILBLOK MACRO EXPANSION                     00042000
+PAB      DSECT ,                                                        00043000
+@MBLOK   DS    A             ADDRESS OF MAILBLOK                        00044000
+         SPACE ,                                                        00045000
+         BLOCKS ,                                                       00046000
+         PRINT ON                                                       00047000
+* REGISTER USAGE -                                                      00048000
+R0  EQU 0 -                                                             00049000
+R1  EQU 1 -  WORK REGISTER; USED IN TRT'S                               00050000
+R2  EQU 2 -    "      "       "   "   "                                 00051000
+R3  EQU 3 -   WORK                                                      00052000
+R4  EQU 4 -   WORK                                                      00053000
+R5  EQU 5 -  CURRENT ADDRESS IN MESSAGE BUFFER                          00054000
+R6  EQU 6 -  ADDRESS OF END OF MESSAGE BUFFER                           00055000
+R7  EQU 7 -  ADDRESS TO PUT PREV. FIELD END PTR INTO OR ZERO            00056000
+R8  EQU 8 - STACK LENGTH                                                00057000
+R9  EQU 9 -  ADDRESS OF ':' USED WHEN PARSING A FIELD NAME              00058000
+R10 EQU 10 -  MAILBLOK BASE                                             00059000
+R11 EQU 11 -  ADDRESS OF HEADER TABLE                                   00060000
+R12 EQU 12 -  PROGRAM BASE                                              00061000
+R13 EQU 13 -  SAVE AREA                                                 00062000
+R14 EQU 14 -  SUBROUTINE LINKAGE                                        00063000
+R15 EQU 15 -  SUBROUTINE LINKAGE AND RETURN CODE                        00064000
+         PRINT NOGEN                                                    00065000
+         TBENTRY                                                        00066000
+         TBTAB DSECT=YES                                                00067000
+         MAILBLOK ,                                                     00068000
+         SPACE 1                                                        00068300
+         COPY  DEBUG                                                    00068600
+         EJECT ,                                                        00069000
+HDRSCAN  CSECT ,                                                        00070000
+         USING HDRSCAN,R15   TEMPORARY ADDRESSABILITY                   00071000
+         B     EYESKIP       SKIP OVER EYE-CATCHER                      00072000
+MYNAME   DC    CL8'HDRSCAN',CL8'&SYSDATE'                               00073000
+EYESKIP  DS    0H                                                       00074000
+         DROP  R15                                                      00075000
+         STM   R14,R12,12(R13)                                          00076000
+         LR    R12,R15                                                  00077000
+         USING HDRSCAN,R12   GET PERMANENT ADDRESSABILITY               00078000
+         LA    R14,SAVE                                                 00079000
+         ST    R13,4(R14)                                               00080000
+         ST    R14,8(R13)                                               00081000
+         LR    R13,R14                                                  00082000
+         USING PAB,R1        ADDRESS PARM                               00083000
+         L     R10,@MBLOK    GET ADDRESS OF MAIL BLOK                   00084000
+         DROP  R1                                                       00085000
+         USING MAILBLOK,R10                                             00086000
+         SPACE ,                                                        00087000
+*--------------------------------------------------------------------   00088000
+*        ALLOCATE SPACE FROM THE STACK FOR FIELD NAME TBLUK TABLE.      00089000
+*        THE SPACE NEEDED CAN BE ESTIMATED AS:                          00090000
+*        #LINES IN HEADER * (TBENTRY + FIELDD + TOKEND LENGTHS)         00091000
+*        + TBTAB HEADER LENGTH (TB$SIZE)                                00092000
+*        + STRING SPACE FOR TABLE KEYWORDS.                             00093000
+*        + ABOUT 10 MORE TBENTRIES FOR POSSIBLE AFTER-THE-FACT ADD-ONS  00094000
+*--------------------------------------------------------------------   00095000
+         L     R1,MAILHLIN   NUMBER OF HEADER LINES                     00096000
+         LA    R1,10(R1)     ADD 10 MORE FOR GOOD MEASURE               00097000
+         ST    R1,HLINES     AND HANG ON TO IT                          00098000
+         L     R1,STACKP     GET STACK POINTER                          00099000
+         LA    R2,3(R1)      MAKE IT FULLWORD ALIGNED                   00100000
+         N     R2,=X'FFFFFFFC' TURN OFF LOW 2 BITS                      00101000
+         ST    R2,MAILKTAB   START ADDRESS OF TABLE                     00102000
+         SR    R2,R1         AMOUNT TRIMMED FROM STACK                  00103000
+         L     R8,STACKP+4   GET STACK LIMIT COUNTER             [1.25] 00103500
+         SR    R8,R2         WAS THERE ROOM?                            00104000
+         BL    NOSPACE       SORRY                                      00105000
+         S     R8,=A(TB$SIZE)          ROOM FOR TBTAB HEADER?           00107000
+         BL    NOSPACE       STACK OVERFLOW                             00108000
+         L     R1,MAILKTAB   KEYTAB ADDRESS                             00109000
+         XC    0(TB$SIZE,R1),0(R1) ZERO THE HEADER                      00110000
+         USING TBTAB,R1      ADDRESS THE HEADER                         00111000
+         MVC   TB$MAX,HLINES   TABLE LEN ESTIMATED AT # OF HDR LINES    00112000
+         LA    R2,TB$SIZE(R1) ADDRESS OF FIRST TABLE ENTRY              00113000
+         ST    R2,TB$ADR     SET ADDRESS POINTER IN HEADER              00114000
+         DROP  R1            DONE WITH TBTAB HEADER                     00115000
+         L     R1,HLINES     GET NUMBER OF TBENTRIES                    00116000
+         MH    R1,=Y(TBE$LEN) GET SPACE NEEDED FOR TBTAB                00117000
+         SR    R8,R1         IS THERE STACK SPACE?                      00118000
+         BL    NOSPACE       SORRY, NO SPACE                            00119000
+         LA    R3,0(R1,R2)   ADDRESS WHERE DISPATCH VALUES START        00120000
+         ST    R3,MAILFLD    FIELDD LIST ANCHOR IN MAILBLOK             00121000
+         ST    R3,DISP       SAVE FOR LATER                             00122000
+         L     R1,HLINES     GET #RECS AGAIN                            00123000
+         MH    R1,=Y(FIELDDL+TOKSIZ)  SPACE FOR FIELDD'S AND TOKEND'S   00124490
+         SR    R8,R1         IS THERE STACK SPACE                       00125000
+         BL    NOSPACE       SORRY, NO SPACE                            00126000
+         A     R1,DISP       ADDRESS FOR START OF STRING SPACE          00127000
+         ST    R1,STACKP    SAVE FOR LATER                              00128000
+         SPACE ,                                                        00129000
+*--------------------------------------------------------------------   00130000
+*  STACK SPACE HAS BEEN ALLOCATED.  NOW SCAN FOR KEYWORDS               00131000
+*--------------------------------------------------------------------   00132000
+         L     R5,MAILHBUF   ADDRESS OF MESSAGE STRING                  00133000
+         LR    R6,R5         COPY IT                                    00134000
+         A     R6,MAILHBUF+4                                            00135000
+         BCTR  R6,0          ADDRESS OF END OF STRING                   00136000
+         SR    R7,R7         INITALIZE END PTR TO ZERO                  00137000
+*[1.11] - if any of nl, space, or tab encountered on first line of      00138000
+*[1.11]   header,  then it is invalid,  not a continuation or start     00139000
+*[1.11]   of text.                                                      00140000
+         XC    MAILFLD,MAILFLD         [1.11]clean fld pointer          00141000
+         CLI   0(R5),X'15'             [1.11]nl?                        00142000
+         BE    BADFIELD                [1.11]--> bogus syntax           00143000
+         CLI   0(R5),C' '              [1.11]blank                      00144000
+         BE    BADFIELD                [1.11]--> garbage                00145000
+         CLI   0(R5),X'05'             [1.11]tab?                       00146000
+         BE    BADFIELD                [1.11]--> also junk              00147000
+         MVC   MAILFLD,DISP            [1.11]restore pointer            00148000
+*[1.11] - end of patch.                                                 00149000
+HDRNEWLN EQU   *             GET HERE AFTER A NEWLINE                   00150000
+* SEE WHAT CHARACTER AFTER THE NL IS                                    00151000
+         CLI   0(R5),X'15'   IS IT ANOTHER NL?                          00152000
+         BE    HDRTEXT       YES, START OF TEXT                         00153000
+         CLI   0(R5),C' '    IS IT A BLANK?                             00154000
+         BE    HDRCONT       YES, A PREV. LINE CONTINUED                00155000
+         CLI   0(R5),X'05'   IS IT A TAB?                               00156000
+         BE    HDRCONT       YES, SAME AS FOR BLANK                     00157000
+* NON-BLANK FIRST CHARACTER MEANS IT'S THE START OF A FIELD NAME.       00158000
+* SEARCH FOR A COLON...                                                 00159000
+         MVI   TRAPTAB+C':',X'01'  TRAP ON COLON                        00160000
+         MVI   TRAPTAB+X'15',X'02' AND NEWLINE                          00161000
+         LR    R3,R6         ADDRESS OF END OF STRING                   00162000
+         SR    R3,R5         LENGTH OF STRING TO TRT                    00163000
+         C     R3,F256       STRING LONGER THAN 256 ?                   00164000
+         BNH   HDR1          NO, JUST GO DO IT                          00165000
+         LA    R3,256        SET IT TO THE MAX                          00166000
+HDR1     EQU   *                                                        00167000
+         BCTR  R3,0          MINUS 1 FOR EXEUCUTE                       00168000
+         EX    R3,TRT        DO THE TRT                                 00169000
+         BC    8,BADFIELD    NO : BEFORE END, ERROR                     00170000
+         CLI   0(R1),X'15'   NL FOUND FIRST, ALSO AN ERROR              00171000
+         BE    BADFIELD                                                 00172000
+         LR    R9,R1         SAVE ADDRESS OF COLON                      00173000
+* NOW LOOK FOR THE FIRST WHITE SPACE CHARACTER. THIS IS THE             00174000
+* END OF THE FIELD NAME. (I.E. "FROM  :" IS ALLOWED)                    00175000
+         MVI   TRAPTAB+X'15',X'00' IGNORE NL'S NOW                      00176000
+         MVI   TRAPTAB+C' ',X'03'    TRAP ON BLANK                      00177000
+         MVI   TRAPTAB+X'05',X'03'   AND TAB                            00178000
+         LR    R3,R9         ADDRESS OF COLON                           00179000
+         SR    R3,R5         LENGTH TO TRT                              00180000
+         BCTR  R3,0          MINUS 1 FOR EXECUTE                        00181000
+         SR    R2,R2         CLEAR FUNCTION CODE REGISTER               00182000
+         EX    R3,TRT        DO THE TRT                                 00183000
+         BC    8,KWEND       FOUND END OF KEYWORD AT COLON              00184000
+* NOW SCAN TO MAKE SURE THERE IS NOTHING BUT WHITE SPACE BETWEEN THE    00185000
+* KEYWORD END AND THE COLON.                                            00186000
+         LR    R4,R1         ADDRESS OF WHITE SPACE                     00187000
+         LR    R3,R9         ADDRESS OF COLON                           00188000
+         SR    R3,R4         LENGTH TO TRT                              00189000
+         BCTR  R3,0          MINUS 1 FOR EXECUTE                        00190000
+         EX    R3,TRT2       LOOK FOR A NON-BLANK                       00191000
+         BC    8,KWEND       NO NON-BLANKS                              00192000
+* ERROR FOUND: FIELD STARTING IN COLUMN 1 IS NOT A FIELD NAME.          00193000
+         B     BADFIELD      LOG THE ERROR MESSAGE                      00194000
+         SPACE ,                                                        00195000
+*--------------------------------------------------------------------   00196000
+*  ADD KEYWORD TO TABLE NOW.  ALSO PUT THE FIELD START ADDRESS IN THE   00197000
+*  NEXT FREE DISPATCH FIELDD AND SET R7 TO POINT TO THE WORD TO GET     00198000
+*  THE FIELD END ADDRESS ("FIEND").                                     00199000
+*        (1) COPY KEYWORD STRING INTO STACK SPACE.                      00200000
+*        (2) SET FIELD START POINTER IN NEXT DISPATCH DWORD.            00201000
+*        (3) POINT R7 AT RIGHT HALF OF DISPATCH DWORD (FIELD END)       00202000
+*        (4) CALL TBADD TO ENTER KEYWORD INTO TABLE.                    00203000
+*                                                                       00204000
+*  REGISTERS AND GLOBAL VARIABLES AT THIS POINT -                       00205000
+*    R5 - KEYWORD ADDRESS  R1 - ADDRESS OF KEYWORD END+1                00206000
+*    R9 - ADDRESS OF ':' (FIELD START IS 1(R9))                         00207000
+*    R8 - STACK LENGTH    STACKP - ADDRESS OF STRING SPACE              00208000
+*    DISP - ADDRESS OF DWORD AREA                                       00209000
+*--------------------------------------------------------------------   00210000
+KWEND    EQU   *                                                        00211000
+* - SET UP TBENTRY POINTERS -                                           00212000
+         LA    R3,TBENT      ADDRESS OF ENTRY                           00213000
+         USING TBENTRY,R3                                               00214000
+         MVC   TBE$STR,STACKP ADDRESS OF THIS ENTRY STRING              00215000
+         MVC   TBE$DSP,DISP    ADDRESS OF THIS FIELDD                   00216000
+         DROP  R3                                                       00217000
+* - COPY THE KEYWORD INTO STACK SPACE -                                 00218000
+         L     R3,STACKP    DESTINATION OF COPY OPERATION               00219000
+         S     R8,=A(TBS$LEN) STRING PREFIX LENGTH                      00220000
+         BL    NOSPACE       STACK OVERFLOW                             00221000
+         XC    0(TBS$LEN,R3),0(R3)  CLEAR THE PREFIX                    00222000
+         USING TBS,R3        ADDRESS THE PREFIX                         00223000
+         LR    R2,R5         SOURCE OF COPY                             00224000
+         SR    R1,R2         LENGTH OF COPY                             00225000
+         STC   R1,TBS$SIZ    SET STRING SIZE                            00226000
+         ST    R1,FLDSIZE    SAVE HERE FOR EASIER ACCESS                00227490
+         DROP  R3            DONE WITH DSECT                            00228000
+         LA    R3,TBS$LEN(R3) POINT TO START OF STRING                  00229000
+         SR    R8,R1         IS THERE ROOM ON THE STACK?                00230000
+         BL    NOSPACE       NOPE                                       00231000
+         BCTR  R1,0          -1 FOR EXECUTE                             00232000
+         EX    R1,COPY       COPY THE DATA TO THE STACK AREA            00233000
+         LA    R3,1(R1,R3)   GET NEW STRING POINTER                     00234000
+         ST    R3,STACKP    SAVE FOR LATER                              00235000
+* - NOW SET UP THE DISPATCH FIELDD -                                    00236000
+         L     R3,DISP       GET NEXT DISPATCH FIELDD                   00237000
+         USING FIELDD,R3     ADDRESS IT                                 00238000
+         XC    0(FIELDDL,R3),0(R3)  ZERO IT INITIALLY                   00239000
+         LA    R2,FIELDDL(R3) ADDRESS OF END OF FIELDD                  00240000
+         ST    R2,FITOK      IS WHERE WE PUT THE TOKEND                 00241000
+         MVI   FIECNT,0      [1.16]initial extent count is 0            00242000
+         LA    R9,1(R9)      POINT PAST ':'                             00243000
+         ST    R9,FISTR      SET INTO FIELDD STRING START POINTER       00244000
+         XC    0(TOKSIZ,R2),0(R2) ZERO THE TOKEND                       00245490
+         USING TOKEND,R2     ADDRESS THE TOKEN DESCRIPTOR               00246000
+         ST    R5,TOKPTR          SET POINTER TO FIELD STRING           00247980
+         MVI   TOKTYPE,TOKATM     TOKEN TYPE IS "ATOM"                  00248470
+         MVC   TOKLEN,FLDSIZE GET TOKEN LENGTH                          00249000
+         AIF   (NOT &DBGTOK).NODBG00                                    00249100
+         L     R15,TOKLEN    Get length of string                       00249200
+         LINEDIT TEXT='HDRSCAN : Created TOKEND@........ for ..........+00249300
+               ....................',                                  +00249400
+               SUB=(HEX,(R2),CHARA,((R5),(R15))),                      +00249500
+               DOT=NO,COMP=NO,RENT=NO                                   00249600
+.NODBG00 ANOP                                                           00249700
+         DROP  R2            DONE WITH TOKEND                           00250000
+* - CHECK IF THERE IS AN END ADDRESS TO STORE FOR PREV. FIELD -         00251000
+         BCTR  R5,0          ADDR OF END OF PREV. STRING                00252000
+         LTR   R7,R7         CHECK FOR A VALUE                          00253000
+         BZ    HDR4          NONE THERE, DON'T STORE                    00254000
+         ST    R5,0(R7)      SAVE END ADDR. IN TABLE                    00255000
+HDR4     EQU   *                                                        00256000
+         LR    R5,R9         NEW STRING START ADDRESS                   00257000
+         LA    R7,FIEND      ADDR TO STORE NEXT END ADDR IN             00258000
+         LA    R2,FIELDDL+TOKSIZ(R3)  ADDRESS OF NEXT DISPATCH FIELDD   00259490
+         ST    R2,FINEXT     SET FIELDD NEXT POINTER                    00260000
+         ST    R2,DISP       SAVE FOR NEXT TIME THRU                    00261000
+         DROP  R3                                                       00262000
+*--------------------------------------------------------------------   00263000
+*  TRY TO ADD ENTRY TO TABLE.  IF TBADD DIES WITH RC=8, THEN            00264000
+*  THE FIELD WAS PREVIOUSLY SPECIFIED.  GET THE FIELDD POINTER          00265000
+*  RETURNED IN R1 AND CHAIN ON THIS FIELDD ON THE FIEXTN CHAIN          00266000
+*  (USED FOR "EXTENTS" OF THE SAME FIELD NAME)                          00267000
+*1.16 - also update extension count FIECNT                              00268000
+*--------------------------------------------------------------------   00269000
+         L     R3,MAILKTAB   GET KEYWORD TABLE ADDRESS                  00270000
+         CALL  TBADD,((R3),TBENT,TWORK)                                 00271000
+         LTR   R15,R15       ANY ERROR?                                 00272000
+         BZ    HDRCONT       ENTRY ADDED, CONTINUE                      00273000
+         C     R15,=F'8'     WAS IT AN EXACT MATCH?                     00274000
+         BNE   TBERR         NO, IT WAS A "HARD" ERROR                  00275000
+         LR    R3,R1         GET FIELDD POINTER OF THE MATCH            00276000
+         USING FIELDD,R3     ADDRESS IT                                 00277000
+         SR    R1,R1         GET A ZERO                                 00278000
+CHN      ICM   R1,B'0111',FIEXTN  LOOK FOR END OF EXTENTS CHAIN         00279000
+         BZ    CHNEND        FOUND IT                                   00280000
+         LR    R3,R1         GET NEXT ONE ON CHAIN                      00281000
+         B     CHN           AND DO IT AGAIN                            00282000
+CHNEND   EQU   *                                                        00283000
+         LA    R1,TBENT      POINT TO THE ENTRY                         00284000
+         USING TBENTRY,R1    ADDRESS IT                                 00285000
+         L     R2,TBE$DSP    GET DISPATCH VALUE (NEW FIELDD PTR)        00286000
+         STCM  R2,B'0111',FIEXTN  SET INTO EXTENTS CHAIN                00287000
+         DROP  R1            DONE WITH TBENTRY                          00288000
+         SR    R1,R1         [1.16]get a zero                           00289000
+         IC    R1,FIECNT     [1.16]get level of this extent             00290000
+         LA    R1,1(R1)      [1.16]increment it                         00291000
+         DROP  R3            DONE WITH FIELDD                           00292000
+         USING FIELDD,R2     GET THIS FIELDD                            00293000
+         OI    FIFLG1,FIEXTFLG  INDICATE THAT THIS IS AN EXTENT         00294000
+         STC   R1,FIECNT     [1.16]set this extent's count              00295000
+         DROP  R2                                                       00296000
+         B     HDRCONT       GO CHECK FOR A NEWLINE                     00297000
+         SPACE ,                                                        00298000
+HDRTEXT  EQU   *                                                        00299000
+* GET HERE IF THERE WAS A PAIR OF NEWLINES. THIS IS THE BEGINNING       00300000
+* OF THE TEXT PORTION OF THE MESSAGE.                                   00301000
+         LTR   R7,R7         ANY END OF PREV. FIELD TO SET?             00302000
+         BZ    HDRRET        NOPE                                       00303000
+         BCTR  R5,0          ADDRESS OF END OF PREV. FIELD.             00304000
+         ST    R5,0(R7)      SAVE THIS ADDRESS                          00305000
+         B     HDRRET        RETURN NOW                                 00306000
+         SPACE ,                                                        00307000
+HDRCONT  EQU   *                                                        00308000
+* GET HERE IF THE PREVIOUS LINE IS BEING CONTINUED.  LOOK FOR THE       00309000
+* NEXT NEWLINE AND GO BACK TO DO IT ALL AGAIN.                          00310000
+         LR    R3,R6         ADDRESS OF END OF STRING                   00311000
+         SR    R3,R5         LENGTH TO TRT                              00312000
+         C     R3,F256       MORE THAN 256 CHARS?                       00313000
+         BNH   HDR6          NO, JUST DO IT                             00314000
+         LA    R3,256                                                   00315000
+HDR6     EQU   *                                                        00316000
+         MVI   TRAPTAB+C' ',X'00'    TURN OFF BLANKS                    00317000
+         MVI   TRAPTAB+C':',X'00'    COLONS                             00318000
+         MVI   TRAPTAB+X'05',X'00'   AND TABS                           00319000
+         MVI   TRAPTAB+X'15',X'01'   AND TURN ON NEWLINES               00320000
+         BCTR  R3,0          MINUS 1 FOR EXECUTE                        00321000
+         EX    R3,TRT        DO THE TRT                                 00322000
+         BC    8,HDRDONE     ALL DONE                                   00323000
+         LA    R5,1(R1)      POINT JUST PAST THE NEWLINE                00324000
+         B     HDRNEWLN      AND GO DO IT ALL AGAIN                     00325000
+         SPACE ,                                                        00326000
+HDRDONE  EQU   *                                                        00327000
+* DONE WITH MESSAGE, STORE LAST END POINTER IF THERE IS ONE.            00328000
+         LTR   R7,R7         ANYTHING TO SAVE OUT.                      00329000
+         BNZ   HDR7          NOPE                                       00330000
+         LR    R1,R5         GET ADDRESS OF NEXT FIELD                  00331000
+         BCTR  R1,0          POINT AT END OF PREV. FIELD                00332000
+         ST    R1,0(R7)      PUT INTO TABLE                             00333000
+HDR7     EQU   *                                                        00334000
+HDRRET   EQU   *                                                        00335000
+         L     R3,DISP       GET DISPATCH POINTER                       00336000
+         S     R3,=A(FIELDDL+TOKSIZ) POINT AT LAST FILLED FIELDD        00337490
+         USING FIELDD,R3     ADDRESS IT                                 00338000
+         XC    FINEXT,FINEXT KILL THE NEXT POINTER                      00339000
+         ST    R8,STACKP+4   UPDATE STACK POINTER                       00340000
+         DROP  R3                                                       00341000
+         SPACE ,                                                        00342000
+*--------------------------------------------------------------------   00343000
+*  HEADER HAS BEEN SCANNED AND TABLE BUILT.  NOW CALL THE PARSER        00344000
+*  FOR EACH ENTRY IN THE TABLE AND FILL IN THE FITOK AND FIPARS         00345000
+*  FIELDS.                                                              00346000
+* REGISTERS IN THIS SECTION:                                            00347000
+*  R9 - FIELDD POINTER                                                  00348000
+*  R11 - TBE$STR POINTER AND WORK                                       00349000
+*  R6 - BXLE INDEX FOR TABLE SCAN                                       00350000
+*  R5 - BXLE COMPARAND                                                  00351000
+*  R4 - BXLE INCREMENT                                                  00352000
+*--------------------------------------------------------------------   00353000
+         OI    MAILFLG1,MFLG1HDS       HEADER HAS BEEN SCANNED          00354000
+         L     R6,MAILKTAB   GET TABLE ADDRESS                          00355000
+         USING TBTAB,R6      ADDRESS THE TABLE HEADER                   00356000
+         ICM   R5,B'1111',TB$LEN  NUMBER OF ENTRIES IN TABLE            00357000
+         BZ    NOFLDS        NO FIELDS???                               00358000
+         BCTR  R5,0          -1 TO GET START ADDRESS OF LAST ENTRY      00359000
+         MH    R5,=Y(TBE$LEN)  #ENTRIES * LENGTH OF EACH                00360000
+         L     R6,TB$ADR     ADDRESS OF FIRST ENTRY                     00361000
+         DROP  R6                                                       00362000
+         AR    R5,R6         BXLE COMPARAND ADDRESS                     00363000
+         LA    R4,TBE$LEN    BXLE INCREMENT                             00364000
+PLOOP    EQU   *                                                        00365000
+         USING TBENTRY,R6    ADDRESS THE ENTRY                          00366000
+         L     R9,TBE$DSP    DISPATCH VALUE (FIELDD POINTER)            00367000
+         L     R11,TBE$STR   GET STRING POINTER                         00368000
+         USING TBS,R11       STRING DESCRIPTOR                          00369000
+         SR    R3,R3         GET A ZERO                                 00370000
+         IC    R3,TBS$SIZ    GET LENGTH                                 00371000
+         LA    R11,TBS$STR   POINT TO STRING                            00372000
+         DROP  R11                                                      00373000
+         CALL  TBLUK,(PARSERS,(R11),(R3),TWORK)                         00374000
+         LTR   R15,R15       IS THERE ONE FOR THIS FIELD?               00375000
+         BZ    POK           YES, CALL IT                               00376000
+         L     R1,=V(DEFPARS) USE THE DEFAULT PARSER                    00377000
+POK      EQU   *                                                        00378000
+         ST    R1,PARSER     [1.16]hold onto parser handle              00379000
+PLOOP#0  EQU   *             [1.16]loop here for extensions             00380000
+         L     R15,PARSER    [1.16]get the routine address              00381000
+         LA    R1,STACKP     ADDRESS OF STACK POINTER                   00382000
+         ST    R1,P@STK      SET INTO PLIST                             00383000
+         LA    R1,4(R1)      ADDRESS OF STACK LENGTH                    00384000
+         ST    R1,P@STK+4    SET INTO PLIST                             00385000
+         ST    R9,P@FIELDD   FIELDD ADDRESS                             00386000
+         ST    R10,P@MBLOK   MAILBLOK ADDRESS                           00387000
+         LA    R1,PARSEPRM   ADDRESS OF PLIST                           00388000
+         BALR  R14,R15       CALL IT                                    00389000
+         LTR   R15,R15       CHECK RETURN CODE                          00390000
+         BNZ   BADPARSE      PARSE FAILED                               00391000
+         USING FIELDD,R9     [1.16]look at FIELDD to see if...          00392000
+         CLC   FIEXTN,=F'0'  [1.16]...this field has extensions         00393000
+         BE    PLOOP#1       [1.16]no;  continue to next fieldd         00394000
+         ICM   R9,B'0111',FIEXTN [1.16] get the extension               00395000
+         DROP  R9            [1.16]done with FIELDD                     00396000
+         B     PLOOP#0       [1.16]parse the extension                  00397000
+PLOOP#1  EQU   *             [1.16]here when done with extensions       00398000
+         BXLE  R6,R4,PLOOP   DO THE NEXT ONE                            00399000
+NOFLDS   EQU   *                                                        00400000
+         SR    R15,R15       ALL DONE                                   00401000
+         B     RET2                                              [1.24] 00401500
+RET      EQU   *                                                        00402000
+         LTR   R15,R15       any errors?                         [1.24] 00402100
+         BZ    RET2          nope                                [1.24] 00402200
+         XC    MAILFLD,MAILFLD  zap this to make sure others know[1.24] 00402300
+         XC    MAILHREC,MAILHREC and this one (makes the junk be [1.24] 00402400
+         XC    MAILHLIN,MAILHLIN data instead of header)         [1.24] 00402500
+         NI    MAILFLG1,255-MFLG1HDS                             [1.24] 00402600
+RET2     EQU   *                                                 [1.24] 00402700
+         XC    TRAPTAB(256),TRAPTAB  MAKE SURE IT'S CLEARED             00403000
+         L     R13,4(R13)                                               00404000
+         L     R14,12(R13)                                              00405000
+         LM    R0,R12,20(R13)                                           00406000
+         BR    R14                                                      00407000
+         SPACE ,                                                        00408000
+*--------------------------------------------------------------------   00409000
+* BADPARSE - A PARSE SYNTAX ERROR WAS ENCOUNTERED IN THE FIELDD         00410000
+*  POINT TO BY R9.  ISSUE A MESSAGE AND RETURN ERROR                    00411000
+*--------------------------------------------------------------------   00412000
+BADPARSE EQU   *                                                        00413000
+         USING FIELDD,R9     ADDRESS THE FIELDD                         00414000
+         L     R1,FITOK      GET FIELD NAME POINTER                     00415000
+         DROP  R9                                                       00416000
+         USING TOKEND,R1     ADDRESS IT                                 00417000
+         L     R2,TOKPTR         POINT TO STRING                        00418680
+         SR    R4,R4         GET ZERO                                   00419000
+         L     R4,TOKLEN     TOKEN LENGTH                               00420490
+         MVI   MSG030,C' '                                              00421000
+         MVC   MSG030+1(L'MSG030-1),MSG030                              00422000
+         C     R4,=A(L'MSG030) TOO LONG?                                00423000
+         BNH   BADP1         IT'S FINE                                  00424000
+         LA    R4,L'MSG030   TRUNC IT                                   00425000
+BADP1    EQU   *                                                        00426000
+         BCTR  R4,0                                                     00427000
+         LA    R3,MSG030                                                00428000
+         EX    R4,COPY       COPY IT                                    00429000
+         WTR   HSC030,(CA,MSG030)                                       00430000
+         DROP  R1                                                       00431000
+         LA    R15,4                                                    00432000
+         B     RET                                                      00433000
+         SPACE ,                                                        00434000
+*-------------------------------------------------------------------    00435000
+* BADFIELD - INVALID FIELD NAME SYNTAX WAS ENCOUNTERED (IT'S PROBABLY   00436000
+*  NOT A MAIL FILE).  ISSUE A MESSAGE AND RETURN ERROR.                 00437000
+*--------------------------------------------------------------------   00438000
+BADFIELD EQU   *                                                        00439000
+         WTR   HSC025        UNRECOGNIZABLE SYNTAX                      00440000
+         LA    R15,4                                                    00441000
+         B     RET                                                      00442000
+         SPACE ,                                                        00443000
+*--------------------------------------------------------------------   00444000
+* NOSPACE - INTERNAL ERROR (STACK OVERFLOW)  RETURN FBUG CODE.          00445000
+*--------------------------------------------------------------------   00446000
+NOSPACE  EQU   *                                                        00447000
+         WTR   HSC003,(CA,MYNAME)                                [1.24] 00448490
+         LA    R15,12                                                   00449000
+         B     RET                                                      00450000
+         SPACE ,                                                        00451000
+*--------------------------------------------------------------------   00452000
+*  TBERR - BUG CAUGHT                                                   00453000
+*--------------------------------------------------------------------   00454000
+TBERR    EQU   *                                                        00455000
+         LR    R3,R15        GET RETURN CODE                            00456000
+         WTR   HSC015,(D,(R3)) PRINT ERROR MESSAGE                      00457000
+         LA    R15,12        BUG ERROR                                  00458000
+         B     RET           RETURN                                     00459000
+         SPACE ,                                                        00460000
+*--------------------------------------------------------------------   00461000
+*        LITERALS AND OTHER READ-ONLY DATA                              00462000
+*--------------------------------------------------------------------   00463000
+COPY     MVC   0(0,R3),0(R2)                                            00464000
+TRT      TRT   0(0,R5),TRAPTAB TRT INSTRUCTION FOR EXECUTE              00465000
+TRT2     TRT   0(0,R4),SKIPBLKS                                         00466000
+F256     DC    F'256'                                                   00467000
+COLON    DC    C':'                                                     00468000
+         SPACE ,                                                        00469000
+*--------------------------------------------------------------------   00470000
+* TABLE OF FIELD PARSERS.  THOSE FIELDS NOT ENUMERATED IN THE           00471000
+* FOLLOWING TABLE RECEIVE DEFAULT PARSING, DONE BY TXTPARSE.            00472000
+*--------------------------------------------------------------------   00473000
+         EXTRN APARSE        ADDRESS PARSER                             00474000
+         EXTRN DPARSE        DATE PARSER                                00475000
+         EXTRN DEFPARS       DEFAULT PARSER                             00476000
+         EXTRN DESTPARS      *DESTINATION PARSER                        00477000
+PARSERS  TBSTART ,           PARSERS FOR VARIOUS FIELDS                 00478000
+         T '*DESTINATION',DESTPARS *DESTINATION PARSER                  00479000
+         T 'BCC',APARSE      ADDRESS PARSER                             00480000
+         T 'CC',APARSE       ADDRESS PARSER                             00481000
+         T 'DATE',DPARSE     DATE PARSER                                00482000
+         T 'FROM',APARSE     ADDRESS PARSER                             00483000
+         T 'RESENT-BCC',APARSE          [1.16]                          00484000
+         T 'RESENT-CC',APARSE          [1.16]                           00485000
+         T 'RESENT-DATE',DPARSE        [1.16]                           00486000
+         T 'RESENT-FROM',APARSE        [1.16]                           00487000
+         T 'RESENT-SENDER',APARSE      [1.16]                           00488000
+         T 'RESENT-TO',APARSE          [1.16]                           00489000
+         T 'SENDER',APARSE   ADDRESS PARSER                             00490000
+         T 'TO',APARSE       ADDRESS PARSER                             00491000
+         TBEND ,                                                        00492000
+         LTORG ,                                                        00493000
+DISP     DS    F                                                        00494000
+SAVE     DS    18F                                                      00495000
+TWORK    DS    64F                                                      00496000
+HLINES   DS    F                                                        00497000
+TBENT    DS    (TBE$LEN/4)F                                             00498000
+PARSER   DS    A             [1.16]address of parse routine             00499000
+FLDSIZE  DS    F                                                        00500490
+PARSEPRM DS    0F                                                       00501000
+P@MBLOK  DS    F             MAILBLOK ADDRESS                           00502000
+P@FIELDD DS    F             FIELDD ADDRESS                             00503000
+P@STK    DS    2F            STACK POINTER ADDRESSES                    00504000
+MSG030   DS    CL20                                                     00505000
+         END   HDRSCAN                                                  00506000

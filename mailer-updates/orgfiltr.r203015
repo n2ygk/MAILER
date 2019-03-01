@@ -1,0 +1,8 @@
+./ I 00081000          $ 81100 100                    05/10/89 11:24:14
+         BZ    FOUND         ---> Yes
+         LA    R3,=CL8'*DEFAULT*'
+         LA    R4,8
+         CALL  TBLUK,((R5),(R3),(R4),TWORK) look for default entry      00080000
+         LTR   R15,R15       find it?                                   00081000
+./ I 00082000          $ 82500 500                    05/10/89 11:24:14
+FOUND    EQU   *
