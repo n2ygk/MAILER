@@ -1,0 +1,84 @@
+@Comment{OUTLINE of install.mss by Scribe 7(1750) on 11 August 1993 at 16:57}
+  1. Introduction                                         1 install.mss, line 40
+    1.1. Copyright Notice                                 1 install.mss, line 63
+                              COPYR                       1 install.mss, line 63
+    1.2. Additional Terms for Waterloo C Library Object   2 install.mss, line 76
+                              TERMS                       2 install.mss, line 76
+    1.3. Support                                          2 install.mss, line 105
+  2. @M Maintainer and Postmaster Job Description         3 install.mss, line 120
+                              RESPONS                     3 install.mss, line 120
+  3. Inventory of Installation Materials                  4 install.mss, line 168
+    3.1. Object Code Distribution                         4 install.mss, line 174
+    3.2. Source Code Distribution A -- for sites with W   5 install.mss, line 202
+    3.3. Source Code Distribution B -- for sites withou   5 install.mss, line 214
+  4. Additional Files Needed for BITNET                   5 install.mss, line 224
+                              ADDTL-FILES                 5 install.mss, line 224
+  5. Your @M subscription and registration                6 install.mss, line 240
+    5.1. Subscription via LISTSERV                        6 install.mss, line 255
+    5.2. Registration :mailer tag                         7 install.mss, line 281
+  6. Installation Procedure                               7 install.mss, line 316
+  7. Overview of @M Operation                             8 install.mss, line 349
+  8. MAILER PROFILE                                       9 install.mss, line 402
+    8.1. Variable Declarations                           10 install.mss, line 423
+    8.2. ORIGINS Table                                   11 install.mss, line 486
+    8.3. INCOMING Table                                  11 install.mss, line 493
+    8.4. OUTGOING Table                                  11 install.mss, line 501
+    8.5. DOMAINS Table                                   12 install.mss, line 518
+    8.6. SPECIAL Table                                   12 install.mss, line 528
+  9. @M User Exits and MAILER TXTLIB                     12 install.mss, line 537
+    9.1. Outgoing Exits                                  12 install.mss, line 543
+                              OUTGOING-EXITS             12 install.mss, line 543
+      9.1.1. BITNET                                      13 install.mss, line 567
+      9.1.2. BSMTP                                       13 install.mss, line 573
+      9.1.3. DEFRT                                       14 install.mss, line 633
+      9.1.4. LOCAL                                       15 install.mss, line 648
+      9.1.5. NOMAIL                                      15 install.mss, line 660
+      9.1.6. INTERNET                                    15 install.mss, line 667
+      9.1.7. UTSMAIL                                     16 install.mss, line 685
+    9.2. Incoming Exits                                  16 install.mss, line 692
+                              INCOMING-EXITS             16 install.mss, line 692
+      9.2.1. RSCSVER                                     16 install.mss, line 694
+      9.2.2. (none)                                      16 install.mss, line 701
+    9.3. Special Exits                                   16 install.mss, line 707
+                              SPECIAL-EXITS              16 install.mss, line 707
+      9.3.1. FWDMAIL                                     16 install.mss, line 711
+      9.3.2. RSMAIL                                      17 install.mss, line 717
+      9.3.3. DISTLIST                                    17 install.mss, line 734
+      9.3.4. VMMLOG                                      18 install.mss, line 762
+      9.3.5. PROFS                                       18 install.mss, line 776
+      9.3.6. (none)                                      18 install.mss, line 782
+    9.4. Origins Exits                                   18 install.mss, line 789
+                              ORIGINS-EXITS              18 install.mss, line 789
+  10. @M Commands                                        19 install.mss, line 804
+  11. Maintenance                                        19 install.mss, line 818
+    11.1. New versions                                   19 install.mss, line 822
+    11.2. "MAILER PROFILE" updates                       19 install.mss, line 833
+                              MG                         19 install.mss, line 833
+      11.2.1. Files Used by MG                           20 install.mss, line 840
+      11.2.2. Invoking MG                                20 install.mss, line 865
+      11.2.3. Examples of MG input files                 21 install.mss, line 899
+                              FIG-MTPLATE 1              21 install.mss, line 902
+      11.2.4. Cookbook                                   22 install.mss, line 978
+  12. Diagnosing Problems                                24 install.mss, line 1044
+  13. Messages                                           24 install.mss, line 1059
+                              MESSAGES                   24 install.mss, line 1059
+    13.1. Message Codes                                  25 install.mss, line 1083
+    13.2. BSMTP Messages                                 29 install.mss, line 1282
+    13.3. Miscellaneous Messages                         31 install.mss, line 1406
+ Table of Contents                                       32 Scribea21225, line 2
+ List of Figures                                          3 Scribeb21225, line 3
+	Alphabetic Listing of Cross-Reference Tags and Labels
+
+Tag or Label Name                    Page   Label Value  Source file Location
+-----------------------------------------------------------------------------
+ADDTL-FILES                             5           4  install.mss, line 224
+COPYR                                   1         1.1  install.mss, line 63
+FIG-MTPLATE                            21           1  install.mss, line 902
+INCOMING-EXITS                         16         9.2  install.mss, line 692
+MESSAGES                               24          13  install.mss, line 1059
+MG                                     19        11.2  install.mss, line 833
+ORIGINS-EXITS                          18         9.4  install.mss, line 789
+OUTGOING-EXITS                         12         9.1  install.mss, line 543
+RESPONS                                 3           2  install.mss, line 120
+SPECIAL-EXITS                          16         9.3  install.mss, line 707
+TERMS                                   2         1.2  install.mss, line 76

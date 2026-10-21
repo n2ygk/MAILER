@@ -1,0 +1,770 @@
+head     1.1;
+access   ;
+symbols  ;
+locks    alan:1.1; strict;
+comment  @@;
+
+
+1.1
+date     87.04.20.14.48.03;  author alan;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@1.23 version
+@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@@@comment{Installation instructions for Mailer V1.0  -  Monday, 24 May 1982}
+@@make(manual)
+@@string(Version="1.23")
+@@case[device, imprint10 "@@style(singlesided)",
+	      postscript "@@style(singlesided)@@modify(example,size -2)",
+	      x9700 "@@style(doublesided)",
+	      lpt "@@style(singlesided)@@style(CarriageControl Fortran)"]
+@@style(filedate="8 March 1952")
+@@style(hyphenbreak off)
+@@style(singlesided)
+
+@@begin(titlepage)
+@@begin(TitleBox)
+@@majorheading(CUCCA VM Network Mailer)
+@@heading(Version @@value(version))
+
+@@majorheading(Installation and Maintenance Guide)
+
+24 May 1982
+(last updated: @@value(filedate))
+
+E. Alan Crosswell
+EACUS@@@@CUVMA.COLUMBIA.EDU
+User Services Group
+Center for Computing Activities
+Columbia University in the City of New York
+@@end(TitleBox)
+
+@@begin(ResearchCredit)
+@@center<Copyright (C) 1982, 1985 The Trustees of Columbia University
+in the City of New York>
+@@end(ResearchCredit)
+@@case[device, x9700 "@@blankpage(1)"]
+@@end(TitlePage)
+@@set(page=1)
+@@pageheading(immediate, center="@@I<Mailer> Installation and Maintenance")
+@@pagefooting(immediate, center="- @@value(page) -")
+
+@@section(Introduction to Experimental Version)
+
+This document describes the installation, operation and maintenance
+procedures for the CUCCA VM Network Mailer currently under development
+at Columbia University.  In addition to the software created at
+Columbia, some programs provided with this distribution use the
+Waterloo C Runtime Library, a component of a licensed product of
+WATCOM Products, Inc. of Waterloo, Ontario, Canada.  The version of
+@@i<Mailer> supplied with this pre-release package has not been fully
+tested.  No liability is assumed by the author of this program, the
+Columbia University Center for Computing Activities, the Trustees of
+Columbia University in the City of New York or WATCOM Products, Inc.
+for any special, direct, indirect or consequential damages, losses,
+costs, fees or expenses of any nature or kind.  You have permission to
+use but not sell or give these programs to others.
+
+@@i<Mailer> is supplied with documentation,  parameter files,
+and object code only.  Source code is available upon request provided
+that you agree to send back any modifications or enhancements that you make.
+@@i<Mailer> is distributed over the BITNET computer network free of
+charge to any member site.
+
+@@section(Overview of @@i<Mailer> Operation)
+This is a brief description of what @@i<Mailer> does.  When
+first started, @@i<Mailer> reads the Mailer Profile, allocates the
+various tables, and loads any user exits that are not built in.  It
+then goes into a wait state, waiting for the arrival of a reader file,
+an SMSG interrupt, or a console interrupt.
+
+It the interrupt was an SMSG or from console typein,  the command
+parser is invoked to process the user command.  For reader interrupts,
+each file in the reader is read and processed,  usually resulting
+in the generation of outgoing punch spool files.
+
+A valid reader file can be one of:  
+@@begin(enumerate)
+A mail file.  A mail file is a PUNCH spool file containing a header
+seperated by a blank record from the text of the message.  The syntax
+specification for the header format is derived from the @@i<Standard
+for the Format of ARPA Internet Text Messages>,  DARPA Request for
+Comments #822.
+
+A Batch Simple Mail Transfer Protocol (BSMTP) request.  A BSMTP
+request is differentiated from mail file by having the first
+record start with the text "HELO ".  This is the first command
+of a SMTP dialog and looks sufficiently different from a mail
+file to be identified.
+
+A BSMTP reply to a BSMTP request previsouly generated.  A BSMTP
+reply is identified by having the first record start with 3 digits
+followed by a blank (e.g. "220 ").
+@@end(enumerate)
+
+For both mail files and BSMTP requests,  @@i<Mailer> does essentially
+the same thing.  It parses the mail or BSMTP request and generates a
+list of recipients.  In the case of BSMTP,  this is simple -- each
+recipient is identified by a RCPT command.  For mail,  it is a little
+more difficult to determine @@i<which> addresses should be acted upon.
+This is one reason that BSMTP support was added to @@i<Mailer>.
+
+Various table entries in the Mailer Profile determine exactly how
+the mail is sent to the list of recipients.  The INCOMING table
+lists which other Mailers your Mailer knows about.  Anyone not
+listed in the INCOMING table must send a mail file with a Sender:
+or From: field that is consistent with the file's RSCS origin node
+and userid.
+
+The function of @@i<Mailer> is described in further detail in the
+@@i<Mailer Program Logic Manual>,  "PLM LISTING."
+
+@@section(Inventory of Installation Materials)
+
+The following items have been supplied to you.  Please verify
+that they are all present:
+@@begin(description)
+@@b<"INSTALL LISTING">@@\this document.
+
+@@b<"MCONFIG EXEC">@@\used to configure Mailer.
+	
+@@b<"MAILER TXTLIB">@@\library of exit routines.
+
+@@b<"MAILER MODULE">@@\main program.
+
+@@b<"MAILER HELPCMS">@@\general command description.
+
+@@b<"MAILER HELPPRIV">@@\privileged command description.
+
+@@b<"PROFILE EXEC">@@\to run @@i<Mailer> as an AUTOLOG'd disconnected virtual
+machine.
+
+@@b<"SITEOPTS EXEC">@@\to set site-specific options.  The default options will
+probably be fine for you.
+
+@@b<"PLM LISTING">@@\@@i<Mailer> Program Logic Manual (usually not up to date).
+
+@@b<"MG MODULE">@@\program (new with version 1.20) to facilitate automatic
+regeneration of "MAILER PROFILE" from "MAILER MTPLATE" and "MAILER MAILLCL".
+@@end(description)
+
+@@section(Your @@i<Mailer> subscription)
+The @@i<Mailer> distribution has recently been automated and is now
+based on the @@b<"BITNET NAMES"> file distributed by the BITNET Network
+Information Center (BITNIC).  The BITNET contact person for
+your site should be receiving new versions of this file regularly or
+should know how to obtain it.  (If you are the BITNET contact person
+and don't know how to receive it,  send mail to INFO@@@@BITNIC asking
+for instructions.) 
+
+To maintain your "subscription" for @@i<Mailer> bug fixes and enhancements,
+you need to have your BITNET address entered in the "BITNET NAMES" file
+entry for your site.  If you maintain the @@i<Mailer> for multiple machines,
+you need only do this for one of them.  This will keep the flow of
+unneccessary files to a minimum.  Your address should be in one of the
+@@b<:inform>@@i<X> fields and the keyword @@b<MAILER> should be in the
+corresponding @@b<:info>@@i<X> field.  For example:
+@@begin(example)
+:nick.CUVMA
+:alias.CUVMA
+ . . .
+:inform1.(Alan Crosswell) EACUS@@@@CUVMA
+:info1.@@b{MAILER} NAMES NODES CONTACT
+@@end(example)
+
+The meanings of the various :info fields are documented in @@b<"BITNAMES
+HELPCMS">, available from NICSERVE@@@@BITNIC.
+
+Additionally,  your site's POSTMASTER,  indicated in the @@b[:postmast]
+field,  will receive mail about the mail system from time to time.  If you,
+the @@i<Mailer> maintainer,  are not the same person as the Postmaster,
+then also add the @@b<POSTMAST> keyword along with the @@b<MAILER> keyword
+in the @@b<:info> field.
+
+Finally,  to tell the rest of us that you have a @@i<Mailer>,  you need
+to set up the @@b<:mailer> field.  Initially,  when you first get @@i<Mailer>
+(or beforehand),  the field should read:
+@@begin(example)
+:mailer.@@i<vmid> DEFRT 1
+@@end(example)
+Where @@i<vmid> is the userid of your @@i<Mailer> machine.  This will
+allow you to send mail via other sites' @@i<Mailers> to try things out.
+Normally,  you would need to wait until the new @@b<"BITNET NAMES"> file has
+been distributed and other sites have had time to update their Profiles.
+If you send to a @@i<Mailer> site and get return mail saying "Validity
+check failed,"  then that site hasn't updated its Profile yet. 
+
+Since this has become more and more of a problem as the size of
+the network has grown and the lag time between distributions of
+new versions of @@B("BITNET NAMES") has increased,  the initial
+@@b("MAILER PROFILE") that is sent with your Mailer distribution
+is set up to bypass all other mailers.  This is not an ideal solution since
+you lose some of the benefits of running Mailer,  but at least
+you won't get a lot of "Validity check" mail returned.  Once a new
+@@b("BITNET NAMES") has been distributed that lists your site
+as having a Mailer (or if your site is already listed that way)
+then you can regenerate the @@b("MAILER PROFILE") as described below.
+
+Once you have put @@i<Mailer> into production use (i.e. it is always
+logged on) you will want to change the field to read:
+@@begin(example)
+:mailer.@@i<vmid>
+@@end(example)
+This will cause other @@i<Mailers> to send mail for your site via your
+@@i<Mailer> rather than via direct RSCS routing.
+
+@@section(Installation Procedure)
+@@begin(enumerate)
+It is assumed that you have already created a VM userid for the @@i<Mailer>
+disconnected machine.  This information was supplied to me in a previous
+communication.  @@foot[Please don't change the userid without first updating
+your @@B<"BITNET NAMES"> entry and waiting for it to be redistributed to
+all @@i<Mailer> sites.  You may end up having to run two copies of @@i<Mailer>
+during the transition period;  one under the old name and one under the new
+name to avoid any disruption in mail traffic.]
+
+Obtain write access to a CMS minidisk that the Mailer disconnected virtual
+machine will have read access to.  It is recommend that this be other
+than the A-disk.   The @@i<Mailer> requires a writeable A-disk.  The
+disk that the @@i<Mailer> parameter files and TXTLIB reside on would best
+be owned by the user maintaining the @@I<Mailer>.  This will allow ease of
+future updates without interrupting the @@i<Mailer's> normal operation.
+
+Copy the supplied files to the disk.
+
+Run @@b<MCONFIG>.  It is self-explanatory.
+
+The @@i<Mailer> is now ready to run.  The @@B<"PROFILE EXEC"> supplied is
+designed for AUTOLOG use.  The best way to run @@i<Mailer> is
+to have @@i<VMUTIL> or @@i<AUTOLOG1> AUTOLOG it.  You may however log on directly
+and start it that way.
+@@end(enumerate)
+
+@@section(MAILER PROFILE)
+
+The @@B<"MAILER PROFILE"> CMS file contains the parameters used to
+initialize the @@i<Mailer> routing tables and set other variables and
+option flags.  You may want to add or remove names from the list of
+special userids not to receive mail.  See section @@ref(MG), below, for
+the procedures for modifying and automatically regenerating the
+"MAILER PROFILE".
+
+You can specify a different name for the Profile when invoking @@i<Mailer>.
+The syntax is:
+@@begin(example)
+MAILER [@@i<fn> [@@i<ft> [@@i<fm>]]]
+@@end(example)
+The default values for @@i<fn>, @@i<ft>, and @@i<fm> are @@b<MAILER>, @@b<PROFILE>,
+and @@b<*>,  respectively.  If, for example, your system has shared dasd 
+between two cpu's (as ours does),  your "PROFILE EXEC" can invoke @@i<Mailer>
+with different Profile names depending on the cpuid.  This allows you to
+have a single disk containing the @@i<Mailer> program,  txtlib,  and profiles.
+
+The parts of the Mailer Profile are described below:
+@@subsection(Variable Declarations)
+You may declare a variable at any time within the Profile by entering:
+@@example(@@i<variable_name>=@@i<value>)
+For example:
+@@example(rscsname=RSCS)
+
+All variables declared this way are then available to any user exit
+to obtain the value of.  Some variable names have special meaning
+to @@i<Mailer>:
+@@begin(description)
+RSCSname@@\VMID of the RSCS/Networking server.  Files received from
+this userid are assumed to be from the RSCS network.  The file's TAG
+text is parsed for the network origin node and userid.  Files destined
+to the RSCS network are sent to this VMID.
+
+RSCSalt@@\VMID of a secondary RSCS/Networking server.  This is useful
+if you need to run two different RSCS's for some reason.  @@i<Mailer>
+will always send files to the primary RSCS (@@i<rscsname>),  but will
+accept files from this RSCS as being from the network.
+
+ThisNode@@\RSCS node name for the machine @@i<Mailer> is running on.
+
+RSCS-Domain@@\The default domain name to concatenate with the RSCS node
+name when domain-style names are needed (new with version 1.22).
+
+Local-Domain@@\An optional domain name for the machine @@i<Mailer> is
+running on if you want something different from the concatenation
+of the RSCS node name and @@i<RSCS-Domain>.
+
+MaintUser@@\VMID of the @@i<Mailer> maintainer.  This user is allowed
+to send privileged commands via CP SMSG and will also receive files
+that @@i<Mailer> has trouble with.
+
+MaintNode@@\RSCS node name of the @@i<Mailer> maintainer.  For best
+results,  this should be the same as @@i<ThisNode>.
+
+Supply-Default-Fields@@\May have the value True or False,  but leave
+it false since its functionality has not been implemeneted.
+
+Allow-Unknown-Nodes@@\May have the value True or False.  If True,
+then @@i<Mailer> will attempt to deliver mail to hosts that are
+not listed in it's tables.  Useful when RSCS route updates get
+done before @@i<Mailer> Profile updates.  When False,  can be
+used to restrict the list of sites that you may exchange mail
+with.
+@@end(description)
+
+@@subsection(ORIGINS Table)
+Entries in the ORIGINS table are keyed by the VM userid.  Any reader
+file from a user listed in the table causes the associated ORIGINS
+user exit program to be invoked prior to any other processing of
+the file.  This list of available ORIGINS exits is listed in section
+@@ref(ORIGINS-EXITS) below.  The ORIGINS table is new with version 1.20. 
+
+@@subsection(INCOMING Table)
+Entries in the INCOMING table are keyed by RSCS origin node and userid.
+After a file is received and its mail header has been parsed,  the
+INCOMING user exit program is invoked.  A typical use of an INCOMING
+exit is to do validation of mail to prevent forged "From: " userids.
+The list of available INCOMING exits is listed in section @@ref(INCOMING-EXITS)
+below.
+
+@@subsection(OUTGOING Table)
+Entries in the OUTGOING table are keyed by host name.  For this
+discussion, @@i<host name> is defined as everything to the right of the
+at-sign in a mail address.  For example, in the address
+@@p<EACUS@@@@CUVMA>, @@b<CUVMA> is the host name and, in the address
+@@p<John_Smith@@@@Newcastle.MAILNET>, @@b<Newcastle.MAILNET> is the
+hostname.  
+
+When mail is to be sent to a particular address, @@i<Mailer> looks up
+the hostname in the OUTGOING table and then invokes the OUTGOING user
+exit program.  If the hostname can't be found and the
+@@i<Allow-Unknown-Nodes> variable is @@b<True>, then @@i<Mailer> looks
+for the special OUTGOING entry with the key "@@b<*DEFAULT*>" and
+invokes the user exit for that entry.  The list of available OUTGOING
+exits is in section @@ref<OUTGOING-EXITS>, below.
+
+@@subsection(DOMAINS Table)
+The DOMAINS table is an optional table that has the same basic
+functionality as the OUTGOING table.  The difference is that the
+key for an entry in the DOMAINS table need not match the hostname
+exactly.  It need only match the right-hand end.  When a DOMAINS
+table is defined,  @@i<Mailer> first searces the OUTGOING table
+and,  failing to find a match there,  searches the DOMAINS table
+before finally giving up and going with the "*DEFAULT*" entry.
+The DOMAINS and OUTGOING tables use the same exits.  (The DOMAINS
+table is new with version 1.22.)
+
+@@subsection(SPECIAL Table)
+The key to an entry in the SPECIAL table is a username, that is,
+everything to the left of the at-sign in a mail address.  The SPECIAL
+table can be used to implement userid aliases of up to 255 characters
+in length,  mailing lists,  automatic mail forwarding,  etc.
+Note that the SPECIAL table is never searched by the @@i<Mailer> proper.
+It is only used if an OUTGOING exit (like LOCAL) chooses to.
+A list of SPECIAL user exits is in section @@ref<SPECIAL-EXITS>.
+
+@@section(@@i<Mailer> User Exits and MAILER TXTLIB)
+
+The commonly used user exit programs are built into @@i<Mailer>
+(new with version 1.22).  Others reside in MAILER TXTLIB and are
+dynamically loaded by @@i<Mailer> when referenced in one of the
+tables at initialization.  
+
+@@subsection(Outgoing Exits)@@label(OUTGOING-EXITS)
+These exit names are used in the Profile Outgoing and Domains tables.
+In addition to these standard exits, several sites have implemented
+their own local exits for various functions such as gatewaying mail
+over "home grown" or otherwise strange links to other systems.
+
+There are three types of OUTGOING exit which determine exactly when
+they are invoked and with what information.  The exit type is
+given in the OUTGOING table.  Some exits may be used as different
+types if they are properly written.  The three types are:
+@@begin(description)
+1@@\Called once per recipient address.
+
+2@@\Called once for all recipients at the same host.  The same host
+is defined as having the same server node/userid pair in the table.
+
+3@@\Same as type 2 but complete information about all recipients is
+available.  (New with version 1.22).
+
+@@end(description)
+@@begin(description)
+BITNET@@\@@begin(text)This type 2 exit sends a file to another RSCS node
+assumed to be running @@i<Mailer>. The file is sent to the server
+node/userid listed in the table.
+
+May be used as a type 1 exit with the @@b<DELIVER2> parameter which
+causes an addtional "Deliver-to: @@i<recipient address>" line to be
+inserted in front of the mail.  This feature is new with version 1.22.
+@@end(text)
+
+BSMTP@@\This type 3 exit sends a Batch Simple Mail Transfer Protocol
+@@foot(a store-and-forward version of the ARPANET SMTP service defined
+by J. Postel in DARPA Request for Comments #821) data stream to
+the server node/userid from the table.  A RCPT line is generated for
+each recipient that caused the exit to be invoked.  The usual domain
+name used to identify the sending host in the HELO command is the
+concatenation of @@i<ThisNode> and @@i<RSCS-Domain>.  You can override
+this by supplying a parameter which is the name of a variable who's
+value will be used instead.  Note that since parameters are limited
+to 8 characters in length you can not provided @@i<Local-Domain> as
+the parameter;  You should define another shorted variable.  This
+exit is new with version 1.22 and should not be confused with an
+older BSMTP implementation done by Arthur Ecock of the City University
+of New York.
+
+DEFRT@@\This type 1 exit sends a file directly to the intended recipient
+on a remote RSCS node not running @@i<Mailer>.  The file name is set to
+that of the sender (truncated to 8 characters).  The file type is set
+to "MAIL", the class to "M",  and the distribution code to the host name
+of the sender.  DEFRT will generally refuse to deliver mail to userids
+more than 8 characters long since this is the VM implementation limit.
+An optional parameter, @@b<TRUNCATE>, may be supplied which allows longer
+names.  The first 8 characters are used in this case.  This facility
+is meant to be used in conjunction with VAX/VMS systems running @@i<jnet>
+and UNIX systems running @@i<UREP>.  DEFRT ignores the server node/userid
+information in the table entry.
+
+LOCAL@@\This type 1 exit sends mail to a local user on the system running
+@@i<Mailer>.  It sets the file name, etc. as in DEFRT above.  It also sets
+the file's TAG to look like one RSCS would generate.  This allows a
+modified RDRLIST or RECEIVE exec to determine the origin of a remote file
+in the same manner as for files from RSCS.  The optional @@b<PROFS> parameter
+will cause a ":READ @@i<sender> NOTE" card to be inserted at the beginning
+of the file so that PROFS mail may be used.
+
+NOMAIL@@\This type 2 exit is used for RSCS nodes that can't handle
+mail.  It logs an error message and causes the mail to be returned.
+The required parameter is the host name to give in the error mail.
+
+INTERNET@@\This type 1 exit was written by Henry Nussbacher of the Weizmann
+Institute,  Rehovot,  Israel and is based on the DEFRT exit as
+well as the old BSMTP exit written by Arthur Ecock of the City University
+of New York.  INTERNET is used in the "*DEFAULT*" position of the
+Profile OUTGOING table.  It searches for host names ending in ".ARPA",
+".UUCP", ".DEC", and so on and routes via the appropriate gateway.
+Much of INTERNET's capability is now in the mainline @@i<Mailer> code
+as of version 1.22.
+
+UTSMAIL@@\This exit will send mail to users on a UTS guest running on the
+same machine as @@i<Mailer>.  It submits a UTS @@i<uux> file which invokes
+the @@i<rmail(3)> program to enter the mail into the UTS mail system.
+The required parameter is the vmid of the UTS guest.@@foot[UTSMAIL has not yet
+been tested with or modified to support UTS/V's new @@i<sendmail> system.]
+@@end(description)
+
+@@subsection(Incoming Exits)@@label(INCOMING-EXITS)
+@@begin(description)
+RSCSVER@@\This incoming exit is used to validate files from sites not running 
+@@i<Mailer>.  The sender name and host are checked to see if they match
+the RSCS origin in the tag text.  This exit is used in the "*DEFAULT*"
+position of the Incoming table and allows users on other systems not
+running @@i<Mailer> to use your @@i<Mailer> to send mail.
+
+@@i<none>@@\Not specifying an Incoming exit causes the built in validation
+code to execute.  This is used to indicate the names of other trusted
+Mailers (which are allowed to send a file with a "From:" or "Sender:" 
+which differ from their vmid and RSCS node name).
+@@end(description)
+@@subsection(Special Exits)@@label(SPECIAL-EXITS)
+Special table exits are used to define local user name aliases like
+POSTMASTER and/or mailing list names.
+@@begin(description)
+FWDMAIL@@\This exit provides mail forwarding.  The list of recipients
+to forward to must be defined with a keyword assignment in the Profile.
+The keyword name must be 8 characters or less and is supplied as the
+required parameter.  
+
+RSMAIL@@\This exit provides mail resending.  This is similar to forwarding
+and the list of recipients is supplied in the same way as for FWDMAIL.
+The difference between the two is that FWDMAIL creates a new mail header
+while RSMAIL simply adds "Resent-To", "Resent-From", and "Resent-Cc"
+fields to the orignal header.
+
+@@i<none>@@\Omitting the exit name causes the built in exit to be
+invoked which disallows mail to the give user name.  Use this 
+approach to prevent mail from being sent to specific users like
+CMSBATCH and SYSTEM.
+@@end(description)
+
+@@subsection(Origins Exits)@@label(ORIGINS-EXITS)
+The Origins table lists exits to be invoked based on origin userid.
+The exit is given control immediately after the file has been 
+received and prior to any other processing has been performed.  This
+is unlike the Incoming exit which is not invoked until the mail header
+has been read in and parsed.  An Origins exit can be used to do
+arbitrary processing of an input file based on origin userid.  Origins
+exits are new with version 1.20.
+@@begin(description)
+@@i<none>@@\Leaving the exit name blank causes the built in exit to be
+invoked which causes the received file to be purged and a message
+sent to the originating userid.  This is useful to dissallow users
+like CMSBATCH from sending any files to @@i<Mailer> and guarantees that
+no error mail files will be sent back to those users.
+
+@@end(description)
+@@section(@@i<Mailer> Commands)
+
+The @@i<Mailer> accepts commands via CP SMSG or from the console.  Certain
+commands are restricted to SMSGs from the Maintainer (as defined in 
+@@B<"MAILER PROFILE">) or console commands.  Other commands are available
+to general users via SMSG.  SMSG replies are sent back to the issuer via
+CP MSGNOH if the @@i<Mailer> has the necessary privileges.  If not, CP MSG
+is used.  Help on commands may be obtained by use of "?" in commands
+and subcommands.  For example, "CP SMSG MAILER ?" will cause a list of
+the valid general commands to be sent back.  
+
+Privileged commands are described in "MAILER HELPPRIV".  These are 
+designed for debugging purposes and to aid general maintenance.
+
+@@section(Maintenance)
+New versions of @@i<Mailer> and exits will be sent to you from time to time.
+Additionally,  you are expected to keep your site's "MAILER PROFILE" up to
+date.
+@@subsection(New versions)
+New versions will be sent to you preceded by mail describing the reason
+for the new version.  Right now,  these files are generally sent with
+the Cornell CARD utility (which has been supplied to you).  To install
+a new "MAILER MODULE",  simply rename the old "MAILER MODULE" (for backup
+purposes),  CARD LOAD the new one and restart @@i<Mailer>.  
+
+TEXT files are sent out as replacements for members of "MAILER TXTLIB".
+Use the appropriate TXTLIB DEL and TXTLIB ADD commands to install new
+TEXT files.  See the @@i<CMS Command and Macro Reference> for details.
+
+@@subsection("MAILER PROFILE" updates)@@label(MG)
+The @@b<MG> program can be used to automate regeneration of your site's
+"MAILER PROFILE" which must usually be done once a month when the latest
+"BITNET NAMES" or "XMAILER NAMES" file becomes available on NICSERVE.  
+Using MG,  you only have to make site-specific changes
+once,  when you first install @@i<Mailer>.
+@@paragraph(Files Used by MG)
+MG uses four or more input files:
+@@begin(description)
+"XMAILER NAMES"@@\A subset of "BITNET NAMES" containing only the information
+used by MG.  "BITNET NAMES" is the source of all information about BITNET 
+sites.  These files are available from NICSERVE@@@@BITNIC.
+
+"MAILER NAMES"@@\Similar to "BITNET NAMES",  but for mail-only sites.
+Mail-only sites are not official BITNET hosts but are accessible
+for mail via @@i<Mailer>.
+
+"DOMAIN NAMES}@@\Used for generating the DOMAINS table.  New with version
+1.22.  Currently available from EACUS@@@@CUVMA,  but should be available
+on NICSERVE soon.
+
+"@@i<name> MTPLATE"@@\The template file used by MG to build "@@i<name>
+PROFILE".  This file looks just like the Profile with the exception
+that the incoming, outgoing and domains table lines are replaced by the words
+@@b<%incoming>, @@b<%outgoing> and @@b<%domains>, respectively.  MG replaces these
+lines with the appropriate information taken from "XMAILER NAMES",
+"MAILER NAMES", "DOMAIN NAMES", and "@@i<name> MAILLCL".  You can also use
+"@@b<%include> @@i<fn.ft.fm>" to cause a file to be included in the
+output Profile.
+
+"@@i<name> MAILCL"@@\This file consists of the lines in the Outgoing and
+Domains tables that will be different for your site.  That is, the
+entry or entries for the local system.  For example, for the site
+CUVMB, the Outgoing line for CUVMB specifies the BITNET exit in all
+other sites' Profiles and the LOCAL exit for CUVMB's Profile.  Entries
+in "@@i<name> MAILLCL" should follow the same syntax as lines in the
+Outgoing table.  No comments or blank lines are permitted.
+@@end(description)
+
+@@i<Name>,  above,  is typically @@b<MAILER>,  but you may use any convenient
+name.
+@@paragraph(Invoking MG)
+To run MG,  type:
+@@begin(example)
+MG [-i] @@i<name> [@@i<alternate NAMES file names>]
+@@end(example)
+@@i<NAMES> file names preceded by a "-d" are used for the Domains table.
+Others are used for the Outgoing and Incoming tables.
+
+The typical invocation of MG is:
+@@begin(example)
+MG MAILER
+@@end(example)
+
+An example of using a different Outgoing/Incoming NAMES file is:
+@@begin(example)
+MG MAILER NEWBIT.NAMES.G MAILER.NAMES
+@@end(example)
+
+Finally,  an example of using a different Domains NAMES file is:
+@@begin(example)
+MG MAILER -d NEWDOM.NAMES
+@@end(example)
+[Note the use of OS-style "dot" notation for file names.]
+
+You will normally not need the "-i" switch to MG which tells it
+to set up an "initial distribution" profile -- that is,  a profile
+for a Mailer that other Mailers do not yet have in their Incoming tables.
+The default list of NAMES files used by MG is:
+"XMAILER.NAMES MAILER.NAMES -d DOMAIN.NAMES".
+
+@@paragraph(Examples of MG input files)
+@@begin(figure,group,break)
+@@bar()
+@@caption(Sample template file: "CUVMB MTPLATE")@@tag(FIG-MTPLATE)
+@@begin(example)
+; CUVMB MTPLATE - template used to build CUVMB PROFILE
+
+rscsname=RSCS                ; name of rscs/networking vm userid
+RSCS-Domain=.BITNET          ; the RSCS network is called BITNET
+thisnode=CUVMB               ; local node name
+Local-Domain=CUVMB.COLUMBIA.EDU ; this as well as CUVMB.BITNET
+maintuser=EACUS              ; userid of maintainer
+maintnode=CUVMB              ; node name of maintainer
+supply-default-fields=FALSE  ; leave FALSE (not yet implemented)
+allow-unknown-nodes=TRUE     ; allows nodes not in my table but
+                             ; known to RSCS to exchange mail.
+POSTMAST=EACUS@@@@CUVMA         ; Person for mail system questions
+BITINFO=EACUS@@@@CUVMA          ; BITNET Info id
+@@hinge
+
+; local origins whose files I want to throw away:
+
+ORIGINS:
+CMSBAT01
+CMSBAT02
+CMSBAT03
+CMSBAT04
+CMSBAT05
+END ORIGINS
+
+@@hinge
+INCOMING:
+; Node   Userid   Exit
+;------- -------- ---------
+@@b<%incoming>
+*DEFAULT*      *DEFAULT*     RSCSVER   ; standard RSCS tag checking
+END INCOMING
+@@hinge
+; Table of mail nodes that I can send to.
+
+OUTGOING:
+; Alias name     Node     Userid   Exit     Type Parm
+; ----------     -------- -------- -------- ---- --------
+@@b<%outgoing>
+CUVMB.COLUMBIA.EDU   *       *     LOCAL     1           
+*DEFAULT*        *DEFAULT*   ?     INTERNET  1
+END OUTGOING
+@@hinge
+
+; Domains
+
+DOMAINS:
+@@b<%domains>
+END DOMAINS
+@@hinge
+; Local addresses to receive "special handling":
+
+SPECIAL:
+SYSTEM                        ; prevent punched decks
+POSTMASTER RSMAIL 2 POSTMAST  ; Person for mail questions
+BITINFO    RSMAIL 2 BITINFO   ; Person for BITinfo questions
+END SPECIAL
+
+@@end(example)
+@@bar()
+@@end(figure)
+
+@@begin(figure,group,break)
+@@bar()
+
+@@caption(Sample local replacements file: "CUVMB MAILLCL")
+@@begin(example)
+CUVMB     *      *      LOCAL   1
+CUUTSA    *      *      UTSMAIL 1  UNIXA
+
+@@end(example)
+@@bar()
+@@end(figure)
+
+@@paragraph(Cookbook)
+The cookbook approach to build your @@i<Mailer> Profile with MG follows.
+This is done by the MCONFIG EXEC as of @@i<Mailer> version 1.22.
+
+The first time only:
+@@begin(enumerate)
+Create a "@@i<name> MTPLATE" file similar to the one in figure 
+@@ref(FIG-MTPLATE).
+
+Create a "@@i<name> MAILLCL" file with a single line in it:
+@@begin(example)
+@@i<SITENAME>   *      *    LOCAL   1
+@@end(example)
+
+Get yourself added onto the list of people that are informed when
+a new copy of "BITNET NAMES" arrives at your site (or you can "poll"
+NICSERVE@@@@BITNIC for new versions).  The file is huge,  so try to
+find it on your system first before obtaining it from NICSERVE.
+@@end(enumerate)
+
+Each time a new "XMAILER", "MAILER" or "DOMAIN NAMES" file becomes available:
+@@begin(enumerate)
+Obtain read access to the NAMES files on any accessed disk.
+
+Obtain read access to "@@i<name> MTPLATE" and "@@i<name> MAILLCL"
+on any accessed disk.
+
+Type: @@example(MG @@i<name>)
+
+When MG is done,  a new file,  "@@i<name> PROFILE A1" will have been created.
+
+Compare "@@i<name> PROFILE A1" to "MAILER PROFILE" on the disk that @@i<Mailer>
+reads when it starts up to check for any discrepancies.  You should see
+only a list of new BITNET sites plus some sites that have put @@i<Mailer> into
+production use recently.
+
+If you are satisfied with the new "@@i<name> PROFILE",  replace "MAILER PROFILE"
+with it and tell Mailer to re-access the disk and reload.
+@@end(enumerate)
+
+The suggested way to install a new "MAILER PROFILE" while @@i<Mailer>
+is running is as follows:
+@@begin(enumerate)
+Obtain write access to the minidisk containing the "MAILER PROFILE"
+(assuming the @@i<Mailer> has read-only access). 
+
+Make the needed changes to the file.
+
+Tell @@i<Mailer> to reaccess the disk.  For example,  if the disk
+is linked at 193 as the B disk,  issue the following commands
+(User typein prefixed by "."):
+@@begin(example)
+.CP SMSG MAILER CMS ACC 193 B
+| CMS command accepted.
+| R(00000) for: ACC 193 B 
+.CP SMSG MAILER RELOAD
+| Reload command accepted.
+@@end(example)
+(These commands will only be accepted by the userid listed as the @@i<Mailer>
+maintainer in the profile.)
+@@end(enumerate)
+
+@@section(Bug Reports)
+@@i<Mailer> breaks from time to time.  Typically,  some error will occur
+which it thinks it can't recover from,  so it will exit.  This generally
+leads to @@i<Mailer> logging out if you use the standard PROFILE EXEC.
+If this happens,  take a look at the
+topmost file in @@i<Mailer's> reader.  This is usually the culprit.
+Most errors have to do with wild syntax in a file that causes @@i<Mailer>
+to crash due to some "impossible case" happening in the header parsing
+module which is admittedly a sloppy job.  
+
+Transfer this file away from @@i<Mailer> and log it back in.  It will 
+probably run just fine.  Take a look at the file and if you can't
+figure out why it caused @@i<Mailer> to break down,  then send it to me
+along with the relevant piece of the console log.
+@

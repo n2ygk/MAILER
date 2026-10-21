@@ -1,0 +1,2141 @@
+0
+0
+0
+0
+0
+                             COLUMBIA VM MAILER
++                            COLUMBIA VM MAILER
++                            COLUMBIA VM MAILER
+0
+                                VERSION 1.24
++                               VERSION 1.24
++                               VERSION 1.24
+0
+0
+                     INSTALLATION AND MAINTENANCE GUIDE
++                    INSTALLATION AND MAINTENANCE GUIDE
++                    INSTALLATION AND MAINTENANCE GUIDE
+0
+0                                24 May 1982
+0                        (last updated: 18 May 1987)
+0
+0                             E. Alan Crosswell
+0                         EACUS@CUVMA.COLUMBIA.EDU
+0                       Scholarly Information Center
+0                Columbia University in the City of New York
+0
+0
+0
+0
+0
+0
+0
+0       Copyright (C) 1982, 1987 The Trustees of Columbia University
+                           in the City of New York
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+ 1. Introduction
++1. Introduction
++1. Introduction
+0  This  document  describes  the  installation,  operation  and maintenance
+0                                          ______
++procedures for the Columbia University VM MAILER.    Please  read  sections
+0                                              ______
++COPYR  and  TERMS  on  the  terms under which MAILER is provided to you and
+0destroy the files that have been provided if you are  unable  to  abide  by
+0them.
+0
+0  Section RESPONS, below, briefly gives a job description for the person or
+0                             ______
++persons required to maintain MAILER at your site.  Sections following  that
+0                                   ______
++go  into the details of installing MAILER the first time and maintaining it
+0and the data it needs to operate on  BITNET.    The  information  in  these
+0sections  is written with the assumption that the reader is conversant with
+0the basic concepts of VM/SP and RSCS networking.  No  attempt  is  made  to
+0define terms.
+0
+0  ______
++  MAILER  was  developed  by  E.  Alan  Crosswell,  an employee of Columbia
+0University in the City of New York.  It is the property of the Trustees  of
+0Columbia  University  in  the  City of New York.  Some portions of the code
+0                         ______
++have been contributed by MAILER users on  BITNET  (their  names  are  cited
+0                             ______
++within  the  source  code).  MAILER is written in IBM 370 Assembly language
+0and C.
+0
+ 1.1. Copyright Notice
++1.1. Copyright Notice
++1.1. Copyright Notice
+0  Copyright (c) 1982, 1987, The Trustees of Columbia University in the City
+0of New York.
+0
+0  Permission  is  granted to any individual or institution to use, copy, or
+                                    - 1 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+ redistribute this software so long as it is not sold for  profit,  provided
+0that this notice and the original copyright notices are retained.  Columbia
+0University makes no representations about the suitability of this  software
+0for  any  purpose.    It  is  provided  "as  is" without express or implied
+0warranty.
+0
+0  May be used but not sold without permission.
+0
+ 1.2. Additional Terms for Waterloo C Library Object Code
++1.2. Additional Terms for Waterloo C Library Object Code
++1.2. Additional Terms for Waterloo C Library Object Code
+0  Some C programs provided with this distribution make use of the  Waterloo
+0C  Runtime  Library, a component of Waterloo C, a licensed software product
+0of WATCOM Products, Inc. of Waterloo, Ontario, Canada.  WATCOM has  granted
+0us  permission  to  distribute  the  object code for the runtime library to
+0                                                          ______
++"sublicensees" so that sites without Waterloo C may  use  MAILER  with  the
+0following terms:
+0
+    1. That  we  include limitations on WATCOM's liability, limitations
+       of warranty, and restrictions on further distribution similar to
+       those included in our Waterloo C license agreement.
+0   2. We  must  maintain  records  of all copies of the library object
+       code distributed to sublicensees.
+0
+0  No liability is assumed by WATCOM Products, Inc. for any special, direct,
+0indirect  or  consequential damages, losses, costs, fees or expenses of any
+0nature or kind.
+0
+0                      ______
++  You may freely give MAILER source code to others but may not redistribute
+0     ______
++the  MAILER  object  code  module  (MAILER MODULE) or C object code library
+0(CLIB TXTLIB) as they contain Waterloo C library object code.
+                                    - 2 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+   In the event that Columbia University's license with WATCOM for  Waterloo
+0                                                                     ______
++C  is  terminated,  you  will  be  required to destroy any copies of MAILER
+0object code that contain Waterloo C library object code.
+0
+ 1.3. Support
++1.3. Support
++1.3. Support
+0  ______
++  MAILER is supplied with documentation, parameter files, and source and/or
+0object  code  depending on the type of distribution you have requested.  If
+0you have source code and make  substantial  modifications  that  are  of  a
+0generally useful nature, please send those modifications back to us so that
+0they may be considered for inclusion in future versions.
+0
+0  ______
++  MAILER is distributed over the BITNET computer network free of charge  to
+0                                               ______
++any member site.  Columbia University provides MAILER on an as-is basis and
+0will not provide any support.  You are expected to have the local expertise
+0                                      ______
++required  to  install  and  maintain  MAILER  or  to  obtain such expertise
+0elsewhere.  (There are a large number of people on BITNET  that  have  this
+0expertise and who may be willing to help you.)
+0
+0   ______
++   ______
++   ______
++2. MAILER Maintainer and Postmaster Job Description
++2. MAILER Maintainer and Postmaster Job Description
++2. MAILER Maintainer and Postmaster Job Description
+0  There  are  actually two jobs involved in running a mail service.  One is
+0that of maintaining and updating the mail software and  databases  and  the
+0other is to perform the duties of Postmaster.
+0
+0      ______
++  The MAILER maintainer's responsibilities include:
+0
+                                                                 ______
++   1. Installation   and   configuration   of   the   initial   MAILER
+       distribution.
+0                                  ______
++   2. Occassional installation of MAILER software  updates  (typically
+                                    - 3 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+       on  the  order  of  once  or  twice  a  year  but sometimes more
+       frequently).
+0   3. Monthly acquisition and installation of the BITNET database used
+           ______
++      by  MAILER.    This database is maintained by the BITNET Network
+       Information Center (BITNIC) and is distributed monthly over  the
+       network   (or  sometimes  by  tape  during  periods  of  network
+       instability).  This maintenance is related to the other  monthly
+       BITNET node maintenance work (e.g. updating the RSCS DIRECT).
+0
+ None  of  these  responsibilities  tend  to  be particularly time-consuming
+0although it depends on the individual's familiarity with VM and would  best
+0be  performed  (or  supervised)  by  a  systems  programmer.   There is the
+0                           ______
++potential for an incorrect MAILER installation to crash your VM system  (by
+0filling  up  CP  SPOOL  space) or to "clobber" the network (by causing mail
+0loops).
+0
+0  The Postmaster's responsibilities include:
+0
+    1. Answering local users' questions about the mail system.
+0   2. Responding to queries from outsiders (typically requesting  help
+       in reaching a particular member of your site's community).
+0   3. Diagnosing  miscellaneous  mail  system  errors.    For example,
+       ______
++      MAILER sends "error mail" that can't be automatically dealt with
+       to the Postmaster.
+0
+0  The  Postmaster should read his or her mail frequently (many do it one or
+0more times daily).  The degree of work involved  in  being  the  Postmaster
+0depends  on  how  much  service  you  want to provide to your community and
+0outsiders.  For example, you  may  be  willing  to  spend  a  lot  of  time
+0answering requests for the electronic address of Professor Smith or you may
+0prefer to suggest that the requestor simply call  Professor  Smith  on  the
+0telephone to find out her userid.  At Columbia, the daily Postmaster duties
+                                    - 4 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+ are peformed by a  trained  student  with  student  training,  back-up  and
+0difficult questions handled by a full-time staff member.
+0
+03. Inventory of Installation Materials
++3. Inventory of Installation Materials
++3. Inventory of Installation Materials
+0  The  following  items have been supplied to you.  Please verify that they
+0are all present.  Section ADDTL-FILES describes additional files  you  will
+0                               ______
++need to obtain in order to use MAILER on BITNET.
+0
+ 3.1. Object Code Distribution
++3.1. Object Code Distribution
++3.1. Object Code Distribution
+0
+ "INSTALL LISTING"
++"INSTALL LISTING"
++"INSTALL LISTING"     this document.
+0
+ "MCONFIG EXEC"
++"MCONFIG EXEC"
++"MCONFIG EXEC"        used to configure Mailer.
+0
+ "MAILER TXTLIB"
++"MAILER TXTLIB"
++"MAILER TXTLIB"       library of exit routines.
+0
+ "MAILER MODULE"
++"MAILER MODULE"
++"MAILER MODULE"       main   program.    Contains  licensed  software  (see
+                       section 1.2, above).
+0
+ "MAILER HELPCMS"
++"MAILER HELPCMS"
++"MAILER HELPCMS"      general command description.
+0
+ "MAILER HELPPRIV"
++"MAILER HELPPRIV"
++"MAILER HELPPRIV"     privileged command description.
+0
+ "PROFILE EXEC"
++"PROFILE EXEC"               ______
++"PROFILE EXEC"        to run MAILER as an  AUTOLOG'd  disconnected  virtual
+                       machine.
+0
+ "SITEOPTS EXEC"
++"SITEOPTS EXEC"
++"SITEOPTS EXEC"       to  set  site-specific  options.  The default options
+                       will probably be fine for you.
+0
+ "PLM LISTING"
++"PLM LISTING"         ______
++"PLM LISTING"         MAILER Program Logic Manual (usually not up to date).
+0
+ "MG MODULE"
++"MG MODULE"
++"MG MODULE"           program  to  facilitate  automatic  regeneration   of
+                       "MAILER  PROFILE"  from  "MAILER MTPLATE" and "MAILER
+                       MAILLCL".  Contains licensed software.   See  section
+                       1.2, above.
+                                    - 5 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+ 3.2. Source Code Distribution A -- for sites with Waterloo C
++3.2. Source Code Distribution A -- for sites with Waterloo C
++3.2. Source Code Distribution A -- for sites with Waterloo C
+0  The  source  code  distribution  is  sent to you as the contents of three
+0disks and is free of the Waterloo C library restrictions.  This  means  you
+0                                                      ______
++will need a Waterloo C compiler to modify and rebuild MAILER.
+0
+    1. Base source.
+0   2. Updates and CNTRL files.
+0   3. Miscellaneous execs and maintenance tools.
+0
+ 3.3. Source Code Distribution B -- for sites without Waterloo C
++3.3. Source Code Distribution B -- for sites without Waterloo C
++3.3. Source Code Distribution B -- for sites without Waterloo C
+0  This distribution contains everything in source distribution A as well as
+0the following files:
+0
+ "MAILGEN TXTLIB"
++"MAILGEN TXTLIB"                                  ______
++"MAILGEN TXTLIB"      Library of TEXTs  for  all  MAILER  assembler  and  C
+                       sources.
+0
+ "CLIB TXTLIB"
++"CLIB TXTLIB"
++"CLIB TXTLIB"         Waterloo  C  runtime  library.   This is bound by the
+                       WATCOM sublicense terms.
+0
+04. Additional Files Needed for BITNET
++4. Additional Files Needed for BITNET
++4. Additional Files Needed for BITNET
+0                                  ______
++  Besides the files provided with MAILER, you will need to  obtain  several
+0other  files  from  BITNIC  which  are  part of the database of mail system
+0information.  You will need to obtain a new copy of these files  each  time
+0they become available (once monthly).
+0
+ "XMAILER NAMES"
++"XMAILER NAMES"
++"XMAILER NAMES"       The subset of the node information database necessary
+                       to generate a new MAILER PROFILE.
+0
+ "MAILER NAMES"
++"MAILER NAMES"
++"MAILER NAMES"        "Mail-only"  host  names  which   represent   systems
+                                    ______
++                      reachable by MAILER which are not actual BITNET nodes
+                       (and are therefore not in the nodes database).
+0
+                                    - 6 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+ "DOMAIN NAMES"
++"DOMAIN NAMES"
++"DOMAIN NAMES"        Information about Internet domains.
+0
+0        ______
++        ______
++        ______
++5. Your MAILER subscription and registration
++5. Your MAILER subscription and registration
++5. Your MAILER subscription and registration
+0                  ______
++  Distribution of MAILER updates was formerly based on  a  subscription  in
+0the  node information database maintained by the BITNET Network Information
+0Center (BITNIC).  This same database is used to register the  existence  of
+0      ______
++your  MAILER  virtual  machine  so  that  other mailers know about it.  The
+0        _            _                          ______
++":informX" and ":infoX" tags were used for your MAILER subscription.    The
+0                                           ______
++":mailer"   tag   registers  your  node's  MAILER.    Updated  registration
+0                                                           "XMAILER  NAMES"
++                                                           "XMAILER  NAMES"
++information is distributed once monthly by BITNIC in  the  "XMAILER  NAMES"
+0file (see section 4).
+0
+0                                                   ______
++  The ":mailer" tag is still used to register your MAILER, but Eric Thomas'
+0                                                                     ______
++Revised  LISTSERV  is  now  the  system  used  to  maintain   your   MAILER
+0subscription.    All  previously ":info/:inform"-subscribed users have been
+0moved to LISTSERV.
+0
+ 5.1. Subscription via LISTSERV
++5.1. Subscription via LISTSERV
++5.1. Subscription via LISTSERV
+0                                      ______
++  To maintain your "subscription" for MAILER bug  fixes  and  enhancements,
+0you  need  to subscribe to the "MAILDIST" mailing list provided by LISTSERV
+0at CUVMA.  By default, your subscription to this list  will  only  get  you
+0                      ______
++mail  announcing  new MAILER file shipments.  To get the files as well, you
+0will want to change your subscription options to include files.    In  this
+0                           ______
++manner, you can hear about MAILER changes without actually getting the code
+0distribution if someone else at your site has that responsibility.
+0
+0                      ______
++  To subscribe to the MAILER distribution (by the  time  you  receive  this
+                                    - 7 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+ document  you  are  already  subscribed)  send  the  following command as a
+0message or mail to LISTSERV at CUVMA:
+0
+     SUBSCRIBE MAILDIST your name
+0
+0  To get the code distribution as well as announcements, after subscribing,
+0send:
+0
+     SET MAILDIST FILES
+0
+0                        ______
++  If  you  maintain the MAILER for multiple machines, you need only do this
+0for one of them.  This will keep  the  flow  of  unneccessary  files  to  a
+0minimum.
+0
+ 5.2. Registration :mailer tag
++5.2. Registration :mailer tag
++5.2. Registration :mailer tag
+0                                                    ______
++  Finally,  to  tell the rest of us that you have a MAILER, you need to set
+0         :mailer
++         :mailer                                               ______
++up  the  :mailer  field.    Initially,  when  you  first  get  MAILER   (or
+0beforehand), the field should read:
+0
+             ____
++    :mailer.vmid DEFRT 1
+0
+        ____                         ______
++where  vmid  is  the userid of your MAILER machine.  This will allow you to
+0                           _______
++send mail via other sites' Mailers to try things out.  Normally, you  would
+0                              "XMAILER NAMES"
++                              "XMAILER NAMES"
++need  to  wait  until the new "XMAILER NAMES" file has been distributed and
+0other sites have had time to update their Profiles.    If  you  send  to  a
+0______
++MAILER  site  and get return mail saying "Validity check failed," then that
+0site hasn't updated its Profile yet.  (See section MESSAGES for a  list  of
+0                                  ______
++the various messages generated by MAILER.)
+0
+                                    - 8 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+   Since  this  has  become  more  and  more of a problem as the size of the
+0network has grown and the lag time between distributions of new versions of
+0"XMAILER  NAMES"                                 "MAILER  PROFILE"
++"XMAILER  NAMES"                                 "MAILER  PROFILE"
++"XMAILER  NAMES"  has  increased,  the  initial  "MAILER  PROFILE"  that is
+0                                      ______
++generated by MCONFIG for your initial MAILER  installation  is  set  up  to
+0bypass  all  other  mailers.   This is not an ideal solution since you lose
+0                                ______
++some of the benefits of running MAILER, but at least you won't get a lot of
+0                                                   "XMAILER NAMES"
++                                                   "XMAILER NAMES"
++"Validity  check"  mail  returned.    Once  a  new "XMAILER NAMES" has been
+0distributed that lists your site as having a Mailer (or  if  your  site  is
+0                                                        "MAILER PROFILE"
++                                                        "MAILER PROFILE"
++already  listed  that  way) then you can regenerate the "MAILER PROFILE" as
+0described below.
+0
+0                    ______
++  Once you have put MAILER into production use (i.e. it  is  always  logged
+0on) you will want to change the field to read:
+0
+             ____
++    :mailer.vmid
+0
+                          _______                                     ______
++This  will  cause  other Mailers to send mail for your site via your MAILER
+0rather than via direct RSCS routing.
+0
+06. Installation Procedure
++6. Installation Procedure
++6. Installation Procedure
+0
+                         1
+                                   ______
++   1. Create a VM userid  for the MAILER  disconnected  machine.    It
+       should  have  a  virtual  storage  size  of 1M and a 191 disk of
+0
+ _______________
+0  1
+    Please don't change the userid without first updating your node database
+                                                      ______
++entry  and waiting for it to be redistributed to all MAILER sites.  You may
+                                    ______
++end up having to run two copies of MAILER during the transition period; one
+ under  the  old  name and one under the new name to avoid any disruption in
+ mail traffic.
+                                    - 9 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+       adequate size to hold  the  largest  mail  file  you  anticipate
+       receiving.    If  you give it the appropriate CP privilege class
+               MSGNOH
++              MSGNOH
++      for the MSGNOH command then it will use  that  command  to  send
+                                      MSG
++                                     MSG
++      messages.  If not, it will use MSG.
+0                                                                ______
++   2. Obtain   write   access  to  a  CMS  minidisk  to  which  MAILER
+       disconnected virtual machine will  have  read  access.    It  is
+                                                      ______
++      recommend that this be other than the A-disk.  MAILER requires a
+       writeable A-disk for various temporary files it  creates.    The
+                      ______
++      disk  that the MAILER parameter files and TXTLIB reside on would
+                            ______
++      best be owned by the MAILER maintainer.  This will allow ease of
+       future updates without interrupting normal operations.
+0   3. Copy the supplied files to the disk.
+0   4. Obtain access to a disk containing the files listed in section 4
+                                     ______
++      (or put them on the same disk MAILER is on).
+0          MCONFIG
++          MCONFIG
++   5. Run MCONFIG.  It is self-explanatory.
+0                                         "PROFILE  EXEC"
++      ______                             "PROFILE  EXEC"
++   6. MAILER is now ready to run.   The  "PROFILE  EXEC"  supplied  is
+                                                      ______
++      designed for AUTOLOG use.  The best way to run MAILER is to have
+       ______    ________
++      VMUTIL or AUTOLOG1 AUTOLOG it.  You may however log on  directly
+       and start it that way.
+0
+0               ______
++               ______
++               ______
++7. Overview of MAILER Operation
++7. Overview of MAILER Operation
++7. Overview of MAILER Operation
+0                                          ______
++  This  is  a  brief  description of what MAILER does.  When first started,
+0______
++MAILER reads the Mailer Profile, allocates various tables,  and  loads  any
+0user  exits that are not built in.  It then goes into a wait state, waiting
+0for the arrival  of  a  reader  file,  an  SMSG  interrupt,  or  a  console
+0interrupt.
+0
+0  If  the  interrupt was an SMSG or from console typein, the command parser
+0is invoked to process the user command.  For reader interrupts,  each  file
+0in the reader is read and processed, usually resulting in the generation of
+0outgoing punch spool files.
+0
+0  A valid reader file can be one of:
+                                   - 10 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+    1. An RFC822 mail file.    A  mail  file  is  a  PUNCH  spool  file
+       containing a header seperated by a blank record from the text of
+       the message.  The syntax specification for the header format  is
+                          ________ ___ ___ ______ __ ____ ________ ____
++      derived  from  the Standard for the Format of ARPA Internet Text
+       ________
++      Messages, DARPA Request for Comments #822.  NOTE: Only a  subset
+                                     ______
++      of  RFC822  is  supported  by MAILER.  Specifically, it fails to
+       properly parse nested parentheses and route-lists.  The  various
+                                               "RFCxxx  STANDARD"
++                                              "RFCxxx  STANDARD"
++      Internet   RFC's   are   available  as  "RFCxxx  STANDARD"  from
+       NICSERVE@BITNIC.
+0   2. A Batch Simple Mail Transfer Protocol (BSMTP) request.  A  BSMTP
+       request is differentiated from an RFC822 mail file by having the
+       first record start with the text "HELO ".   This  is  the  first
+       command  of an SMTP dialog and looks sufficiently different from
+       a mail file to be easily identified.
+0   3. A reply to a BSMTP request previsouly generated.  A BSMTP  reply
+       is  identified  by  having  the first record start with 3 digits
+       (e.g. "220").
+0
+0                                          ______
++  For both mail files and BSMTP requests, MAILER does essentially the  same
+0thing.  It parses the mail or BSMTP request to obtain a list of recipients.
+0In the case of BSMTP, this is simple -- each recipient is identified  by  a
+0RCPT  command.  For RFC822 mail, it is a little more difficult to determine
+0_____
++which addresses should be acted upon.    This  is  one  reason  that  BSMTP
+0                        ______
++support  was  added  to MAILER.  Another reson is that BSMTP has become the
+0de-facto standard for interoperation of various mail systems on BITNET.
+0
+0  Various table entries in the Mailer Profile  determine  exactly  how  the
+0mail  is  sent to the list of recipients.  Specifically, the INCOMING table
+0                               ______
++lists which other mailers your MAILER knows about and will trust.    Anyone
+0not  listed  in  the INCOMING table must send a mail file with a Sender: or
+0From: field that is consistent with the file's RSCS origin node and userid.
+0
+0                  ______                                             ______
++  The function of MAILER is described  in  further  detail  in  the  MAILER
+0                                  - 11 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+ _______ _____ ______
++Program Logic Manual, "PLM LISTING."
+0
+08. MAILER PROFILE
++8. MAILER PROFILE
++8. MAILER PROFILE
+0       "MAILER PROFILE"
++       "MAILER PROFILE"
++  The  "MAILER PROFILE" CMS file contains the parameters used to initialize
+0    ______
++the MAILER routing tables and set other variables and option  flags.    You
+0may  want  to  add  or remove names from the list of special userids not to
+0receive mail.  See section MG, below, for the procedures for modifying  and
+0automatically regenerating the "MAILER PROFILE".
+0
+0                                                                    ______
++  You  can  specify  a different name for the Profile when invoking MAILER.
+0The syntax is:
+0
+             __  __  __
++    MAILER [fn [ft [fm]]]
+0
+                                                  MAILER   PROFILE        *
++                         __   __        __       MAILER   PROFILE        *
++The default values  for  fn,  ft,  and  fm  are  MAILER,  PROFILE,  and  *,
+0respectively.    If,  for  example, your system has shared dasd between two
+0                                                     ______
++cpu's (as ours does), your "PROFILE EXEC" can invoke MAILER with  different
+0Profile  names  depending  on  the cpuid.  This allows you to have a single
+0                    ______
++disk containing the MAILER program, txtlib, and profiles.
+0
+0  The parts of the Mailer Profile are described below:
+0
+ 8.1. Variable Declarations
++8.1. Variable Declarations
++8.1. Variable Declarations
+0  You may declare a variable at any time within the Profile by entering:
+0
+     ________ ____ _____
++    variable_name=value
+0
+ For example:
+0
+                                   - 12 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+     rscsname=RSCS
+0
+0  All variables declared this way are then available to any  user  exit  to
+0                                                                 ______
++obtain their value.  Some variable names have special meaning to MAILER:
+0
+ RSCSname        VMID  of  the  RSCS/Networking server.  Files received from
+                 this userid are assumed to be from the RSCS network.    The
+                 file's  TAG  text is parsed for the network origin node and
+                 userid.  Files destined to the RSCS  network  are  sent  to
+                 this VMID.
+0
+ RSCSalt         VMID of a secondary RSCS/Networking server.  This is useful
+                 if you need to run two different RSCS's  for  some  reason.
+                 ______
++                MAILER   will   always  send  files  to  the  primary  RSCS
+                  ________
++                (rscsname), but will accept files from this RSCS  as  being
+                 from the network.
+0
+                                                ______
++ThisNode        RSCS node name for the machine MAILER is running on.
+0
+ RSCS-Domain     The  default  domain name to concatenate with the RSCS node
+                 name when domain-style names are needed.
+0
+                                                         ______
++Local-Domain    An optional domain name for the machine MAILER  is  running
+                 on  if  you want something different from the concatenation
+                                           ____ ______
++                of the RSCS node name and RSCS-Domain.
+0
+                             ______
++MaintUser       VMID of the MAILER maintainer.  This  user  is  allowed  to
+                 send  privileged commands via CP SMSG and will also receive
+                            ______
++                files that MAILER has trouble with.
+0
+                                       ______
++MaintNode       RSCS node name of the MAILER maintainer.  For best results,
+                                            ________
++                this should be the same as ThisNode.
+0
+ Supply-Default-Fields
+                 May have the value True or False, but leave it false  since
+                 its functionality has not been implemeneted.
+0
+ Allow-Unknown-Nodes
+                                                                      ______
++                May have the value True or False.   If  True,  then  MAILER
+                 will  attempt  to deliver mail to hosts that are not listed
+                                   - 13 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+                 in it's tables.  Useful when RSCS route  updates  get  done
+                         ______
++                before  MAILER Profile updates.  When False, can be used to
+                 restrict the list of sites that you may exchange mail with.
+0
+ Allow-Charlatans
+                 If  true,  BSMTP requests are allowed to give a domain name
+                 on the HELO command and/or  a  FROM  address  on  the  MAIL
+                 command  which  do  not  appear  to  correspond to the RSCS
+                 origin.  For a charlatan HELO, the "Received:" header  line
+                 lists   that   actual   RSCS  origin  in  the  comment  (in
+                 parentheses) following the "from domain."  For a  charlatan
+                 FROM, an "X-Delivery-Notice:" is added to the mail header.
+0
+ Msgcmd          The  CP  message  command  to use instead of MSGNOH or MSG.
+                 Used only by the LOCAL exit.
+0
+ Msgprefix       The prefix other than "*" to  preceed  messages  with  Used
+                 only by the LOCAL exit.
+0
+ Verbose-Logging If  true,  all  BSMTP commands and responses are printed on
+                 the console.
+0
+ 8.2. ORIGINS Table
++8.2. ORIGINS Table
++8.2. ORIGINS Table
+0  Entries in the ORIGINS table are keyed by the VM userid.  Any reader file
+0from  a  user  listed  in the table causes the associated ORIGINS user exit
+0program to be invoked prior to any other processing of the file.  The  list
+0of available ORIGINS exits is listed in section ORIGINS-EXITS below.
+0
+ 8.3. INCOMING Table
++8.3. INCOMING Table
++8.3. INCOMING Table
+0  Entries  in  the INCOMING table are keyed by RSCS origin node and userid.
+0After a file is received and its mail header has been parsed, the  INCOMING
+0user  exit  program is invoked.  A typical use of an INCOMING exit is to do
+0validation of mail  to  prevent  forged  "From:"  userids.    The  list  of
+0available INCOMING exits is listed in section INCOMING-EXITS below.
+0
+0                                  - 14 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+ 8.4. OUTGOING Table
++8.4. OUTGOING Table
++8.4. OUTGOING Table
+0  Entries  in  the  OUTGOING  table  are  keyed  by  host  name.   For this
+0            ____ ____
++discussion, host name is defined as everything to the right of the  at-sign
+0                                                  _____ _____
++                                                  _____ _____
++                                                  _____ _____
++                                                  EACUS@CUVMA  CUVMA
++                                                  EACUS@CUVMA  CUVMA
++in  a  mail address.  For example, in the address EACUS@CUVMA, CUVMA is the
+0                                              ____ _____ _________ _______
++                                              ____ _____ _________ _______
++                                              ____ _____ _________ _______
++                                              John_Smith@Newcastle.MAILNET
++                                              John_Smith@Newcastle.MAILNET
++host   name   and,    in    the    address    John_Smith@Newcastle.MAILNET,
+0Newcastle.MAILNET
++Newcastle.MAILNET
++Newcastle.MAILNET is the hostname.
+0
+0                                                        ______
++  When  mail  is  to  be  sent to a particular address, MAILER looks up the
+0hostname in the OUTGOING table and then  invokes  the  OUTGOING  user  exit
+0                                                        _____ _______ _____
++program.    If  the  hostname  can't  be  found and the Allow-Unknown-Nodes
+0            True
++            True       ______
++variable is True, then MAILER looks for the special OUTGOING entry with the
+0      *DEFAULT*
++      *DEFAULT*
++key  "*DEFAULT*"  and  invokes  the  user  exit  for  that entry.  (See the
+0description of the DOMAINS table, below, for an exception).   The  list  of
+0available OUTGOING exits is in section OUTGOING-EXITS, below.
+0
+ 8.5. DOMAINS Table
++8.5. DOMAINS Table
++8.5. DOMAINS Table
+0  The  DOMAINS  table  is  an  optional  table  that  has  the  same  basic
+0functionality as the OUTGOING table.  The difference is that the key for an
+0entry  in  the  DOMAINS table need not match the hostname exactly.  It need
+0                                                                     ______
++only match the right-hand end.  When a DOMAINS  table  is  defined,  MAILER
+0first  searces  the  OUTGOING  table  and,  failing  to find a match there,
+0searches the DOMAINS table before finally giving  up  and  going  with  the
+0"*DEFAULT*" entry.  The DOMAINS and OUTGOING tables use the same exits.
+0
+0
+0
+0
+                                   - 15 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+ 8.6. SPECIAL Table
++8.6. SPECIAL Table
++8.6. SPECIAL Table
+0  The  key  to  an  entry  in  the  SPECIAL  table  is a username, that is,
+0everything to the left of the at-sign in a mail address.  The SPECIAL table
+0can  be used to implement userid aliases of up to 255 characters in length,
+0mailing lists, automatic mail forwarding, etc.  Note that the SPECIAL table
+0                             ______
++is  never  searched  by  the MAILER proper.  It is only used if an OUTGOING
+0exit (like LOCAL) chooses to.  A list of SPECIAL user exits is  in  section
+0SPECIAL-EXITS.
+0
+0   ______
++   ______
++   ______
++9. MAILER User Exits and MAILER TXTLIB
++9. MAILER User Exits and MAILER TXTLIB
++9. MAILER User Exits and MAILER TXTLIB
+0                                                            ______
++  The  commonly  used  user  exit  programs  are built into MAILER.  Others
+0                                                               ______
++reside  in  MAILER  TXTLIB  and  are  dynamically  loaded  by  MAILER  when
+0referenced in one of the tables at initialization.
+0
+ 9.1. Outgoing Exits
++9.1. Outgoing Exits
++9.1. Outgoing Exits
+0  These exit names are used in the Profile OUTGOING and DOMAINS tables.  In
+0addition to these standard exits, several sites have implemented their  own
+0local exits for various functions such as gatewaying mail over "home grown"
+0or otherwise strange links to other systems.  Each exit has a  type  and  a
+0(sometimes optional) 8 character parameter.
+0
+0  There  are  three types of OUTGOING exit which determine exactly when the
+0exit is invoked and with what information.   Some  exits  may  be  used  as
+0different  types  if  they are properly written although they generally are
+0written to be of a specific type.  The three types are:
+0
+ 1    Called once per recipient address.
+0                                  - 16 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+ 2    Called once for all recipients having the same server node/userid pair
+      and exit name.
+0
+ 3    Same  as  type  2  but  complete  information  about all recipients is
+      available.  This includes having different exit  parameters  available
+      to the same exit (e.g. BSMTP parameters).
+0
+0                                  ______
++  The OUTGOING exits provide with MAILER are:
+0
+ 9.1.1. BITNET
++9.1.1. BITNET
++9.1.1. BITNET
+0  This obsolete type 2 exit sends a file to another RSCS node assumed to be
+0        ______
++running MAILER. The file is sent to the server node/userid  listed  in  the
+0table.  BITNET has been superseded by the BSMTP exit.
+0
+ 9.1.2. BSMTP
++9.1.2. BSMTP
++9.1.2. BSMTP
+                                                               2
+   This type 3 exit sends a Batch Simple Mail Transfer Protocol  data stream
+0to  the server node/userid from the table.  A RCPT command is generated for
+0each recipient that caused the exit to be invoked.  The usual  domain  name
+0used   to  identify  the  sending  host  in  the  HELO  command  is  either
+0_____ ______                         ________     ____ ______
++Local-Domain or the concatenation of ThisNode and RSCS-Domain.
+0
+0  The optional parameter to BSMTP can be one of:
+0
+ ___
++var             A variable name.  The value of the variable is used as  the
+                 HELO domain instead of the default described above.
+0
+ @
++@___
++@var            A variable name preceded by an at-sign.  This is used to do
+                 BSMTP routing to another BSMTP  server  that  supports  the
+0
+ _______________
+0  2
+    a  store-and-forward  version  of  the  ARPANET  SMTP service defined by
+ J. Postel in DARPA Request for Comments #821
+                                   - 17 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+                                            ______
++                BSMTP   source   route.    MAILER  does  not  support  this
+                 construct, but others such as the Wiscnet SMTP  server  do.
+                              ___
++                The value of var is inserted in the source route portion of
+                 each RCPT TO: address.
+0
+ %
++%___
++%var            A variable name preceded by a percent-sign.  This  is  used
+                 to  perform  the  ubiquitous "percent routing hack" that is
+                 widely used but is not documented  in  any  mail  standard.
+                 The RCPT TO address is rewritten by changing the at-sign to
+                                                          ___
++                a percent and appending the The value of var to the end  of
+                 the address.
+0
+ Note  that  for  the  at-sign  and percent forms of the parameter, that the
+0variable name must be 7 characters or less.  For the other form,  the  name
+0must be 8 characters or less.
+0
+0  Examples  of  the  four  flavors  of  BSMTP  (vanilla  and three types of
+0parameter) follow:
+0
+     via20B=@CU20B.COLUMBIA.EDU
+     viaDEC=@DECWRL.DEC.COM
+     funnydom=BLAH.BLAH.EDU
+      ...
+     OUTGOING:
+     ;domain  node   userid   exit   type parameter
+0    CUVMA    CUVMA  MAILER   BSMTP  3
+     CUTC20   CUVMA  SMTPSERV BSMTP  3    @via20B
+     FROTZ    XYZZY  FUZZNET  BSMTP  3    funnydom
+      ...
+0    DOMAINS:
+     .DEC     WISCVM SMTPSERV BSMTP  3    %viaDEC
+      ...
+0
+0  Given the following sample addresses, these RCPT TO's would be created:
+0
+ JOE@CUVMA      RCPT TO:<JOE@CUVMA>
+0JOE@CUTC20     RCPT TO:<@CU20B.COLUMBIA.EDU:JOE@CUTC20>
+0                                  - 18 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+ JOE@DEC123.DEC RCPT TO:<JOE%DEC123.DEC@DECWRL.DEC.COM>
+0
+ 9.1.3. DEFRT
++9.1.3. DEFRT
++9.1.3. DEFRT
+0  This type 1 exit sends a file directly to the  intended  recipient  on  a
+0                               ______
++remote  RSCS  node not running MAILER.  The file name is set to that of the
+0sender (truncated to 8 characters).  The file type is set  to  "MAIL",  the
+0class to "M", and the distribution code to the host name of the sender.
+0
+0  DEFRT  will  generally  refuse  to  deliver  mail  to userids more than 8
+0characters long since this is the VM implementation  limit.    An  optional
+0            TRUNCATE
++            TRUNCATE
++parameter,  TRUNCATE, may be supplied which allows longer names.  The first
+08 characters are used in this case.  This facility is meant to be  used  in
+0                                              ____
++conjunction  with  VAX/VMS  systems  running  jnet and UNIX systems running
+0____
++UREP.  DEFRT ignores the server node/userid information in the table entry.
+0
+ 9.1.4. LOCAL
++9.1.4. LOCAL
++9.1.4. LOCAL
+0                                                                    ______
++  This type 1 exit sends mail to a local user on the system running MAILER.
+0It sets the file name, etc. as in DEFRT above.  It also sets the file's TAG
+0to look like one RSCS would generate.  This allows a  modified  RDRLIST  or
+0RECEIVE exec to determine the origin of a remote file in the same manner as
+0for files from RSCS.
+0
+0               PROFS
++               PROFS
++  The optional PROFS parameter will cause a  PROFS  Subject  record  to  be
+0appended  to  the end of the file so that PROFS mail may be used.  Kudos to
+0Peter Day of Emory University.  See also the PROFS SPECIAL exit.
+0
+0
+0                                  - 19 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+ 9.1.5. NOMAIL
++9.1.5. NOMAIL
++9.1.5. NOMAIL
+0  This type 2 exit is used for RSCS nodes that can't handle mail.  It  logs
+0an  error  message  and  causes  the  mail  to  be  returned.  The required
+0parameter is the host name to give in the error mail.  It sends  mail  back
+0                                         _________
++that essentially says, "Mail service for parameter is not available."
+0
+ 9.1.6. INTERNET
++9.1.6. INTERNET
++9.1.6. INTERNET
+0  This  type  1  exit  was  written  by  Henry  Nussbacher  of the Weizmann
+0Institute, Rehovot, Israel and is based on the DEFRT exit as  well  as  the
+0old  BSMTP exit written by Arthur Ecock of the City University of New York.
+0Reg Quinton and Jeffrey Honig have also contributed code to it.    INTERNET
+0is  used  in  the  "*DEFAULT*"  position of the Profile OUTGOING table.  It
+0searches for host names ending in ".ARPA", ".UUCP", ".DEC", and so  on  and
+0routes  via  the appropriate gateway.  Much of INTERNET's capability is now
+0                ______
++in the mainline MAILER code (using the DOMAINS table) and  the  BSMTP  exit
+0(using the at-sign and percent-preceded parameters).
+0
+0                                RETURN
++                                RETURN
++  Specifying   the   optional   RETURN  parameter  causes  mail  lacking  a
+0domain-style recipient address (i.e. without dots) to be returned with  the
+0error  "Unknown  Host"  rather  than  attempting  to send the mail via RSCS
+0(which will generally result in returned mail unless  RSCS  knows  of  some
+0                ______
++node names that MAILER doesn't).
+0
+ 9.1.7. UTSMAIL
++9.1.7. UTSMAIL
++9.1.7. UTSMAIL
+0  This  exit  will  send  mail  to users on a UTS guest running on the same
+0           ______                    ___                           _____ _
++machine as MAILER.  It submits a UTS uux file which  invokes  the  rmail(3)
+0program to enter the mail into the UTS mail system.  The required parameter
+0                                  - 20 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+                              3
+ is the vmid of the UTS guest. 
+0
+ 9.2. Incoming Exits
++9.2. Incoming Exits
++9.2. Incoming Exits
+0
+ 9.2.1. RSCSVER
++9.2.1. RSCSVER
++9.2.1. RSCSVER
+0  This  incoming  exit  is  used  to  validate files from sites not running
+0______
++MAILER.  The sender name and host are checked to see if they match the RSCS
+0origin  in  the tag text.  This exit is used in the "*DEFAULT*" position of
+0                                                                 ______
++the Incoming table and allows users on other systems not running MAILER  to
+0         ______
++use your MAILER to send mail.
+0
+ 9.2.2. (none)
++9.2.2. (none)
++9.2.2. (none)
+0  Not  specifying  an  Incoming exit causes the built in validation code to
+0execute.  This is used to indicate  the  names  of  other  trusted  Mailers
+0(which are allowed to send a file with a "From:" or "Sender:"  which differ
+0from their vmid and RSCS node name).
+0
+ 9.3. Special Exits
++9.3. Special Exits
++9.3. Special Exits
+0  Special table exits are used to  define  local  user  name  aliases  like
+0POSTMASTER and/or mailing list names among other things.
+0
+0
+0
+0
+0
+0_______________
+0  3
+                                                                    ________
++   UTSMAIL has not been tested with or modified to support UTS/V's sendmail
+ system.
+                                   - 21 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+ 9.3.1. FWDMAIL
++9.3.1. FWDMAIL
++9.3.1. FWDMAIL
+0  This exit provides mail forwarding.  The list of recipients to forward to
+0must be defined with a variable assignment in the Profile.    The  variable
+0name  must  be  8  characters  or  less  and  is  supplied  as the required
+0parameter.
+0
+ 9.3.2. RSMAIL
++9.3.2. RSMAIL
++9.3.2. RSMAIL
+0  This exit provides mail resending.  This is similar to forwarding and the
+0list  of  recipients  is  supplied  in  the  same  way as for FWDMAIL.  The
+0difference between the two is that FWDMAIL creates a new mail header  while
+0RSMAIL  simply  adds  "Resent-To", "Resent-From", and "Resent-Cc" fields to
+0the original header.
+0
+0  An example of using FWDMAIL or RSMAIL follows:
+0
+     people=SMITH@CUVMA,JONES@CUVMB
+     alan=EACUS@CUVMA
+      ...
+     SPECIAL:
+     CROSSWELL  RSMAIL  1  alan
+     FOO-L      RSMAIL  1  people
+0
+ 9.3.3. DISTLIST
++9.3.3. DISTLIST
++9.3.3. DISTLIST
+0  DISTLIST uses BSMTP  to  re-distribute  mail  to  a  list  of  recipients
+0                           _________
++                           _________
++                           _________
++                          "parameter DISTLIST"
++                          "parameter DISTLIST"
++contained in a file named "parameter DISTLIST".  The file should be RECFM V
+0and have one address per line.  This exit does not edit or add anything  to
+0the  mail  header  at  all (other than having the side effect of causing an
+0additional "Received:" header to be added) and could  be  very  useful  for
+0distribution  of  large  mailing lists.  The only restriction on the use of
+0this exit is that all the recipients listed must be reachable  with  BSMTP.
+0                                  - 22 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+ That is, it must not matter that the recipient's address does not appear in
+0the "To:" line of the RFC822 mail.  This restriction is satisfied for LOCAL
+0and  DEFRT  distribution  as  well  as  any  mail server that is defined in
+0OUTGOING/DOMAINS with the BSMTP exit.  In other words, if  a  recipient  is
+0reached with the BITNET exit, then the mail will most likely be returned to
+0the sender with an error of "No recipients for this node."
+0
+0                   "SAMPLE DISTLIST"
++                   "SAMPLE DISTLIST"
++  For a file named "SAMPLE DISTLIST":
+0
+     SMITH@CUVMA
+     JONES@CUVMB
+0
+0  An example profile entry would be:
+0
+     SPECIAL:
+     SOME-GROUP  DISTLIST 1 SAMPLE
+0
+ 9.3.4. VMMLOG
++9.3.4. VMMLOG
++9.3.4. VMMLOG
+0  This exit appends mail to a file in the format used by the  Columbia  VMM
+0mail  program (written by Vace Kundakci) and is used at Columbia to provide
+0bulletin boards.  The required parameter specifies the  file  name  of  the
+0VMMLOG  file.    Additionally,  the  file  mode  of  the VMMLOG file may be
+0                               _________
++specified as a variable named "parameter-mail-disk".  For example:
+0
+     bboard-mail-disk=G
+     ...
+     SPECIAL:
+     bboard   VMMLOG   1 BBOARD
+0
+0
+0
+                                   - 23 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+ 9.3.5. PROFS
++9.3.5. PROFS
++9.3.5. PROFS
+0  The PROFS exit does the same thing as the LOCAL OUTGOING  exit  with  the
+0PROFS  parameter.  You would use this exit when most users get the standard
+0LOCAL treatment but a specific list of users (which you  enumerate  in  the
+0SPECIAL table) want mail delivered in PROFS format.
+0
+ 9.3.6. (none)
++9.3.6. (none)
++9.3.6. (none)
+0  Omitting  the  exit  name  causes  the  built in exit to be invoked which
+0disallows mail to the given user name.  Use this approach to  prevent  mail
+0from being sent to specific users like CMSBATCH and SYSTEM.
+0
+ 9.4. Origins Exits
++9.4. Origins Exits
++9.4. Origins Exits
+0  The  Origins table lists exits to be invoked based on origin userid.  The
+0exit is given control immediately after the  file  has  been  received  and
+0prior  to  any  other  processing  has  been performed.  This is unlike the
+0Incoming exit which is not invoked until the mail header has been  read  in
+0and  parsed.   An Origins exit can be used to do arbitrary processing of an
+0input file based on origin userid.
+0
+ ____
++none            Leaving the exit name blank causes the built in exit to  be
+                 invoked  which  causes the received file to be purged and a
+                 message sent to the originating userid.  This is useful  to
+                 dissallow  users  like  CMSBATCH  from sending any files to
+                 ______
++                MAILER and guarantees that no error mail files will be sent
+                 back to those users.
+0
+0    ______
++    ______
++    ______
++10. MAILER Commands
++10. MAILER Commands
++10. MAILER Commands
+0       ______
++  The  MAILER  accepts  commands  via CP SMSG or from the console.  Certain
+0                                                                    "MAILER
++                                                                    "MAILER
++commands are restricted to SMSGs from the Maintainer (as defined in "MAILER
+0PROFILE"
++PROFILE"
++PROFILE")  or  console  commands.   Other commands are available to general
+0                                  - 24 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+ users via SMSG.  SMSG replies are sent back to the issuer via CP MSGNOH  if
+0     ______
++the  MAILER has the necessary privileges.  If not, CP MSG is used.  Help on
+0commands may be obtained by use of "?" in commands and  subcommands.    For
+0example, "CP SMSG MAILER ?" will cause a list of the valid general commands
+0to be sent back.
+0
+0  Privileged commands are  described  in  "MAILER  HELPPRIV".    These  are
+0designed for debugging purposes and to aid general maintenance.
+0
+011. Maintenance
++11. Maintenance
++11. Maintenance
+0                    ______
++  New  versions  of MAILER and exits will be sent to you from time to time.
+0Additionally, you are expected to keep your site's "MAILER PROFILE"  up  to
+0date.
+0
+ 11.1. New versions
++11.1. New versions
++11.1. New versions
+0  New  versions  will be sent to you preceded by mail describing the reason
+0for the new version.  Right now, these files are generally  sent  with  the
+0Cornell  CARD  utility  (which has been supplied to you).  To install a new
+0"MAILER  MODULE",  simply  rename  the  old  "MAILER  MODULE"  (for  backup
+0                                             ______
++purposes), CARD LOAD the new one and restart MAILER.
+0
+0  TEXT  files  are sent out as replacements for members of "MAILER TXTLIB".
+0Use the appropriate TXTLIB DEL and TXTLIB ADD commands to install new  TEXT
+0                ___ _______ ___ _____ _________
++files.  See the CMS Command and Macro Reference for details.
+0
+0
+0
+                                   - 25 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+ 11.2. "MAILER PROFILE" updates
++11.2. "MAILER PROFILE" updates
++11.2. "MAILER PROFILE" updates
+0       MG
++       MG
++  The  MG  program  can  be  used  to  automate regeneration of your site's
+0"MAILER PROFILE" which must usually be done once a month  when  the  latest
+0"NAMES"  files  become  available.    Using  MG,  you  only  have  to  make
+0                                                   ______
++site-specific changes once, when you first install MAILER.
+0
+ 11.2.1. Files Used by MG
++11.2.1. Files Used by MG
++11.2.1. Files Used by MG
+0  MG uses four or more input files:
+0
+ "* NAMES"             The NAMES files previously described in section 4.
+0
+  ____                                                        ____
++"name MTPLATE"        The template file used by MG to build "name PROFILE".
+                       This  file  looks  just  like  the  Profile  with the
+                       exception that the  incoming,  outgoing  and  domains
+                                                                  %incoming
++                                                                 %incoming
++                      table  lines  are  replaced  by  the words %incoming,
+                       %outgoing     %domains
++                      %outgoing     %domains
++                      %outgoing and %domains, respectively.    MG  replaces
+                       these  lines  with  the appropriate information taken
+                       from "XMAILER NAMES", "MAILER NAMES", "DOMAIN NAMES",
+                                                                    %include
++                            ____                                   %include
++                      and  "name  MAILLCL".    You  can  also use "%include
+                       __ __ __
++                      fn.ft.fm" to cause a  file  to  be  included  in  the
+                       output Profile.
+0
+  ____
++"name MAILLCL"        This  file  consists of the lines in the OUTGOING and
+                       DOMAINS tables that will be different for your  site.
+                       That  is,  the entry or entries for the local system.
+                       For example, for the site CUVMB,  the  Outgoing  line
+                       for  CUVMB  specifies  the  BITNET  exit in all other
+                       sites'  Profiles  and  the  LOCAL  exit  for  CUVMB's
+                                             ____
++                      Profile.  Entries in "name MAILLCL" should follow the
+                       same syntax as lines  in  the  Outgoing  table.    No
+                       comments or blank lines are permitted.
+0
+0                            MAILER
++  ____                      MAILER
++  Name, above, is typically MAILER, but you may use any convenient name.
+0
+0
+0
+0
+                                   - 26 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+ 11.2.2. Invoking MG
++11.2.2. Invoking MG
++11.2.2. Invoking MG
+0  To run MG, type:
+0
+             ____  _________ _____ ____ _____
++    MG [-i] name [alternate NAMES file names]
+0
+ _____
++NAMES file names preceded by a "-d" are used for the DOMAINS table.  Others
+0are used for the OUTGOING and INCOMING tables.
+0
+0  The typical invocation of MG is:
+0
+     MG MAILER
+0
+0  An example of using a different Outgoing/Incoming NAMES file is:
+0
+     MG MAILER NEWBIT.NAMES.G MAILER.NAMES
+0
+0  Finally, an example of using a different DOMAINS NAMES file is:
+0
+     MG MAILER -d NEWDOM.NAMES
+0
+ [Note the use of OS-style "dot" notation for file names.]
+0
+0  You will normally not need the "-i" switch to MG which tells it to set up
+0an  "initial  distribution" profile -- that is, a profile for a Mailer that
+0other Mailers do not yet have in their INCOMING tables.  The  default  list
+0of   NAMES   files   used   by  MG  is:    "XMAILER.NAMES  MAILER.NAMES  -d
+0DOMAIN.NAMES".
+0
+0  MG will also accept EARN-style "NODES" files which differ  only  slightly
+0                                  - 27 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+ from  the  BITNET  "NAMES"  files.   So, if you prefer to use the EARN node
+0administration tools, you may do so.
+0
+ 11.2.3. Examples of MG input files
++11.2.3. Examples of MG input files
++11.2.3. Examples of MG input files
+0
+ ---------------------------------------------------------------------------
+0
+              Figure 1:
++             Figure 1:
++             Figure 1:  Sample template file: "CUVMB MTPLATE"
+0
+     ; CUVMB MTPLATE - template used to build CUVMB PROFILE
+0    rscsname=RSCS                ; name of rscs/networking vm userid
+     RSCS-Domain=.BITNET          ; the RSCS network is called BITNET
+     thisnode=CUVMB               ; local node name
+     Local-Domain=CUVMB.COLUMBIA.EDU ; this as well as CUVMB.BITNET
+     maintuser=EACUS              ; userid of maintainer
+     maintnode=CUVMB              ; node name of maintainer
+     supply-default-fields=FALSE  ; leave FALSE (not yet implemented)
+     allow-unknown-nodes=TRUE     ; allows nodes not in my table but
+                                  ; known to RSCS to exchange mail.
+     POSTMAST=EACUS@CUVMA         ; Person for mail system questions
+     BITINFO=EACUS@CUVMA          ; BITNET Info id
+0    ; local origins whose files I want to throw away:
+0    ORIGINS:
+     CMSBAT01
+     CMSBAT02
+     CMSBAT03
+     CMSBAT04
+     CMSBAT05
+     END ORIGINS
+0    INCOMING:
+     ; Node   Userid   Exit
+     ;------- -------- ---------
+     %incoming
++    %incoming
++    %incoming
+     *DEFAULT*      *DEFAULT*     RSCSVER   ; standard RSCS tag checking
+     END INCOMING
+0
+0
+0
+0
+                                   - 28 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+     ; Table of mail nodes that I can send to.
+0    OUTGOING:
+     ; Alias name     Node     Userid   Exit     Type Parm
+     ; ----------     -------- -------- -------- ---- --------
+     %outgoing
++    %outgoing
++    %outgoing
+     CUVMB.COLUMBIA.EDU   *       *     LOCAL     1
+     *DEFAULT*        *DEFAULT*   ?     INTERNET  1
+     END OUTGOING
+0    ; Domains
+0    DOMAINS:
+     %domains
++    %domains
++    %domains
+     END DOMAINS
+     ; Local addresses to receive "special handling":
+0    SPECIAL:
+     SYSTEM                        ; prevent punched decks
+     POSTMASTER RSMAIL 1 POSTMAST  ; Person for mail questions
+     BITINFO    RSMAIL 1 BITINFO   ; Person for BITinfo questions
+     END SPECIAL
+0
+0---------------------------------------------------------------------------
+0
+ ---------------------------------------------------------------------------
+0
+0
+         Figure 2:
++        Figure 2:
++        Figure 2:  Sample local replacements file: "CUVMB MAILLCL"
+0
+     CUVMB     *      *      LOCAL   1
+     CUUTSA    *      *      UTSMAIL 1  UNIXA
+0
+0---------------------------------------------------------------------------
+0
+ 11.2.4. Cookbook
++11.2.4. Cookbook
++11.2.4. Cookbook
+0                                      ______
++  The cookbook approach to build your MAILER Profile with MG follows.  This
+0is done for you by the MCONFIG EXEC.
+0
+0                                  - 29 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+   The first time only:
+0
+                 ____
++   1. Create a "name MTPLATE" file similar to the one in figure 1.
+0                ____
++   2. Create a "name MAILLCL" file with a single line in it:
+0
+           ________
++          SITENAME   *      *    LOCAL   1
+0
+    3. Get  yourself  added  onto  the list of people that are informed
+       when a new copy of the various NAMES files arrive at  your  site
+       (or you can "poll" NICSERVE@BITNIC for new versions).  The files
+       are huge, so try to  find  them  on  your  system  first  before
+       obtaining them from NICSERVE.
+0
+0  Each  time  a  new  "XMAILER",  "MAILER"  or  "DOMAIN NAMES" file becomes
+0available:
+0
+    1. Obtain read access to the NAMES files on any accessed disk.
+0                             ____               ____
++   2. Obtain read access to "name MTPLATE" and "name MAILLCL"  on  any
+       accessed disk.
+0   3. Type:
+0
+              ____
++          MG name
+0
+                                        ____
++   4. When  MG  is  done, a new file, "name PROFILE A1" will have been
+       created.
+0               ____
++   5. Compare "name PROFILE A1" to "MAILER PROFILE" on the  disk  that
+       ______
++      MAILER  reads  when it starts up to check for any discrepancies.
+       You should see only a list of new BITNET sites plus  some  sites
+                     ______
++      that have put MAILER into production use recently.
+0                                                ____
++   6. If  you  are  satisfied  with  the  new  "name PROFILE", replace
+       "MAILER  PROFILE"  with  it  (after  making  a   backup   copy).
+       Occasionally,  the  data  provided  by  BITNIC  is incorrect and
+       ______
++      MAILER will find a fatal error in the new PROFILE  so  you  will
+       have to revert to the previous version.
+0   7. Tell  Mailer  to  re-access  the  disk  reload  (see the example
+       below).
+0                                  - 30 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+                                                                  ______
++  The suggested way to install a  new  "MAILER  PROFILE"  while  MAILER  is
+0running is as follows:
+0
+    1. Obtain  write  access  to  the  minidisk  containing the "MAILER
+                              ______
++      PROFILE" (assuming the MAILER has read-only access).
+0   2. Make the needed changes to the file.
+0           ______
++   3. Tell MAILER to reaccess the disk.  For example, if the  disk  is
+       linked  at 193 as the B disk, issue the following commands (User
+       typein prefixed by "."):
+0
+           .CP SMSG MAILER CMS ACC 193 B
+           | CMS command accepted.
+           | R(00000) for: ACC 193 B
+           .CP SMSG MAILER RELOAD
+           | Reload command accepted.
+0
+       (These commands will only be accepted by the  userid  listed  as
+           ______
++      the MAILER maintainer in the profile.)
+0
+012. Diagnosing Problems
++12. Diagnosing Problems
++12. Diagnosing Problems
+0  ______
++  MAILER  breaks  from time to time.  Typically, some error will occur from
+0which it thinks it can't recover, so it will exit.  This generally leads to
+0______
++MAILER  logging out if you use the standard PROFILE EXEC.  If this happens,
+0                                   ______ _
++take a look at the topmost file in Mailer's reader.  This  is  usually  the
+0culprit.    Most  errors  have to do with wild syntax in a file that causes
+0______
++MAILER to crash due to some  "impossible  case"  happening  in  the  header
+0parsing module (which is admittedly a sloppy job).
+0
+0                               ______
++  Transfer this file away from MAILER and log it back in.  It will probably
+0run just fine.  Take a look at the file and if you can't figure out why  it
+0        ______
++caused  MAILER  to break down, then try asking someone else on BITNET (such
+0as the members of the XMAILER or MAIL-L mailing lists).
+                                   - 31 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+ 13. Messages
++13. Messages
++13. Messages
+0  ______
++  MAILER generates messages on the  console,  as  messages  sent  to  users
+0within  mail  reporting  an error, and as BSMTP replies.  Most messages use
+0                           __________       ___              ______  ___
++the standard CMS format of CCCMMMNNNT where CCC is "MAI" for MAILER, MMM is
+0                 ______                                  ___
++the  particular  MAILER  module  issuing  the  message,  NNN is the message
+0            _
++number, and T is one of three standard message  types  and  two  additional
+0types:
+0
+ I               Informational.
+0
+ W               Warning.
+0
+ E               Error.
+0
+ U               Report error to user within error mail.
+0
+ X               Send  RSCS  MSG  to  mail  sender  (e.g.  who  the  mail is
+                 "From:").
+0
+0  The message code is never put in error mail or sent as a CP or  RSCS  MSG
+0but is written to the console depending on the CP EMSG setting.
+0
+ 13.1. Message Codes
++13.1. Message Codes
++13.1. Message Codes
+0                                                                     ______
++  The  following  messages  with  message  numbers  are generated by MAILER
+0proper and the various user exits:
+0
+                                   __ __ __      ____
++MAILER000E Unable to obtain file 'fn ft fm', RC=nnnn
+0
+                                    _______  ____
++MAILER001I CUCCA VM Network MAILER version  date  Copyright  (c)  1982,1987
+     Columbia University
+0
+ MAILER002E Routing file not lrecl 80 and recfm F.
+                                   - 32 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+                              _______
++MAILER003E Stack overflow in routine
+     ______
++    MAILER did not have adequate virtual storage available to  process  the
+     mail.   This may be caused by a garbage file in the reader, a mail file
+     with a very large header, or the virtual machine size is too small.
+0
+                              ____
++MAILER004I MAILER running on node
+0
+ MAILER005I Initialization complete.
+0
+ MAILER006I MAILER waiting for work.
+0
+                                         __
++MAILER007E MAILER stopping due to error nn
+     Look  for  a previous error message which indicates the specific nature
+     of the error.
+0
+                       ____
++MAILER008E DIAG 14 RC=nnnn
+     CP  Diagnose  X'14'  failed.    This "never happens" except when the CP
+     SPOOL is in a mess.
+0
+                          _______         ____       ____
++MAILER009I Received file spoolid sender: vmid from: node <userid>
+0
+                      ____
++MAILER010E RDCARD RC=nnnn
+                                     ___ _______ ___ _____ _________
++    See  message 008, above and the CMS Command and Macro Reference for the
+     RDCARD macro return codes.
+0
+            ____
++MAILER011I nnnn bytes of stack space.
+                                                                      ______
++    After  initializing  (allocating tables and loading user exits), MAILER
+     allocates the rest of available contiguous virtual storage for use as a
+     stack for mail processing tasks.
+0
+             ____
++MAILER012I 'name' not in routing table.
+0
+                          ____     ____
++MAILER013W Distrib exit 'name' RC=nnnn
+     The named exit set a non-zero return code.  See if the  exit  generated
+     any error messages preceding this one.
+0
+                              ____ ____        ______
++MAILER014W Invalid entry in 'file name', line lineno
+0
+                            __       ______
++MAILER015W Table add error nn, line lineno
+     An error code was returned from the function that adds entries  to  one
+                                   - 33 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+                             ______                      ______
++    of  the  several tables MAILER uses.  See what line lineno contains and
+     hopefully that will tell you what went wrong.
+0
+            ____
++MAILER016E name table is empty
+0
+                       ____             __
++MAILER017E User exit 'name' load error nn
+     __                                                   ______
++    Nn  is  the  return code from the CMS LOAD command.  MAILER dynamically
+                                         ____         ____ _______
++    loads user exits by issuing a "LOAD name (ORIGIN some address).   These
+     exits  must  not  contain any unresolved external references (much like
+     RSCS exits).  (Exit developers should see the CMS PRELOAD command).
+0
+                       ____            ___ _______
++MAILER018I User exit 'name' loaded at hex address
+     Useful for determining the source of abends.
+0
+                                    ____ ______
++MAILER019U Unknown network sender: node userid
+     A user not registered as a trusted mailer tried to send mail containing
+     other than his own node name and userid as the sender.  See also mesage
+     021.
+0
+ MAILER020U Outgoing mail has no FROM: or SENDER: field.
+     The RFC822 mail header is missing a required field.
+0
+ MAILER021U FROM: or SENDER: inconsistent with spool file origin.
+     See message 019.
+0
+                               ____       ____ ____
++MAILER022E Invalid exit type 'type' for 'exit name'
+0
+ MAILER023U Required DATE is not present.
+     See message 020.
+0
+ MAILER024U Validity check failed.
+     See message 019.
+0
+ MAILER025U Message syntax is unrecognizable.
+     Something  other  than  a  PUNCH file containg RFC822 mail, BSMTP, or a
+                             ______
++    BSMTP reply appeared in MAILER's  reader.    The  usual  culprit  is  a
+     NETDATA file.
+0
+                              _______
++MAILER026U Internal error in routine
+0
+                                   - 34 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+                          ____
++MAILER027U Unknown host: name...
+0
+ MAILER028U Error loop detected.
+     ______
++    MAILER has determined that further transmission of  a  piece  of  error
+     mail  will  result  in it being sent to another mail server which would
+     cause a mail loop.  Instead, the mail is sent to the maintainer to deal
+     with.
+0
+                              ____    ____
++MAILER029I Returning file to user AT node
+0
+                                   _________
++MAILER030U Syntax error in field- fieldname
+0
+             ____
++MAILER031U 'name...' is too long to be a VM userid.
+0
+                                ____
++MAILER032U No such local user: vmid
+0
+                    ____
++MAILER033U Mail to vmid is not allowed.
+     ____
++    Vmid is in the SPECIAL table.
+0
+                         ____    ____
++MAILER034X Mail sent to user at node
+0
+ MAILER035U File is not a PUNCH file.
+0
+                                           ___  ____
++MAILER036U  RSCS  rejected  mail  w/tag:  tag  text....  Is  the   hostname
+     misspelled?
+                         ______
++    A file generated by MAILER was apparently transferred back  from  RSCS,
+     indicating  that  a non-existent node was specificied.  Be careful with
+                                         ______
++    this one since a user may also fool MAILER by transferring a mail  file
+     that he has received after playing around with the TAG.
+0
+ MAILER037U Another network mailer sent an invalid file.
+0
+ MAILER038I Mailer stopping.
+0
+ MAILER039I Mailer reloading.
+0
+                         _______      ____
++MAILER040X Mail sent to netname node name
+0
+                                   - 35 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+                                              ____
++MAILER041U Mail service is not available for name
+     Message generated by NOMAIL exit.
+0
+ MAILER042I Mail processing not active.
+     ______
++    MAILER  has  been  quiesced.    It  will  accept and respond to SMSG or
+     console commands but will not process any  files  that  arrive  in  its
+     reader.
+0
+            ____
++MAILER043I nnnn recipient blocks.
+0
+ MAILER044U No recipients for this node.
+     RFC822 mail was received from a remote sender  (e.g.  sent  by  another
+     ______
++    MAILER with the BITNET exit
+0
+                                           ____
++MAILER045E Can't ready reader 00C.  CP RC=nnnn
+     See message 008.
+0
+ MAILER046U Auto-forwarding error.
+0
+                     ____                   _____
++MAILER047X Mail for parm auto-forwarded to value
+0
+ MAILER048U Transferred files not allowed.  Was it a bad RSCS node  or  user
+     CP TRANSFER?
+0
+                 ____ _______
++MAILER049X File vmid spoolid rejected.
+     Generated by default ORIGINS exit.
+0
+            _______    ____
++MAILER050E routine RC=nnnn
+0
+                            ______
++MAILER051U Unknown domain: domain...
+0
+                         ____                                 ____
++MAILER052X Mail sent to nnnn recipients in distribution list name
+0
+                  __                              ____
++MAILER053U Error nn processing distribution list name
+0
+ MAILER054I BSMTP request transaction start.
+0
+ MAILER055I BSMTP request transaction end.
+                                   - 36 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+                                ____ ______
++MAILER056I BSMTP reply sent to node userid
+0
+ MAILER057I BSMTP reply transaction start.
+0
+ MAILER058I BSMTP reply transaction end.
+0
+ MAILER059I Error mail sent.
+0
+ MAILER060E BSMTP reply syntax unrecognizable.  Reply ignored.
+0
+ MAILER061E BSMTP reply contains multiple "050  MAIL  FROM"  lines.    Reply
+     ignored.
+0
+ MAILER062E A-disk not writeable.
+0
+ MAILER063U Mail aborted.  Maximum hop count exceeded.
+     The BSMTP processing code counts "Received:"  headers  and  refuses  to
+     further  send  any  mail  that  has  more  than 50 of them.  This is an
+     attempt to curtail mail loops caused by recursive  distribution  lists,
+     etc.
+0
+                                        ____
++MAILER064W Duplicate table entry (line nnnn) ignored.
+                       ____
++    The entry on line nnnn of the profile has not been added to the current
+     table being defined because it was previsously entered into the table.
+0
+                             ____ ____
++MAILER065U File is corrupt: file name
+0
+                             ____
++MAILER066X Mail appended to name bulletin board.
+0
+ 13.2. BSMTP Messages
++13.2. BSMTP Messages
++13.2. BSMTP Messages
+0  The  following  messages are generated by the BSMTP processor in response
+0to the command or condition indicated.  These messages appear in the  BSMTP
+0reply (when sent) and on the console:
+0
+ (initial)
+0
+                                   - 37 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+            ______                   _______
++      220 <domain> Columbia MAILER <version> BSMTP service ready.
+0
+ (any)
+0
+       500 Command out of sequence.
+0
+       500 Command ignored due to a previous error.
+0
+       421 Service not available (internal error).
+           Typically caused by a failure to obtain needed virtual storage.
+0
+       501 Parameter syntax error.
+0
+       553 Mailbox syntax error.
+0
+       554 Mail aborted.  Maximum hop count exceeded.
+0
+ HELO
+0
+            __ ______         ______ _ ______
++      250 <my domain> Hello <sender's domain>
+0
+            __ ______                        ______ _ ______
++      250 <my domain> You are a charlatan; <sender's domain> is bogus for a
+                                  ____   ______
++          file with RSCS origin <node> <userid>
+           However,  the  mail  will  be  allowed   to   continue   as   the
+           allow-charlatans variable is True.
+0
+             ______ _  ______                                          ____
++      501  <sender's  domain>  is  bogus for a file with RSCS origin <node>
+            ______
++          <userid>
+           Allow-Charlatans is False.
+0
+ MAIL
+0
+            _______
++      250 <mailbox>... sender OK.
+0
+            _______                                         ____   ______
++      501 <mailbox> does not correpsond to RSCS origin of <node> <userid>
+0
+ RCPT
+                                   - 38 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+            _______
++      250 <mailbox>... recipient OK.
+0
+       550 Mailbox not found.
+           ______
++          MAILER was unable to find an OUTGOING/DOMAINS table entry for the
+           given hostname.
+0
+ DATA
+0
+       354 Start mail input.  End with <crlf>.<crlf>
+           Everything up until a line with a lone dot is read in as the mail
+           data.  Possible response after the dot is received are:
+0
+       250 Mail accepted for delivery.
+0
+       552 DATA aborted:  out of disk space.
+0
+       451 DATA aborted:  CMS filesystem error.
+0
+       554-Mail not delivered to some or all recipients:
+           This message is followed by one or more of the "U"-type  messages
+           listed above, each on a line starting with "554".
+0
+ RSET
+0
+       250 Service reset OK.
+0
+ NOOP
+0
+       250 Ok
+0
+ QUIT
+0
+            __ ______
++      221 <my domain> Columbia MAILER BSMTP service done.
+0
+ VERB
+0
+       250 Verbose mode ON.
+                                   - 39 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+       250 Verbose mode OFF.
+0
+ TICK
+0
+            ______
++      250 <ticket>... That's the ticket.
+0
+ RPLY
+0
+       250 Error replies will be sent as mail.
+           Overrides whatever default is in effect and causes errors  to  be
+           reported to the user (person in the MAIL FROM) in mail.
+0
+       250 Error replies will be sent as smtp.
+           Overrides whatever default in in effect and causes errors  to  be
+           reported to the mail server (spool file origin) in a BSMTP reply.
+0
+ :REA
+0
+       200 :READ card ignored.
+                                                 ______
++          Makes life easier for people who test MAILER with the  CMS  PUNCH
+           command.
+0
+ (others)
+0
+       500 Invalid command.
+0
+ 13.3. Miscellaneous Messages
++13.3. Miscellaneous Messages
++13.3. Miscellaneous Messages
+0
+                  _______
++* New mail from <address>
+     Generated by LOCAL and PROFS exits and sent to the mail  recipient  via
+     CP  MSGNOH,  MSG,  or  whatever  command  is  specified as Msgcmd.  The
+     message is prefixed by "*" unless specified as Msgprefix.
+0
+0
+0
+0
+0                                  - 40 -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+ Table of Contents
++Table of Contents
++Table of Contents
+0   1. Introduction                                                        1
+        1.1. Copyright Notice                                              1
+        1.2. Additional Terms for Waterloo C Library Object Code           2
+        1.3. Support                                                       3
+       ______
++   2. MAILER Maintainer and Postmaster Job Description                    3
+    3. Inventory of Installation Materials                                 5
+        3.1. Object Code Distribution                                      5
+        3.2. Source Code Distribution A -- for sites with Waterloo C       6
+        3.3. Source Code Distribution B -- for sites without Waterloo C    6
+    4. Additional Files Needed for BITNET                                  6
+            ______
++   5. Your MAILER subscription and registration                           7
+        5.1. Subscription via LISTSERV                                     7
+        5.2. Registration :mailer tag                                      8
+    6. Installation Procedure                                              9
+                   ______
++   7. Overview of MAILER Operation                                       10
+    8. MAILER PROFILE                                                     12
+        8.1. Variable Declarations                                        12
+        8.2. ORIGINS Table                                                14
+        8.3. INCOMING Table                                               14
+        8.4. OUTGOING Table                                               15
+        8.5. DOMAINS Table                                                15
+        8.6. SPECIAL Table                                                16
+       ______
++   9. MAILER User Exits and MAILER TXTLIB                                16
+        9.1. Outgoing Exits                                               16
+            9.1.1. BITNET                                                 17
+            9.1.2. BSMTP                                                  17
+            9.1.3. DEFRT                                                  19
+            9.1.4. LOCAL                                                  19
+            9.1.5. NOMAIL                                                 20
+            9.1.6. INTERNET                                               20
+            9.1.7. UTSMAIL                                                20
+        9.2. Incoming Exits                                               21
+            9.2.1. RSCSVER                                                21
+            9.2.2. (none)                                                 21
+        9.3. Special Exits                                                21
+            9.3.1. FWDMAIL                                                22
+            9.3.2. RSMAIL                                                 22
+            9.3.3. DISTLIST                                               22
+            9.3.4. VMMLOG                                                 23
+            9.3.5. PROFS                                                  24
+            9.3.6. (none)                                                 24
+        9.4. Origins Exits                                                24
+        ______
++   10. MAILER Commands                                                   24
+    11. Maintenance                                                       25
+        11.1. New versions                                                25
+        11.2. "MAILER PROFILE" updates                                    26
+            11.2.1. Files Used by MG                                      26
+            11.2.2. Invoking MG                                           27
+            11.2.3. Examples of MG input files                            28
+            11.2.4. Cookbook                                              29
+                                    - i -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+    12. Diagnosing Problems                                               31
+    13. Messages                                                          32
+        13.1. Message Codes                                               32
+        13.2. BSMTP Messages                                              37
+        13.3. Miscellaneous Messages                                      40
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0                                  - ii -
++
+1                    ______
++                    MAILER Installation and Maintenance
+0
+ List of Figures
++List of Figures
++List of Figures
+0   Figure 1:
++   Figure 1:
++   Figure 1:   Sample template file: "CUVMB MTPLATE"                     28
+    Figure 2:
++   Figure 2:
++   Figure 2:   Sample local replacements file: "CUVMB MAILLCL"           29
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+                                   - iii -
++
+

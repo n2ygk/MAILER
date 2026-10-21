@@ -1,0 +1,17 @@
+@Comment{ERRLOG of bsmtp.mss by Scribe 7(1750) on 18 August 1993 at 15:36}
+
+Error found while initializing the text justifier:
+The FORTRAN keyword is not meaningful in the STYLE(OUTPUTFORMAT) command.
+Use TEXT, BINARY, GSIHEX, HEX, or PSEUDOHEX.
+
+Error in text found while processing the manuscript.
+bsmtp.mss, line 66:  R: 250 OK                              ! receiver agrees to accept it
+Line too wide; lost "it".
+
+Error found while finishing up after the end of the manuscript:
+Scribe has omitted 1 reference from the bibliography.
+Run Scribe again to correct the bibliography.
+
+Error found while finishing up after the end of the manuscript:
+Cross references to 3 label(s)s are wrong.
+Run the file through Scribe again to correct the references.

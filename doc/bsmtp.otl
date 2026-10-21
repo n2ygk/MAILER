@@ -1,0 +1,22 @@
+@Comment{OUTLINE of bsmtp.mss by Scribe 7(1750) on 18 August 1993 at 15:36}
+  1. Acknowledgements                                     1 bsmtp.mss, line 17
+  2. Introduction                                         1 bsmtp.mss, line 24
+  3. Batch SMTP operation                                 2 bsmtp.mss, line 48
+                              SMTPFIG 1                   2 bsmtp.mss, line 81
+                              BSMTP1 2                    2 bsmtp.mss, line 100
+                              BSMTP2 3                    2 bsmtp.mss, line 114
+  4. Modifications to SMTP syntax                         3 bsmtp.mss, line 117
+    4.1. Ticket command                                   4 bsmtp.mss, line 127
+    4.2. Verbose command                                  4 bsmtp.mss, line 139
+    4.3. Advantages                                       4 bsmtp.mss, line 154
+  5. Example of BSMTP operations                          5 bsmtp.mss, line 173
+  6. Compatibility with SMTP                              6 bsmtp.mss, line 250
+ Table of Contents                                        8 Scribea18649, line 2
+ List of Figures                                          2 Scribeb18649, line 3
+	Alphabetic Listing of Cross-Reference Tags and Labels
+
+Tag or Label Name                    Page   Label Value  Source file Location
+-----------------------------------------------------------------------------
+BSMTP1                                  3           2  bsmtp.mss, line 100
+BSMTP2                                  3           3  bsmtp.mss, line 114
+SMTPFIG                                 2           1  bsmtp.mss, line 81

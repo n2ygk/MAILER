@@ -1,0 +1,143 @@
+Mailer 1.24 Release Notes
+-------------------------
+
+CHANGE FROM "BITNET" TO "BSMTP" AS THE OUTGOING EXIT OF CHOICE
+-------------------------------------------------------------- 
+As I hope all of you saw in my recent postings to the MAIL-L and
+XMAILER mailing lists, a new version of the MG program (which
+generates the MAILER PROFILE from the various NAMES files) will change
+the default exit for a mailer from "BITNET" to "BSMTP".  This has the
+following impact:
+
+- Pre-version 1.24 MAILERs will generate a lot of "junk" BSMTP REPLY
+  files.  Version 1.24 MAILERs will also do the same thing when they
+  receive BSMTP requests from pre-version 1.24 MAILERs (that supply
+  a VERB command).
+
+- Non-BSMTP Mailers that are registered with the :mailer.vmid tag
+  and lacking any specific outgoing exit type will have to change
+  their registration with BITNIC.  So far,  only one site has
+  such a Mailer and will appear in the next XMAILER names with an
+  updated :mailer tag.
+
+Because of this, Mailer 1.24 will be released in two phases.  The
+first release will include Mailer 1.24 proper but with the old MG
+program.  The second release will follow several weeks later and will
+include the new MG program.  You are encouraged to install Mailer 1.24
+as soon as possible.
+
+
+LIST OF FILES
+-------------
+The following files will be sent with the first phase 1.24 release:
+
+    OFFER   MEMO
+    INSTALL LISTING
+    MAILER  MODULE
+    MAILER  TXTLIB
+
+Please read INSTALL LISTING.  It has been substantially rewritten
+and expanded.
+
+
+BUG FIXES
+---------
+RSCS-rejected files (i.e. referring to a misspelled or otherwise
+nonexistent node name) are now returned to the mail sender and not
+the postmaster.  (The S#NXFER SITEOPTS flag's meaning has been reversed
+by this.)
+
+A protection exception when attempting to parse a null address was
+fixed by Mike Borkowski of Waterloo.
+
+Most valid addresses presented to the BSMTP module now parse properly.
+Previsouly, some valid addresses caused a syntax error.  Fix thanks
+to Andy Hooper of Queens University.  Full RFC821 address are still
+not supported.
+
+MAILSMSI ASSEMBLE will now assemble under VM/SP 4.
+
+Error mail resulting from mail sent via a LOCAL mail server (e.g.
+SMTPSERV, MLNET, LISTSERV) will be returned to the mail sender
+and no longer to the server.
+
+BSMTP "dot doubling" now works.  It previously caused an extra line
+to be generated for each line starting with a dot.
+
+The BSMTP OUTGOING exit no longer turns mail addressed to
+"foo"%xyz@bar into RCPT TO:<"foo"@bar>.
+
+Type 2 OUTGOING exits (e.g. BITNET) are now properly "chained"
+together by the module that builds the list of exits to call
+(BUILDLST).  Previously, two instantiations of the same exit but with
+different server node/vmid would result in only one invocation of the
+exit.  The criterion for a single invocation of a type 2 exit is now
+(as it should have been) a match of:
+	- exit name
+	- server node
+	- server userid
+
+An improved error message tells you that there is a duplicate table
+entry in the MAILER PROFILE instead of providing a cryptic "table
+add error 08" message.
+
+
+NEW FEATURES
+------------
+
+Messages are now prefixed by "*" (for GONE).  Multiline local messages
+sent as command replies have a final marker line that indicates the
+end of the message group so that IUCV-trapping programs can determine
+when the end of a group of replies has been received.
+
+BSMTP support has been substantially changed/improved:
+	- The MAILER version is included in the "220" service ready message.
+	- A better "Received" message is generated.  See INSTALL LISTING
+	  for details.
+	- BSMTP REPLYs (when sent) are sent class M (was B).
+	- BSMTP REPLYs are now only sent when a VERB command appeared
+	  or when there was an error and the "RPLY SMTP" command appeared.
+	  By default, errors are sent as mail to the sender.
+	- BSMTP REPLYs when received by MAILER are now parsed and will
+	  cause error mail to be sent to the original mail sender if
+	  the reply indicates an error code.
+	- A failure reply from the end-of-DATA command (".") includes
+	  the specific error messages indicating the reason for failure.
+	- The :READ command has been added to ignore CMS PUNCH command headers.
+
+The INTERNET exit includes Henry's 1/29/87 version plus Jeff's updates
+which include better error messages.
+
+The LOCAL exit has substantially improved PROFS "emulation" thanks
+to Peter Day of EMU.  See also the PROFS exit.
+
+The BSMTP exit no longer generates a VERB command.  It also has two
+new types of parameter (see INSTALL LISTING) which allow both RFC821
+"at-domain-list" routing and the "percent routing hack."
+
+Two new MAILER PROFILE variables have been defined:
+	- Allow-Charlatans=TRUE tells it to allow BSMTP mail from
+	  unregistered mailers to contain domains and mailboxes that
+	  do not strictly match the RSCS file origin.  When this
+	  happens, comments in the "Received" header and/or the
+	  presence of an "X-Delivery-Notice" indicate this has happened.
+	- Verbose-Logging=TRUE tells the BSMTP module to print all BSMTP
+	  commands and responses on the console.
+
+An additional attempt at preventing BSMTP mail loops is done by counting
+the number of "Received:" headers and stopping the mail if it has
+more than 50.
+
+There are three new exits (see INSTALL LISTING for a description):
+	- DISTLIST (BSMTP distribution lists)
+	- PROFS (local PROFS delivery)
+	- VMMLOG (Columbia VMM-format bulletin boards)
+
+The SHOW command now has an alias of QUERY and an additional option of
+ACTIVE (e.g. SHOW ACTIVE DOMAINS *).  Do not trust the statistics
+collected though.  There are some places were statistics are not being
+updated.
+
+Source maintenance procedures now use the standard VM/SP EXECUPDT
+utility for C source and H files.
+

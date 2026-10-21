@@ -1,0 +1,21 @@
+@Comment{ERRLOG of install.mss by Scribe 7(1750) on 11 August 1993 at 16:57}
+
+Error in text found while processing the manuscript.
+install.mss, line 281:  @begin(HD3)5.2.@ @$Registration :mailer tag@end(HD3)
+Current font (PR114B) does not contain a ":" character.
+Page 7, line 2: 1 special character needed.
+
+Error in text.
+install.mss, line 701:  @begin(HD4)9.2.2.@ @$(none)@end(HD4)
+Current font (PR114B) does not contain a "(" character.
+
+Error in text.
+install.mss, line 701:  @begin(HD4)9.2.2.@ @$(none)@end(HD4)
+Current font (PR114B) does not contain a ")" character.
+Page 16, line 13: 2 special characters needed.
+Page 18, line 16: 2 special characters needed.
+
+Error in text.
+install.mss, line 833:  @begin(HD3)11.2.@ @$"MAILER PROFILE" updates@end(HD3)
+Current font (PR114B) does not contain a """ character.
+Page 19, line 23: 2 special characters needed.
