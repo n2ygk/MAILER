@@ -7,7 +7,7 @@ Some archived documentation related to MAILER. These documents were written with
 
 * [Installation and Maintenance Guide](./install.md) [(Scribe source)](./install.mss)
 
-* [Program Logic](./plm.md) [(Scribe source)[./plm.mss])
+* [Program Logic](./plm.md) [(Scribe source)](./plm.mss])
 
 * [MAILER Release 1.24 Annoucement](mail124.announce)
 
