@@ -1,0 +1,58 @@
+WRITELOG TITLE     'WRITE LOG FILE ENTRY'
+*---------------------------------------------------------------------*
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         *
+*    Program Property of the Trustees of Columbia University in the   *
+*    City of New York.                                                *
+*---------------------------------------------------------------------*
+WRITELOG CSECT
+* WRITELOG -
+* WRITES AN ENTRY TO THE LOG FILE AND TO THE CONSOLE.
+*
+* ACCEPTS IN R0 - LENGTH OF MESSAGE TEXT TO WRITE
+*            R1 - ADDRESS OF MESSAGE TEXT
+*
+* REGISTER USAGE -
+R0  EQU  0 -
+R1  EQU  1 -
+R2  EQU  2 -
+R3  EQU  3 -
+R4  EQU  4 -
+R5  EQU  5 - ADDRESS OF LOG FILE NAME
+R6  EQU  6 -
+R7  EQU  7 -
+R8  EQU  8 -
+R9  EQU  9 - MESSAGE LENGTH
+R10 EQU 10 - ADDRESS OF MESSAGE TEXT
+R11 EQU 11 - MONBLOK BASE
+R12 EQU 12 - PROGRAM BASE
+R13 EQU 13 - SAVE AREA
+R14 EQU 14 - SUBROUTINE LINKAGE
+R15 EQU 15 - SUBROUTINE LINKAGE
+*
+* EXTERNAL MACROS/MODULES CALLED -
+*
+         EJECT
+WRITELOG CSECT
+         STM       R14,R12,12(R13)
+         BALR      R12,0
+         USING     *,R12
+         LA        R14,SAVE
+         ST        R13,4(R14)
+         ST        R14,8(R13)
+         LR        R13,R14
+*-------------------------------------------------------------------+
+*  GET BASE REGISTERS, ETC.                                         |
+*-------------------------------------------------------------------+
+         LR        R9,R0               COPY TEXT LENGTH
+         LR        R10,R1              COPY TEXT ADDRESS
+         WRTERM    (R10),(R9)          WRITE TO TERMINAL
+         SR        R15,R15             ALL DONE
+RET      EQU       *
+         L         R13,4(R13)
+         L         R14,12(R13)
+         LM        R0,R12,20(R13)
+         BR        R14
+*
+         LTORG
+SAVE     DS        18F
+         END       WRITELOG

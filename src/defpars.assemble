@@ -1,0 +1,216 @@
+DEFPARS  TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - FIELD PARSER'
+*---------------------------------------------------------------------*
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         *
+*    Program Property of the Trustees of Columbia University in the   *
+*    City of New York.                                                *
+*---------------------------------------------------------------------*
+DEFPARS  CSECT
+* DEFPARS  -
+*  This is the default parser for header fields.  Each line of the
+*  field is returned as a token.  FIPARS is not used.
+*
+* LAST EDIT: 4/14/82 BY ALAN CROSSWELL
+*
+* CALLED VIA -
+*  CALL DEFPARS,(MAILBLOK,FIELDD,STKP,STKL)
+         SPACE ,
+PAB      DSECT ,
+@MBLOK   DS    A             ADDRESS OF MAILBLOK
+@FIELDD  DS    A             ADDRESS OF FIELD DESCRIPTOR
+@STK     DS    2F            STACK POINTER
+         SPACE ,
+         SPACE
+* REGISTER USAGE -
+R0  EQU  0 -
+R1  EQU  1 -
+R2  EQU  2 -
+R3  EQU  3 -
+R4  EQU  4 -
+R5  EQU  5 -
+R6  EQU  6 -
+R7  EQU  7 - FIELDD BASE
+R8  EQU  8 - MAILBLOK BASE
+R9  EQU  9 - STACK POINTER
+R10 EQU 10 - STACK LENGTH
+R11 EQU 11 - PARM LIST POINTER
+R12 EQU 12 - PROGRAM BASE
+R13 EQU 13 - SAVE AREA
+R14 EQU 14 - SUBROUTINE LINKAGE
+R15 EQU 15 - SUBROUTINE LINKAGE
+         BLOCKS ,
+         MAILBLOK ,
+         SPACE 1
+         COPY  DEBUG
+         EJECT
+DEFPARS  CSECT ,
+         USING DEFPARS,R15   TEMPORARY ADDRESSABILITY
+         B     EYESKIP       BRANCH OVER EYESKIP
+MYNAME   DC    CL8'DEFPARS',CL8'&SYSDATE'
+EYESKIP  DS    0H
+         DROP  R15
+         STM   R14,R12,12(R13) SAVE CALLER'S REGS
+         LR    R12,R15       PERMANENT ADDRESSABILITY
+         USING DEFPARS,R12
+         LA    R14,SAVE      MY SAVE AREA
+         ST    R13,4(R14)    SAVE CALLER'S PTR
+         ST    R14,8(R13)    CHAIN MINE BACK
+         LR    R13,R14       SET MY SAVE PTR
+         LR    R11,R1        GET A BETTER HANDLE
+         USING PAB,R11       ADDRESS PARMS
+         L     R8,@MBLOK     MAILBLOK
+         USING MAILBLOK,R8
+         L     R1,@STK       GET ADDRESS OF STACK POINTER
+         L     R9,0(R1)      GET STACK POINTER
+         L     R1,@STK+4     GET ADDRESS OF STACK LENGTH
+         L     R10,0(R1)     GET STACK LENGTH
+         L     R7,@FIELDD    GET FIELDD BASE
+         USING FIELDD,R7     ADDRESS THE FIELD DESCR
+         L     R5,FISTR      GET STRING POINTER
+         L     R6,FIEND      GET END OF STRING POINTER
+         SR    R6,R5         GET REMAINING LENGTH OF STRING
+         LA    R9,7(R9)      ROUND STACK UP TO A DWORD BOUNDARY
+         N     R9,=X'FFFFFFF8'
+         LR    R1,R9         COPY IT
+         L     R2,@STK       POINT TO STACK PTR
+         S     R1,0(R2)      GET AMOUNT ADDED
+         SR    R10,R1        REMOVE FROM STACK LENGTH
+         BL    NOSPACE       OUT OF SPACE!
+         SPACE ,
+*--------------------------------------------------------------------
+*  ALLOCATE THE INITIAL TOKEND.  HANG THE ADDRESS OF IT OFF OF THE
+*  CURRENT TOKEN LIST POINTED TO BE FITOK.
+*--------------------------------------------------------------------
+         BL    NOSPACE       RATS!
+         L     R1,FITOK      GET FIELD NAME TOKEND
+         USING TOKEND,R1     ADDRESS IT
+LOOP     EQU   *
+         ICM   R2,B'1111',TOKNEXT  LOOK FOR LIST END
+         BZ    LOOPOUT
+         LR    R1,R2         CHAIN THRU FIELD NAME TOKENS
+         B     LOOP
+LOOPOUT  EQU   *
+         S     R10,=A(TOKSIZ) MAKE ROOM FOR THE TOKEN
+         BL    NOSPACE       SORRY
+         ST    R9,TOKNEXT          HANG NEW TOKEN OFF END OF LIST
+         XC    0(TOKSIZ,R9),0(R9)  Zero new TOKEND
+         ST    R1,TOKPREV-TOKEND(R9) Chain backward
+         DROP  R1
+         MVI   TRAPTAB+X'15',X'FF'  USE TRAPTAB FOR NEWLINES
+*--------------------------------------------------------------------
+*  LOOP:  ALLOCATE A TOKEND
+*         STUFF TOKEN START ADDRESS
+*         SEARCH FOR NEXT NEWLINE
+*         STUFF TOKEN END ADDRESS
+*--------------------------------------------------------------------
+PLOOP    EQU   *
+         USING TOKEND,R9     ADDRESS THE CURRENT TOKEN
+         LR    R1,R5         GET STRING ADDRESS
+         LR    R2,R6         GET STRING LENGTH
+         BAL   R14,LTRIM     TRIM OFF LEADING BLANKS
+         LR    R5,R1         GET UPDATED POINTER
+         LR    R6,R2         GET UPDATED LENGTH
+         ST    R5,TOKPTR         START ADDRESS OF THE STRING
+         MVI   TOKTYPE,TOKQSTR CALL IT A QUOTED STRING
+         AIF   (NOT &DBGTOK).NODBG00
+         LINEDIT TEXT='DEFPARS : Allocate TOKEND@........ for .........+
+               .....................',                                 +
+               SUB=(HEX,(R9),CHARA,((R5),R6)),                         +
+               DOT=NO,COMP=NO,RENT=NO
+.NODBG00 ANOP
+         LR    R1,R5         POINT TO START OF STRING
+         LR    R2,R6         REMAINING STRING LENGTH
+         BAL   R14,FIND15    FIND NEXT NEWLINE (X'15')
+         LR    R5,R1         GET UPDATED POINTER
+         ST    R0,TOKLEN     SAVE LENGTH OF STRING SCANNED
+         LTR   R6,R2         GET REMAINDER LENGTH
+         BNH   LASTLINE      FOUND LAST LINE OF FIELD
+         S     R10,=A(TOKSIZ) ALLOCATE A NEW TOKEN
+         BL    NOSPACE       WAAA!!!
+         LA    R1,TOKSIZ(R9) NEXT POINTER
+         ST    R1,TOKNEXT         SET NEXT POINTER
+         XC    0(TOKSIZ,R1),0(R1)  Zero new TOKEND
+         ST    R9,TOKPREV-TOKEND(R1) Chain backward
+         LR    R9,R1         CHAIN ALONG
+         B     PLOOP
+LASTLINE EQU   *             DONE BUILDING TOKENS
+         XC    TOKNEXT,TOKNEXT  CLEAR THE NEXT POINTER
+         L     R1,@STK       GET STAK POINTER
+         LA    R9,TOKSIZ(R9) UPDATE STACK POINTER
+         ST    R9,0(R1)      RESTORE UPDATED STACK POINTER
+         L     R1,@STK+4
+         ST    R10,0(R1)     AND UPDATED STACK LENGTH
+         SR    R15,R15       TIME TOGO HOME
+RET      EQU   *
+         MVI   TRAPTAB+X'15',0  CLEAR THE TRAP TABLE
+         L     R13,4(R13)              GET CALLER'S SAVE PTR
+         L     R14,12(R13)             GET R14
+         LM    R0,R12,20(R13)          GET R0-R12
+         BR    R14                     RETURN
+         SPACE ,
+*--------------------------------------------------------------------
+* FIND15 -
+*  FINDS NEXT NEWLINE IN A STRING
+* ENTRY -
+*  R1 - ADDRESS OF STRING
+*  R2 - LENGTH OF STRING
+* EXIT -
+*  R0 - LENGTH OF SUBSTRING
+*  R1 - UPDATED TO POINTER AFTER X'15'
+*  R2 - REMAINING STRING LENGTH
+*--------------------------------------------------------------------
+FIND15   EQU   *
+         STM   R4,R5,12(R13) SAVE ONLY THESE 2
+         LR    R4,R1         GET STRING POINTER
+         LTR   R5,R2         GET STRING LENGTH
+         BNH   FZERO         ZERO LENGTH STRING
+         BCTR  R5,0          -1 FOR EXECUTE
+         LA    R1,1(R4,R5)   POINT TO END OF STRING
+         EX    R5,TRAP15     TRAP THE X'15'
+         LR    R0,R1         GET END POINTER
+         SR    R0,R4         LENGTH = END-START
+         LA    R1,1(R1)      POINT PAST THE X'15'
+         LR    R2,R5         GET LENGTH BACK
+         SR    R2,R0         REMAINDER LENGTH
+         BCTR  R2,0          -1 FOR STRIPPED X'15'
+         LM    R4,R5,12(R13)
+         BR    R14           RETURN
+FZERO    EQU   *
+         LM    R4,R5,12(R13)
+         SR    R0,R0         ZERO LENGTH
+         BR    R14
+         SPACE ,
+*--------------------------------------------------------------------
+*  LTRIM -
+*   TRIM LEADING BLANKS FROM A STRING.
+*  R1 - ADDRESS OF STRING
+*  R2 - LENGTH OF STRING
+*  RETURNS UPDATED R1,R2
+*--------------------------------------------------------------------
+LTRIM    EQU   *
+         STM   R4,R5,12(R13) PRESERVE WORK REGS
+         LR    R4,R1         GET ADDRESS
+         LTR   R5,R2         GET LENGTH
+         BZ    TRET          RETURN ALREADY
+         BCTR  R5,0          -1 FOR EXECUTE
+         LA    R1,0(R1,R2)   ADDRESS OF END OF STRING
+         EX    R5,TRAPBLK    TRAP ON FIRST NON BLANK
+         LR    R2,R1         GET UPDATED LENGTH
+         SR    R2,R4         BY SUBTRACTING ADDRESSES
+         SR    R5,R2         GET REMAINING LENGTH
+         LA    R2,1(R5)      ADD ONE FOR THE BCTR THAT WAS DONE
+TRET     EQU   *
+         LM    R4,R5,12(R13)
+         BR    R14
+         SPACE ,
+*--------------------------------------------------------------------
+*  ERROR EXITS
+*--------------------------------------------------------------------
+NOSPACE  EQU   *
+         LA    R15,12        INTERNAL BUG CAUGHT
+         B     RET           RETURN
+         SPACE ,
+TRAP15   TRT   0(0,R4),TRAPTAB         EXECUTED TRT
+TRAPBLK  TRT   0(0,R4),SKIPBLKS
+         LTORG ,
+SAVE     DS    18F                     SAVE AREA
+         END   DEFPARS

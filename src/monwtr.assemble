@@ -1,0 +1,383 @@
+WTR      TITLE     'MONWTR - CONSOLE LOG WRITER'
+*---------------------------------------------------------------------*
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         *
+*    Program Property of the Trustees of Columbia University in the   *
+*    City of New York.                                                *
+*---------------------------------------------------------------------*
+MONWTR   CSECT
+* WTR - CONSOLE LOG WRITER
+*  WTR TAKES A MESSAGE AND WRITES IT TO THE CONSOLE PRECEDED BY
+*  A DATE AND TIME.  THE MESSAGE IS EDITED VIA DIAGNOSE 5C ACCORDING
+*  TO THE CURRENT EMSG SETTING.
+* ADDITIONALLY, VARIABLE FIELDS MAY BE FILLED IN THE MESSAGE
+* ACCORDING TO A FORMAT LIST PASSED IN R1.
+*
+*                                      ALAN CROSSWELL 8/81
+* ENTRY CONDITIONS -
+*  R1 - PARM LIST POINTER
+*
+* PARM LIST FORMAT -
+*        +--------------------------------------+
+*     0  |    0    |  MESSAGE NUMBER            |
+*        +--------------------------------------+
+*     4  |  FORMAT | VARIABLE                   |
+*        +--------------------------------------+
+*           .
+*           .
+*           .
+*        +--------------------------------------+
+*        |  FORMAT | VARIABLE                   |
+*        +--------------------------------------+
+*
+*  THE VARIABLE-LENGTH PARM LIST IS TERMINATED WITH THE LEFTMOST
+*  '1' BIT TURNED ON IN THE LAST WORD.
+*
+*  FORMAT -
+         SPACE
+A  EQU  X'10' - VARIABLE IS AN ADDRESS
+B  EQU  X'08' - BIT STRING
+C  EQU  X'04' - CHARACTER STRING
+D  EQU  X'02' - DECIMAL FULLWORD
+X  EQU  X'01' - HEXADECIMAL STRING
+         SPACE
+* MESSAGE STRING DESCRIPTORS ARE IN MSGTEXT CSECT WITH FOLLOWING
+* FORMAT -
+*        +--------------------------------------+
+*    0   |   MAXIMUM MESSAGE NUMBER DEFINED     |
+*        +--------------------------------------+
+*        |   ADDRESS OF MESSAGE 0 DESCRIPTOR    |
+*        +--------------------------------------+
+*        |   ADDRESS OF MESSAGE 1 DESCRIPTOR    |
+*        +--------------------------------------+
+*           .
+*           .
+*           .
+*        +--------------------------------------+
+*        |   ADDRESS OF LAST MESSAGE DESCRIPTOR |
+*        +--------------------------------------+
+         EJECT
+* MESSAGE DESCRIPTOR FORMAT -
+*        +--------------------------------------+
+*    0   |  ADDRESS OF MESSAGE TEXT STRING      |
+*        +--------------------------------------+
+*    4   |  C1    |  L1    |
+*        +-----------------+
+*    6   |  C2    |  L2    |
+*        +-----------------+
+*           .
+*           .
+*           .
+*        +-----------------+
+*        |  CN    |  LN    |
+*        +-----------------+
+*        |   0    |
+*        +--------+
+*
+*  CN - COLUMN NUMBER FOR START OF VARIABLE FIELD
+*  LN - LENGTH OF VARIABLE FIELD
+*
+* MESSAGE TEXT STRING FORMAT -
+*        +--------------------------------------/   /---+
+*        | LENGTH | MONITR###C MESSAGE TEXT             |
+*        +--------------------------------------/   /---+
+*
+* FUNCTION -
+*     EACH ENTRY IN THE PATTERN STRING IS REPLACED BY THE
+*     CORRESPONDING ENTRY IN THE PARM LIST WITH APPROPRIATE
+*     DATA CONVERSION BEING DONE.  ANY MISSING ENTRIES IN THE
+*     PLIST RESULT IN NO MODIFICATION OF THE CURRENT DATA IN
+*     THE MESSAGE TEXT.
+* REGISTER USAGE -
+         SPACE
+R0 EQU 0 -
+R1 EQU 1 -
+R2 EQU 2 -
+R3 EQU 3 -
+R4 EQU 4 -
+R5 EQU 5 - LENGTH OF VARIABLE FIELD IN MESSAGE DESCRIPTOR
+R6 EQU 6 - START COLUMN OF VARIABLE FIELD IN MESSAGE DESCRIPTOR
+R7 EQU 7 - LENGTH OF MESSAGE SKELETON
+R8 EQU 8 - MESSAGE TEXT POINTER
+R9 EQU 9 - MESSAGE DESCRIPTOR POINTER
+R10 EQU 10 - COPY OF PARM POINTER (R1 ON ENTRY)
+R11 EQU 11 - MSGTEXT CSECT BASE
+R12 EQU 12 - PROGRAM BASE
+R13 EQU 13 - SAVE AREA POINTER
+R14 EQU 14 - LINKAGE
+R15 EQU 15 - LINKAGE
+         EJECT
+MONWTR   CSECT
+         STM       R14,R12,12(R13)
+         BALR      R12,0
+         USING     *,R12
+         LA        R14,SAVE
+         ST        R13,4(R14)
+         ST        R14,8(R13)
+         LR        R13,R14
+*--------------------------------------------------------------------
+* GET THE MESSAGE NUMBER, CHECK FOR VALIDITY AND COPY THE MESSAGE
+* SKELETON INTO THE WORK BUFFER.
+*--------------------------------------------------------------------
+         LR        R10,R1              COPY POINTER
+         L         R11,=V(MSGTEXT)     GET MESSAGE TEXT CSECT
+         L         R1,0(R11)           GET MAX MESSAGE NUMBER ALLOWED
+         L         R9,0(R10)           GET MESSAGE NUMBER REQUESTED
+         CR        R9,R1               COMPARE THEM
+         BH        MSGHIGH             NUMBER IS TOO HIGH...
+         SLL       R9,2                MULTIPLY MSG NUMBER BY 4
+         LA        R9,4(R9,R11)        ADDR. OF DESCRIPTOR POINTER
+         L         R9,0(R9)            ADDRESS OF DESCRIPTOR
+         L         R8,0(R9)            ADDRESS OF MESSAGE TEXT
+         SR        R7,R7               GET A ZERO
+         IC        R7,0(R8)            LENGTH OF MSG SKELETON
+         CH    R7,=Y(L'BUFFER)     Too long for buffer?
+         BNH   *+8                 No  : Skip.
+         LA    R7,L'BUFFER         Yes : Truncate it.
+         BCTR      R7,0                -1 FOR EXECUTE
+         LA        R8,1(R8)            POINT AT TEXT PART
+         EX        R7,MOVEIT           COPY SKELETON INTO BUFFER
+         MVI   FLAGS,0
+         CLI   BUFFER+9,C'U' MSG NUMBERS ENDING IN 'U' ?
+         BNE   NOU           NOT FOR USER LOG
+         OI    FLAGS,UFLG
+NOU      EQU   *
+         CLI   BUFFER+9,C'X' MSG NUMBERS ENDING IN 'X'?
+         BNE   NOX           NOT FOR MESSAGE ROUTINE
+         OI    FLAGS,XFLG
+NOX      EQU   *
+*--------------------------------------------------------------------
+* ENTER LOOP, CHECKING MESSAGE DESCRIPTOR PATTERN FOR ANY VARIABLE  -
+* FIELDS. FOR EACH VARIABLE FIELD, SEE IF IT HAS A CORRESPONDING    -
+* REPLACEMENT VARIABLE IN THE PARAMETER LIST.                       -
+*--------------------------------------------------------------------
+         SR        R5,R5               GET ZERO
+         SR        R6,R6               GET ZERO
+         LA        R9,3(R9)            POINT BEFORE C1
+REPLOOP  EQU       *                   REPLACEMENT LOOP
+         LA        R9,1(R9)            GET NEXT DESCRIPTOR FIELD
+         ICM       R6,B'0001',0(R9)    GET THE COLUMN POSITION
+         BZ        REPEND              OUT OF PATTERNS TO FILL
+         LA        R9,1(R9)            BUMP POINTER
+         ICM       R5,B'0001',0(R9)    GET THE LENGTH
+         BZ        REPLOOP             LENGTH ZERO? - JERK!
+         TM        0(R10),X'80'        END OF REPLACEMENT LIST?
+         BO        REPEND              YES, FINISH UP
+         LA        R10,4(R10)          POINT AT NEXT ENTRY
+         TM        0(R10),B+C+D+X      IS IT ONE OF THESE ?
+         BZ        REPLOOP             IT'S A SKIP ENTRY
+         EJECT
+*--------------------------------------------------------------------
+* DETERMINE WHICH KIND OF CONVERSION NEEDS TO BE DONE AND BRANCH    -
+* TO THE APPROPRIATE CODE TO DO IT.     AT THIS POINT, REGISTERS    -
+* ARE AS FOLLOWS:                                                   -
+*  R5 - LENGTH OF PATTERN TO BE FILLED                              -
+*  R6 - COLUMN POSITION OF PATTERN TO BE FILLED (BUFFER(R6))        -
+*  R10- ADDRESS OF VARIABLE TO BE CONVERTED AND TYPE OF CONVERSION  -
+*       IN HIGH BYTE.                                               -
+*                                                                   -
+* IF THE 'A' BIT IS ON, THEN THE LOW THREE BYTES IN R10 ARE THE     -
+* ADDRESS OF THE VARIABLE TO BE CONVERTED.                          -
+* IF THE 'A' BIT IS OFF, THEN THE LOW THREE BYTES IN R10 ARE THE    -
+* VALUE TO BE CONVERTED.                                            -
+*--------------------------------------------------------------------
+         SPACE
+         TM        0(R10),B            BIT STRING?
+         BO        BITSTR              DO BIT STRING STUFF
+         TM        0(R10),C            CHARACTER STRING
+         BO        CHARSTR             DO CHAR STRING STUFF
+         TM        0(R10),D            DECIMAL FULLWORD
+         BO        DECIMAL             DO DECIMAL STUFF
+         TM        0(R10),X            HEXADECIMAL STRING?
+         BO        HEXSTR              DO HEX STUFF
+         B         REPLOOP             UNKNOWN BITS
+         SPACE     2
+*--------------------------------------------------------------------
+BITSTR   EQU       *                   BIT STRING CONVERSIONS
+         TM        0(R10),A            ADDRESS OR VALUE ARGUMENT?
+         BO        BITA                ADDRESS OF IT
+         C         R5,=F'24'           MORE THAN 24 BITS?
+         BNH       BIT0                NOPE....
+         LA        R5,24               CAN'T FIT MORE THAN 24
+BIT0     EQU       *
+         LA        R3,1(R10)           DATA IS VALUE IN PARM
+         B         BIT1                GO DO THE REST
+BITA     EQU       *
+         L         R3,0(R10)           ADDRESS OF DATA TO MOVE
+BIT1     EQU       *                   COMMON CODE FOR BOTH WAYS
+         LA        R4,BUFFER(R6)       DESTINATION ADDRESS
+         SR        R2,R2               BYTE COUNTER
+         SR        R6,R6               BIT COUNTER
+         IC        R1,0(,R3)           GET FIRST DATA BYTE
+         SLL       R1,24               MOVE IT TO THE TOP
+BITLOOP  EQU       *
+         C         R6,=F'7'            UP TO BIT 7 YET?
+         BNH       BIT2                NOPE
+         SR        R6,R6               BACK TO BIT ZERO OF ...
+         LA        R2,1(R2)            ... THE NEXT BYTE
+         IC        R1,0(R2,R3)         GET THE BYTE
+         SLL       R1,24               MOVE IT TO THE TOP
+BIT2     EQU       *
+         LTR       R1,R1               HI BIT TURNED ON?
+         BL        BITON               YUP
+         MVI       0(R4),C'0'          NO, IT'S OFF (0)
+         B         BIT3
+BITON    EQU       *
+         MVI       0(R4),C'1'          BIT IS ON (1)
+BIT3     EQU       *
+         LA        R4,1(R4)            BUMP DESTINATION POINTER
+         LA        R6,1(R6)            BUMP BIT COUNTER
+         SLL       R1,1                SHIFT LEFT 1 BIT
+         BCT       R5,BITLOOP          AND LOOP BACK UNLESS FIELD
+         B         REPLOOP             ... IS FULL
+         SPACE     2
+*--------------------------------------------------------------------
+CHARSTR  EQU       *                   CHARACTER STRING COPYING
+         TM        0(R10),A            ADDRESS OR VALUE ARGUMENT?
+         BO        CHARA               THE EASIER ONE
+         C         R5,=F'3'            MORE THAN 3 BYTES?
+         BNH       CHAR0               NOPE....
+         LA        R5,3                SORRY....CAN'T FIT MORE THAN 3
+CHAR0    EQU       *
+         LA        R3,1(R10)           DATA IS VALUE IN PARM
+         B         CHAR1               GO DO THE REST
+CHARA    EQU       *                   CHARACTER ADDRESS ENTRY
+         L         R3,0(R10)           ADDRESS OF DATA TO MOVE
+CHAR1    EQU       *                   COMMON CODE FOR BOTH WAYS
+         BCTR      R5,0                -1 FOR EXECUTE
+         LA        R4,BUFFER(R6)       COLUMN TO MOVE INTO
+         EX        R5,MOVCH            MOVE DATA INTO BUFFER
+         B         REPLOOP             AND RETURN
+MOVCH    MVC       0(0,R4),0(R3)       COPY STRING INTO BUFFER
+         SPACE     2
+*--------------------------------------------------------------------
+DECIMAL  EQU       *                   DECIMAL CONVERSION
+         TM        0(R10),A            ADDRESS OR VALUE?
+         BO        DECA                ADDRESS.
+         ICM       R1,B'0111',1(R10)   GET VALUE INTO R1
+         SLL       R1,8                SIGN EXTEND
+         SRA       R1,8                3 BYTES TO 4
+         B         DEC1
+DECA     EQU       *
+         L         R1,0(R10)           GET DATA ADDRESS BY R10
+         L         R1,0(R1)            GET THE VALUE
+DEC1     EQU       *
+         CVD       R1,DWORD            MAKE IT DECIMAL
+         LA        R4,BUFFER(R6)       ADDRESS TO STUFF
+         LTR       R1,R1               IS IT NEGATIVE?
+         BNL       DECPOS              NO, POSITIVE
+         MVI       0(R4),C'-'          MOVE IN MINUS SIGN.
+         BCTR      R5,0                NOW IT'S 1 SHORTER
+         LA        R4,1(R4)            BUMP ADDRESS
+DECPOS   EQU       *
+         BCTR      R5,0                LENGTH-1 FOR EXECUTE
+         LTR       R5,R5               ANY ROOM LEFT?
+         BL        REPLOOP             OH WELL...
+         SLL       R5,4                L1 FOR UNPK EXECUTE!
+         EX        R5,UNPACK           UNPACK THE NUMBER
+         SRL       R5,4                GET THE NUMBER BACK
+         LA        R4,0(R4,R5)         LAST BYTE OF NUMBER
+         OI        0(R4),X'F0'         FIX THE ZONE
+         B         REPLOOP             AND RETURN
+UNPACK   UNPK      0(0,R4),DWORD       UNPACK INSTRUCTUIN
+         SPACE     2
+*--------------------------------------------------------------------
+HEXSTR   EQU       *                   HEXADECIMAL STRING CONVERSION
+         TM        0(R10),A            ADDRESS OR VALUE ARGUMENT?
+         BO        HEXA                ADDRESS OF IT
+         C         R5,=F'6'            MORE THAN 6 HEX DIGITS?
+         BNH       HEX0                NOPE....
+         LA        R5,6                CAN'T FIT MORE THAN 6
+HEX0     EQU       *
+         LA        R3,1(R10)           DATA IS VALUE IN PARM
+         B         HEX1                GO DO THE REST
+HEXA     EQU       *
+         L         R3,0(R10)           ADDRESS OF DATA TO MOVE
+HEX1     EQU       *
+         LA        R4,BUFFER(R6)       ADDRESS FOR DESTINATION
+         SR        R1,R1               GET ZERO INTO INSERT REG
+         SR        R2,R2               BYTE COUNTER
+         SR        R6,R6               NIBBLE COUNTER
+HEXLOOP  EQU       *
+         IC        R1,0(R2,R3)         GET THE BYTE
+         LTR       R6,R6               NIBBLE 0 OR 1?
+         BNZ       HEX2                THE OTHER ONE
+         SRL       R1,4                GET THE LEFT NIBBLE
+         LA        R6,1                FIX NIBBLE COUNTER
+         B         HEX3
+HEX2     EQU       *
+         N         R1,=X'0000000F'     GET THE RIGHT NIBBLE
+         SR        R6,R6               FIX NIBBLE COUNTER
+         LA        R2,1(R2)
+HEX3     EQU       *
+         IC        R1,HEXDIG(R1)       GET THE HEX DIGIT
+         STC       R1,0(R4)            PUT INTO STRING
+         LA        R4,1(R4)            BUMP INPUT COUNTER
+         BCT       R5,HEXLOOP          AND GET NEXT ONE
+         B         REPLOOP             AND RETURN
+HEXDIG   DC        C'0123456789ABCDEF' HEX DIGITS
+         SPACE     3
+REPEND   EQU       *                   END OF REPLACEMENT LOOP
+         SPACE ,
+*---- CHECK IF THIS MESSAGE SHOULD GO TO USERLOG/SNDRMSG FIRST -----
+         TM    FLAGS,UFLG    USERLOG TOO?
+         BNO   NOU2          NOPE, RETURN
+         LA    R1,BUFFER+11  POINT AT BUFFER (AFTER MESSAGE NUMBER)
+         LR    R0,R7         LENGTH OF MESSAGE
+         S     R0,=F'10'     - LENGTH OF MESSAGE NUMBER             1.6
+         L     R15,=V(USERLOG)
+         BALR  R14,R15
+NOU2     EQU   *
+         TM    FLAGS,XFLG    SNDRMSG TOO?
+         BNO   NOX2          NOPE
+         LA    R1,BUFFER+11  ADDRESS OF MESSAGE (AFTER MESSAGE #)
+         LR    R0,R7         LENGTH
+         S     R0,=F'10'     - LENGTH OF MESSAGE NUMBER             1.6
+         L     R15,=V(SNDRMSG)
+         BALR  R14,R15
+NOX2     EQU   *
+         SPACE ,
+*------ NOW EDIT THE MESSAGE AND WRITE IT TO THE CONSOLE LOG -----
+         LA        R4,TIME             ADDRESS TO PUT TIME
+         DC    X'8340000C'             DIAGNOSE X'0C'
+         MVC       DATE(8),TIME
+         MVC       CLOCK(8),TIME+8
+         LA        R8,BUFFER           POINT AT MESSAGE
+         LA        R7,1(R7)            IT WAS DECREMENTED ONCE BEFORE
+         DC    X'8387005C'             EDIT THE MESSAGE
+         LTR       R7,R7               EMSG OFF?
+         BZ        DONE                WASTED A LOT OF TIME
+         BCTR      R7,0                -1 FOR EXECUTE
+         EX        R7,MOVEIT           MOVE THE MESSAGE INTO BUFFER
+         LA        R7,LMSG+1(R7)       LENGTH OF OVERALL MESSAGE
+         STC       R7,MSG              SAVE LENGTH
+         LR        R0,R7               LENGTH OF MESSAGE
+         LA        R1,MSG+1            ADDRESS OF IT
+         L         R15,=V(WRITELOG)    ACTUAL LOG WRITING
+         BALR      R14,R15             CALL IT
+DONE     EQU       *
+         SR        R15,R15             NO ERRORS
+         B         RET
+MSGHIGH  EQU       *                   MESSAGE NUMBER TO HIGN
+         LA        R15,4               INDICATE ERROR
+RET      EQU       *
+         L         R13,4(R13)
+         L         R14,12(R13)
+         LM        R0,R12,20(R13)
+         BR        R14
+*
+MOVEIT   MVC       BUFFER(0),0(R8)     MOVE THE MESSAGE INTO BUFFER
+*
+SAVE     DS        18F
+DWORD    DS        D
+TIME     DS        4D
+MSG      DS        AL1                 LENGTH
+DATE     DS        CL8
+         DC        C' '
+CLOCK    DS        CL8
+         DC        C'  '
+LMSG     EQU       *-MSG-1
+BUFFER   DS        CL220           Room for more than you could want.
+FLAGS    DC    X'00'
+UFLG     EQU   X'80'
+XFLG     EQU   X'40'
+         END       MONWTR

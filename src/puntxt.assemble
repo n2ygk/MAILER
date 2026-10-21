@@ -1,0 +1,167 @@
+*[1.17] Logout if PUNCHC fails (SPOOL full probably)
+PUNTXT   TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - PUNCH TEXT'
+*---------------------------------------------------------------------*
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         *
+*    Program Property of the Trustees of Columbia University in the   *
+*    City of New York.                                                *
+*---------------------------------------------------------------------*
+PUNTXT   CSECT
+* PUNTXT   -
+*  This routine punches the message text.  It involves a simple
+*  transfer from the reader to the punch after first skipping
+*  the records that contained the message header.
+*
+* CALLED VIA -
+*  CALL PUNTXT,(MAILBLOK)
+         SPACE
+PAB      DSECT ,             PARMS
+@MBLOK   DS    F             ADDRESS OF MAILBLOK
+         SPACE
+* REGISTER USAGE -
+R0  EQU  0 -
+R1  EQU  1 -
+R2  EQU  2 -
+R3  EQU  3 -
+R4  EQU  4 -
+R5  EQU  5 -
+R6  EQU  6 -
+R7  EQU  7 -
+R8  EQU  8 -
+R9  EQU  9 -
+R10 EQU 10 -
+R11 EQU 11 - MAILBLOK BASE
+R12 EQU 12 - PROGRAM BASE
+R13 EQU 13 - SAVE AREA
+R14 EQU 14 - SUBROUTINE LINKAGE
+R15 EQU 15 - SUBROUTINE LINKAGE
+         BLOCKS ,
+         MAILBLOK ,
+         EJECT
+PUNTXT   CSECT ,
+         USING PUNTXT,R15    TEMPORARY ADDRESSABILITY
+         B     EYESKIP       BRANCH OVER EYESKIP
+MYNAME   DC    CL8'PUNTXT',CL8'&SYSDATE'
+EYESKIP  DS    0H
+         DROP  R15
+         STM   R14,R12,12(R13) SAVE CALLER'S REGS
+         LR    R12,R15       PERMANENT ADDRESSABILITY
+         USING PUNTXT,R12
+         LA    R14,SAVE      MY SAVE AREA
+         ST    R13,4(R14)    SAVE CALLER'S PTR
+         ST    R14,8(R13)    CHAIN MINE BACK
+         LR    R13,R14       SET MY SAVE PTR
+         USING PAB,R1        ADDRESS PARMS
+         L     R11,@MBLOK    GET MAILBLOK BASE
+         USING MAILBLOK,R11
+         DROP  R1
+         SPACE ,                                                 [1.22]
+*--------------------------------------------------------------------
+*  READ THE NUMBER OF CARDS THAT CONTAIN THE MESSAGE HEADER AND
+*  THROW THEM AWAY...
+*--------------------------------------------------------------------
+         L     R9,MAILHREC   GET THE RECORD COUNT
+*----------------------------------------------------------------[1.24]
+* If SMTP,  the text is in SMTP DATA A1 instead of the reader.   [1.24]
+*----------------------------------------------------------------[1.24]
+         TM    MAILFLG2,MFLG2SMT is it SMTP?                     [1.24]
+         BO    DOSMTP        do that instead.                    [1.24]
+         LA    R10,MAILSFB   GET SFB POINTER
+         USING SFBLOK,R10    ADDRESS IT
+         LH    R10,SFBRECSZ  GET LRECL
+         DROP  R10
+DUMP     EQU   *
+         RDCARD CARD,(R10),ERROR=RDERR
+         BCT   R9,DUMP       DUMP THESE CARDS
+         SPACE ,
+*--------------------------------------------------------------------
+* DROP OFF A BLANK CARD
+*--------------------------------------------------------------------
+         MVI   CARD,C' '
+         MVC   CARD+1(79),CARD
+         PUNCHC CARD,ERROR=FATAL       [1.17]
+         SPACE ,
+*--------------------------------------------------------------------
+* NOW COPY THE REST OF THE RDR FILE TO THE PUN...
+*--------------------------------------------------------------------
+LOOP     EQU   *
+         RDCARD CARD,(R10),ERROR=RDERR
+         TM    MAILFLG1,MFLG1DOT       quoting lines w/dots?     [1.22]
+         BNO   LOOP1                   nope                      [1.22]
+         CLI   CARD,C'.'               start w/dot?              [1.22]
+         BNE   LOOP1                   nope                      [1.22]
+         PUNCHC CARDPREF,ERROR=FATAL   quote a dot by doubling   [1.22]
+         B     LOOP                    and loop back for more    [1.24]
+LOOP1    EQU   *                                                 [1.22]
+         PUNCHC CARD,ERROR=FATAL       [1.17]
+         B     LOOP
+*[1.17] Fatal punchc error
+FATAL    EQU   *
+         LA    R1,=C'LOGOFF'           issue CP logoff command
+         LA    R0,6                    length
+         DIAG  R1,R0,X'0008'           do it
+         DC    F'0'                    operation exception if it fails
+         SPACE ,
+         SPACE ,
+*-------------------------------------------------------------------
+* READER ERROR - LET'S HOPE IT WAS EOF (RC=1)
+*--------------------------------------------------------------------
+RDERR    EQU   *
+         C     R15,=F'1'     WAS IT EOF?
+         BNE   RET           NOPE, RETURN THE ERROR CODE
+         SR    R15,R15       RETURN ZERO
+RET      EQU   *
+         L     R13,4(R13)              GET CALLER'S SAVE PTR
+         L     R14,12(R13)             GET R14
+         LM    R0,R12,20(R13)          GET R0-R12
+         BR    R14                     RETURN
+         SPACE ,
+*----------------------------------------------------------------[1.22]
+* copy SMTP DATA (text portion) to punch.  R9 contains MAILHREC. [1.24]
+*----------------------------------------------------------------[1.22]
+         ENTRY DOSMTP                                            [1.24]
+DOSMTP   DS    0H                                                [1.22]
+         LA    R5,1(,R9)     +1 for rec #1                       [1.24]
+         FSOPEN 'SMTP DATA',ERROR=FSOERR,FORM=E                  [1.24]
+         LR    R9,R1         hang on to FSCB ptr                 [1.24]
+         FSPOINT FSCB=(R9),RDPNT=(R5),ERROR=FSRERR,FORM=E        [1.24]
+DOSMTP1  EQU   *             <- top of loop                      [1.24]
+         MVI   CARD,C' '     blank it since V fmt reads won't    [1.22]
+         MVC   CARD+1(79),CARD                                   [1.22]
+         FSREAD FSCB=(R9),BUFFER=CARD,BSIZE=80,ERROR=FSRERR,     [1.24]*
+               FORM=E                                            [1.24]
+SMTPPUN  EQU   *                                                 [1.22]
+         TM    MAILFLG1,MFLG1DOT       quoting lines w/dots?     [1.24]
+         BNO   SMTPPUN1                nope                      [1.24]
+         CLI   CARD,C'.'               start w/dot?              [1.24]
+         BNE   SMTPPUN1                nope                      [1.24]
+         PUNCHC CARDPREF,ERROR=FATAL   quote a dot by doubling   [1.24]
+         B     DOSMTP1                 and loop back for more.   [1.24]
+SMTPPUN1 EQU   *                                                 [1.24]
+         PUNCHC CARD,ERROR=FATAL                                 [1.22]
+         B     DOSMTP1                                           [1.22]
+NFSREAD  DC    CL8'fsread'                                       [1.22]
+FSRERR   DS    0H                                                [1.22]
+         C     R15,=F'12'    end of file?                        [1.22]
+         BE    FSREOF        sure, no problem                    [1.22]
+         C     R15,=F'8'     truncated record is OK              [1.22]
+         BE    SMTPPUN       just keep trucking                  [1.23]
+         LR    R5,R15        hang on to return code              [1.22]
+         WTR   PTX050,(CA,NFSREAD,D,(R5))                        [1.22]
+         LR    R15,R5        grab retcode                        [1.22]
+         B     RET           return                              [1.22]
+FSREOF   EQU   *                                                 [1.22]
+         FSCLOSE FSCB=(9)                                        [1.24]
+         SR    R15,R15                                           [1.22]
+         B     RET                                               [1.22]
+         SPACE ,                                                 [1.24]
+NFSOPEN  DC    CL8'fsopen'                                       [1.24]
+FSOERR   DS    0H                                                [1.24]
+         LR    R5,R15        error code                          [1.24]
+         WTR   PTX050,(CA,NFSOPEN,D,(R5))                        [1.24]
+         LR    R15,R5        grab retcode                        [1.24]
+         B     RET           return                              [1.24]
+         LTORG ,
+SAVE     DS    18F                     SAVE AREA
+CARDPREF DC    C'.'          prefix in case we need to double    [1.22]
+CARD     DS    CL132         THE CARD
+         END   PUNTXT

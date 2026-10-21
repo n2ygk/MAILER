@@ -1,0 +1,34 @@
+/* ****************************************************************** */
+/*  MAILMODS - Update and excute mailer load lists                    */
+/* ****************************************************************** */
+
+address command
+parse upper arg parms
+
+ectl = 'MAILEXEC'                            /* EXEC control file     */
+
+exitrc = 0                                   /* Default value         */
+
+exec.0 = 2                                   /* Exec lists            */
+exec.1 = 'MAILMOD1'                          /* MAILGEN TXTLIB code   */
+exec.2 = 'MAILMOD2'                          /* MAILER  TXTLIB code   */
+
+do i=1 for exec.0                            /* Process list          */
+
+   say ' '
+   say 'Rebulding' exec.1 'EXEC'
+   'EXEC EXECUPDT' exec.i 'EXEC ( CTL' ectl  /* Update module list    */
+   if rc <> 0  then  do
+      if rc > exitrc  then  exitrc = rc
+      iterate
+      end
+
+   'ERASE' exec.i 'UPDLOG  A'               /* Discard logs          */
+   'ERASE' exec.i 'UPDATES A'
+
+   say ' '
+   say 'Processing' exec.1 'entries'
+   'EXEC' exec.i parms                      /* Do some real work     */
+   end
+
+exit exitrc

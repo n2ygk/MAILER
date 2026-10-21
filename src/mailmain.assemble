@@ -1,0 +1,264 @@
+*[1.22]add call to RDRFILT (new rdr file types)                 [1.22]
+*[1.20]Add call to ORGFILTR (origins table)
+MAIN     TITLE 'CUCCA VM NETWORK MAILER - VERSION 1 - MAIN PROCESSING  *
+               ROUTINE'
+*---------------------------------------------------------------------*
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         *
+*    Program Property of the Trustees of Columbia University in the   *
+*    City of New York.                                                *
+*---------------------------------------------------------------------*
+MAILMAIN CSECT ,
+* MAILMAIN -  THIS ROUTINE IS ENTERED AT STARTUP AND WHENEVER
+*  IT IS SUSPECTED THAT A READER FILE IS AVAILABLE (USUALLY
+*  WHEN A READER INTERRUPT IS RECEIVED).  IT PROCESSES ALL
+*  AVAILABLE READER FILES BEFORE RETURNING.
+*                            ALAN CROSSWELL       7/81
+*
+* LAST EDIT: 5/27/82 BY ALAN CROSSWELL
+*
+*  INVOKED VIA - CALL MAILMAIN,(MAILBLOK)
+*    MAILBLOK=ADDRESS OF MAILBLOK MACRO EXPANSION
+PAB      DSECT ,
+@MBLOK   DS    A             ADDRESS OF MAILBLOK
+         SPACE ,
+* REGISTER USAGE -
+R0  EQU  0 -
+R1  EQU  1 -
+R2  EQU  2 -
+R3  EQU  3 -
+R4  EQU  4 -
+R5  EQU  5 -
+R6  EQU  6 -
+R7  EQU  7 -
+R8  EQU  8 -
+R9  EQU  9 -
+R10 EQU 10 -
+R11 EQU 11 - MAILBLOK BASE
+R12 EQU 12 - PROGRAM BASE
+R13 EQU 13 - SAVE AREA
+R14 EQU 14 - SUBROUTINE LINKAGE
+R15 EQU 15 - SUBROUTINE LINKAGE
+         BLOCKS ,
+         TRACETBL ,
+         MAILBLOK ,
+         RSCSTAG ,
+         DMSABW ,                  Abend work area mapping
+         NUCON  ,
+         EJECT ,
+MAILMAIN CSECT
+         USING MAILMAIN,R15  TEMPORARY ADDRESSABILITY
+         B     EYESKIP       SKIP EYE-CATCHER
+         DROP  R15
+MYNAME   DC    CL8'MAILMAIN',CL8'&SYSDATE'
+EYESKIP  DS    0H
+         STM   R14,R12,12(R13)
+         LR    R12,R15       GET PERMANENT ADDRESSABILITY
+         USING MAILMAIN,R12
+         LA    R14,SAVE
+         ST    R13,4(R14)
+         ST    R14,8(R13)
+         LR    R13,R14
+         USING PAB,R1        ADDRESS PAB
+         L     R11,@MBLOK    GET MAILBLOK BASE
+         DROP  R1            DONE WITH PARM LIST
+         USING MAILBLOK,R11  ADDRESS IT
+         SPACE ,
+*--------------------------------------------------------------------
+*        Set up abend recovery environment info
+*--------------------------------------------------------------------
+         SPACE ,
+         ST    R13,ABENDR13        Save R13 in case of abend
+         ABNEXIT SET,EXIT=ABENDXIT,UWORD=(R11)
+         XC    MAILFILE,MAILFILE   Not processing a file yet
+         SPACE ,
+         MAILTRC ENTER
+         SPACE ,
+*--------------------------------------------------------------------
+*        GET THE NEXT FILE, PROCESS IT, GET THE NEXT, ETC.
+*--------------------------------------------------------------------
+         MVC   STACKP,STACK  INIT FOR STATS
+FILELOOP EQU   *
+         LA    R15,0               Set default rc
+         CLI   MAILCMD,0           Any commands received?
+         BNE   RET                 ---> Yes, do them first
+         L     R1,STACKP     GET STACK POINTER
+         C     R1,MAILSTMX   COMPARE TO MAX
+         BNH   *+8           NOT THE NEW MAX
+         ST    R1,MAILSTMX   SET THE NEW MAX
+         XC    MAILFLG1,MAILFLG1   ZERO FLAGS
+         XC    MAILFLG2,MAILFLG2   zero new flags                [1.23]
+         XC    MAILSFLD,MAILSFLD   SO RTS KNOWS WHO TO SEND FILE TO
+         FSERASE 'SMTP DATA A'     make sure these files get     [1.24]
+         FSERASE 'SMTP REPLY A'    cleaned up                    [1.24]
+         LA    R5,MAILULFN                                       [1.24]
+         FSERASE (R5)                                            [1.24]
+         LM    R14,R15,STACK       Start of stack/length of stack
+         C     R15,=F'4095'        Any full pages possible?
+         BNH   NODIAG10            ---> No
+         AR    R15,R14             Ending
+         BCTR  R15,0                    stack address
+         LA    R14,4095(,R14)      Round to starting
+         N     R14,=X'00FFF000'        page address
+         SRL   R15,12              Round to ending
+         BCTR  R15,0                    page
+         SLL   R15,12                        address
+         CR    R14,R15             Anything to free
+         BP    NODIAG10            ---> No
+         DIAG  R14,R15,X'0010'     Release pages
+NODIAG10 DS    0H
+         MVC   STACKP,STACK  RESET STACK POINTER
+         MAILTRC CALL,GETSPOOL
+         CALL  GETSPOOL,((R11))   GET NEXT READER FILE
+         MAILTRC RETURN,GETSPOOL,(R15)
+         LTR   R15,R15       IS THERE A FILE?
+         BZ    OK1           YES
+         C     R15,=F'8'     SPOOL ERROR OR JUST EMPTY READER?
+         BE    RTS           SPOOL ERROR
+         SR    R15,R15       NO, JUST RETURN
+         B     RET
+OK1      EQU   *
+         L     R1,MAILICNT   GET INCOMING FILE COUNTER
+         LA    R1,1(R1)      INCREMENT IT
+         ST    R1,MAILICNT
+         CALL  ORGFILTR,((R11)) [1.20] "filter" thru origins table
+         LTR   R15,R15       [1.20]RC = 0 says continue
+         BZ    FILTCONT      [1.20]
+         C     R15,=F'4'     [1.20] RC=4 says purge it
+         BE    PURGE         [1.20] go purge the file
+         B     RET           [1.20] a "real" error
+FILTCONT EQU   *             [1.20] continue
+         MAILTRC CALL,RDRFILT
+         CALL  RDRFILT,((R11)) check for various types of files  [1.22]
+         MAILTRC RETURN,RDRFILT,(R15)
+         LTR   R15,R15       rc 0 says continue                  [1.22]
+         BZ    RFILTCON                                          [1.22]
+         C     R15,=F'4'     rc 4 says purge it                  [1.22]
+         BE    PURGE                                             [1.22]
+         B     RET           other rc's indicate a hard error    [1.22]
+RFILTCON EQU   *                                                 [1.22]
+         MAILTRC CALL,GETHDR
+         CALL  GETHDR,((R11))     READ MESSAGE HEADER IN
+         MAILTRC RETURN,GETHDR,(R15)
+         LTR   R15,R15       ANY ERRORS?
+         BNZ   RTS           YES, RETURN TO SENDER
+         MAILTRC CALL,HDRSCAN
+         CALL  HDRSCAN,((R11))    SCAN HEADER FIELDS
+         MAILTRC RETURN,HDRSCAN,(R15)
+         LTR   R15,R15       TEST RETURN CODE
+         BNZ   RTS           RETURN TO SENDER
+         MAILTRC CALL,VALIDATE
+         CALL  VALIDATE,((R11))  VALIDATE THE SENDER
+         MAILTRC RETURN,VALIDATE,(R15)
+         LTR   R15,R15       INVALID SENDER?
+         BNZ   RTS           SORRY, RETURN TO SENDER
+*         CALL  HDRPROC,((R11))    DO THE REAL WORK
+         MAILTRC CALL,BUILDLST
+         CALL  BUILDLST,((R11))  BUILD ACTION LIST
+         MAILTRC RETURN,BUILDLST,(R15)
+         LTR   R15,R15       ANY PROBLEMS?
+         BNZ   RTS           YES... RETURN TO SENDER
+         MAILTRC CALL,SENDLST
+         CALL  SENDLST,((R11))  NO SEND THE FILES OFF
+         MAILTRC RETURN,SENDLST,(R15)
+         LTR   R15,R15       ANY ERRORS?
+         BNZ   RTS           YES... RETURN TO SENDER
+         SPACE ,
+         TM    MAILFLG2,MFLG2BLD   Any problems in BUILDLST?
+         BO    RTS           ---> Yes, return to sender
+PURGE    EQU   *
+         L     R4,MAILFILE   GET FILE NUMBER
+         LINEDIT TEXT='PURGE RDR ....',DOT=NO,RENT=NO,DISP=CPCOMM,     *
+               SUB=(DEC,(R4))
+         XC    MAILFILE,MAILFILE   Not processing a file any more
+         B     FILELOOP
+         SPACE ,
+*-------------------------------------------------------------------*
+*                  RETURN    TO     SENDER                          *
+*                  =======================                          *
+*  AN ERROR WAS ENCOUNTERED WHILE TRYING TO PROCESS THE MAIL FILE.  *
+* SEND IT BACK TO THE SENDER WITH AN EXPLANATION OF WHAT WENT WRONG *
+*-------------------------------------------------------------------*
+RTS      EQU   *
+         C     R15,=F'12'    FATAL ERROR
+         BNL   RET                     DIE
+         CALL  MAILRET,((R11))         RETURN THE FILE TO SENDER
+         B     PURGE         ALL DONE, PURGE THE FILE
+         SPACE 1
+RET      EQU   *
+         LR    R3,R15              Save return code
+         ABNEXIT CLR,EXIT=ABENDXIT Clear abend exit
+         LR    R15,R3              Restore return code
+         MAILTRC EXIT,(R15)
+         L     R13,4(R13)
+         L     R14,12(R13)
+         LM    R0,R12,20(R13)
+         BR    R14
+         SPACE 1
+         DROP  R12,R11
+         SPACE 1
+         LTORG ,
+SAVE     DS    18F
+         TITLE 'CUCCA VM NETWORK MAILER - VERSION 2 - MAIN PROCESSING  *
+               ROUTINE - Abend exit processesors'
+ABENDXIT DS    0D
+         USING ABENDXIT,R15
+         USING NUCON,R0
+         TM    MISFLAGS,KXSWITCH   Here due to HX?
+         BOR   R14                 ---> Yes, continue with abend
+         STM   R14,R12,12(R13)     Save registers
+         L     R12,=A(MAILMAIN)    Get a better base reg
+         DROP  R15
+         USING MAILMAIN,R12
+         LR    R2,R1               Copy ABWSECT address
+         USING ABWSECT,R2
+         L     R11,ABNUWRD         Get base for MAILBLOK
+         USING MAILBLOK,R11
+         LINEDIT TEXT='CLOSE RDR HOLD',DOT=NO,RENT=NO,DISP=CPCOMM
+         ICM   R4,B'1111',MAILFILE Get file number
+         BZ    MAILEX02            ---> Not processing a file yet
+         LINEDIT TEXT='CHANGE RDR .... NOHOLD',DOT=NO,RENT=NO,         *
+               DISP=CPCOMM,SUB=(DEC,(R4))
+         MVC   EXECMID,MAINTID     Move in maintainer's id & node
+         MVC   EXECSPID(9),=CL9' ' Clear spoolid field to blanks
+         LINEDIT TEXT='........',DOT=NO,RENT=NO,DISP=NONE,             +
+               BUFFA=EXECSPID,SUB=(DEC,(R4))
+         MVC   EXECSPID(8),EXECSPID+1  Shift left to remove length byte
+         MVC   FENCEIT,=8X'FF'     Put fence on plist
+         LA    R1,EXECCMD          Point to parameter list
+         SVC   202                 Go run abend exit exec
+         DC    AL4(1)              Ignore errors
+         L     R1,=A(PURGE)        Where we want to continue
+         STCM  R1,B'0111',ABNPSW+5 Fix up PSW
+         LTR   R3,R15              Successful?
+         BZ    MAILEX10            Yes
+         C     R3,=F'801'          File not found from EXEC?
+         BE    MAILEX10            ---> Yes, let it slide
+         L     R1,=A(RTS)          Continue here instead
+         STCM  R1,B'0111',ABNPSW+5 Fix up PSW
+         B     MAILEX10
+         SPACE 1
+MAILEX02 EQU   *                   Abend when not procssing files
+         LA    R3,16               Set return code
+         L     R1,=A(RET)          Where we want to continue
+         STCM  R1,B'0111',ABNPSW+5 Fix up PSW
+         SPACE 1
+MAILEX10 DS    0H
+         ABNEXIT RESET             Reset exit taken flag
+         LR    R15,R3              Restore EXEC return code
+         L     R13,ABENDR13        Restore save area pointer
+         LPSW  ABNPSW              Continue on
+         SPACE 1
+         DROP  R2,R11,R12
+         SPACE 3
+         DS    0D
+EXECCMD  DC    CL8'EXEC'
+         DC    CL8'MABNXIT'
+EXECMID  DC    CL16' '             Maintainer's id and node
+EXECSPID DC    CL8' '              Spool file id
+FENCEIT  DC    XL8'FF'             Fence goes here
+         SPACE 1
+ABENDR13 DC    F'0'                Save area for R13
+         SPACE 1
+         LTORG ,
+         SPACE 2
+         END   MAILMAIN

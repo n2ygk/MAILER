@@ -1,0 +1,935 @@
+*---------------------------------------------------------------------*
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         *
+*    Program Property of the Trustees of Columbia University in the   *
+*    City of New York.                                                *
+*---------------------------------------------------------------------*
+         MACRO
+&LABEL   WTR       &CODE,&SUBS
+.* &CODE - MESSAGE CODE OF THE FORM XXXNNN WHERE XXX IS MODULE ID
+.* AND NNN IS MESSAGE NUMBER.
+.* &SUBS - SUBSTITUTION LIST OF THE FORM (X,VAR,X,VAR,...,X,VAR)
+.* X IS ONE OF:
+.*       D,DA - DECIMAL FULLWORD
+.*       X,XA - HEXADECIMAL STRING (LENGTH DETERMINED BY MSG PATTERN
+.*       C,CA - CHARACTER STRING (LENGTH DETERMINED BY MSG PATTERN)
+.*       B,BA - BIT STRING (LENGTH DETERMINED BY MESSAGE PATTERN)
+.*
+.* VAR IS EITHER VALUE OR ADDRESS OF VARIABLE DEPENDING ON 'A' BIT.
+.*
+.* EXAMPLE -
+.*       WTR       FOO003,(CA,MODNAME,D,12)
+.* MODNAME  DC     CL8'MODULE'
+.*
+         LCLC      &XXX,&DATA(100)
+         LCLB      &A,&B,&C,&D,&X
+         LCLA      &FLAG,&I,&CNTR
+         AIF       (K'&CODE EQ 6).GOOD1
+         MNOTE     4,'CODE FORMAT IS XXXNNN'
+         MEXIT
+.GOOD1   ANOP
+&FLAG    SETA      4                   IMMEDIATE CHARACTER DATA
+&DATA(1) SETC      '&FLAG'             IMMEDIATE CHARACTER DATA
+&DATA(2) SETC      '&CODE'(1,3)        3 CHARACTER MODULE ID
+&DATA(2) SETC      'CL3''&DATA(2)'''     MAKE IT CL3'XXX'
+&CNTR    SETA      N'&SUBS             NUMBER OF LIST ENTRIES
+&I       SETA      1                   INDEX INTO &DATA ARRAY
+.LOOP    AIF       (&CNTR LE 0).LOOPEND
+&A       SETB      0
+&C       SETB      ('&SUBS(&I)'(1,1) EQ 'C')
+&D       SETB      ('&SUBS(&I)'(1,1) EQ 'D')
+&B       SETB      ('&SUBS(&I)'(1,1) EQ 'B')
+&X       SETB      ('&SUBS(&I)'(1,1) EQ 'X')
+         AIF       (K'&SUBS(&I) LT 2).NOTA
+&A       SETB      ('&SUBS(&I)'(2,1) EQ 'A')
+         AIF       (&A).NOTA           OK, IT WAS AN 'A'
+         MNOTE     4,'OPTION MUST BE ''A'' OR NULL'
+         MEXIT
+.NOTA    ANOP
+&FLAG    SETA      X'08'*&B+X'04'*&C+X'02'*&D+X'01'*&X
+         AIF       (&FLAG).GOOD2       WAS IT ONE OF THEM?
+         MNOTE     4,'CODE MUST BE ONE OF C,B,D,X'
+         MEXIT
+.GOOD2   ANOP
+&FLAG    SETA      &FLAG+X'10'*&A      ADD THE 'A' BIT IN
+&DATA(&I+2) SETC     '&FLAG'
+         AIF       ('&SUBS(&I+1)'(1,1) EQ '(').REGS   IT'S IN REG
+&DATA(&I+3) SETC   'AL3(&SUBS(&I+1))'       NO, JUST DATA
+         AGO       .SKREGS
+.REGS    ANOP
+&DATA(&I+3)  SETC  'AL3(0)'
+         STCM      &SUBS(&I+1),B'0111',WTRP&SYSNDX+5+(2*(&I+1))
+.SKREGS  ANOP
+&I         SETA      &I+2
+&CNTR    SETA      &CNTR-2
+         AGO       .LOOP
+.LOOPEND ANOP
+&FLAG    SETA      &FLAG+X'80'         LIST END INDICATOR
+&DATA(&I)  SETC    '&FLAG'             SET NEW FLAG
+         CNOP      0,4                 FULLWORD ALIGNED
+&LABEL   BAL       1,WTRX&SYSNDX        BRANCH OVER PARM LIST
+&XXX     SETC      '&CODE'(4,3)
+WTRP&SYSNDX DC        A(&XXX)             MESSAGE NUMBER
+.* NOW DROP OF THE &DATA ARRAY
+&I       SETA      1
+&CNTR    SETA      N'&SUBS+2
+.LOOP2   AIF       (&CNTR LE 0).L2END
+         DC        AL1(&DATA(&I)),&DATA(&I+1)    FLAGS, DATA
+&I       SETA      &I+2
+&CNTR    SETA      &CNTR-2
+         AGO       .LOOP2
+.L2END   ANOP
+WTRX&SYSNDX DS      0H
+         L         15,=V(MONWTR)       MESSAGE WRITER MODULE
+         BALR      14,15               CALL IT
+         MEND
+         MACRO
+         RSCSTAG
+         PUSH  PRINT
+         AIF   ('&SYSPARM' NE 'SUP').NOSUP
+         PRINT OFF,NOGEN
+.NOSUP   ANOP
+RSCSTAG  DSECT
+         DC    C'FILE ('
+RSCSIF   DC    C'0000'
+         DC    C') ORIGIN '
+RSCSNODE DC    CL8' ',C' '
+RSCSUSER DC    CL8' '
+         POP   PRINT
+         MEND
+       MACRO
+&LABEL LOWUP
+       LCLA      &COUNT
+&COUNT SETA     0
+&LABEL DS   0C
+         PUSH  PRINT
+         AIF   ('&SYSPARM' NE 'SUP').NOSUP
+         PRINT OFF,NOGEN
+.NOSUP   ANOP
+.LOOP  ANOP
+       AIF ('&COUNT' EQ '256').EXIT
+       DC       AL1(&COUNT)
+&COUNT SETA     &COUNT+1
+       AGO      .LOOP
+.EXIT  ANOP
+       ORG       &LABEL+X'81'        LOWERCASE 'A'
+       DC        C'ABCDEFGHI'        MAKE THEM UPPERCASE
+       ORG       &LABEL+X'91'        LOWERCASE 'J'
+       DC        C'JKLMNOPQR'
+       ORG       &LABEL+X'A2'
+       DC        C'STUVWXYZ'
+       ORG       &LABEL+256
+         POP   PRINT
+       MEND
+         MACRO
+&LABEL   REVTAB    &LEN=80
+         LCLA      &N
+&N       SETA      &LEN
+&LABEL   EQU       *
+         PUSH  PRINT
+         AIF   ('&SYSPARM' NE 'SUP').NOSUP
+         PRINT OFF,NOGEN
+.NOSUP   ANOP
+.LOOP    ANOP
+&N       SETA      &N-1
+         DC        AL1(&N)
+         AIF ('&N' EQ '0').L
+         AGO       .LOOP
+.L       ANOP
+         POP   PRINT
+         MEND
+         MACRO
+&LABEL   LOG       &CODE,&SUBS
+.* &CODE - MESSAGE CODE OF THE FORM XXXNNN WHERE XXX IS MODULE ID
+.* AND NNN IS MESSAGE NUMBER.
+.* &SUBS - SUBSTITUTION LIST OF THE FORM (X,VAR,X,VAR,...,X,VAR)
+.* X IS ONE OF:
+.*       D,DA - DECIMAL FULLWORD
+.*       X,XA - HEXADECIMAL STRING (LENGTH DETERMINED BY MSG PATTERN
+.*       C,CA - CHARACTER STRING (LENGTH DETERMINED BY MSG PATTERN)
+.*       B,BA - BIT STRING (LENGTH DETERMINED BY MESSAGE PATTERN)
+.*
+.* VAR IS EITHER VALUE OR ADDRESS OF VARIABLE DEPENDING ON 'A' BIT.
+.*
+.* EXAMPLE -
+.*       WTR       FOO003,(CA,MODNAME,D,12)
+.* MODNAME  DC     CL8'MODULE'
+.*
+         LCLC      &XXX,&DATA(100)
+         LCLB      &A,&B,&C,&D,&X
+         LCLA      &FLAG,&I,&CNTR
+         AIF       (K'&CODE EQ 6).GOOD1
+         MNOTE     4,'CODE FORMAT IS XXXNNN'
+         MEXIT
+.GOOD1   ANOP
+&FLAG    SETA      4                   IMMEDIATE CHARACTER DATA
+&DATA(1) SETC      '&FLAG'             IMMEDIATE CHARACTER DATA
+&DATA(2) SETC      '&CODE'(1,3)        3 CHARACTER MODULE ID
+&DATA(2) SETC      'CL3''&DATA(2)'''     MAKE IT CL3'XXX'
+&CNTR    SETA      N'&SUBS             NUMBER OF LIST ENTRIES
+&I       SETA      1                   INDEX INTO &DATA ARRAY
+.LOOP    AIF       (&CNTR LE 0).LOOPEND
+&A       SETB      0
+&C       SETB      ('&SUBS(&I)'(1,1) EQ 'C')
+&D       SETB      ('&SUBS(&I)'(1,1) EQ 'D')
+&B       SETB      ('&SUBS(&I)'(1,1) EQ 'B')
+&X       SETB      ('&SUBS(&I)'(1,1) EQ 'X')
+         AIF       (K'&SUBS(&I) LT 2).NOTA
+&A       SETB      ('&SUBS(&I)'(2,1) EQ 'A')
+         AIF       (&A).NOTA           OK, IT WAS AN 'A'
+         MNOTE     4,'OPTION MUST BE ''A'' OR NULL'
+         MEXIT
+.NOTA    ANOP
+&FLAG    SETA      X'08'*&B+X'04'*&C+X'02'*&D+X'01'*&X
+         AIF       (&FLAG).GOOD2       WAS IT ONE OF THEM?
+         MNOTE     4,'CODE MUST BE ONE OF C,B,D,X'
+         MEXIT
+.GOOD2   ANOP
+&FLAG    SETA      &FLAG+X'10'*&A      ADD THE 'A' BIT IN
+&DATA(&I+2) SETC     '&FLAG'
+         AIF       ('&SUBS(&I+1)'(1,1) EQ '(').REGS   IT'S IN REG
+&DATA(&I+3) SETC   'AL3(&SUBS(&I+1))'       NO, JUST DATA
+         AGO       .SKREGS
+.REGS    ANOP
+&DATA(&I+3)  SETC  'AL3(0)'
+         STCM      &SUBS(&I+1),B'0111',WTRP&SYSNDX+5+(2*(&I+1))
+.SKREGS  ANOP
+&I         SETA      &I+2
+&CNTR    SETA      &CNTR-2
+         AGO       .LOOP
+.LOOPEND ANOP
+&FLAG    SETA      &FLAG+X'80'         LIST END INDICATOR
+&DATA(&I)  SETC    '&FLAG'             SET NEW FLAG
+         CNOP      0,4                 FULLWORD ALIGNED
+&LABEL   BAL       1,WTRX&SYSNDX        BRANCH OVER PARM LIST
+&XXX     SETC      '&CODE'(4,3)
+WTRP&SYSNDX DC        A(&XXX)             MESSAGE NUMBER
+.* NOW DROP OF THE &DATA ARRAY
+&I       SETA      1
+&CNTR    SETA      N'&SUBS+2
+.LOOP2   AIF       (&CNTR LE 0).L2END
+         DC        AL1(&DATA(&I)),&DATA(&I+1)    FLAGS, DATA
+&I       SETA      &I+2
+&CNTR    SETA      &CNTR-2
+         AGO       .LOOP2
+.L2END   ANOP
+WTRX&SYSNDX DS      0H
+         L         15,AMONWTR          MESSAGE WRITER MODULE
+         BALR      14,15               CALL IT
+         MEND
+         MACRO
+         BLOCKS
+         PUSH  PRINT
+         AIF   ('&SYSPARM' NE 'SUP').NOSUP
+         PRINT OFF,NOGEN
+.NOSUP   ANOP
+         EJECT
+**=================================================================**
+**        CUCCA VM NETWORK MAILER - VERSION 1                      **
+**                                                                 **
+** THE FOLLOWING DSECTS DESCRIBE CONTROL BLOCKS USED BY THE MAILER **
+**                                                                 **
+**  LAST EDIT: 5/23/82 BY ALAN CROSSWELL                           **
+**                                                                 **
+**=================================================================**
+         SPACE 3
+*--------------------------------------------------------------------
+*  VALD - VALIDATION TABLE ENTRY DSECT
+*  A VALD entry is defined in the INCOMING entry of the Mailer
+*  Profile.  The format of an entry is:
+*
+*  Node-name Mailer-name Exit-name Exit-parm
+*
+*  The pair Node-name, Mailer-name is used as the key in searching
+*  the MAILVTAB table and the returned value is the VALD.
+*--------------------------------------------------------------------
+VALD     DSECT ,
+VAUSER   DS    CL8           VM USERID OF NODE'S MAILER
+VAPROG   DS    CL8           NAME OF EXIT ROUTINE
+VAPARM   DS    CL8           PARAMETER SUPPLIED TO THE EXIT
+VAADDR   DS    A             ADDRESS OF LOADED USER EXIT
+VAMSGCNT DS    F             MESSAGE COUNT
+VAMSGFAI DS    F             NUMBER THAT FAILED TO VALIDATE
+VAMSGLEN DS    F             MESSAGE LENGTH TOTAL
+VAMSGMAX DS    F             MAX MESSAGE LENGTH
+VALEN    EQU   *-VALD        LENGTH IN BYTES
+         SPACE 3
+*--------------------------------------------------------------------
+*  ROUTD - ROUTING TABLE ENTRY DSECT
+*  A ROUTD is defined by an entry in the OUTGOING table in the
+*  Mailer Profile.  The format of the record is:
+*
+*  Alias-name Server-node Server-user Exit-name Exit-type Exit-parm
+*
+*  Alias-name is set as the key for finding entries.  The entry found
+*  via looking up the name in MAILRTAB is the ROUTD.
+*--------------------------------------------------------------------
+ROUTD    DSECT
+RTROUTE  DS    CL8           ROUTED TO NODE NAME
+RTUSER   DS    CL8           ROUTED TO USER NAME
+RTPROG   DS    CL8           USER EXIT NAME
+RTPARM   DS    CL8           PARM SUPPLIED TO THE EXIT
+RTTYPE   DS    CL2           EXIT TYPE (CHARACTER)
+RTFLAGS  DS    X             FLAGS
+* BITS DEFINED IN RTFLAGS -
+RTP1     EQU   X'80'
+RTP2     EQU   X'40'
+RTP3     EQU   X'20'                                             [1.22]
+RTRSVD   DS    X             UNUSED
+RTADDR   DS    A             ADDRESS OF LOADED RTPROG
+RTMSGCNT DS    F             MESSAGE COUNT
+RTMSGFAI DS    F             NUMBER THAT FAILED TO BE SENT
+RTMSGLEN DS    F             MESSAGE LENGTH TOTAL
+RTMSGMAX DS    F             MAXIMUM MESSAGE LENGTH
+RTLEN    EQU   *-ROUTD       LENGTH IN BYTES
+         SPACE 3
+*--------------------------------------------------------------------
+*  DSECTS USED IN DESCRIPTION OF AN ADDRESS:
+*
+*           +---> ...
+*           |
+* +----------+----------+----------+----------+
+* |  MBXNEXT |  MBXRTL  |  MBXLCL  |  MBXDMLT |
+* +----------+----------+----------+----------+
+*                      /               \
+*                     /                 \
+*                    /                   \
+* +---------+---------+                  +---------+--------+
+* | NODDOWN | NODNEXT |---> ...          | NODDOWN | ADNEXT |---> ...
+* +---------+---------+                  +---------+--------+
+*     |                                       |
+*     |                                       |
+*     |                                       |
+* +----------+----------+------+     +----------+----------+------+
+* | TOKNEXT  |  TOKPTR  |      |     | TOKNEXT  |  TOKPTR  |      |
+* +----------+----------+------+     +----------+----------+------+
+*                 |                                  |
+*                 |                                  |
+*                 |                                  |
+*              'USERID'               'AT'       'HOSTNAME'
+*
+*--------------------------------------------------------------------
+         SPACE ,
+NODE     DSECT ,             Parse tree node
+NODNEXT  DS    A             Next pointer
+NODPREV  DS    A             Previous pointer
+NODDOWN  DS    A             Down pointer
+NODSIZ   EQU   *-NODE        Size of this structure
+         SPACE ,
+MBOX     DSECT ,             Mailbox descriptor
+MBXNEXT  DS    A             Nest pointer
+MBXPREV  DS    A             Previous pointer
+MBXRTL   DS    A             Reserved for routelist pointer
+MBXRCNT  DS    F             Reserved for count of routelist tokens
+MBXLCL   DS    A             Userid list token anchor
+MBXLCNT  DS    F             Count of userid tokens
+MBXDML   DS    A             Host list token anchor
+MBXDCNT  DS    F             Count of host tokens
+MBXSIZ   EQU   *-MBOX        Size of this structure
+         SPACE ,
+TOKEND   DSECT ,             Mapping of a token
+TOKNEXT  DS    A             Pointer to next TOKEND
+TOKPREV  DS    A             Pointer to previous TOKEND
+TOKPTR   DS    A             Address of string
+TOKLEN   DS    F             Length of token string
+TOKTYPE  DS    X             Token code
+* Codes defined in TOKTYPE-
+TOKATM   EQU   C'A'          Atom
+TOKQSTR  EQU   C'"'          Quoted string
+TOKCMA   EQU   C','          Comma
+TOKLTP   EQU   C'('          Left parenthesis
+TOKRTP   EQU   C')'          Right parenthesis
+TOKLTB   EQU   C'<'          Left angle bracket
+TOKRTB   EQU   C'>'          Right angle bracket
+TOKAT    EQU   C'@'          At sign
+         DS    0F            Align to even fullword
+TOKSIZ   EQU   *-TOKEND      Size of structure
+         SPACE 3
+*--------------------------------------------------------------------
+*  ACTADR blocks constitute the chain used to represent the addresses
+*  that require action.  They point to the address descriptor and
+*  the routing table entry for the recipient node.
+*--------------------------------------------------------------------
+ACTADR   DSECT ,
+ACTNEXT  DS    A             NEXT IN CHAIN
+ACTMBOX  DS    A             Pointer to MBOX
+ACTRT    DS    A             POINTER TO ROUTD
+ACTCHN   DS    A             exit type 3 chain of ACTADR's       [1.22]
+ACTLEN   EQU   *-ACTADR
+         SPACE 3
+*--------------------------------------------------------------------
+*  DSECT AND TABLE  USED IN DESCRIPTION OF A MESSAGE HEADER:
+*
+*  +---------+   +--------------------------------------------------+
+*  | TBENTRY |-->| FINEXT | FIEXTN | FITOK | FIPARS | FISTR | FIEND |
+*  +---------+   +--------------------------------------------------+
+*        |                            |                 |       |
+*        |                            |                 |       |
+*        |                        +-------+             |       |
+*        |                        | TOKEND|             |       |
+*        |                        +-------+             |       |
+*        |                            |                 |       |
+*        |                            |                /         \
+*        +----------------------->"SUBJECT:"         "HELLO, THERE."
+*
+*  Calling TBLUK with "subject" as the test string will return
+*  the address of the field descriptor (FIELDD).  to find the
+*  next field descriptor in order of occurence, chain via
+*  FINEXT.  To find the actual string supplied in the header,
+*  use FITOK to get to a token descriptor (TOKEND) which points
+*  to the actual string (case intact as supplied by user). If
+*  the user supplied the same field multiple times, then the
+*  FIEXTN pointer points to "extents" of the first FIELDD.
+*  FIPARS is set by the field parsing routine for the field
+*  type. The token list generated by the tokenizing routine for
+*  the given field type should be appended to the field name
+*  token(s) pointed to by FITOK (use the TOKNEXT pointer).
+*  FISTR and FIEND are used by the tokenizing routines to get the
+*  actual input data.  This is the address of the untokenized string
+*  (FISTR) and the address of the string end (FIEND).
+*
+*--------------------------------------------------------------------
+         SPACE ,
+FIELDD   DSECT ,             MESSAGE FIELD DESCRIPTOR
+FINEXT   DS    A             NEXT FIELD POINTER
+FIFLG1   DS    X             FLAGS
+* BITS DEFINED IN FIFLG1:
+FIEXTFLG EQU   X'80'         THIS FIELDD IS AN EXTENT
+FIINVFLG EQU   X'40'         THIS FIELDD IS 'INVISIBLE'
+FIEDIFLG EQU   X'20'         THIS FIELD WAS EDITED
+FIEXTN   DS    AL3           EXTENT PTR (MULT OCCUR OF SAME FIELD)
+FITOK    DS    A             TOKEN LIST ADDRESS FOR THIS FIELD
+         ORG   FITOK         [1.16]overlay FITOK
+FIECNT   DS   X              [1.16]Hi byte is # of this extension
+         ORG   ,             [1.16]back to where we were.
+FIPARS   DS    A             PARSE LIST ADDRESS FOR THIS FIELD
+FISTR    DS    A             ADDRESS OF STRING START ADDRESS
+FIEND    DS    A             ADDRESS OF STRING END ADDRESS
+FIELDDL  EQU   *-FIELDD      LENGTH OF THIS DSECT
+         SPACE 3
+*********************************************************************
+**                                                                 **
+**  THIS DSECT IS USED TO DESCRIBE COMMANDS PARSED BY MAILCMD1     **
+**  AND STACKED FOR LATER PROCESSING BY MAILCMD2.                  **
+**                                                                 **
+*********************************************************************
+COMMAND  DSECT ,
+CMDNEXT  DS    F             NEXT COMMAND
+CMDLEN   DS    F             LENGTH OF THIS BLOCK IN DWORDS
+CMDDLEN  DS    F             DATA LENGTH
+CMDCODE  DS    F             COMMAND CODE
+CMDMSG   DC    CL18'MSGNOH ' CP command to deliver results.
+CMDNODE  DS    CL8           Sending nodename or blanks.
+CMDSNDR  DS    CL8           SENDER USERID
+CMDDATA  DS    0C            DATA
+CMDSIZE  EQU   (*-COMMAND)/8+1
+* COMMAND CODES:
+CMD202   EQU   0             ISSUE AN SVC 202 WITH THE DATA.
+CMDFWD   EQU   1             FORWARD command
+CMDMLS   EQU   2             MAILLIST command
+         SPACE 3
+         COPY  SPOOL         CP SFBLOKS
+         POP    PRINT
+         MEND
+*EDIT HISTORY:
+*[1.18]Added S#NXFER SITEOPT (SFB transfer flag use)
+*[1.16]Added MFLG1RES flag for RESENT processing.
+*        and RESCNT for count of resent field groups
+*        and MAILDFLD for address of date fieldd.
+*[1.13a] Added an optional second RSCS name (RSCSALT).
+*[1.13] Add UNIXSCAN VCON.
+*[1.12] Add SITEOPTS flags for site-specific mods.
+*[2] X1.9 - ADD VCON FOR ARPADATE ROUTINE AND PATCH SPACE TO ENABLE
+*    FUTURE ADDITIONS WITHOUT RECOMPILE.
+*
+*[1] X1.5 - REPLACES SBFSIZE WITH MSFBSIZE WHICH IS SET TO X'0E',
+*    THE LENGTH RETURNED BY DIAG 14 SUBCODE FFF RATHER THAN THE
+*    LENGTH OF THE SFBLOK WHICH CHANGES FROM X'0E' FOR BSEPP TO
+*    X'0F' FOR SP. (THANKS TO J. WAGNER AT PUCC)
+         MACRO
+&LABEL   MAILBLOK  &DSECT=YES,         DSECT OR DATA EXPANSION         *
+               &RSCS=RSCS,             NAME OF RSCS/NETWORKING USERID  *
+               &NODE=*,                RSCS NODE NAME OF MY HOST       *
+               &ROUTEFN=MAILER,        ROUTING FILE NAME               *
+               &ROUTEFT=PROFILE,       ROUTING FILE TYPE               *
+               &ROUTEFM=*,             ROUTING FILE MODE               *
+               &MAINT=(X,X)         MAILER MAINTAINER            [1.22]
+         GBLC  &VERSION                                          [1.22]
+         AIF   ('&VERSION' NE '').OK                             [1.22]
+&VERSION SETC  ' '                                               [1.22]
+.OK      ANOP                                                    [1.22]
+         EJECT ,
+*--------------------------------------------------------------------
+*        CUCCA VM NETWORK MAILER VERSION 1   1/28/82
+*
+*  MAILBLOK - MAILER COMMON DATA AREA
+*
+*  LAST EDIT: 8/6/82  BY ALAN CROSSWELL
+*
+*--------------------------------------------------------------------
+         PUSH  PRINT
+         AIF ('&DSECT' EQ 'NO').DC
+         AIF   ('&SYSPARM' NE 'SUP').NOSUP
+         PRINT OFF,NOGEN
+.NOSUP   ANOP
+MAILBLOK DSECT
+         AGO .DSECT
+.DC      ANOP
+&LABEL   DS    0D
+.DSECT   ANOP
+MAILXXXX EQU   *
+MAILHBUF DC    D'0'          ADDR,LEN OF HEADER BUFFER
+STACKORG DC    D'0'          FREE STORAGE STACK ORIGIN
+STACK    DC    D'0'          VARIABLE STACK START
+STACKP   DC    D'0'          CURRENT STACK POINTER
+MAILRTAB DC    A(0)          ADDR OF ROUTING TABLE
+MAILSTAB DC    A(0)          SPECIAL MAILBOX TABLE
+MAILKTAB DC    A(0)          MSG HEADER KEYWORD TABLE
+MAILVTAB DC    A(0)          ADDR OF VERIFICATION TABLE
+MAILPTAB DC    A(0)          ADDR OF USER PARMS TABLE
+MAILHREC DC    F'0'          NUMBER OF PHYSICAL RECORDS IN HEADER
+MAILHLIN DS    F'0'          NUMBER OF LOGICAL LINES IN HEADER
+MAILRCNT DC    F'0'          NUMBER OF RECIPIENTS PROCESSED FOR FILE
+MAILRCNB DC    F'0'          NUMBER OF RECIPIENT BLOCKS PROCESSED
+MAILRMAX DC    F'0'          MAXIMUM NUMBER OF RECIPIENTS SEEN
+MAILRTOT DC    F'0'          TOTAL NUMBER OF RECIPIENTS SENT TO
+MAILICNT DC    F'0'          INCOMING FILE COUNT
+MAILSTMX DC    F'0'          MAXIMUM USED STACK ADDRESS
+MAILCHN  DC    A(0)          CHAIN OF ACTADR BLOCKS
+MAILFLD  DC    A(0)          CHAIN OF FIELD DESCRIPTORS ANCHOR
+MAILSFLD DC    A(0)          FILE SENDER FIELDD
+MAILCMDL DC    A(0)          STACKED MAILCMD2 COMMANDS
+MAILFILE DC    F'0'          BINARY SPOOL FILE NUMBER
+MAILFTXT DC    CL4' '        CHARACTER VERSION OF SAME
+         SPACE 1
+MAILOPTS DC    X'00'         MAILER RUNTIME OPTIONS
+* BITS DEFINED IN MAILOPTS:
+MOPTDEF  EQU   X'80'         SUPPLY DEFAULTS FOR OMITTED FIELDS
+MOPTAUN  EQU   X'40'         ALLOW UNKNOWN NODES TO SEND ME MAIL
+MOPTAC   EQU   X'20'         Allow charlatans                    [1.24]
+MOPTVL   EQU   X'10'         Verbose console logging             [1.24]
+*        EQU   X'08'         Unused
+MOPTALLM EQU   X'04'         Print all messages received
+MOPTNO82 EQU   X'02'         Do not look for RFC822 headers in BSMTP
+MOPTFIOK EQU   X'01'         Accept FILE FROM:
+         SPACE 1
+MAILFLG1 DC    X'00'         CURRENT MAIL FILE FLAGS
+* BITS DEFINED IN MAILFLG1:
+MFLGDEST EQU   X'80'         A '*DESTINATION:' CARD IS PRESENT
+MFLG1LCL EQU   X'40'         MAIL SOURCE IS LOCAL USER
+MFLG1GTW EQU   X'20'         MAIL SOURCE IS GATEWAY
+MFLG1EDI EQU   X'10'         HEADER HAS BEEN EDITED
+MFLG1REJ EQU   X'08'         REJECTED BY RSCS
+MFLG1HDS EQU   X'04'         HEADER HAS BEEN SCANNED OK
+MFLG1DOT EQU   X'02'         quote lone dots when punching       [1.22]
+MFLG1RES EQU   X'01'         [1.16]file has been RESENT.
+MAILCMD  DC    X'00'         COMMAND FLAGS
+*        EQU   X'80'               Spare.
+*        EQU   X'40'               Spare.
+MCMDCMD  EQU   X'20'         Mail command processing to be called
+MAILSTAT DC    X'00'         MAILER STATUS FLAG BYTE
+MSTINWT  EQU   X'80'         MAILER IS IN WAIT STATE
+MSTQSC   EQU   X'40'         MAILER QUIESCENT
+CPUSTR   DC    CL8'&NODE'    LOCAL RSCS NODE NAME
+RSCSNAME DC    CL8'&RSCS'    RSCS MACHINE NAME
+MAILVMID DC    CL8' '        MAILER MACHINE VM USERID
+MAILTIME DC    CL16'00/00/0000:00:00'  TIME OF LAST START/RELOAD
+MAILVERS DC    0CL36' '
+         DC    CL16'&VERSION',C' '
+         DC    CL8'&SYSDATE',C' '
+         LCLC  &TIME
+&TIME    SETC  '&SYSTIME'(1,2).':'.'&SYSTIME'(4,2).':00'
+         DC    CL8'&TIME'
+         DC    CL2' '              Unused
+HALTRC   DC    F'0'                Return Code from STOP command.
+MAILNODE DC    CL8' '        MAIL ORIGIN NODE NAME
+MAILUSER DC    CL8' '        MAIL ORIGIN USERID
+MAILFORM DC    CL8' '        Mail FORM value
+MAILRTFN DC    CL8'&ROUTEFN',CL8'&ROUTEFT',CL2'&ROUTEFM'
+MAILULFN DC    CL8'MAILER',CL8'USERLOG',CL2'A'
+MSFBSIZE EQU   16                  Doubleword size of SFB returned by
+*                                  by DIAG 14 subfunction FFF.  This is
+*                                  larger than the default (13) because
+*                                  the SFBUFORM field is being used.
+*
+MAILSFB  DC    (MSFBSIZE)D'0'      Spool file block buffer for DIAG 14
+         DC    40X'0'              3800 data will go here
+         DC    XL8'0'              First CCW
+         DC    XL4'0'              First TIC
+MAILTAG  DC    CL130' '            Tag text will be here
+         SPACE 1
+MAILIUCB DC    5D'0'               IUCV external interrput buffer.
+MAILIUCP DC    F'0'                IUCV *MSG pathid.
+CMDECB   DC    F'0'                Incoming Command ECB.
+         AIF   ('&DSECT' NE 'NO').CMD1
+         ENTRY CMDECB
+.CMD1    ANOP  ,
+STOPECB  DC    F'0'                Stop command ECB
+RELDECB  DC    F'0'                RELOAD command ECB.
+         AIF   ('&DSECT' NE 'NO').STOP1
+         ENTRY STOPECB
+         ENTRY RELDECB
+.STOP1   ANOP  ,
+         DC    200X'00'            Spare.
+         SPACE ,
+* COMMONLY USED CONSTANTS -
+REVTAB   REVTAB LEN=256
+LREVTAB  EQU   *-REVTAB
+SKIPBLKS DC    256X'FF'      SKIP BLANKS
+         ORG   SKIPBLKS+C' '
+         DC    X'00'
+         ORG
+TRAPTAB  DC    256X'00'      GENERAL 1 OR 2 CHAR TRAP TABLE
+UPCASE   LOWUP ,             UPPER CASE TABLE
+         SPACE ,
+*----  COMMON ROUTINE DECLARATIONS:
+APUNHDR  DC    V(PUNHDR)     ROUTINE TO PUNCH HEADERS
+APUNTXT  DC    V(PUNTXT)     ROUTINE TO PUNCH TEXT
+APUNCLS  DC    V(PUNCLS)     ROUTINE TO CLOSE READER
+ATBLUK   DC    V(TBLUK)      TABLE LOOKUP
+AMONWTR  DC    V(MONWTR)     LOG WRITER
+AARPADAT DC    V(ARPADATE)   [2] CURRENT DATE IN RFC822 FORMAT
+AUNIXSCA DC    V(UNIXSCAN)   [1.13]Unix-style argument scanner
+ARDHDR   DC    V(RDHDR)      get next header record              [1.24]
+ARDTXT   DC    V(RDTXT)      get next text record                [1.24]
+         DC    34F'0'        patch space                         [1.24]
+MAXRCVD  DC    F'50'         max. number of Received: headers.   [1.24]
+MAILULEN DC    F'0'          length of MAILUSER                  [1.24]
+MAILNLEN DC    F'0'          lenght of MAILNODE                  [1.24]
+MAILULFS DC    A(ULFSCB)     ptr to userlog file FSCB            [1.23]
+OLDLDOM  DC    A(0)                Spare (was -> Local-Domain)
+CPUSLEN  DC    F'0'          length of cpustr for convenience    [1.22]
+OLDRDOM  DC    A(0)                Spare (was -> Rscs-Domain).
+MAILDTAB DC    A(0)          domains table pointer               [1.22]
+MAILOTAB DC    A(0)         [1.20]Origins table pointer
+MAILDFLD DC    A(0)          [1.16]File date fieldd
+RSCSALT  DC    CL8' '        [1.13a]Scotch tape works fine
+         AIF ('&DSECT' NE 'NO').DC2 [1.12]
+         ENTRY SITEOPTS      [1.12]
+.DC2     ANOP                [1.12]
+SITEOPTS DC    X'00'         [1.12]Site-specific options.
+* bits defined in SITEOPTS:  [1.12]
+S#MAINE  EQU   X'80'         [1.12]U.MAINE "FORM MAIL"
+S#NXFER  EQU   X'40'         [1.18]Don't use SFBLOK SFBXFER flag
+RESCNT   DC    X'00'         [1.16]count of Resent- field groups
+         SPACE 1
+MAILFLG2 DC    X'00'         more flags                          [1.22]
+MFLG2SMT EQU   X'80'         current mail file is BSMTP-generated[1.22]
+MFLG2VLF EQU   X'40'         Validate failed                     [1.23]
+MFLG2NOR EQU   X'20'         no Received: stamp wanted.          [1.24]
+MFLG2NLF EQU   X'10'         MAIL FROM:<>
+MFLG2NOH EQU   X'08'         MAIL FROM:<userid>  (i.e. no host)
+MFLG2BLD EQU   X'04'         BUILDLST incomplete (some mail to send,
+*                                but some destinations not found)
+MFLG2N82 EQU   X'02'         Don't look for 822 headers in BSMTP
+*                            When Allow-file-from=true (MOPTFIOK in
+*                            MAILOPTS = 1), and MFLG2N82=1, a
+*                            FILE FROM: was found in BSMTP file.
+         SPACE 1
+         DC    X'00'         reserved                            [1.22]
+ULFSCB   FSCB  'MAILER USERLOG A',RECFM=F,BSIZE=80,FORM=E        [1.23]
+MAILTRAC DS    0D            Trace table pointers
+TRTBLST  DC    A(0)          Start of table
+TRTBLCUR DC    A(0)          Current entry pointer
+TRTBLEND DC    A(0)          Last entry address
+         DS    0D            Align the following
+MAINTID  DC    CL8'&MAINT(2)' Mailer maintainer userid
+MAINTNOD DC    CL8'&MAINT(1)'     & node
+MAINTID2 DC    8X'00'         Alternate priviliged userid
+MAINTNO2 DC    8X'00'             & node
+MAINTID3 DC    8X'00'         Alternate priviliged userid
+MAINTNO3 DC    8X'00'             & node
+MAINTID4 DC    8X'00'         Alternate priviliged userid
+MAINTNO4 DC    8X'00'             & node
+MAINTID5 DC    8X'00'         Alternate priviliged userid
+MAINTNO5 DC    8X'00'             & node
+MAINTID6 DC    8X'00'         Alternate priviliged userid
+MAINTNO6 DC    8X'00'             & node
+MAINTID7 DC    8X'00'         Alternate priviliged userid
+MAINTNO7 DC    8X'00'             & node
+MAINTID8 DC    8X'00'         Alternate priviliged userid
+MAINTNO8 DC    8X'00'             & node
+MAINTID9 DC    8X'00'         Alternate priviliged userid
+MAINTNO9 DC    8X'00'             & node
+         DC    16X'FF'        Absolute end of list
+LCLHOST1 DC    A(0)                Local host name #1.
+LCLHOST2 DC    A(0)                Local host name #2.
+LCLHOST3 DC    A(0)                Local host name #3.
+LCLHOST4 DC    A(0)                Local host name #4.
+LCLHOST5 DC    A(0)                Local host name #5.
+LCLHOST6 DC    A(0)                Local host name #6.
+LCLHOST7 DC    A(0)                Local host name #7.
+LCLHOST8 DC    A(0)                Local host name #8.
+LCLHOST9 DC    A(0)                Local host name #9.
+LCLHOST  EQU   LCLHOST1,*-LCLHOST1 The whole array.
+RSCSDOM1 DC    A(0)                Domain #1 for the RSCS network.
+RSCSDOM2 DC    A(0)                Domain #2 for the RSCS network.
+RSCSDOM3 DC    A(0)                Domain #3 for the RSCS network.
+RSCSDOM4 DC    A(0)                Domain #4 for the RSCS network.
+RSCSDOM5 DC    A(0)                Domain #5 for the RSCS network.
+RSCSDOM6 DC    A(0)                Domain #6 for the RSCS network.
+RSCSDOM7 DC    A(0)                Domain #7 for the RSCS network.
+RSCSDOM8 DC    A(0)                Domain #8 for the RSCS network.
+RSCSDOM9 DC    A(0)                Domain #9 for the RSCS network.
+RSCSDOM  EQU   RSCSDOM1,*-RSCSDOM1 The whole array.
+         SPACE 1
+* Debugging flag bytes
+         SPACE 1
+DBGFLG0  DC    X'0'                SMTPIN tracing flags
+*        EQU   X'80'               Procedure call trace
+*        EQU   X'40'               Trace check_local
+*        EQU   X'20'               Trace find_routd
+*        EQU   X'10'               Trace is_mailer
+*        EQU   X'08'               Trace rep_mail
+*        EQU   X'04'               Trace s_getdata
+*        EQU   X'02'               Trace s_input
+*        EQU   X'01'               Trace s_rcpt
+         SPACE 1
+DBGFLG1  DC    X'0'                More SMTPIN tracing flags
+*        EQU   X'80'               Trace s_mail
+*        EQU   X'40'               Trace parse_data_header
+*        EQU   X'20'               Trace check_sender
+*        EQU   X'10'               Trace check_domain
+*        EQU   X'08'               Trace smtpin
+*        EQU   X'04'               Unused
+*        EQU   X'02'               Unused
+*        EQU   X'01'               Unused
+         SPACE 1
+DBGFLG2  DC    X'0'                Unused
+DBGFLG3  DC    X'0'                Unused
+DBGFLG4  DC    X'0'                Unused
+DBGFLG5  DC    X'0'                Unused
+         SPACE 1
+DBGFLG6  DC    X'0'                Various assembler flags
+DBGNOOUT EQU   X'80'               Do not produce output mail
+DBGPARSE EQU   X'40'               Trace parsing
+*        EQU   X'20'               Unused
+*        EQU   X'10'               Unused
+*        EQU   X'08'               Unused
+*        EQU   X'04'               Unused
+*        EQU   X'02'               Unused
+*        EQU   X'01'               Unused
+         SPACE 1
+DBGFLG7  DC    X'0'                Various assembler routines
+DBGBLDLS EQU   X'80'               Trace BUILDLST processing
+DBGTBLUK EQU   X'40'               Trace TBLUK processing
+DBGHDRSC EQU   X'20'               Trace HDRSCAN processing
+DBGGETHD EQU   X'10'               Trace GETHDR processing
+DBGLOCAL EQU   X'08'               Trace LOCAL processing
+DBGSNDLS EQU   X'04'               Trace SENDLST processing
+DBGVALID EQU   X'02'               Trace VALIDATE processing
+         SPACE 1
+         DS    0F
+* Table of variables with significance to MAILER
+         SPACE 1
+PTABARR  DC    A(CPUSTR-MAILBLOK,STRTHIS)
+         DC    A(RSCSNAME-MAILBLOK,STRRSCS)
+         DC    A(RSCSALT-MAILBLOK,STRRALT)       [1.13]
+         DC    A(MAINTID-MAILBLOK,STRMUSE)
+         DC    A(MAINTNOD-MAILBLOK,STRMNOD)
+         DC    A(MAINTID-MAILBLOK,STRMUSE1)     MAINTUSER1 = MAINTUSER
+         DC    A(MAINTNOD-MAILBLOK,STRMNOD1)    MAINTNODE1 = MAINTNODE
+         DC    A(MAINTID2-MAILBLOK,STRMUSE2)
+         DC    A(MAINTNO2-MAILBLOK,STRMNOD2)
+         DC    A(MAINTID3-MAILBLOK,STRMUSE3)
+         DC    A(MAINTNO3-MAILBLOK,STRMNOD3)
+         DC    A(MAINTID4-MAILBLOK,STRMUSE4)
+         DC    A(MAINTNO4-MAILBLOK,STRMNOD4)
+         DC    A(MAINTID5-MAILBLOK,STRMUSE5)
+         DC    A(MAINTNO5-MAILBLOK,STRMNOD5)
+         DC    A(MAINTID6-MAILBLOK,STRMUSE6)
+         DC    A(MAINTNO6-MAILBLOK,STRMNOD6)
+         DC    A(MAINTID7-MAILBLOK,STRMUSE7)
+         DC    A(MAINTNO7-MAILBLOK,STRMNOD7)
+         DC    A(MAINTID8-MAILBLOK,STRMUSE8)
+         DC    A(MAINTNO8-MAILBLOK,STRMNOD8)
+         DC    A(MAINTID9-MAILBLOK,STRMUSE9)
+         DC    A(MAINTNO9-MAILBLOK,STRMNOD9)
+PTABLEN  EQU   (*-PTABARR)/8
+         SPACE 2
+* Table of bit values of significance to MAILER
+         SPACE 1
+PBITARR  DC    A(MAILOPTS-MAILBLOK,STRALLOW,MOPTAUN)
+         DC    A(MAILOPTS-MAILBLOK,STRSUPPL,MOPTDEF)
+         DC    A(MAILOPTS-MAILBLOK,STRCHAR,MOPTAC)               [1.24]
+         DC    A(MAILOPTS-MAILBLOK,STRVL,MOPTVL)                 [1.24]
+         DC    A(MAILOPTS-MAILBLOK,STRALLM,MOPTALLM)
+         DC    A(MAILOPTS-MAILBLOK,STRNO822,MOPTNO82)
+         DC    A(MAILOPTS-MAILBLOK,STRFILOK,MOPTFIOK)
+PBITLEN  EQU   (*-PBITARR)/12
+         SPACE 2
+* Table of ?
+         SPACE 1
+PPTRARR  DC    A(RSCSDOM1-MAILBLOK,STRDOMAI) RSCS-Domain =
+         DC    A(RSCSDOM1-MAILBLOK,STRDOM1)       RSCS-Domain1
+         DC    A(RSCSDOM2-MAILBLOK,STRDOM2)
+         DC    A(RSCSDOM3-MAILBLOK,STRDOM3)
+         DC    A(RSCSDOM4-MAILBLOK,STRDOM4)
+         DC    A(RSCSDOM5-MAILBLOK,STRDOM5)
+         DC    A(RSCSDOM6-MAILBLOK,STRDOM6)
+         DC    A(RSCSDOM7-MAILBLOK,STRDOM7)
+         DC    A(RSCSDOM8-MAILBLOK,STRDOM8)
+         DC    A(RSCSDOM9-MAILBLOK,STRDOM9)
+         DC    A(LCLHOST1-MAILBLOK,STRLCLDO) Local-Domain =
+         DC    A(LCLHOST1-MAILBLOK,STRLCLH1)      Local-Host1
+         DC    A(LCLHOST2-MAILBLOK,STRLCLH2)
+         DC    A(LCLHOST3-MAILBLOK,STRLCLH3)
+         DC    A(LCLHOST4-MAILBLOK,STRLCLH4)
+         DC    A(LCLHOST5-MAILBLOK,STRLCLH5)
+         DC    A(LCLHOST6-MAILBLOK,STRLCLH6)
+         DC    A(LCLHOST7-MAILBLOK,STRLCLH7)
+         DC    A(LCLHOST8-MAILBLOK,STRLCLH8)
+         DC    A(LCLHOST9-MAILBLOK,STRLCLH9)
+PPTRLEN  EQU   (*-PPTRARR)/8
+         SPACE 2
+* The debugging flag bits
+         SPACE 1
+DBITARR  DC    A(DBGFLG0-MAILBLOK,SMTPTR01,X'80')
+         DC    A(DBGFLG0-MAILBLOK,SMTPTR02,X'40')
+         DC    A(DBGFLG0-MAILBLOK,SMTPTR03,X'20')
+         DC    A(DBGFLG0-MAILBLOK,SMTPTR04,X'10')
+         DC    A(DBGFLG0-MAILBLOK,SMTPTR05,X'08')
+         DC    A(DBGFLG0-MAILBLOK,SMTPTR06,X'04')
+         DC    A(DBGFLG0-MAILBLOK,SMTPTR07,X'02')
+         DC    A(DBGFLG0-MAILBLOK,SMTPTR08,X'01')
+         DC    A(DBGFLG1-MAILBLOK,SMTPTR11,X'80')
+         DC    A(DBGFLG1-MAILBLOK,SMTPTR12,X'40')
+         DC    A(DBGFLG1-MAILBLOK,SMTPTR13,X'20')
+         DC    A(DBGFLG1-MAILBLOK,SMTPTR14,X'10')
+         DC    A(DBGFLG1-MAILBLOK,SMTPTR15,X'08')
+         DC    A(DBGFLG6-MAILBLOK,MAILTR61,DBGNOOUT)
+         DC    A(DBGFLG6-MAILBLOK,MAILTR62,DBGPARSE)
+         DC    A(DBGFLG7-MAILBLOK,MAILTR71,DBGBLDLS)
+         DC    A(DBGFLG7-MAILBLOK,MAILTR72,DBGTBLUK)
+         DC    A(DBGFLG7-MAILBLOK,MAILTR73,DBGHDRSC)
+         DC    A(DBGFLG7-MAILBLOK,MAILTR74,DBGGETHD)
+         DC    A(DBGFLG7-MAILBLOK,MAILTR75,DBGLOCAL)
+         DC    A(DBGFLG7-MAILBLOK,MAILTR76,DBGSNDLS)
+         DC    A(DBGFLG7-MAILBLOK,MAILTR77,DBGVALID)
+DBITLEN  EQU   (*-DBITARR)/12
+         SPACE ,
+*--------------------------------------------------------------------
+*        Strings for searching for variable values
+*--------------------------------------------------------------------
+         SPACE ,
+*  Who we and the RSCS(es) are
+         SPACE 1
+STRTHIS  DC    Y(8),C'THISNODE'
+STRRSCS  DC    Y(8),C'RSCSNAME'
+STRRALT  DC    Y(7),C'RSCSALT'                   [1.13]
+         SPACE 1
+*  Priviliged users list
+         SPACE 1
+STRMUSE  DC    Y(9),C'MAINTUSER'
+STRMNOD  DC    Y(9),C'MAINTNODE'
+STRMUSE1 DC    Y(10),C'MAINTUSER1'
+STRMNOD1 DC    Y(10),C'MAINTNODE1'
+STRMUSE2 DC    Y(10),C'MAINTUSER2'
+STRMNOD2 DC    Y(10),C'MAINTNODE2'
+STRMUSE3 DC    Y(10),C'MAINTUSER3'
+STRMNOD3 DC    Y(10),C'MAINTNODE3'
+STRMUSE4 DC    Y(10),C'MAINTUSER4'
+STRMNOD4 DC    Y(10),C'MAINTNODE4'
+STRMUSE5 DC    Y(10),C'MAINTUSER5'
+STRMNOD5 DC    Y(10),C'MAINTNODE5'
+STRMUSE6 DC    Y(10),C'MAINTUSER6'
+STRMNOD6 DC    Y(10),C'MAINTNODE6'
+STRMUSE7 DC    Y(10),C'MAINTUSER7'
+STRMNOD7 DC    Y(10),C'MAINTNODE7'
+STRMUSE8 DC    Y(10),C'MAINTUSER8'
+STRMNOD8 DC    Y(10),C'MAINTNODE8'
+STRMUSE9 DC    Y(10),C'MAINTUSER9'
+STRMNOD9 DC    Y(10),C'MAINTNODE9'
+         SPACE 1
+*  Run time operation
+         SPACE 1
+STRALLOW DC    Y(19),C'ALLOW-UNKNOWN-NODES'
+STRCHAR  DC    Y(16),C'ALLOW-CHARLATANS'                         [1.24]
+STRVL    DC    Y(15),C'VERBOSE-LOGGING'                          [1.24]
+STRALLM  DC    Y(13),C'SHOW-ALL-MSGS'
+STRSUPPL DC    Y(21),C'SUPPLY-DEFAULT-FIELDS'
+STRNO822 DC    Y(15),C'BSMTP-NO-RFC822'
+STRFILOK DC    Y(15),C'ALLOW-FILE-FROM'
+         SPACE 1
+*  RSCS domain name(s)
+         SPACE 1
+STRDOMAI DC    Y(11),C'RSCS-DOMAIN'                              [1.22]
+STRDOM1  DC    Y(12),C'RSCS-DOMAIN1'
+STRDOM2  DC    Y(12),C'RSCS-DOMAIN2'
+STRDOM3  DC    Y(12),C'RSCS-DOMAIN3'
+STRDOM4  DC    Y(12),C'RSCS-DOMAIN4'
+STRDOM5  DC    Y(12),C'RSCS-DOMAIN5'
+STRDOM6  DC    Y(12),C'RSCS-DOMAIN6'
+STRDOM7  DC    Y(12),C'RSCS-DOMAIN7'
+STRDOM8  DC    Y(12),C'RSCS-DOMAIN8'
+STRDOM9  DC    Y(12),C'RSCS-DOMAIN9'
+         SPACE 1
+*  Alternate local host name(s)
+         SPACE 1
+STRLCLDO DC    Y(12),C'LOCAL-DOMAIN'
+STRLCLH1 DC    Y(11),C'LOCAL-HOST1'
+STRLCLH2 DC    Y(11),C'LOCAL-HOST2'
+STRLCLH3 DC    Y(11),C'LOCAL-HOST3'
+STRLCLH4 DC    Y(11),C'LOCAL-HOST4'
+STRLCLH5 DC    Y(11),C'LOCAL-HOST5'
+STRLCLH6 DC    Y(11),C'LOCAL-HOST6'
+STRLCLH7 DC    Y(11),C'LOCAL-HOST7'
+STRLCLH8 DC    Y(11),C'LOCAL-HOST8'
+STRLCLH9 DC    Y(11),C'LOCAL-HOST9'
+         SPACE 1
+* The following variable names are related to debugging
+         SPACE 1
+SMTPTR01 DC    Y(18),C'SMTPIN-TRACE-CALLS'
+SMTPTR02 DC    Y(24),C'SMTPIN-TRACE-CHECK-LOCAL'
+SMTPTR03 DC    Y(23),C'SMTPIN-TRACE-FIND-ROUTD'
+SMTPTR04 DC    Y(22),C'SMTPIN-TRACE-IS-MAILER'
+SMTPTR05 DC    Y(23),C'SMTPIN-TRACE-REP-MAILER'
+SMTPTR06 DC    Y(22),C'SMTPIN-TRACE-S-GETDATA'
+SMTPTR07 DC    Y(20),C'SMTPIN-TRACE-S-INPUT'
+SMTPTR08 DC    Y(19),C'SMTPIN-TRACE-S-RCPT'
+SMTPTR11 DC    Y(19),C'SMTPIN-TRACE-S-MAIL'
+SMTPTR12 DC    Y(30),C'SMTPIN-TRACE-PARSE-DATA-HEADER'
+SMTPTR13 DC    Y(25),C'SMTPIN-TRACE-CHECK-SENDER'
+SMTPTR14 DC    Y(25),C'SMTPIN-TRACE-CHECK-DOMAIN'
+SMTPTR15 DC    Y(19),C'SMTPIN-TRACE-SMTPIN'
+MAILTR61 DC    Y(18),C'TRACE-SEND-NO-MAIL'
+MAILTR62 DC    Y(13),C'TRACE-PARSING'
+MAILTR71 DC    Y(14),C'BUILDLST-TRACE'
+MAILTR72 DC    Y(11),C'TBLUK-TRACE'
+MAILTR73 DC    Y(13),C'HDRSCAN-TRACE'
+MAILTR74 DC    Y(12),C'GETHDR-TRACE'
+MAILTR75 DC    Y(11),C'LOCAL-TRACE'
+MAILTR76 DC    Y(13),C'SENDLST-TRACE'
+MAILTR77 DC    Y(14),C'VALIDATE-TRACE'
+         SPACE 2
+         DS    0D            Just for pretty
+MAILBLEN EQU   *-MAILXXXX    LENGTH IN BYTES
+         POP   PRINT
+         MEND
+         MACRO
+         TRACETBL
+         PUSH  PRINT
+         AIF   ('&SYSPARM' NE 'SUP').NOSUP
+         PRINT OFF,NOGEN
+.NOSUP   ANOP
+TRCENT   DSECT
+TRCTYPE  DS    CL8                 Entry type
+TRCROUTN DS    CL8                 Name of routine making entry
+TRCADDR  DS    A                   Address at which entry made
+TRCDATA  DS    CL44                Use defined by entry type
+TRCENTL  EQU   *-TRCENT
+         SPACE 1
+*  TRCDATA field usage for CALL type entry
+         SPACE 1
+*+0      DS    CL8                 Name of routine being called
+         SPACE 1
+*  TRCDATA field usage for CREATE type entry
+         SPACE 1
+*+0      DS    CL8                 Type of entity created
+*+8      DS    A                   Address of entity created
+         SPACE 1
+*  TRCDATA field usage for RETURN type entry
+         SPACE 1
+*+0      DS    CL8                 Name of routine called
+*+8      DS    F                   Return code
+         POP   PRINT
+         MEND  ,

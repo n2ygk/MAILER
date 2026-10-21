@@ -1,0 +1,354 @@
+TOKENIZR TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - TOKENIZE ARPA ADDRE*
+               SS STRING'
+TOKENIZR CSECT ,
+*---------------------------------------------------------------------*
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         *
+*    Program Property of the Trustees of Columbia University in the   *
+*    City of New York.                                                *
+*---------------------------------------------------------------------*
+*  TOKENIZR TAKES A STRING AS INPUT AND RETURNS A LINKED LIST
+*  OF TOKENS AS DEFINED BY RFC733 (ARPA MESSAGE HEADER FORMAT).
+*
+*  LAST EDIT: 4/9/82 BY ALAN CROSSWELL
+*
+* ON ENTRY, R1 POINTS TO A PARMLIST:
+PAB      DSECT ,
+@STR     DS    A             ADDRESS OF INPUT STRING POINTER
+@END     DS    A             ADDRESS OF END OF INPUT STRING POINTER
+@STK     DS    A             ADDRESS OF STACK SPACE
+@LEN     DS    A             ADDRESS OF LENGTH OF STACK SPACE
+@TOK     DS    A             ADDRESS OF TOKEN ARRAY POINTER
+         SPACE ,
+*
+* ON RETURN -
+*
+*   TOKEN POINTER DWORD FORMAT:
+         SPACE ,
+         BLOCKS ,
+         SPACE 1
+         COPY  DEBUG
+         SPACE ,
+* REGISTER USAGE -
+R0 EQU 0 -
+R1 EQU 1 - PARM LIST POINTER AND TRT WORK REGISTER
+R2 EQU 2 - TRT WORK REGISTER
+R3 EQU 3 -
+R4 EQU 4 -
+R5 EQU 5 - TOKEN LIST END ADDRESS
+R6 EQU 6 - CURRENT INPUT STRING CHARACTER POINTER
+R7 EQU 7 - LENGTH REMAINING IN INPUT STRING
+R8 EQU 8 - CURRENT TOKEN POINTER ADDRESS
+R9 EQU 9 - ADDRESS OF END OF INPUT STRING
+R10 EQU 10 -
+R11 EQU 11 -
+R12 EQU 12 - BASE REGISTER
+R13 EQU 13 - SAVE AREA ADDRESS
+R14 EQU 14 -
+R15 EQU 15 - RETURN CODE
+*
+* GLOBAL VARIABLES -
+* FUNC - FUNCTION CODE BYTE FROM LATEST TRT
+*
+* RETURN CODES
+*  4 - TOKEN BUFFER SUPPLIED WAS TOO SMALL
+*  8 - UNEXPECTED (EARLY) END OF INPUT STRING
+* 12 - ILLEGAL CHARACTER FOUND IN TOKENIZING
+* 16 - TOKEN LIST COMPLETE BUT MISSING ENDING X'00' CODE
+*      BECAUSE SPACE USED UP.
+         EJECT ,
+TOKENIZR CSECT ,
+         USING TOKENIZR,R15  TEMPORARY ADDRESSABILITY
+         B     EYESKIP       SKIP OVER EYE-CATCHER
+MYNAME   DC    CL8'TOKENIZR',CL8'&SYSDATE'
+EYESKIP  DS    0H
+         DROP  R15
+         STM   R14,R12,12(R13) SAVE CALLER'S REGISTERS
+         LR    R12,R15       GET PERMANENET ADDRESSABILITY
+         USING TOKENIZR,R12
+         LA    R15,SAVE      SAVE AREA
+         ST    R13,4(R15)    SAVE CALLER'S R13
+         ST    R15,8(R13)    CHAIN SAVE AREAS
+         LR    R13,R15       POINT AT MY SAVE AREA
+         ST    R1,PARM       SAVE ADDRESS OF PARMLIST
+         USING PAB,R1        GRAB PLIST
+         L     R2,@STR       ADDRESS OF STRING POINTER
+         L     R6,0(R2)      ADDRESS OF STRING
+         L     R2,@END       ADDRESS OF STRING END POINTER
+         L     R7,0(R2)      ADDRESS OF END OF STRING
+         SR    R7,R6         LENGTH OF STRING
+         L     R2,@STK       ADDRESS OF STACK POINTER
+         L     R8,0(R2)      ADDRESS OF STACK
+         L     R2,@LEN       ADDRESS OF LENGTH
+         L     R5,0(R2)      LENGTH OF STACK
+         L     R2,@TOK       ADDRESS OF TOKEN LIST POINTER
+         ST    R8,0(R2)      SET STACK TOP AS FIRST TOKEN ADDRESS
+         DROP  R1            DONE WITH PLIST
+         AR    R5,R8                   ADDRESS OF END OF TOKEN AREA
+         LR    R9,R6         GET BEGINNING OF STRING
+         AR    R9,R7         ADDRESS OF END OF STRING
+         S     R8,=A(TOKSIZ) Backup ptr by one TOKEND length
+* START STATE (STATE0)
+START    EQU   *
+         MVI   CURRSTAT,0    CURRENT STATE IS ZERO
+         CR    R6,R9         PAST END OF STRING?
+         BNL   DONE          DONE, FINISH UP
+         LA    R8,TOKSIZ(R8) POINT TO NEXT TOKEN ENTRY
+         CR    R8,R5         PAST END OF LIST?
+         BH    TOKOVFL       OVERFLOW ERROR
+         SR    R0,R0         GET A ZERO
+         USING TOKEND,R8     ADDRESS THE TOKEN ENTRY
+         XC    0(TOKSIZ,R8),0(R8) Zero new TOKEND
+         LA    R1,TOKSIZ(R8)      GET ADDRESS OF NEXT TOKEN
+         ST    R1,TOKNEXT         SET NEXT POINTER
+         LA    R14,TABLE0    ADDRESS OF STATE 0 TRT TABLE
+         B     TESTER        GO DO THE TRT STUFF
+TOKOVFL  EQU   *             TOKEN  LIST WAS TOO SMALL
+         LA    R15,4         ERROR CODE
+         B     RET           GO RETURN
+* ATOM STATE (STATE1)
+ATOM     EQU   *
+         MVI   CURRSTAT,1    CURRENT STATE IS 1
+         LA    R14,TABLE1    STATE 1 TRANSLATE TABLE
+         B     TESTER
+* Q-STR STATE (STATE2)
+QSTR     EQU   *
+         MVI   CURRSTAT,2    CURRENT STATE IS 2
+         LA    R14,TABLE2    STATE 2 TRANSLATE TABLE
+         B     TESTER
+* Q-CH (STATE3) - QUOTED CHARACTER. APPEND THE NEXT CHAR ONTO THE
+*                 TOKEN STRING
+QCH      EQU   *
+         MVI   CURRSTAT,3          CURRENT STATE IS 3
+* ????
+* ERROR - CONTROL PASSED HERE IF AN ERROR CODE IS SET IN FUNC
+ERROR    EQU   *
+         LA    R15,12
+         B     RET
+****************************************************************
+* THREE OF THE STATES SHARE THIS CODE SEGMENT TO TEST FOR BREAK
+* CHARACTERS.
+TESTER   EQU   *
+         C     R7,F256       MORE THAN 256 CHARS LEFT?
+         BH    FAKE256       FAKE IT TO 256
+         LR    R11,R7        COPY LENGTH
+         B     TESTER1
+FAKE256  EQU   *
+         LA    R11,256
+TESTER1  EQU   *
+         BCTR  R11,0         MINUS ONE FOR EXECUTE
+         EX    R11,TRT
+         BC    8,STREND      EARLY END OF STRING
+         STC   R2,FUNC       SAVE THE FUNCTION BYTE
+         SR    R7,R1         CALCULATE NEW LENGTH
+         AR    R7,R6         R7 := R7 - (R1 - R6)
+         LR    R6,R1         UPDATED STRING POINTER
+* NOW LOOK AT THE FUNCTION CODE AND DO THE STATE CHANGE
+         B     STATES
+STREND   EQU   *
+         LA    R15,8         INDICATE ERROR
+         B     RET
+*************************************************************
+* 1) SET THE TOKEN CODE
+* 2) DEPENDING ON FUNCTION CODE, ADJUST APPROPRIATE REGISTERS
+*    AND TOKEN LENGTH
+* 3) BRANCH TO STATE NAMED IN LEFT 4 BITS OF FUNC. CODE
+*
+*
+STATES   EQU   *
+         CLI   CURRSTAT,0    START STATE
+         BNE   STATESB       NOPE, DON'T SET CODE
+         ST    R6,TOKPTR         STORE START ADDRESS OF TOKEN
+         TM    FUNC,X'F0'    STATE ZERO
+         BZ    STATES2       YES, NEXT IS ZERO
+         TM    FUNC,STATE1   IS NEXT ATOM STATE?
+         BNO   STATES3
+         MVI   TOKTYPE,TOKATM PUT CODE INTO POINTER
+         B     STATESB
+STATES3  EQU   *
+* BY DEFAULT, GET Q-STR STATE (Q-CH STATE IS IMPOSSIBLE FROM ZERO)
+         MVI   TOKTYPE,TOKQSTR  PUT CODE INTO POINTER
+         B     STATESB
+STATES2  EQU   *
+* THE FUNCTION CODE = THE DELIMITER CHARACTER
+         MVC   TOKTYPE,0(R6) PUT INTO TOKEN CODE
+STATESB  EQU   *
+* NOW CHECK THE FUNCTION CODE AND DO THE APPROPRIATE THING
+         TM    FUNC,A        APPEND THE TOKEN
+         BNO   STATESB1      NOPE, TRY NEXT
+* APPENDING THE TOKEN MEANS ADD 1 TO TOKEN LENGTH
+         SR    R1,R1         GET ZERO
+         L     R1,TOKLEN     GET LENGTH
+         LA    R1,1(R1)      ADD ONE
+         ST    R1,TOKLEN     AND SAVE IT BACK
+STATESB1 EQU   *
+         TM    FUNC,S        SKIP THE TOKEN
+         BNO   STATESB2      NOPE, TRY NEXT
+* SKIPPING THE TOKEN MEANS ADD 1 TO INPUT POINTER
+         LA    R6,1(R6)      BUMP INPUT POINTER
+         BCTR  R7,0          MINUS 1 FROM REMAINDER COUNT
+STATESB2 EQU   *             NOW CHECK FOR ERROR
+         TM    FUNC,X        ERROR INDICATED?
+         BO    ERROR
+STATESC EQU    *
+         TM    FUNC,X'F0'    STATE 0?
+         BZ    START         GO TO STATE0 (START)
+         TM    FUNC,STATE1   STATE 1?
+         BO    ATOM          GO TO STATE1 (ATOM)
+         TM    FUNC,STATE2   STATE 2?
+         BO    QSTR
+         B     QCH           QUOTED CHAR (STATE 3)
+DONE     EQU   *
+         SR    R15,R15
+         LA    R8,TOKSIZ(R8) PUT ENDING ZERO ON TOK LIST
+         CR    R8,R5         IS THIS PAST END OF TOKEN LIST
+         BH    DONEIN        SIGH
+         XC    0(TOKSIZ,R8),0(R8) INTO TOKEN CODE
+DONE2    EQU   *
+         L     R1,PARM       GET PARM LIST ADDRESS
+         USING PAB,R1        ADDRESS IT
+         LA    R8,TOKSIZ(R8) UPDATE STACK POINTER
+         L     R2,@STK       GET ADDRESS FOR STACK POINTER
+         ST    R8,0(R2)      SET NEW STACK POINTER
+         L     R2,@TOK       ADDRESS FOR TOKEN POINTER
+         S     R8,0(R2)      LENGTH USED UP
+         L     R2,@LEN       ADDRESS OF LENGTH
+         L     R3,0(R2)      GET PREVIOUS LENGTH
+         SR    R3,R8         -1 LENGTH USED
+         ST    R3,0(R2)      IS REMAINING LENGTH
+         DROP  R1
+         B     RET
+DONEIN   EQU   *
+         LA    R15,16        INDICATE COMPLETE LIST, BUT
+*                            NO END FLAG.
+         B     DONE2
+*
+RET      EQU   *
+         L     R13,4(R13)    RESTORE CALLER'S R13
+         L     R14,12(R13)   RESTORE CALLER'S R14
+         LM    R0,R12,20(R13)   RESTORE CALLER'S R0-R12
+         BR    R14           AND RETURN
+         DROP  R8
+TRT      TRT   0(0,R6),0(R14)      A TRT
+F8       DC    F'8'
+F256     DC    F'256'
+SAVE     DS    18F
+PARM     DS    F                   ADDRESS OF PARM LIST
+FUNC     DS        X                   FUNCTION CODE FROM LAST TRT
+CURRSTAT DS        X                   CURRENT STATE
+*************************************************************
+* TOKENIZER TRT TABLES:
+* THE LEFT 4 BITS OF THE FUNCTION CODE DENOTE A NEXT STATE.
+* THE RIGHT 4 BITS DENOTE AN ACTION TO BE TAKEN PRIOR TO
+* GOING TO THE NEXT STATE.
+*
+* ACTION CODES ARE:
+S        EQU       1                   SKIP THE CHARACTER
+A        EQU       2                   APPEND TO TOKEN STRING
+E        EQU       4                   END OF TOKEN
+X        EQU       8                   ERROR
+STATE0   EQU       X'00'               START STATE
+STATE1   EQU       X'10'               ATOM
+STATE2   EQU       X'20'               Q-STR (QUOTED STRING)
+STATE3   EQU       X'40'               Q-CH (QUOTED CHARACTER)
+TABLE0   EQU       *                   STATE 0 TRANSLATE TABLE
+         DC        5AL1(X)             NUL - PF; ERROR
+         DC        AL1(0)              HT - WHITE SPACE; SKIP
+         DC        15AL1(X)            LC - RES; ERROR
+*         DC        AL1(A+E+S)          NL - NEW LINE
+         DC        AL1(0)          NL - NEW LINE (WHSP)
+         DC        42AL1(X)            BS - SUB; ERROR
+         DC        AL1(0)              SP - WHITE SPACE; SKIP
+         DC        10AL1(X)            X'41' - X'4A'; ERROR
+         DC        AL1(A+S+STATE1)     C'.'; ATOM CHARACTER
+         DC        2AL1(A+E+S)         < AND (; DELIMS
+         DC        3AL1(A+S+STATE1)    + - &; ATOM CHARACTERS
+         DC        9AL1(X)             X'51' - X'59' ; ERROR
+         DC        3AL1(A+S+STATE1)    C'!' - C'*'; ATOM CHARS
+         DC        2AL1(A+E+S)         ) AND ; -- DELIMS
+         DC        3AL1(A+S+STATE1)    NOT - /; ATOM CHARS
+         DC        9AL1(X)             X'62'-X'6A'; ERROR
+         DC        AL1(A+E+S)          COMMA; DELIM
+         DC        2AL1(A+S+STATE1)    % - _; ATOM CHARS
+         DC        AL1(A+E+S)          > DELIM
+         DC        AL1(A+S+STATE1)     ? - ATOM CHAR
+         DC        9AL1(X)             X'70'-X'78'; ERROR
+         DC        AL1(A+S+STATE1)     ACCENT GRAVE - ATOM CHAR
+         DC        AL1(A+E+S)          COLON; DELIM
+         DC        AL1(A+S+STATE1)     # - ATOM CHAR
+         DC        AL1(A+E+S)          ATSIGN - DELIM
+         DC        2AL1(A+S+STATE1)    ' - =  ; ATOM CHARS
+         DC        AL1(A+S+STATE2)     QUOTE - Q-STR DELIM
+         DC        AL1(X)              X'80' - ERROR
+         DC        9AL1(A+S+STATE1)    LOWER CASE A - I
+         DC        2AL1(X)             X'8A'-X'8B' - ERROR
+         DC        5AL1(X)             X'8C'-X'90' - ERROR
+         DC        9AL1(A+S+STATE1)    LOWER CASE J-R
+         DC        7AL1(X)             X'9A'-X'A0'; ERROR
+         DC        AL1(A+S+STATE1)     TILDE - ATOM CHAR
+         DC        8AL1(A+S+STATE1)    LOWER CASE S - Z
+         DC        3AL1(X)             X'AA'-X'AC'; ERROR
+         DC        AL1(A+S+STATE1)     [ - ATOM CHAR
+         DC        15AL1(X)            X'AE'-X'BC' ; ERROR
+         DC        AL1(A+S+STATE1)     ] - ATOM CHAR
+         DC        2AL1(X)             X'BE' - X'BF'; ERROR
+         DC        10AL1(A+S+STATE1)   { AND UPPER CASE A - I
+         DC        6AL1(X)             ERROR
+         DC        10AL1(A+S+STATE1)   } AND UPPER CASE J - R
+         DC        6AL1(X)             X'DA'-X'DF' - ERROR
+         DC        AL1(A+S+STATE1)     BACKSLASH - ATOM CHAR
+         DC        AL1(X)              X'E1' - ERROR
+         DC        8AL1(A+S+STATE1)     UPPER CASE S- Z
+         DC        6AL1(X)             ERRORS
+         DC        10AL1(A+S+STATE1)   NUMBERS
+         DC        6AL1(X)             MORE JUNK
+         TITLE     'TABLE1 - TRANSLATE TABLE FOR STATE 1'
+TABLE1   EQU       *                   STATE 1 TRT TABLE (ATOMS)
+         DC        75AL1(E+STATE0)     END
+         DC        AL1(A+S+STATE1)     C'.'; ATOM CHARACTER
+         DC        2AL1(E)             < AND (; END
+         DC        3AL1(A+S+STATE1)    + - &; ATOM CHARACTERS
+         DC        9AL1(E)             X'51' - X'59' ; END
+         DC        3AL1(A+S+STATE1)    C'!' - C'*'; ATOM CHARS
+         DC        2AL1(E)             ) AND ; -- END
+         DC        3AL1(A+S+STATE1)    NOT - /; ATOM CHARS
+         DC        9AL1(E)             X'62'-X'6A';  END
+         DC        AL1(E)              COMMA - DELIM
+         DC        2AL1(A+S+STATE1)    % - _; ATOM CHARS
+         DC        AL1(E)              > - DELIM
+         DC        AL1(A+S+STATE1)     ? - ATOM
+         DC        9AL1(E)             X'70'-X'78'; END
+         DC        AL1(A+S+STATE1)     TILDE - ATOM CHAR
+         DC        AL1(E)              COLON - DELIM
+         DC        AL1(A+S+STATE1)     # - ATOM CHAR
+         DC        AL1(E)              ATSIGN - END
+         DC        2AL1(A+S+STATE1)    ' - =  ; ATOM CHARS
+         DC        2AL1(E)             QUOTE AND X'80' ; END
+         DC        9AL1(A+S+STATE1)    LOWER CASE A - I
+         DC        7AL1(E)             X'8A' - X'90';END
+         DC        9AL1(A+S+STATE1)    LOWER CASE J-R
+         DC        7AL1(E)             X'9A'-X'A0'; END
+         DC        AL1(A+S+STATE1)     TILDE - ATOM CHAR
+         DC        8AL1(A+S+STATE1)    LOWER CASE S - Z
+         DC        3AL1(E)             X'AA'-X'AC'; END
+         DC        AL1(A+S+STATE1)     [ - ATOM CHAR
+         DC        15AL1(E)            X'AE'-X'BC' ; END
+         DC        AL1(A+S+STATE1)     ] - ATOM CHAR
+         DC        2AL1(E)             X'BE' - X'BF'; END
+         DC        10AL1(A+S+STATE1)   { AND UPPER CASE A - I
+         DC        6AL1(E)             END
+         DC        10AL1(A+S+STATE1)   } AND UPPER CASE J - R
+         DC        6AL1(E)             END
+         DC        AL1(A+S+STATE1)     BACKSLASH - ATOM CHAR
+         DC        AL1(E)              END
+         DC        8AL1(A+S+STATE1)     UPPER CASE S- Z
+         DC        6AL1(E)             END
+         DC        10AL1(A+S+STATE1)   NUMBERS
+         DC        6AL1(E)             END
+TABLE2   EQU       *                   STATE 2 TRANSLATE TABLE
+         DC        256AL1(A+S+STATE2)  ALL CHARS
+         ORG       TABLE2+C'"'         QUOTE - END DELIM
+         DC        AL1(A+S+E+STATE0)
+         ORG       TABLE2+C'\'         QUOTE PREFIX
+         DC        AL1(S+STATE3)
+         ORG       TABLE2+256
+         END       TOKENIZR

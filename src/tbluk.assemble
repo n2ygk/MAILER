@@ -1,0 +1,315 @@
+*[1.22]Add test for sequential/right-adjusted lookup             [1.22]
+TBLUK    TITLE     'STRING TABLE LOOKUP'
+         MACRO
+&NAME    DBGMSG &TEXT,&SUB=
+         LCLC  &N
+&N       SETC  '&SYSNDX'(1,4)
+         PUSH  USING
+&NAME    STM   R0,R15,SAVEAREA
+         L     R1,=V(MAILBLOK)
+         USING MAILBLOK,R1
+         TM    DBGFLG7,DBGTBLUK   Is debugging wanted?
+         BZ    DBG&N.N            No  : skip
+         LINEDIT TEXT=&TEXT,SUB=&SUB,RENT=NO
+DBG&N.N  LM    R0,R15,SAVEAREA
+         POP   USING
+         MEND
+*---------------------------------------------------------------------*
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         *
+*    Program Property of the Trustees of Columbia University in the   *
+*    City of New York.                                                *
+*---------------------------------------------------------------------*
+TBLUK    CSECT
+* TBLUK    -  STRING TABLE LOOKUP. MODELLED AFTER DEC TOPS-20
+* JSYS BY THE SAME NAME.  THIS VERSION IS REENTRANT.
+*
+* LAST EDIT: 5/17/82 BY ALAN CROSSWELL
+*
+* CALLED VIA -
+*   CALL TBLUK,(TABLE,STRING,LENGTH,WORK)
+*
+PAB      DSECT ,
+@TABLE   DS    A             ADDRESS OF KEYWORD TABLE
+@STRING  DS    A             ADDRESS OF TEST STRING
+@LENGTH  DS    F             LENGTH OF TEST STRING
+@WORK    DS    A             WORK BUFFER
+*
+* NOTE: THE WORK BUFFER IS USED TO TRANSLATE THE TEST AND
+*   BASE STRINGS TO UPPER CASE.  NO LENGTH CHECKING IS DONE,
+*   SO THE BUFFER SHOULD BE AS LONG AS THE LONGEST TEST
+*   STRING AND THE LONGEST BASE STRING.  THIS HAS A MAXIMUM
+*   OF 2*256 = 512.
+*
+*
+* RETURNS -
+*        IN R1 - DISPATCH VALUE
+*        IN R0 - Address of matching entry if R15=RETMATCH or RETSUBST
+*              - Address of failing entry if R15=RETAMB or RETNOT
+*        IN R15 - RETURN CODE
+RETMATCH EQU       0                   EXACT MACTH
+RETSUBST EQU       4                   UNIQUE SUBSTRING
+RETAMB   EQU       8                   AMBIGUOUS SUBSTRING
+RETNOT   EQU       12                  NOT MATCHED
+*
+* TBTAB FORMAT -
+         SPACE
+         TBTAB     DSECT=YES
+         SPACE
+* BIT DEFINITIONS -
+         SPACE
+         COPY      TBBITS
+         SPACE
+* TABLE ENTRY AND STRING FORMAT -
+         SPACE
+         TBENTRY
+         SPACE
+         MAILBLOK
+         EJECT
+*
+* FUNCTION -
+*   1) TRANSLATE TEST STRING TO UPPERCASE
+*   2) GET A TABLE ENTRY
+*   3) TRANSLATE THE ENTRY TO UPPERCASE
+*   4) FIND MINIMUM OF TEST AND BASE STRING LENGTHS.
+*   5) COMPARE THE STRINGS USING THE MINIMUM LENGTH FOUND.
+*      A) If lengths are different and TBT#EXAC set then no match
+*         Get next entry (goto 2)
+*      B) IF TEST=BASE
+*         1) IF TEST LENGTH <= BASE LENGTH THEN A MATCH IS
+*            FOUND. RETURN SUCCESFULLY (GOTO 6).
+*         2) IF TEST LENGTH > BASE LENGTH THEN A MATCH IS
+*            NOT FOUND. GO ON TO TRY AGAIN TO SEE IF THE
+*            NEXT ENTRY WILL WORK. (GOTO 2)
+*
+*      C) IF TEST<BASE
+*         TRY AGAIN. GET NEXT ENTRY (GOTO 2)
+*
+*      D) IF TEST>BASE
+*         RETURN NOT FOUND.
+*
+*   6) A MATCH HAS BEEN FOUND.  CHECK THE ENTRY OPTION BITS
+*      TO SEE HOW TO RETURN.
+*      A) TB#NOM - RETURN NOMATCH EVEN THOUGH THERE WAS A MATCH
+*      B) TB#AMB - RETURN AMBIGUOUS EVEN THOUGH THE MATCH WAS
+*         NOT AMBIGOUS. (GOOD WAY TO FORCE MINIMUM ABBREVIATIONS
+*         OF DANGEROUS KEYWORDS)
+*      C) NO FLAGS SET - RETURN SUCCESFULLY WITH POINTER IN R0
+*         AND DISPATCH VALUE IN R1.
+* REGISTER USAGE -
+R0  EQU  0 -
+R1  EQU  1 -
+R2  EQU  2 - Exact match flag
+R3  EQU  3 - Lower bound of current table range.
+R4  EQU  4 - Upper bound of current table range.
+R5  EQU  5 - WORK AND MINIMUM OF TEST AND BASE LENGTHS - 1
+BL  EQU  6 - LENGTH OF CURRENT BASE STRING - 1
+R7  EQU  7 - TBS DSECT BASE
+R8  EQU  8 - Current table entry pointer
+TL  EQU  9 - LENGTH OF TEST STRING - 1 (FOR EXECUTE)
+R10 EQU 10 - WORK REGISTER
+R11 EQU 11 - WORK AREA 1 (TEST STRING)
+R12 EQU 12 - PROGRAM BASE
+R13 EQU 13 - CALLER'S SAVE AREA
+R14 EQU 14 - WORK AREA 2 (BASE STRING)
+R15 EQU 15 - SUBROUTINE LINKAGE
+*
+         EJECT
+TBLUK    CSECT ,
+         STM   R14,R12,12(R13)
+         LR    R12,R15       GET MY ADDRESS
+         USING TBLUK,R12
+         USING PAB,R1        ADDRESS THE PAB
+         L     R10,@STRING   GET STRING POINTER
+         L     TL,@LENGTH    TEST STRING LENGTH
+         L     R11,@WORK     WORK AREA
+         L     R1,@TABLE     TABLE POINTER
+         DROP  R1
+         LA    R14,0(TL,R11) WORK AREA 2
+         USING TBTAB,R1      ADDRESS THE TABLE
+         TM    TB$FLG,TBT#SEQ sequential?                        [1.22]
+         BO    CALLSEQ       call the sequential version         [1.22]
+         DBGMSG 'TBLUK: Searching binary table'
+         LA    R2,AMBLP0           Set default (ambigous allowed)
+         TM    TB$FLG,TBT#EXAC     Exact match required?
+         BNO   NOTEXACT            ---> No
+         LA    R2,TRYLOW           Only allow exact match
+NOTEXACT EQU   *
+         L     R3,TB$ADR           Set lower-bound to first entry.
+         C     TL,=F'256'    MORE THAN 256 LONG?
+         BH    EMPTY         IT'S TOO LONG
+         LTR   TL,TL         MORE THAN ZERO LENGTH?
+         BNH   EMPTY
+         ICM   R4,B'1111',TB$LEN   # OF GOOD ENTRIES
+         BNZ   NOTEMPTY      IT'S NOT EMPTY
+         DROP  R1
+EMPTY    EQU   *
+         LR    R0,R3               Pass out table start address.
+         SR    R1,R1         A ZERO DISPATCH VALUE
+         LA    R15,RETNOT    INDICATE NOT FOUND
+         B     RET           AND RETURN
+NOTEMPTY EQU   *
+         BCTR  R4,0                Back it down to last entry.
+         MH    R4,=Y(TBE$LEN)  TABLE LENGTH (BYTES)
+         AR    R4,R3               Get address of end of table.
+         BCTR  TL,0          -1 FOR EXECUTE
+         EX    TL,COPY1      COPY IN TESTSTR
+         EX    TL,TRANS1     TRANSLATE TO UPPERCASE
+         LA    R0,1(,TL)
+         DBGMSG 'TBLUK: Key is ''....................''',              X
+               SUB=(CHARA,((R11),(R0)))
+         SPACE 2
+* DONE WITH SET UP, NOW FOR THE SEARCH:
+         SPACE 2
+SEARCH   EQU   *             TOP OF SEARCH LOOP
+         LR    R0,R4               Get
+         SR    R0,R3                 the
+         SRDA  R0,32                    center
+         D     R0,=A(TBE$LEN)              table
+         SRA   R1,1                           entry
+         M     R0,=A(TBE$LEN)                    address
+         LA    R8,0(R3,R1)                          in R8.
+         DBGMSG 'TBLUK: Low= ......, High= ......, Center= ......',    X
+               SUB=(HEX,(R3),HEX,(R4),HEX,(R8))
+         USING TBENTRY,R8    ADDRESS THE CURRENT ENTRY
+         L     R7,TBE$STR    ADDRESS OF A BASE STRING
+         USING TBS,R7        ADDRESS THE STRING
+         SR    BL,BL         GET A ZERO
+         IC    BL,TBS$SIZ    LENGTH OF BASE STRING
+         BCTR  BL,0          -1 FOR EXECUTE
+         EX    BL,COPY2      COPY INTO BASESTR BUFFER
+         EX    BL,TRANS2     TRANSLATE TO UPPERCASE
+         LA    R0,1(,BL)
+         DBGMSG 'TBLUK: Target is ''....................''',           X
+               SUB=(CHARA,((R14),(R0)))
+         CR    TL,BL         COMAPARE TEST LENGTH TO BASE L
+         BNH   BLONGER             TL <= BL : Can match, so check 'em.
+*                                  Can't match; need to switch ranges.
+         DBGMSG 'TBLUK: Target is too long, match fails.'
+         EX    BL,COMPARE          Compare the strings.
+         BL    TRYLOW              TEST <  BASE : Try the lower range.
+         BNL   TRYHIGH             TEST >= BASE : Try the higher range.
+         DC    H'0'                Can't happen.
+         SPACE 1
+BLONGER  DS    0H                  Here if TL <= BL
+         EX    TL,COMPARE          Compare the strings.
+         BL    TRYLOW              TEST < BASE : Try the lower range.
+         BH    TRYHIGH             TEST > BASE : Try the higher range.
+*                                  TEST = BASE : Possible match.
+         CR    BL,TL         LENGTHS MATCH EXACTLY?
+         BE    EXACT               Yes : We have a match.
+         BR    R2                  Exact match switch
+         SPACE 1
+AMBLP0   DS    0H                  Here if ambigous match allowed
+         DBGMSG 'TBLUK: Key and Target match, possibly ambiguously.'
+         LR    R0,R8               Save match address for later.
+AMBLP1   DS    0H
+         S     R8,=A(TBE$LEN)      Try the one below this first.
+         CR    R8,R3               Unless it's too low,
+         BL    AMBLP1X                in which case we skip out.
+         L     R7,TBE$STR    ADDRESS OF STRING
+         SR    BL,BL         GET A ZERO
+         IC    BL,TBS$SIZ    GET STRING LENGTH
+         BCTR  BL,0          -1 FOR EXECUTE.
+         EX    BL,COPY2      MOVE IT INTO BUFFER
+         EX    BL,TRANS2     UPPERCASE IT
+         EX    TL,COMPARE    COMPARE THEM
+         BNE   AMBLP1X             ^= : Try next one up.
+         CR    TL,BL               Compare lengths.
+         BL    AMBLP1              Test short : Keep going back.
+         B     EXACT               This is an exact match.
+AMBLP1X  DS    0H
+         A     R8,=A(TBE$LEN)      Go forward to last matching entry.
+         CR    R0,R8               Same as the one we matched?
+         BNE   AMBIG               No  : We've got an ambiguous match.
+         SPACE 1
+         A     R8,=A(TBE$LEN)      Try the one above the match.
+         CR    R8,R4               Unless it's too high,
+         BH    NOTAMB                 in which case we're ok.
+         L     R7,TBE$STR          Get the base string address.
+         SR    BL,BL               Get the base
+         IC    BL,TBS$SIZ             string length
+         BCTR  BL,0                      -1 for EXecute.
+         CR    TL,BL               Is the test longer than this base?
+         BH    NOTAMB              Yes : Then it can't match.
+         EX    BL,COPY2            Copy and upcase
+         EX    BL,TRANS2              it for comparison.
+         EX    TL,COMPARE          Compare test to base.
+         BNE   NOTAMB              ^= : We've got a good match.
+         LR    R8,R0               Return the match address to caller.
+         B     AMBIG               We've got an ambiguous match.
+NOTAMB   DS    0H
+         LR    R8,R0               Restore match pointer.
+         DBGMSG 'TBLUK: Key matches substring of Target, returning addrX
+               =......',SUB=(HEX,(R8))
+         LA    R15,RETSUBST        RC = Matched Substring
+         B     FOUND
+EXACT    DS    0H
+         DBGMSG 'TBLUK: Key and Target match exactly, returning addr=..X
+               ....',SUB=(HEX,(R8))
+         LA    R15,RETMATCH        RC = Exact Match
+FOUND    DS    0H
+         TM    TBS$FLG,TB#NOM      Can this one be a match?
+         BO    NOTFOUND            No  : Simulate "Not Found".
+         TM    TBS$FLG,TB#AMB      Should we report "Ambiguous Match"?
+         BO    AMBIG               Yes : Do it.
+         LR    R0,R8               Return entry address to caller.
+         L     R1,TBE$DSP          Return the Dispatch Value
+         B     RET                    to our caller.
+         SPACE ,
+NOTFOUND DS    0H
+         DBGMSG 'TBLUK: No match, returning addr=.......',             X
+               SUB=(HEX,(R8))
+         LA    R15,RETNOT          RC = Not Found.
+         LR    R0,R8               Entry = last lower value.
+         SR    R1,R1               No dispatch value.
+         B     RET
+         SPACE ,
+AMBIG    DS    0H
+         DBGMSG 'TBLUK: Match is ambiguous, returning addr=......',    X
+               SUB=(HEX,(R8))
+         LA    R15,RETAMB          RC = Ambiguous Match.
+         LR    R0,R8               Address of lowest matching entry.
+         SR    R1,R1               No dispatch value
+         B     RET
+         SPACE ,
+TRYLOW   DS    0H
+         DBGMSG 'TBLUK: Match fails, target is too high. Switching downX
+               .'
+         LR    R4,R8               Set upper bound to
+         S     R4,=A(TBE$LEN)         current center - 1.
+         CR    R3,R4               Lower <= upper?
+         BNH   SEARCH              Yes : Check lower range.
+         LR    R8,R3               Entry that was higher than key.
+         B     NOTFOUND            Return "NOT FOUND".
+         SPACE ,
+TRYHIGH  DS    0H
+         DBGMSG 'TBLUK: Match fails, target is too low. Switching up.'
+         LR    R3,R8               Set lower bound to
+         A     R3,=A(TBE$LEN)         current center + 1.
+         CR    R3,R4               Lower <= upper?
+         BNH   SEARCH              Yes : Check higher range.
+         LR    R8,R3               Entry that was higher than key.
+         B     NOTFOUND            Return "NOT FOUND".
+         SPACE ,
+RET      EQU   *
+         L     R14,12(R13)
+         LM    R2,R12,28(R13)
+         BR    R14
+         SPACE ,                                                 [1.22]
+CALLSEQ  DS    0H            here to call TBLUKS                 [1.22]
+         DBGMSG 'TBLUK: Searching sequential table'
+         L     R15,=V(TBLUKS) address of TBLUKS                  [1.22]
+         L     R14,12(,R13)  restore regs to make it look like   [1.22]
+         LM    R0,R12,20(R13) we were never called               [1.22]
+         BR    R15           XCTL to TBLUKS and return from there[1.22]
+*
+* READ-ONLY (PURE) DATA -
+LOWUP    LOWUP     ,                   UPPER CASE TRANSLATE TABLE
+COPY1    MVC   0(0,R11),0(R10)   COPY TEST STRING INTO BUFFER
+TRANS1   TR    0(0,R11),LOWUP TRANSLATE TO UPPERCASE
+COPY2    MVC   0(0,R14),TBS$STR  COPY BASE STRING INTO BUFFER
+TRANS2   TR    0(0,R14),LOWUP    TRANSLATE TO UPPERCASE
+COMPARE  CLC   0(0,R11),0(R14)  COMPARE THE TWO STRINGS
+         LTORG ,
+SAVEAREA DS    16F
+         END   TBLUK

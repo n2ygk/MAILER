@@ -1,0 +1,756 @@
+*Fix logic for type 2/3 exits in addchn/srcchn.                  [1.24]
+*[1.22]Add DOMAINS table and type 3 exits                        [1.22]
+*[1.21]Fixed incorrect *default* handling w/*destination.
+*[1.16] added support for RESENT- fields
+BUILDLST TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - BUILD LIST OF MAIL *
+               RECIPIENTS'
+*---------------------------------------------------------------------*
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         *
+*    Program Property of the Trustees of Columbia University in the   *
+*    City of New York.                                                *
+*---------------------------------------------------------------------*
+BUILDLST CSECT ,
+* BUILDLST -
+* This routine builds a list of recipients for the current mail
+* file.  Those addresses in the To:, Cc:, and Bcc: lists that are
+* decided upon as recipients are treated differently depending
+* on the following conditions:
+*        1) Source of file - from local user, network, or gateway
+*        2) Existence of "*destination:" field in the header.
+*
+* E. Alan Crosswell                              CUCCA 4/82
+*
+* LAST EDIT: 5/23/82 BY ALAN CROSSWELL
+*
+*  CALLED VIA -
+*  CALL BUILDLST,(MAILBLOK)
+         SPACE ,
+PAB      DSECT ,
+@MBLOK   DS    A             ADDRESS OF MAILBLOK
+         SPACE ,
+* A. Files containing the "*destination:" header
+*    ===========================================
+*
+*    Only addresses containing a host name identical to the
+*    one supplied after the "*destination" keyword are to
+*    receive a copy of the file.  This is treated as a seperate
+*    case so that it may be easily removed when a better method
+*    is developed.
+*
+* B. Files from a local user
+*    =======================
+*
+*    All addresses in the lists are to receive copies of the
+*    file. Unrecognized hosts will be assumed to be RSCS nodes
+*    that have not been added to the Mailer Profile yet.
+*
+* C. Files from a network user
+*    =========================
+*
+*    All hosts that are served by this mailer will receive copies
+*    of the file.  This includes all aliases for the node that
+*    this Mailer is running on.
+*
+* D. Files from a network gateway user
+*    =================================
+*
+*    These files are treated like a local user in that all addresses
+*    are to be acted upon subject to the limitations imposed by a
+*    *destination list.
+*
+         SPACE
+* REGISTER USAGE -
+R0  EQU  0 -
+R1  EQU  1 -
+R2  EQU  2 -
+R3  EQU  3 -
+R4  EQU  4 -
+R5  EQU  5 -
+R6  EQU  6 -
+R7  EQU  7 -
+R8  EQU  8 -
+R9  EQU  9 -
+R10 EQU 10 -
+R11 EQU 11 - MAILBLOK BASE
+R12 EQU 12 - PROGRAM BASE
+R13 EQU 13 - SAVE AREA
+R14 EQU 14 - SUBROUTINE LINKAGE
+R15 EQU 15 - SUBROUTINE LINKAGE
+         BLOCKS ,
+         MAILBLOK ,
+         SPACE 1
+         COPY  DEBUG
+         EJECT
+BUILDLST CSECT ,
+         USING BUILDLST,R15  TEMPORARY ADDRESSABILITY
+         B     EYESKIP       BRANCH OVER EYESKIP
+MYNAME   DC    CL8'BUILDLST',CL8'&SYSDATE'
+EYESKIP  DS    0H
+         DROP  R15
+         STM   R14,R12,12(R13) SAVE CALLER'S REGS
+         LR    R12,R15       PERMANENT ADDRESSABILITY
+         USING BUILDLST,R12
+         LA    R14,SAVE      MY SAVE AREA
+         ST    R13,4(R14)    SAVE CALLER'S PTR
+         ST    R14,8(R13)    CHAIN MINE BACK
+         LR    R13,R14       SET MY SAVE PTR
+         USING PAB,R1        ADDRESS PARM
+         L     R11,@MBLOK    GET MAILBLOK BASE
+         DROP  R1
+         USING MAILBLOK,R11  ADDRESSABILITY
+         SPACE ,
+         NI    MAILFLG2,X'FF'-MFLG2BLD  Clear our problem flag
+         SPACE ,
+*--------------------------------------------------------------------
+*  CHECK FOR EXISTENCE OF "*DESTINATION" FIELD (MFLGDEST ON)
+*--------------------------------------------------------------------
+         TM    MAILFLG1,MFLGDEST
+         BNO   NODEST        NO DESTINATION JUNK
+         L     R5,MAILKTAB   GET KEYWORD TABLE
+         CALL  TBLUK,((R5),DEST,L'DEST,TWORK)
+         LTR   R15,R15       IT BETTER FIND IT!!!
+         BNZ   DESTERR       WAAAA!!!
+         USING FIELDD,R1     ADDRESS THE FIELDD
+         MVC   DESTLST,FIPARS  GET THE DESTINATION LIST
+         DROP  R1
+         SPACE ,
+NODEST   EQU   *
+*--------------------------------------------------------------------
+*  LOOKUP PARSE LIST FOR EACH ADDRESS LIST (TO, CC, BCC).
+*--------------------------------------------------------------------
+         XC    PTRS(#NAMES*4),PTRS   ZERO SOME POINTERS
+         LA    R5,#NAMES     NUMBER OF ADDRESS LIST FIELDS
+         SR    R4,R4         GET A ZERO
+PARSEM   EQU   *
+         TM    MAILFLG1,MFLG1RES [1.16]resent?
+         BNO   P#1           [1.16] no do the regular stuff
+         L     R7,RNAMES(R4) [1.16]get RESENT- names table
+         L     R3,RLENS(R4)  [1.16]and lengths
+         B     P#2           [1.16]and go do it
+P#1      EQU   *             [1.16]here for regular fields
+         L     R7,NAMES(R4)  GET THE STRING POINTER
+         L     R3,LENS(R4)   GET LENGTH
+P#2      EQU   *             [1.16]here for resent-fields
+         L     R8,MAILKTAB   GET FIELD TABLE ADDRESS
+         CALL  TBLUK,((R8),(R7),(R3),TWORK)
+         LTR   R15,R15       NOT THERE
+         BNZ   NEXTONE       GET THE NEXT ONE
+         LR    R6,R1         GET THE FIELDD POINTER
+         USING FIELDD,R6     ADDRESS IT
+         TM    MAILFLG1,MFLG1RES [1.16]doing resent fields?
+         BNO   P#5           [1.16]nope
+* find last extension in list of resent fields (multiple resends)
+P#3      EQU   *             [1.16]loop to find last extn
+         CLC   FIEXTN,=F'0'  [1.16]is this the last one?
+         BE    P#4           [1.16]yup
+         ICM   R6,B'0111',FIEXTN [1.16]chain along
+         B     P#3           [1.16]iterate
+P#4      EQU   *             [1.16]here w/r6->fieldd
+         CLC   FIECNT,RESCNT [1.16]is this group at the right level?
+         BH    NODATE        [1.16]too many RESENT-to's (i.e. not
+*                            enough Resent-dates)
+         C     R6,MAILDFLD   [1.16]this field must appear AFTER the
+*                            last date field.
+         BH    P#5           [1.16]it's OK to use then
+         SR    R1,R1         [1.16]don't use this field's addresses
+         B     P#6           [1.16]skip over the load
+P#5      EQU   *             [1.16]here when not doing resent stuff
+         L     R1,FIPARS     GET PARSE LIST POINTER
+P#6      EQU   *             [1.16]Here when wrong group level
+         ST    R1,PTRS(R4)   REMEMBER IT
+         ST    R6,FIELDDPS(R4)     Remember associated fieldd address
+NEXTONE  EQU   *
+         LA    R4,4(R4)      BUMP THE NAME ARRAY POINTER
+         BCT   R5,PARSEM     GO PARSE THE NEXT LIST
+         SPACE ,
+         DROP  R6
+*--------------------------------------------------------------------
+*  PARSE LISTS BUILT.  NOW GO THRU ADDRESS BY ADDRESS AND BUILD
+*  AN ACTION LIST (ACTADR BLOCKS)
+*--------------------------------------------------------------------
+         XC    MAILCHN,MAILCHN         CLEAR THE CHAIN POINTER
+         XC    MAILRCNB,MAILRCNB  COUNT OF RECIPIENT BLOCKS
+         XC    MAILRCNT,MAILRCNT  COUNT OF RECIPIENTS
+         SR    R7,R7         GET A ZERO FOR THE INDEX
+         LA    R8,#NAMES     NUMBER OF ADDRESS LISTS
+DO1      EQU   *
+         L     R1,PTRS(R7)   GET AN ADDRESS LIST POINTER
+         LTR   R1,R1
+         BZ    DONEXT        THIS SLOT IS EMPTY, KEEP TRUCKIN
+         BAL   R14,BLDACT    BUILD SOME ACTADR BLOCKS
+         TM    BLDFLAG,BLDFLMOD    Any MBOX mods done?
+         BZ    DONEXT              ---> No
+         L     R1,FIELDDPS(R7)     Get assocaited FIELDD address
+         USING FIELDD,R1
+         OI    FIFLG1,FIEDIFLG     Remember it was changed
+         DROP  R1
+DONEXT   EQU   *
+         LA    R7,4(R7)
+         BCT   R8,DO1        GET THE NEXT PARSE LIST
+DODONE   EQU   *
+         ICM   R5,B'1111',MAILRCNB  GET NUMBER FOR RECIPIENT BLOCKS
+         BZ    NORECPT       NO RECIPIENTS?
+         WTR   BLS043,(D,(R5))
+         A     R5,MAILRTOT   ADD TO TOTAL
+         ST    R5,MAILRTOT
+         SR    R15,R15
+RET      EQU   *
+         L     R13,4(R13)              GET CALLER'S SAVE PTR
+         L     R14,12(R13)             GET R14
+         LM    R0,R12,20(R13)          GET R0-R12
+         BR    R14                     RETURN
+         SPACE ,
+*--------------------------------------------------------------------
+*  ERROR RETURNS
+*--------------------------------------------------------------------
+DESTERR  EQU   *
+         WTR   BLS026,(CA,MYNAME)
+         LA    R15,4
+         B     RET
+         SPACE ,
+NOSPACE  EQU   *
+         WTR   BLS003,(CA,MYNAME)
+         LA    R15,12
+         B     RET
+         SPACE ,
+NORECPT  EQU   *
+         WTR   BLS044
+         LA    R15,4
+         B     RET
+         SPACE ,
+NODATE   EQU   *             [1.16] too many resent addresses
+         WTR   BLS023        [1.16]say date is missing
+         LA    R15,4         [1.16]
+         B     RET           [1.16]
+         SPACE ,             [1.16]
+*--------------------------------------------------------------------
+*  BLDACT -
+*   BUILD LIST OF ACTADR BLOCKS. (CHECKS IF FILE IS LOCAL/NET/DEST)
+*
+*  ENTRY -
+*   R1      - PARSE LIST ADDRESS
+*   R11     - MAILBLOK BASE
+*   MAILCHN - ACTADR LIST ANCHOR
+*   R14     - RETURN ADDRESS
+*
+*--------------------------------------------------------------------
+         SPACE 1
+BLDACT   EQU   *
+         STM   R14,R12,12(R13)         SAVE CALLER'S REGS
+         ST    R13,BLDSAVE+4
+         LA    R13,BLDSAVE
+         XC    BLDFLAG,BLDFLAG     Clear communication flag
+         LR    R8,R1         GET A BETTER HANDLE ON PARSE LIST
+         USING MBOX,R8       Address the MBOX
+         SPACE 1
+         TM    DBGFLG7,DBGBLDLS    Tracing?
+         BNO   BLDLOOP1            ---> No
+         LINEDIT TEXT='BUILDLST:  **** Building of ACTADRs begins ****'X
+               ,DOT=NO
+         SPACE 1
+BLDLOOP1 EQU   *
+         CLC   MBXLCNT,=F'0' NULL BLOCK? **********************
+         BE    BLDEND        END OF LIST **********************
+         SPACE 1
+         TM    DBGFLG7,DBGBLDLS    Tracing?
+         BNO   BLDLOOP2            ---> No
+         LINEDIT TEXT='BUILDLST:  **** Start work on new address ****' X
+               DOT=NO
+         SPACE 1
+BLDLOOP2 EQU   *
+         ICM   R7,B'1111',MBXRTL   Point to route list
+         BZ    BLDNORTE            ---> No route list
+         USING NODE,R7
+         SPACE 1
+         TM    DBGFLG7,DBGBLDLS    Tracing?
+         BNO   BLDDBG01            ---> No
+         LINEDIT TEXT='BUILDLST:  Found a route list',DOT=NO
+BLDDBG01 EQU   *
+         SPACE 1
+         ICM   R1,B'1111',NODDOWN  Down to node chain for routeaddr
+*        BZ    ????                ---> What should be done here?
+         LR    R7,R1               Copy into expected register
+         ST    R7,GNODE            Save address of TOKEND
+         MVC   GSTKADDR,=A(LCLSTACK) GENLIST breaks stk addr
+         MVC   GSTKLEN,=A(L'LCLSTACK)   Update stack length
+         CALL  GENLIST,(GNODE,FAKETOKA,FAKETOKL,GSTKADDR,GSTKLEN)
+         LTR   R15,R15             Successful?
+         BNZ   BLDSKP1             No, skip this address
+         SPACE 1
+         TM    DBGFLG7,DBGBLDLS    Tracing?
+         BNO   BLDDBG02            ---> No
+         L     R14,=A(LCLSTACK)    String address
+         L     R15,FAKETOKL        String length
+         LINEDIT TEXT='BUILDLST:  Route address <......................X
+               .............................................>',        X
+               SUB=(CHARA,((14),(15))),DOT=NO,COMP=YES
+BLDDBG02 EQU   *
+         SPACE 1
+         CALL  CHKLOCAL,((R11),LCLSTACK,FAKETOKL)
+         LTR   R15,R15             Local routeaddr?
+         BNZ   BLDHOK              ---> No
+         SPACE 1
+         TM    DBGFLG7,DBGBLDLS    Tracing?
+         BNO   BLDDBG03            ---> No
+         LINEDIT TEXT='BUILDLST:  Destination is local host, removing rX
+               oute address',                                          X
+               DOT=NO
+BLDDBG03 EQU   *
+         SPACE 1
+BLDRTLCL EQU   *                   Routeaddress for local system
+         ST    R8,DELMBOX          Store MBOX address
+         CALL  DELROUTE,(DELMBOX)  Delete routeaddr
+         B     BLDLOOP2            ---> Try again
+         SPACE 1
+BLDNORTE DS    0H
+         TM    DBGFLG7,DBGBLDLS    Tracing?
+         BNO   BLDDBG04            ---> No
+         LINEDIT TEXT='BUILDLST:  No route list found',                X
+               DOT=NO
+BLDDBG04 EQU   *
+         SPACE 1
+         ICM   R7,B'1111',MBXDML  Point to node
+         USING NODE,R7            Address it
+         BNZ   BLDHOK             Host list exists
+         SPACE 1
+         TM    DBGFLG7,DBGBLDLS    Tracing?
+         BNO   BLDDBG05            ---> No
+         LINEDIT TEXT='BUILDLST:  No host name, using default',        X
+               DOT=NO
+BLDDBG05 EQU   *
+         SPACE 1
+*        ADDRESS IS LACKING A HOSTNAME,  DEFAULT THE HOST
+*        NAME TO MATCH THE SENDER'S HOSTNAME.
+         SPACE 1
+         ICM   R1,B'1111',MAILSFLD     GET SENDER FIELDD            1.6
+         BZ    BLDSKP1        CAN'T DEFAULT FROM NOTHING....        1.6
+         USING FIELDD,R1     ADDRESS IT                             1.6
+         ICM   R1,B'1111',FIPARS GET PARSE LIST POINTER             1.6
+         BZ    BLDSKP1        NO LIST                               1.6
+         DROP  R1                                                   1.6
+         ICM   R1,B'1111',MBXDML-MBOX(R1) GET SENDER HOST NAME
+         BZ    BLDSKP1                                              1.6
+         ST    R1,MBXDML            PATCH THE HOST LIST
+         LR    R7,R1         FAKE OUT THIS POINTER TOO              1.6
+         DROP  R7                  Done with addressability
+         SPACE 1
+BLDHOK   EQU   *                                                    1.6
+         ST    R7,GNODE            Save address of TOKEND
+         MVC   GSTKADDR,=A(LCLSTACK) GENLIST breaks stk addr
+         MVC   GSTKLEN,=A(L'LCLSTACK)   Update stack length
+         CALL  GENLIST,(GNODE,FAKETOKA,FAKETOKL,GSTKADDR,GSTKLEN)
+         LTR   R15,R15             Successful?
+         BNZ   BLDSKP1             No, skip this address
+         SPACE 1
+         TM    DBGFLG7,DBGBLDLS    Tracing?
+         BNO   BLDDBG06            ---> No
+         L     R14,=A(LCLSTACK)    String address
+         L     R15,FAKETOKL        String length
+         LINEDIT TEXT='BUILDLST:  Destination address <................X
+               ...................................................>',  X
+               SUB=(CHARA,((14),(15))),DOT=NO
+BLDDBG06 EQU   *
+         SPACE 1
+         LA    R7,FAKETOK          Point R7 at internal TOKEND
+         USING TOKEND,R7           Address the TOKEND
+         SPACE ,
+* -- TEST FOR *DESTINATION JUNK --
+         TM    MAILFLG1,MFLGDEST       IS IT THERE?
+         BNO   BLDND         NO, GOOD
+         LR    R1,R7         GET FIELDD POINTER
+         BAL   R14,INLIST    SEE IF THIS NAME IS IN THE DEST LIST
+         LTR   R15,R15       SEE IF IT WAS MATCHED
+         BNZ   BLDSKP1       NO MATCH, SKIP THIS ADDRESS
+* -- END OF TEST FOR *DESTINATION JUNK --
+BLDND    EQU   *
+         L     R2,TOKLEN     LENGTH OF STRING
+         L     R3,TOKPTR
+         CALL  FNROUTD,((R3),(R2)) find routd                    [1.22]
+         LTR   R4,R15              Found it?
+         BZ    BLDNF1              ---> Nope
+         USING ROUTD,R4            Address the ROUTD
+         SPACE 1
+         TM    DBGFLG7,DBGBLDLS    Tracing?
+         BNO   BLDDBG07            ---> No
+         LINEDIT TEXT='BUILDLST:  Found ROUTD for >....................X
+               ...........................................<',          X
+               SUB=(CHARA,((R3),(R2))),DOT=NO,COMP=YES
+BLDDBG07 EQU   *
+         SPACE 1
+         CLC   MBXRTL,=F'0'        Working with route address?
+         BE    BLDCHN1             ---> No
+         CLC   RTPROG,=CL8'LOCAL'  Local exit
+         BNE   BLDCHN1             ---> No, everything is ok
+         SPACE 1
+* Arriving here implies that the destination is really a synonym
+* for the local machine.  Since it wasn't caught earlier, this
+* must mean that the profile is improperly coded.
+*
+* Issue an error message and continue as if CHKLOCAL has
+* returned TRUE above.
+         SPACE 1
+         WTR   BLS079
+         WTR   BLS080,(CA,(R3))
+         B     BLDRTLCL            ---> Go drop routeaddr
+         SPACE 1
+BLDCHN1  EQU   *
+* -- MORE *DESTINATION JUNK
+         TM    MAILFLG1,MFLGDEST
+         BO    BLDLCL        BUILD AS IF FOR A LOCAL USER
+* --
+         TM    MAILFLG1,MFLG1LCL  FILE LOCALLY GENERATED OR FROM NET?
+         BO    BLDLCL        IT'S LOCALLY GENERATED, TAKE ALL ACTADRS
+         TM    MAILFLG1,MFLG1GTW FILE FROM A GATEWAY?
+         BO    BLDLCL        BUILD AS IF FROM A LOCAL USER
+         CLC   RTROUTE,CPUSTR AM I THE ROUTER FOR THIS ALIAS?
+         BNE   BLDSKP1       NOPE, SKIP THIS ACTADR
+         SPACE 1
+         TM    DBGFLG7,DBGBLDLS    Tracing?
+         BNO   BLDLCL              ---> No
+         LINEDIT TEXT='BUILDLST:  Routing file from network',          X
+               DOT=NO
+         SPACE 1
+         DROP  R4
+         SPACE 1
+BLDLCL   EQU   *
+         LR    R1,R4         Get ROUTD pointer
+         LR    R2,R8         GET MBOX POINTER
+         BAL   R14,ADDCHN    ADD ONTO CHAIN
+         L     R1,MAILRCNT   GET RECIPIENT COUNT
+         LA    R1,1(R1)      ADD ONE
+         ST    R1,MAILRCNT
+         C     R1,MAILRMAX   COMPARE TO MAX
+         BNH   *+8
+         ST    R1,MAILRMAX   SET NEW MAX
+BLDSKP1  EQU   *
+         ICM   R8,B'1111',MBXNEXT      GET THE NEXT ONE
+         BNZ   BLDLOOP1
+BLDEND   EQU   *
+         SPACE 1
+         TM    DBGFLG7,DBGBLDLS    Tracing?
+         BNO   BLDDBG08            ---> No
+         LINEDIT TEXT='BUILDLST:  **** All ACTADRs built ****',        X
+               DOT=NO
+BLDDBG08 EQU   *
+         SPACE 1
+         SR    R15,R15
+         L     R13,4(R13)
+         L     R14,12(R13)
+         LM    R0,R8,20(R13)
+         BR    R14
+         SPACE ,
+BLDNF1   EQU   *
+*----------------------------------------------------------------[1.22]
+* Whole mess here deleted due to use of new FNROUTD, above.      [1.22]
+*----------------------------------------------------------------[1.22]
+         WTR BLS027,(CA,(R3))          UNKNOW HOST OR ALIAS
+         OI    MAILFLG2,MFLG2BLD   Remember we had a problem
+         B     BLDSKP1       SKIP THIS ADDRESS
+         SPACE ,
+DELRMBX  DC    A(0)                Addr of MBOX for DELROUTE call
+         EJECT ,
+*--------------------------------------------------------------------
+*  ADDCHN -
+*   BUILD AND ADD AN ACTADR BLOCK ONTO MAILCHN.
+*  BLOCKS ARE ADDED ACCORDING TO THE FOLLOWING RULES:
+*   1) IF THE RTPROG IS TYPE 1, ALWAYS CREATE AND ADD AN ACTADR
+*   2) IF THE RTPROG IS TYPE 2, ONLY CREATE AND ADD AN ACTADR
+*      IF THERE ISN'T ALREADY ONE FOR THE SAME NODE, user, exit, [1.24]
+*      and parm. (see SRCCHN)                                    [1.24]
+*   3) If the RTPROG is type 3, create a subchain of ACTADR's    [1.22]
+*      anchored by the ACTCHN (similar to type 2)                [1.22]
+*
+*  ENTRY -
+*   R1 - ROUTD ADDRESS
+*   R2 - MBOX ADDRESS
+*   R11 - MAILBLOK BASE
+*   R12 - PROGRAM BASE
+*   R14 - RETURN ADDRESS
+*   MAILCHN - CHAIN POINTER
+*--------------------------------------------------------------------
+ADDCHN   EQU   *
+         STM   R14,R12,12(R13)         SAVE CALLER'S REGS
+         ST    R13,ADDSAVE+4           SAVE 13
+         LA    R13,ADDSAVE   GET MY SAVE AREA
+         LR    R6,R2
+         LR    R5,R1         GET ROUTD POINTER
+         USING ROUTD,R5      ADDRESS THE ROUTD
+         SPACE 1
+         TM    DBGFLG7,DBGBLDLS    Tracing?
+         BNO   BLDDBG10            ---> No
+         LINEDIT TEXT='BUILDLST: Adding ........@........ to ACTADR chaX
+               in',                                                    X
+               SUB=(CHARA,RTUSER,CHARA,RTROUTE),DOT=NO,RENT=NO
+         LA    R14,1               Set type 1 exit
+         TM    RTFLAGS,RTP1        Is it type 1?
+         BO    BLDDBG09            ---> Yes
+         LA    R14,2               Set type 2 exit
+         TM    RTFLAGS,RTP2        Is it type 2?
+         BO    BLDDBG09            ---> Yes
+         LA    R14,3               Must be type 3 exit
+BLDDBG09 EQU   *
+         LINEDIT TEXT='BUILDLST:     using ........ exit (type ..)',   X
+               SUB=(CHARA,RTPROG,DEC,(R14)),DOT=NO,COMP=NO,RENT=NO
+BLDDBG10 EQU   *
+         SPACE 1
+         TM    RTFLAGS,RTP1  IS IT TYPE 1?
+         BO    ADD1          ADD IT ON
+         TM    RTFLAGS,RTP2  is it type 2?                       [1.22]
+         BO    ADD$2         more dumb code                      [1.22]
+         DROP  R5
+* Type 3 routing exits-                                          [1.22]
+ADD$3    EQU   *                                                 [1.22]
+         LR    R1,R5         point to routd                      [1.22]
+         BAL   R14,SRCCHN    search chain for a matching one     [1.22]
+         LTR   R15,R15       see if one is found                 [1.22]
+         BZ    ADD1          not found,  add onto the chain      [1.22]
+* address of found ACTADR is returned in R15...                  [1.22]
+         LR    R7,R15        move it into r7 for consistency     [1.22]
+ADD$3A   EQU   *             top of search for chn end loop      [1.22]
+         USING ACTADR,R7     chain along to end                  [1.22]
+         ICM   R3,B'1111',ACTCHN get next pointer                [1.22]
+         BZ    ADD$3B        found end of chain -- go add it     [1.22]
+         LR    R7,R3         chain merrilly along...             [1.22]
+         B     ADD$3A        back to top looking for end of chn  [1.22]
+ADD$3B   EQU   *             at end of chain.  R15->actadr       [1.22]
+         SALOC ACTLEN,NOSPACE Allocate space for ACTADR
+         ST    R1,ACTCHN     set curr chain ptr to new space
+         LR    R7,R1         point to the new guy
+         B     ADD$3C        and go to common add code below     [1.22]
+         DROP  R7            don't need that using anymore       [1.22]
+* TYPE 2 ROUTING EXITS-
+ADD$2    EQU   *                                                 [1.22]
+         LR    R1,R5         POINT TO ROUTD
+         BAL   R14,SRCCHN    SEARCH CHAIN TO SEE IF ONE IS ALREADY
+         LTR   R15,R15                 THERE.
+         BNZ   ADDRET        FOUND ONE, NO NEED TO ADD THIS ONE  [1.22]
+* TYPE 1 ROUTING EXITS-
+ADD1     EQU   *
+         LA    R7,MAILCHN    ADDRESS OF CHAIN POINTER
+ADD2     EQU   *
+         ICM   R8,B'1111',0(R7) GET NEXT POINTER
+         BZ    ADD3          GO ADD IT ON
+         USING ACTADR,R8     ADDRESS THE ACTADR
+         LA    R7,ACTNEXT    GET NEXT POINTER ADDRESS
+         DROP  R8
+         B     ADD2          CHAIN ALONG
+ADD3     EQU   *             ADD ON HERE
+         SALOC ACTLEN,NOSPACE Allocate space for ACTADR
+         ST    R1,0(R7)      SET NEXT POINTER IN PREVIOUS ONE
+         LR    R7,R1         POINT TO CURRENT ONE
+ADD$3C   EQU   *             common code entry for type 3 above  [1.22]
+         USING ACTADR,R7     ADDRESS IT
+         XC    ACTNEXT,ACTNEXT  CLE NEXT POINTER
+         XC    ACTCHN,ACTCHN clear chain pointer                 [1.22]
+         ST    R5,ACTRT      SET ROUTD POINTER
+         ST    R6,ACTMBOX    SET MBOX POINTER
+         DROP  R7            DONE WITH IT
+         L     R1,MAILRCNB   GET RECIPIENT COUNT
+         LA    R1,1(R1)      BUMP IT ONE
+         ST    R1,MAILRCNB   PUT IT BACK
+ADDRET   EQU   *
+         SR    R15,R15
+         L     R13,4(R13)
+         L     R14,12(R13)
+         LM    R0,R8,20(R13)
+         BR    R14
+         SPACE ,
+*--------------------------------------------------------------------
+*  SRCCHN -
+*   SEARCH MAILCHN FOR AN ACTADR THAT HAS A ROUTD WHOSE RTROUTE IS
+*   THE SAME AS THE RTROUTE IN THE ROUTD POINTED TO BY R1 ON ENTRY.
+*   For type 2 exits,  these must match:                         [1.24]
+*        RTROUTE, RTUSER, RTPROG, RTPARM                         [1.24]
+*   For type 3 exits,  only these must match:                    [1.24]
+*        RTROUTE, RTUSER, RTPROG                                 [1.24]
+*   The reason for the difference is that a type 2 exit is called[1.24]
+*   for all recipients and whichever ROUTD happens to be the 1st [1.24]
+*   one on the chain is the one that gets used.  If the ROUTDs   [1.24]
+*   have the same program but different parameter,  then the     [1.24]
+*   order of recipients will result in different actions.        [1.24]
+*                                                                [1.24]
+*   For a type 3 exit,  the exit named in RTPROG gets called,    [1.24]
+*   but has all the ROUTDs available to it on ACTCHN.  So,  it   [1.24]
+*   is assumed that the exit will explicitly check for differing [1.24]
+*   RTPARMs.                                                     [1.24]
+*                                                                [1.24]
+*   RETURN R15 = 0 IF FOUND, ELSE NON-ZERO.
+*  ENTRY -
+*   R1 - ADDRESS OF ROUTD TO CHECK
+*  EXIT -
+*   R15 - zero = not found;  non-zero = found; value is address  [1.22]
+*                                       of the matched ACTADR    [1.22]
+*--------------------------------------------------------------------
+SRCCHN   EQU   *
+         STM   R14,R12,12(R13)         SAVE CALLER'S REGISTERS
+         ST    R13,SRCSAVE+4           SAVE HIS R13
+         LA    R13,SRCSAVE
+         LR    R5,R1         GET A BETTER HANDLE ON THE ROUTD
+         LA    R7,MAILCHN    POINT TO CHAIN POINTER
+SRC1     EQU   *
+         SR    R15,R15       INITIALLY NOT FOUND                 [1.22]
+         ICM   R8,B'1111',0(R7)        GET NEXT POINTER
+         BZ    SRCRET        RETURN NOT FOUND
+         USING ACTADR,R8     ADDRESS THE ACTADR BLOCK
+         ICM   R6,B'1111',ACTRT GET ROUTD POINTER
+         BZ    SRCSKP        SKIP THIS ACTADR
+         CLC   RTROUTE-ROUTD(8,R6),RTROUTE-ROUTD(R5)
+         BNE   SRCSKP        NOT FOUND
+         CLC   RTUSER-ROUTD(8,R6),RTUSER-ROUTD(R5)
+         BNE   SRCSKP        not found                           [1.24]
+         CLC   RTPROG-ROUTD(8,R6),RTPROG-ROUTD(R5)               [1.24]
+         BNE   SRCSKP        not found                           [1.24]
+         TM    RTFLAGS-ROUTD(R5),RTP3 if type 3                  [1.24]
+         BO    SRCFND                 we have found it.          [1.24]
+         CLC   RTPARM-ROUTD(8,R6),RTPARM-ROUTD(R5)               [1.24]
+         BE    SRCFND        found it for a type 2.              [1.24]
+SRCSKP   EQU   *
+         LA    R7,ACTNEXT    POINT TO NEXT POINTER
+         DROP  R8
+         B     SRC1          AND LOOP BACK
+SRCFND   EQU   *
+         LR    R15,R8        address of the matched ACTADR       [1.22]
+SRCRET   EQU   *
+         L     R13,4(R13)    RESTORE R13
+         L     R14,12(R13)
+         LM    R0,R12,20(R13)
+         BR    R14
+         SPACE ,
+*--------------------------------------------------------------------
+* INLIST
+*  CHECK TO SEE IF THE GIVEN HOSTNAME IS IN THE LIST HOST NAMES
+*  SUPPLIED IN THE *DESTINATION FIELD.
+* ENTRY
+*  R1 - TOKEND FOR HOST NAME
+*  DESTLST - LIST OF TOKENDS FROM *DESTINATION FIELD
+* EXIT
+*  R15 = 0 FOR MATCH,  NON-ZERO FOR NO MATCH
+*--------------------------------------------------------------------
+INLIST   EQU   *
+         STM   R14,R12,12(R13) SAVE CALLER'S REGS
+         ST    R13,INSAVE+4
+         LA    R13,INSAVE
+         USING TOKEND,R1     GRAB THE TEST TOKEN
+         SR    R3,R3         GET ZERO
+         L     R3,TOKLEN     GET TOKEN LENGTH
+         L     R4,TOKPTR         AND ADDRESS
+         DROP  R1
+         LA    R15,4         SET ERROR CODE IN CASE
+         ICM   R10,B'1111',DESTLST GET THE TOKEND
+         BZ    INRET         NO  MATCH
+INLOOP   EQU   *
+         USING TOKEND,R10
+         SR    R1,R1         GET A ZERO
+         L     R1,TOKLEN     LENGTH OF STRING
+         L     R2,TOKPTR          ADDRESS OF IT
+         BAL   R14,STRCMP
+         LTR   R15,R15       TEST RETCODE
+         BZ    INRET         MATCH FOUND, RETURN
+         ICM   R10,B'1111',TOKNEXT GET NEXT TOKEN
+         BNZ   INLOOP        LOOP BACK FOR NEXT TOKEN
+         LA    R15,4         NON-ZERO RETCODE
+INRET    EQU   *
+         L     R13,4(R13)
+         L     R14,12(R13)
+         LM    R0,R12,20(R13)
+         BR    R14
+         SPACE ,
+*--------------------------------------------------------------------
+* STRCMP
+*   CASE INDEPENDENT COMPARISON OF STRINGS.
+* ENTRY-
+*  R1 - STRING1 LENGTH
+*  R2 - STRING1 ADDRESS
+*  R3 - STRING2 LENGTH
+*  R4 - STRING2 ADDRESS
+* EXIT-
+*  R15 - 0=MATCH   NON-ZERO=NO MATCH
+*--------------------------------------------------------------------
+STRCMP   EQU   *
+         STM   R14,R12,12(R13)
+         ST    R13,CMPSAVE+4
+         LA    R13,CMPSAVE
+         CR    R1,R3         NO MATCH IF LENGTHS DIFFER
+         BNE   STRNOM        RETURN NO MATCH
+         SR    R5,R5         INDEX
+STRLP    EQU   *
+         LTR   R3,R3         END OF STRING YET
+         BNH   STRMAT        FOUND A MATCH
+         SR    R1,R1         GET A ZERO
+         IC    R1,0(R5,R2)
+         O     R1,=XL4'00000040'  FORCE UPPER CASE
+         SR    R6,R6
+         IC    R6,0(R5,R4)   GET OTHER ONE
+         O     R6,=XL4'00000040'
+         CR    R1,R6         COMPARE
+         BNE   STRNOM        NO MATCH
+         LA    R5,1(R5)      BUMP INDEX
+         BCTR  R3,0          -1 FROM COUNT
+         B     STRLP
+STRNOM   EQU   *
+         LA    R15,4         NO MATCH
+         B     STRET
+STRMAT   EQU   *
+         SR    R15,R15
+STRET    EQU   *
+         L     R13,4(R13)
+         L     R14,12(R13)
+         LM    R0,R12,20(R13)
+         BR    R14
+         SPACE ,
+*--------------------------------------------------------------------
+*  READ-ONLY DATA
+*--------------------------------------------------------------------
+COPY     MVC   0(0,R2),0(R3)
+         SPACE 1
+NAMES    DC    A(NTO,NCC,NBCC)
+#NAMES   EQU   (*-NAMES)/4
+LENS     DC    A(L'NTO,L'NCC,L'NBCC)
+         SPACE 1
+PTRS     DS    (#NAMES)F
+FIELDDPS DS    (#NAMES)F
+         SPACE 1
+NTO      DC    C'TO'
+NCC      DC    C'CC'
+NBCC     DC    C'BCC'
+         SPACE 1
+RNAMES   DC    A(RNTO,RNCC,RNBCC)      [1.16]
+RLENS    DC    A(L'RNTO,L'RNCC,L'RNBCC) [1.16]
+         SPACE 1
+RNTO     DC    C'RESENT-TO'            [1.16]
+RNCC     DC    C'RESENT-CC'            [1.16]
+RNBCC    DC    C'RESENT-BCC'           [1.16]
+         SPACE 1
+DEST     DC    C'*DESTINATION'
+DEFAULT  DC    C'*DEFAULT*'  SPECIAL ALIAS FOR DEFAULTS
+         LTORG ,
+SAVE     DS    18F                     SAVE AREA
+TWORK    DS    64F
+BLDSAVE  DS    18F
+ADDSAVE  DS    18F
+SRCSAVE  DS    18F
+CMPSAVE  DS    18F
+INSAVE   DS    18F
+DESTLST  DS    F
+         SPACE 1
+BLDFLAG  DS    X'0'                Flag for BLDACT routine
+BLDFLMOD EQU   X'80'               MBOX addresses modified
+         SPACE 1
+GNODE    DC    A(0)                NODE address for GENLIST call
+GSTKADDR DC    A(LCLSTACK)         Stack address for GENLIST call
+GSTKLEN  DC    A(0)                Stack length for GENLIST call
+         SPACE 1
+FAKETOK  DS    0F                  Fake TOKEND
+         DC    A(0)                No forward pointer
+         DC    A(0)                No backward pointer
+FAKETOKA DC    A(LCLSTACK)         Address of string
+FAKETOKL DC    A(0)                Length of string
+*                                     filled in by GENLIST call
+         DC    AL1(TOKATM)         Type
+         SPACE 1
+DELMBOX  DC    A(0)                Address of MBOX for DELROUTE
+         SPACE 1
+         DS    0F
+LCLSTACK DC    CL256' '
+         SPACE 1
+         END   BUILDLST

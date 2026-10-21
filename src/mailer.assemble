@@ -1,0 +1,400 @@
+*[1.22] initialize @C@STACK for C function interface             [1.22]
+*[1] X1.10 - ADD PARM TO MAILER COMMAND LINE = PROFILE NAME
+MAIL     TITLE 'CUCCA VM NETWORK MAILER - VERSION 1'
+*---------------------------------------------------------------------*
+*      MAILER -- Copyright (c) 1982,1987 Columbia University.         *
+*    Program Property of the Trustees of Columbia University in the   *
+*    City of New York.                                                *
+*---------------------------------------------------------------------*
+MAILER   CSECT ,
+* MAILER - MAIL DISTRIBUTION DISCONNECTED MACHINE.
+*
+* THIS IS THE TOP LEVEL PROGRAM FOR THE MAILER DISCONNECTED
+* MACHINE.  IT INITIALIZES THE ROUTING TABLE, ISSUES THE
+* NECESSARY CP COMMANDS TO GET STARTED AND WAITS FOR READER
+* INTERRUPTS.  ONCE AN INTERRUPT HAS BEEN RECEIVED, THE MAIN
+* PROCEDURE, MAILMAIN, IS ENTERED.  ALL FILES IN THE READER ARE
+* PROCESSED BY MAILMAIN PRIOR TO RETURNING.  ADDITIONALLY, MAILMAIN
+* IS CALLED ONCE JUST AFTER INITIALIZATION EVEN IF NO READER
+* INTERRUPT WAS RECEIVED. THIS IS TO CHECK FOR FILES THAT WERE
+* ALREADY IN THE READER PRIOR TO THE PROGRAM STARTING UP.
+*                            ALAN CROSSWELL 7/81
+* LAST EDIT: 10/26/82 BY ALAN CROSSWELL
+         BLOCKS ,
+         MAILBLOK ,
+         TRACETBL ,
+         REGEQU ,
+         COPY  MAILEQU
+         NUCON ,
+         DEVTAB ,
+         COPY  IPARML
+         MSGBLOK ,
+         SPACE 2                                                  UW002
+         WXTRN LCLMOD                                             UW002
+         EJECT ,
+MAILER   CSECT ,
+         USING MAILER,R15    TEMP ADDRESSABILITY
+         B     EYESKIP       SKIP OVER ID
+MYNAME   DC    CL8'MAILER',CL8'&SYSDATE'
+         LCLC  &TIME
+&TIME    SETC  '&SYSTIME'(1,2).':'.'&SYSTIME'(4,2).':00'
+ASMTIME  DC    CL8'&TIME'
+         DC    C'  '
+         DC    C'Copyright (c) 1982, 1987, The Trus'
+         DC    C'tees of Columbia University in the'
+         DC    C' City of New York.                '
+         DC    C'Permission is granted to any indiv'
+         DC    C'idual or institution to use, copy,'
+         DC    C' or redistribute this software so '
+         DC    C'long as it is not sold for profit,'
+         DC    C' provided that this notice and the'
+         DC    C' original copyright notices are re'
+         DC    C'tained.  Columbia University makes'
+         DC    C' no representations about the suit'
+         DC    C'ability of this software for any p'
+         DC    C'urpose.  It is provided "as is" wi'
+         DC    C'thout express or implied warranty.'
+         DC    C'  May be used but not sold without'
+         DC    C' permission.                      '
+EYESKIP  DS    0H
+         DROP  R15
+         STM   R14,R12,12(R13)
+         LR    R12,R15                 GET BASE ADDRESS
+         LA    R10,2048(,R12)          Create second
+         LA    R10,2048(,R10)              base reg
+         USING MAILER,R12,R10          Tell the assembler
+         LA    R14,SAVE
+         ST    R13,4(R14)
+         ST    R14,8(R13)
+         LR    R13,R14
+         SPACE ,
+         L     R11,=V(MAILBLOK) Address of MAILBLOK
+         USING MAILBLOK,R11
+         USING NUCON,R0
+         SPACE ,
+*--------------------------------------------------------------------
+*        GET PROFILE NAME FROM COMMAND LINE IF SUPPLIED    [1]
+*--------------------------------------------------------------------
+         CLI   8(R1),X'FF'   NOTHING?                      [1]
+         BE    NOPROF                                      [1]
+         MVC   MAILRTFN(8),8(R1) MOVE IN FN                [1]
+         CLI   16(R1),X'FF'   FT DEFAULT?                  [1]
+         BE    NOPROF                                      [1]
+         MVC   MAILRTFN+8(8),16(R1) MOVE IN FT             [1]
+         CLI   24(R1),X'FF'   FM DEFAULT?                  [1]
+         BE    NOPROF                                      [1]
+         MVC   MAILRTFN+16(2),24(R1)                       [1]
+NOPROF   EQU   *                                           [1]
+         STRINIT ,           INTIALIZE GETMAIN POINTERS
+         SPACE ,
+         LA    R15,MAILVERS        Point at version id
+         WTR   LER001,(CA,(R15),CA,MYNAME+8,CA,ASMTIME)
+         WTR   LER076
+         MVI   MAILSTAT,0    STATUS FLAG INITIALLY ZERO
+         MVI   MAILCMD,0     COMMAND FLAGS INITIALLY ZERO
+         XC    MAILCMDL,MAILCMDL SAME FOR COMMAND LIST
+*--------------------------------------------------------------------
+*        USE VARIABLE GETMAIN TO GET A STACK.  ALL FUTURE STORAGE
+*        NEEDS WILL BE TAKEN FROM THE STACK.
+*--------------------------------------------------------------------
+         LA    R15,STACKORG       Point at getmain list
+         GETMAIN VC,LA=LIMITS,A=(15) Allocate the stack
+         LTR   R15,R15              GETMAIN failed?
+         BNZ   GETFAIL              ---> Yes
+         LA    R15,STACKORG+4       Stack size value here
+         WTR   LER011,(DA,(R15))    Tell how big stack is
+         WTR   LER070               'Freeing half of stack for CMS'
+         LM    R14,R15,STACKORG     Pick up stack size & length
+         SRL   R15,4                Keep only
+         SLL   R15,3                   half
+         L     R0,STACKORG+4        Remember old length
+         STM   R14,R15,STACKORG     Update pointers
+         LA    R1,0(R15,R14)        Start freeing here
+         S     R0,STACKORG+4        For this length
+         FREEMAIN R,LV=(0),A=(1)    Free storage
+         LA    R15,STACKORG+4       Stack size value here
+         WTR   LER011,(DA,(R15))    Tell how big remaining stack is
+         L     R3,=V(@C@STACK)    find the C-glue stack pointer  [1.22]
+         LM    R1,R2,STACKORG     get stackorg addr,len          [1.22]
+         ST    R1,0(,R3)          give part of it to C           [1.22]
+         A     R1,=F'10240'       give C 10K                     [1.22]
+         S     R2,=F'10240'       which means 10K less for asm   [1.22]
+         STM   R1,R2,STACKORG     new stack origin               [1.22]
+RELENT   EQU   *             RELOAD ENTRY
+         XC    MAILRMAX,MAILRMAX  CLEAR A STATISTICS COUNTER
+         XC    MAILRTOT,MAILRTOT
+         XC    MAILICNT,MAILICNT
+         XC    MAILSTMX,MAILSTMX
+         LA    R1,D4         4 DWORDS
+         DC    X'8310000C'   PSEUDO-TIMER
+         MVC   MAILTIME,D4   COPY TIME STAMP
+         MVC   STACK,STACKORG          SET FIRST STACK POINTER
+         SPACE ,
+*--------------------------------------------------------------------
+*        HOLD THE READER VIA CP SPOOL COMMAND
+*--------------------------------------------------------------------
+         LA    R1,HOLDRDR
+         LA    R0,LHOLDRDR
+         DC    X'83100008'   HOLD THE READER
+         SPACE ,
+*--------------------------------------------------------------------
+*        CALL OPTIONAL LOCAL MOD USER EXIT IF IT IS LOADED.
+*--------------------------------------------------------------------
+         ICM   R15,B'1111',=V(LCLMOD)  SEE IF THIS SYMBOL IS RESOLVED
+         BZ    NOLCLMOD      NO LOCAL MODS EXIT PROVIDED
+         CALL  (15),(11)     Call it
+         LTR   R15,R15       DID IT FAIL?
+         BNZ   ERRRET        LCLMOD EXIT FAILED
+NOLCLMOD EQU   *
+         SPACE ,
+*--------------------------------------------------------------------
+*        GET THE VM USERID I AM RUNNING UNDER SO THAT I MAY TRY
+*        TO PREVENT LOOPING MESSAGES.
+*--------------------------------------------------------------------
+         LA    R1,EXTID      ADDRESS OF EXTENDED ID BUFFER
+         LA    R0,LEXTID     LENGTH OF IT
+         DC    X'83100000'   DIAG 0 STORE EXTENDED ID CODE
+         MVC   MAILVMID,EXTVMID  GET THIS MACHINE'S VM USERID
+         SPACE ,
+*--------------------------------------------------------------------
+*        LOAD THE ROUTING TABLE AND USER EXITS.
+*--------------------------------------------------------------------
+         CALL  READINIT,((R11))    Read MAILER PROFILE
+         LTR   R15,R15       ANY PROBLEMS
+         BNZ   ERRRET
+         CALL  SETINIT,((R11))     Now set values read
+         LTR   R15,R15       ANY PROBLEMS
+         BNZ   ERRRET
+         CALL  MAILSMSI      SET UP SMSG HANDLER
+         LTR   R15,R15
+         BNZ   ERRRET
+         SPACE ,
+         HNDINT SET,(RDR1,RDRINT,00C,ASAP) Init reader handler.
+         LTR   R15,R15              All is well?
+         BNZ   ERRRET               No  : Abort MAILER.
+         L     R1,ADEVTAB
+         USING DEVTAB,R1
+         LA    R1,CON1ECB           Get console ECB address
+         ST    R1,ECBLIST              into ECB list.
+         DROP  R1
+         SPACE ,
+         LA    R15,CPUSTR           Point to CPU identifier
+         WTR   LER004,(CA,(R15))    Write startup message
+         LA    R15,STACK+4          Stack size value here
+         WTR   LER011,(DA,(R15))    Tell how big remaining stack is
+         WTR   LER069               'Initializing trace table'
+         MAILTRC INIT               create trace table on stack
+         LA    R15,STACK+4          Stack size value here
+         WTR   LER011,(DA,(R15))    Tell how big remaining stack is
+         WTR   LER005        'INIT. COMPLETE'
+         SPACE ,
+*--------------------------------------------------------------------
+*        MAIN PROGRAM LOOP -
+*        (1)   Process command(s)
+*        (1.5) Process reader file(s)
+*        (2) WAIT FOR READER INTERRUPT
+*        (3) LOOP BACK TO (1)
+*--------------------------------------------------------------------
+MAINLOOP EQU   *
+         LA    R1,CKWRITE    Check for writeable A-disk          [1.24]
+         SVC   202           STATEW * * A                        [1.24]
+         DC    AL4(NONWRITE)                                     [1.24]
+         CLI   MAILCMD,0     ANY COMMANDS RECEIVED?
+         BNE   COMMANDS      GO DO THE COMMANDS
+         NI    RDRECB,255-POSTED   Unpost the reader ECB.
+         TM    MAILSTAT,MSTQSC   MAILER IN QUIESCENT STATE?
+         BNO   MAIN2         NOPE, DO SOME WORK
+         WTR   LER042        REMIND THEM...
+         B     WAIT          AND GO BACK TO SLEEP
+MAIN2    EQU   *
+         MVC   STACKP,STACK  RESET STACK POINTER
+         MAILTRC CALL,MAILMAIN
+         CALL  MAILMAIN,((R11))
+         MAILTRC RETURN,GETSPOOL,(R15)
+         LTR   R15,R15       ANY ERRORS?
+         BNZ   ERRRET
+         WTR   LER006        WAITING FOR WORK MESSAGE
+WAIT     EQU   *
+         WAITT ,             LET TERMINAL QUIESCE
+         OI    MAILSTAT,MSTINWT  IN WAIT STATE
+         WAITECB 1,ECBLIST=ECBLIST Wait for work.
+         NI    MAILSTAT,X'FF'-MSTINWT
+         TM    STOPECB,POSTED      Was it stop command?
+         BO    SHUTDOWN            Yes : Go stop
+         TM    RELDECB,POSTED      Was it a RELOAD command?
+         BO    RELOAD              Yes : Go stop
+         L     R1,ADEVTAB
+         USING DEVTAB,R1
+         TM    CON1ECB,POSTED      Was it the console?
+         BO    CONSINT             Yes : Go process input.
+         DROP  R1
+         TM    RDRECB,POSTED       What about the reader?
+         BO    MAINLOOP            Yes : Go process new file(s).
+         TM    CMDECB,POSTED       What about incoming commands?
+         BO    MAINLOOP            Yes : Go process them.
+         WRTERM 'Unknown interrupt, MAILER terminating'
+         B     SHUTDOWN
+CONSINT  DS    0H
+         DMSKEY NUCLEUS            Go to key zero
+         L     R1,ADEVTAB
+         USING DEVTAB,R1
+         NI    CON1ECB,255-POSTED  Unpost the console ECB.
+         DMSKEY RESET              Back to previous key
+         DROP  R1
+         SPACE 1
+* Interrupt was from CONSOLE attn
+         SPACE 1
+         DMSFREE DWORDS=MSGBLOKL/8,ERR=WAIT
+*                                  Ignore interrupt if no storage
+         LR    R5,R1               Base into better reg
+         USING MSGBLOK,R5          Map it for assembler
+         LR    R14,R5              Start of area to clear
+         L     R15,=A(MSGBLOKL)    Length to clear
+         LA    R1,0                Set from length of 0 and pad of x'0'
+         MVCL  R14,R0              Clear MSGBLOK to zeros
+         ST    R0,MSGBLEN          Remember length
+         MVC   SRCNODE,CPUSTR      Init to me
+         MVC   SRCUSER,=CL8'CONSOLE'   on this cpu
+         LA    R15,MESSAGE         Message buffer address
+         ST    R15,@MESSAGE        Into MSGBLOK
+         RDTERM (15)
+         ST    R0,@MSGLEN          Command length into MSGBLOK
+         MVC   SRCCODE,=A(CMDCONS) Type = CONSOLE.
+         BAL   R14,CHAINIT         Add to command processing chain
+         DROP  R5
+         B     WAIT                Go check for work.
+         SPACE ,
+*--------------------------------------------------------------------
+*  A COMMAND WAS ISSUED...
+*--------------------------------------------------------------------
+COMMANDS EQU   *
+         NI    CMDECB,255-POSTED   Unpost the command ECB.
+         TM    MAILCMD,MCMDCMD     Mail command processing to do?
+         BO    MCMD2               ---> Yes
+         WRTERM '?EH'              So why are we here?
+         B     MAINLOOP
+         SPACE ,
+SHUTDOWN EQU   *             HALT COMMAND
+         MAILTRC CALL,MAILSMSD
+         CALL  MAILSMSD      DISABLE SMSGS
+         MAILTRC RETURN,MAILSMSD,(R15)
+         WTR   LER038        ISSUE STOPPING MESSAGE
+         L     R15,HALTRC          Get return code from STOP command.
+         B     RET
+         SPACE ,
+RELOAD   EQU   *
+         NI    RELDECB,255-POSTED  Unpost the ECB.
+         MAILTRC CALL,MAILSMSD
+         CALL  MAILSMSD           Disable SMSGs (turn 'em on later)
+         MAILTRC RETURN,MAILSMSD,(R15)
+         HNDINT CLR,(RDR1)         Release reader (if we ever got it).
+         WTR   LER039        ISSUE RELOADING MESSAGE
+         B     RELENT        GOTO RELOAD ENTRY
+         SPACE ,
+MCMD2    EQU   *
+         MAILTRC CALL,MAILCMD0
+         CALL  MAILCMD0,((R11))    2nd level command handler
+         MAILTRC RETURN,MAILCMD0,(R15)
+         B     MAINLOOP      AND GO BACK TO WORK
+         SPACE ,
+*--------------------------------------------------------------------
+*        THE ONLY RETURNS ARE ERROR RETURNS...
+*--------------------------------------------------------------------
+NONWRITE EQU   *             <- non-writeable A-disk.            [1.24]
+         WTR   LER062                                            [1.24]
+         LA    R15,28        error code                          [1.24]
+         B     ERRRET                                            [1.24]
+GETFAIL  EQU   *
+         WTR   LER003,(CA,MYNAME)      WRITE ERROR MESSAGE
+         LA    R15,8         ERROR RETCODE
+ERRRET   EQU   *             ERROR RETURN
+         LR    R5,R15        SAVE RETURN CODE FOR A SEC
+         WTR   LER007,(D,(R5))     WRITE THE MESSAGE
+         LR    R15,R5        AND EXIT WITH SAME RETCODE
+RET      EQU   *
+         LR    R5,R15              Save RC around HNDINT.
+         HNDINT CLR,(RDR1)         Release reader (if we ever got it).
+         MAILTRC EXIT,(R5)
+         LTR   R5,R5               Return code positive?
+         BM    RETDUMP             ---> No, dump trace table
+         C     R5,=F'16'           Return code > 16?
+         BNH   RETURN              ---> No
+RETDUMP  EQU   *
+         MAILTRC DUMP,100          Dump 100 most recent entries
+RETURN   EQU   *
+         LR    R15,R5              Restore RC.
+         L     R13,4(R13)
+         L     R14,12(R13)
+         LM    R0,R12,20(R13)
+         BR    R14
+         EJECT ,
+*--------------------------------------------------------------------
+*        READER INTERRUPT HANDLER
+*--------------------------------------------------------------------
+         PUSH  USING
+         DROP  ,
+RDRINT   DS    0H
+         USING RDRINT,R15
+         OI    RDRECB,POSTED      Awaken MAILER.
+         SR    R15,R15            RC = 0.
+         BR    R14                Return to IO FLIH.
+         POP   USING
+         EJECT ,
+*--------------------------------------------------------------------
+*
+*  Add command block to MAILCMDL chain
+*
+*  Regs at entry:
+*
+*    R5  - MSGBLOK base
+*    R14 - Return address
+*
+*--------------------------------------------------------------------
+         SPACE 1
+CHAINIT  DS    0H
+         SSM   =X'00'              Disable for EXT & I/O interrupts
+         LA    R15,MAILCMDL        Address of list
+CHAIN10  EQU   *
+         ICM   R1,B'1111',0(R15)   Get next command pointer
+         USING MSGBLOK,R1
+         BZ    CHAIN20             Found end of chain
+         LA    R15,MSGNEXT         Chain along
+         DROP  R1
+         B     CHAIN10
+CHAIN20  EQU   *
+         ST    R5,0(R15)           Add onto chain
+         OI    MAILCMD,MCMDCMD     Indicate there is work to do
+         OI    CMDECB,POSTED       And post the command ECB.
+         SSM   =X'FF'              Enable interrupts
+         BR    R14                 Return to caller
+         EJECT ,
+*--------------------------------------------------------------------
+*        LITERAL POOL AND OTHER READ-ONLY DATA
+*--------------------------------------------------------------------
+         LTORG ,
+LIMITS   DC    A(0,X'00FFFFF8') RANGE OF VARIABLE ALLOCATION
+HOLDRDR  DC    C'SP RDR HOLD',X'15',C'SP RDR CLASS *'
+LHOLDRDR EQU   *-HOLDRDR
+CGLUE    DC    V(CGLUE)     just to drag in the text file...     [1.22]
+CFUNC    DC    V(CFUNC)     just to drag in the text file...     [1.22]
+CMISC    DC    V(CMISC)     just to drag in the text file...     [1.22]
+CKWRITE  DC    0D'0',CL8'STATEW',CL8'*',CL8'*',CL8'A',2F'-1'     [1.24]
+         SPACE ,
+*--------------------------------------------------------------------
+*        READ-WRITE DATA
+*--------------------------------------------------------------------
+SAVE     DS    18F
+D4       DS    4D
+EXTID    DS    3D            EXTENDED VM ID STUFF DUMPED HERE
+LEXTID   EQU   *-EXTID       LENGTH OF THE BUFFER
+         ORG   EXTID+16      VM USERID IS HERE
+EXTVMID  DS    CL8
+         ORG   ,             ORG BACK
+TERMBUF  DS    CL130         TERMINAL INPUT BUFFER
+ECBLIST  DC    A(0)                List of ECBs.
+         DC    V(CMDECB)           ...
+         DC    V(STOPECB)          ...
+         DC    V(RELDECB)          ...
+         DC    X'80',AL3(RDRECB)   ...
+RDRECB   DC    F'0'                Reader ECB.
+         END   MAILER

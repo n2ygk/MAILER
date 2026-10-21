@@ -1,0 +1,773 @@
+* Added Allow-Charlatans, Verbose-Logging, DISTLIST.             [1.24]
+*[1.22] Added MAILDTAB, PPTRARR, RSCSDOM, CPUSLEN, built-in exits[1.22]
+*[1.20] Added MAILOTAB
+*[1.13] Added RSCSALT keyword for a second RSCS vmid.
+SETINIT  TITLE 'CUCCA VM MAILER VERSION 1 - SET INITIAL VALUES'
+*---------------------------------------------------------------------*
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         *
+*    Program Property of the Trustees of Columbia University in the   *
+*    City of New York.                                                *
+*---------------------------------------------------------------------*
+SETINIT  CSECT ,
+* SETINIT -
+*  THIS ROUTINE PROCESSES THE INFORMATION READ BY READINIT AND
+*  LOADS THE NAMED USER EXITS.
+*
+*
+*  CALLED VIA -
+*  CALL SETINIT,(MAILBLOK)
+         SPACE ,
+PAB      DSECT ,             PARAMETER LIST DEFINED
+@MBLOK   DS    A             ADDRESS OF MAILBLOK
+         SPACE ,
+* REGISTER USAGE -
+R0  EQU  0 -
+R1  EQU  1 -
+R2  EQU  2 -
+R3  EQU  3 -
+R4  EQU  4 -
+R5  EQU  5 -
+R6  EQU  6 -
+R7  EQU  7 -
+R8  EQU  8 - PTAB BASE
+R9  EQU  9 - STACK POINTER
+R10 EQU 10 - STACK LENGTH
+R11 EQU 11 - MAILBLOK BASE
+R12 EQU 12 - PROGRAM BASE
+R13 EQU 13 - SAVE AREA
+R14 EQU 14 - SUBROUTINE LINKAGE
+R15 EQU 15 - SUBROUTINE LINKAGE
+         BLOCKS ,
+         MAILBLOK ,
+         TBTAB DSECT=YES
+         TBENTRY ,
+         EJECT ,
+SETINIT  CSECT ,
+         USING SETINIT,R15  TEMPORARY ADDRESSABILITY
+         B     EYESKIP       BRANCH OVER EYESKIP
+MYNAME   DC    CL8'SETINIT',CL8'&SYSDATE'
+EYESKIP  DS    0H
+         DROP  R15
+         STM   R14,R12,12(R13) SAVE CALLER'S REGS
+         LR    R12,R15       PERMANENT ADDRESSABILITY
+         USING SETINIT,R12
+         LA    R14,SAVE      MY SAVE AREA
+         ST    R13,4(R14)    SAVE CALLER'S PTR
+         ST    R14,8(R13)    CHAIN MINE BACK
+         LR    R13,R14       SET MY SAVE PTR
+         USING PAB,R1        ADDRESS PLIST
+         L     R11,@MBLOK    GET MAILBLOK ADDRESS
+         USING MAILBLOK,R11  ADDRESS IT
+         DROP  R1
+         LM    R9,R10,STACK  GET STACK POINTER
+         SPACE 2
+*--------------------------------------------------------------------
+*  Initialize fields in the MAILBLOK to aid in detection of double
+*  definition of variable values important to MAILER.
+*  List values as we go
+*--------------------------------------------------------------------
+         SPACE ,
+*        Clear PTAB fields in MAILBLOK
+         SPACE 1
+*        The PTAB is character string parms that are significant
+*        to MAILER.  They are all defined a CL8' ' in the MAILBLOK.
+         SPACE 1
+         LA    R5,PTABLEN          Length of PTAB array
+         LA    R6,PTABARR          Address of array
+PTABCLR  EQU   *
+         L     R3,0(R6)            Get offset into MAILBLOK
+         LA    R3,0(R11,R3)        Get actual MAILBLOK address
+         MVC   0(8,R3),=CL8' '     Clear to blanks
+         LA    R6,8(R6)            Point to next entry
+         BCT   R5,PTABCLR          ---> More to do
+         SPACE ,
+*        Clear PPTR fields in MAILBLOK
+         SPACE 1
+*        The PPTR is character string parms that are significant
+*        to MAILER.  They are all defined as A(0) pointers to the
+*        strings in MAILBLOK.
+         SPACE 1
+         LA    R5,PPTRLEN          Length of PPTR array
+         LA    R6,PPTRARR          Address of array
+PPTRCLR  EQU   *
+         L     R3,0(R6)            Get offset into MAILBLOK
+         LA    R3,0(R11,R3)        Get actual MAILBLOK address
+         XC    0(4,R3),0(R3)       Clear to hex zeros
+         LA    R6,8(R6)            Point to next entry
+         BCT   R5,PPTRCLR          ---> More to do
+         SPACE ,
+*--------------------------------------------------------------------
+*  End of MAILBLOK initializations
+*--------------------------------------------------------------------
+         SPACE 2
+*--------------------------------------------------------------------
+*        SET MAILBLOK VALUES FROM THE PARMS TABLE
+*--------------------------------------------------------------------
+         L     R8,MAILPTAB   ADDRESS OF TABLE
+         LA    R5,PTABLEN    LENGTH OF PTAB ARRAY
+         LA    R6,PTABARR    ADDRESS OF ARRAY
+PTABLOOP EQU   *
+         L     R3,0(R6)      GET OFFSET INTO MAILBLOK
+         LA    R3,0(R11,R3)  GET ACTUAL MAILBLOK ADDRESS
+         L     R7,4(R6)      GET STRING POINTER
+         LH    R4,0(R7)      GET LENGTH
+         LA    R7,2(R7)      AND STRING ADDRESS
+         CALL  TBLUK,((R8),(R7),(R4),TWORK)
+         LTR   R15,R15       FIND IT?
+         BNZ   SET1          NOPE, TAKE THE DEFAULT
+         LR    R2,R1         COPY STRING ADDRESS
+         CLC   0(8,R3),=CL8' '   Previously defined?
+         BE    PTABSET0          ---> No
+         LR    R15,R4            Copy field name length
+         BCTR  R15,0             Decrement
+         MVC   FIELDNAM,=CL30' ' Clear to blanks
+         EX    R15,COPYNAME      Move into field for msg processing
+         WTR   STI071,(CA,FIELDNAM)
+PTABSET0 EQU   *
+         MVC   0(8,R3),=CL8' '   BLANK IT
+         SR    R1,R1         GET A ZERO
+         IC    R1,0(R2)      GET LENGTH OF STRING
+         LA    R2,1(R2)      POINT TO DATA
+         CH    R1,=H'8'      IS IT MORE THAN 8 CHARS?
+         BNH   *+8           NOPE...
+         LA    R1,8          TRUNCATE IT TO 8
+         BCTR  R1,0          -1 FOR EXECUTE
+         EX    R1,COPY       COPY THE STRING INTO TABLE
+         TR    0(8,R3),UPCASE MAKE SURE IT IS UPPER CASE
+SET1     EQU   *
+         MVC   MSGBUFF,MSGBUFF-1   Clear to blanks
+         LINEDIT TEXT='.............................. = ''........''', X
+               SUB=(CHARA,((R7),(R4)),CHARA,(R3)),                     X
+               DISP=NONE,BUFFA=MSGBUFF,DOT=NO,COMP=YES,RENT=NO
+         WTR   STI075,(CA,MSGBUFF+1)   Write msg
+         LA    R6,8(R6)      GET NEXT ENTRY
+         BCT   R5,PTABLOOP   GET NEXT ONE
+*----------------------------------------------------------------[1.22]
+*        SET MAILBLOK pointers from the parms table              [1.22]
+*----------------------------------------------------------------[1.22]
+         L     R8,MAILPTAB   ADDRESS OF TABLE                    [1.22]
+         LA    R5,PPTRLEN    LENGTH OF PPTR ARRAY                [1.22]
+         LA    R6,PPTRARR    ADDRESS OF ARRAY                    [1.22]
+PPTRLOOP EQU   *                                                 [1.22]
+         L     R3,0(R6)      GET OFFSET INTO MAILBLOK            [1.22]
+         LA    R3,0(R11,R3)  GET ACTUAL MAILBLOK ADDRESS         [1.22]
+         L     R7,4(R6)      GET STRING POINTER                  [1.22]
+         LH    R4,0(R7)      GET LENGTH                          [1.22]
+         LA    R7,2(R7)      AND STRING ADDRESS                  [1.22]
+         CALL  TBLUK,((R8),(R7),(R4),TWORK)                      [1.22]
+         LTR   R15,R15       FIND IT?                            [1.22]
+         BNZ   SET$1         NOPE, TAKE THE DEFAULT              [1.22]
+         LR    R2,R1             Save the string address
+         CLC   0(4,R3),=A(0)     Previously defined?
+         BE    PPTRSET0          ---> No
+         LR    R15,R4            Copy field name length
+         BCTR  R15,0             Decrement
+         MVC   FIELDNAM,=CL30' ' Clear to blanks
+         EX    R15,COPYNAME      Move into field for msg processing
+         WTR   STI071,(CA,FIELDNAM)
+PPTRSET0 EQU   *
+         ST    R2,0(R3)      Stuff the string address
+         MVC   MSGBUFF,MSGBUFF-1   Clear to blanks
+         XR    R14,R14             Clear register
+         IC    R14,0(R2)           Pick up length
+         LA    R2,1(,R2)           Start of string
+         LINEDIT TEXT='.............................. = ''.............X
+               ......................''',                              X
+               SUB=(CHARA,((R7),(R4)),CHARA,((R2),(R14))),             X
+               DISP=NONE,BUFFA=MSGBUFF,DOT=NO,COMP=YES,RENT=NO
+         WTR   STI075,(CA,MSGBUFF+1)   Write msg
+SET$1    EQU   *                                                 [1.22]
+         LA    R6,8(R6)      GET NEXT ENTRY                      [1.22]
+         BCT   R5,PPTRLOOP   GET NEXT ONE                        [1.22]
+         SPACE ,
+*----------------------------------------------------------------[1.22]
+* do the same for the bit values now                             [1.22]
+*----------------------------------------------------------------[1.22]
+         LA    R5,PBITLEN    SET BIT-VALUES NOW
+         LA    R6,PBITARR    ADDRESS OF ARRAY
+PBITLOOP EQU   *
+         L     R3,0(R6)      GET OFFSET INTO MAILBLOK
+         LA    R3,0(R11,R3)  GET ACTUAL ADDRESS
+         L     R7,4(R6)      GET STRING POINTER
+         LH    R4,0(R7)      LENGTH
+         LA    R7,2(R7)      ADDRESS
+         CALL  TBLUK,((R8),(R7),(R4),TWORK)
+         LTR   R15,R15       FIND IT?
+         LA    R15,=CL5'False'     Set default value
+         BNZ   SET2          NOPE, TAKE THE DEFAULT
+         OI    1(R1),X'40'   MAKE IT UPPER CASE
+         CLI   1(R1),C'T'    SET BIT TRUE?
+         BNE   PBITFALS      SET IT FALSE
+         LA    R15,=CL5'True'      Remember the correct value
+         L     R1,8(R6)      GET VALUE TO SET
+         SR    R2,R2         GET ZERO
+         IC    R2,0(R3)      GET CURRENT VALUE
+         OR    R2,R1         OR IN THE NEW FLAG
+         STC   R2,0(R3)      AND PUT IT BACK
+         B     SET2          GET NEXT ONE
+PBITFALS EQU   *             SET THE FLAG FALSE
+         L     R1,8(R6)      GET VALUE TO SET
+         X     R1,=F'-1'     FLIP THE BITS
+         SR    R2,R2         GET ZERO
+         IC    R2,0(R3)      GET CURRENT FLAG VALUE
+         NR    R2,R1         AND THEM
+         STC   R2,0(R3)      PUT NEW FLAG BACK
+SET2     EQU   *
+         MVC   MSGBUFF,MSGBUFF-1   Clear to blanks
+         LINEDIT TEXT='.............................. = ''.....''',    X
+               SUB=(CHARA,((R7),(R4)),CHARA,(R15)),                    X
+               DISP=NONE,BUFFA=MSGBUFF,DOT=NO,COMP=YES,RENT=NO
+         WTR   STI075,(CA,MSGBUFF+1)   Write msg
+         LA    R6,12(R6)
+         BCT   R5,PBITLOOP
+         SPACE ,
+*----------------------------------------------------------------------
+* And do the same for the debugging bit values
+*----------------------------------------------------------------------
+         SPACE ,
+         LA    R5,DBITLEN          Set bit-values now
+         LA    R6,DBITARR          Address of array
+DBITLOOP EQU   *
+         L     R3,0(R6)            Get offset into mailblok
+         LA    R3,0(R11,R3)        Get actual address
+         L     R7,4(R6)            Get string pointer
+         LH    R4,0(R7)            Length
+         LA    R7,2(R7)            Address
+         CALL  TBLUK,((R8),(R7),(R4),TWORK)
+         LTR   R15,R15             Find it?
+         BNZ   SET3B               Nope, take the default (false)
+         OI    1(R1),X'40'         Make it upper case
+         CLI   1(R1),C'T'          Set bit true?
+         BNE   DBITFALS            Set it false
+         LA    R15,=CL5'True'      Remember the correct value
+         L     R1,8(R6)            Get value to set
+         SR    R2,R2               Get zero
+         IC    R2,0(R3)            Get current value
+         OR    R2,R1               Or in the new flag
+         STC   R2,0(R3)            And put it back
+         B     SET3                Get next one
+DBITFALS EQU   *                   Set the flag false
+         L     R1,8(R6)            Get value to set
+         X     R1,=F'-1'           Flip the bits
+         SR    R2,R2               Get zero
+         IC    R2,0(R3)            Get current flag value
+         NR    R2,R1               And them
+         STC   R2,0(R3)            Put new flag back
+         SPACE 1
+SET3     EQU   *
+         MVC   MSGBUFF,MSGBUFF-1   Clear to blanks
+         LINEDIT TEXT='.............................. = ''.....''',    X
+               SUB=(CHARA,((R7),(R4)),CHARA,(R15)),                    X
+               DISP=NONE,BUFFA=MSGBUFF,DOT=NO,COMP=YES,RENT=NO
+         WTR   STI075,(CA,MSGBUFF+1)   Write msg
+SET3B    EQU   *
+         LA    R6,12(R6)
+         BCT   R5,DBITLOOP
+         SPACE ,
+*----------------------------------------------------------------[1.22]
+* save some time later by having the length of CPUSTR available. [1.22]
+*----------------------------------------------------------------[1.22]
+         XC    CPUSLEN,CPUSLEN     No known length yet
+         L     R8,MAILPTAB   get the parameter table again       [1.22]
+         LA    R15,STRTHIS+2 Point to string
+         CALL  TBLUK,((R8),(15),8,TWORK)                         [1.22]
+         LTR   R15,R15       find it                             [1.22]
+         BNZ   NOSETLEN      don't set it (leave it 0)           [1.22]
+         SR    R0,R0         get a zero                          [1.22]
+         IC    R0,0(R1)      get the string length               [1.22]
+         ST    R0,CPUSLEN    and save it for later               [1.22]
+NOSETLEN EQU   *                                                 [1.22]
+         EJECT ,
+*--------------------------------------------------------------------
+*        Do some cursory validation of profile
+*        This is anything but complete
+*--------------------------------------------------------------------
+         SPACE 2
+*--------------------------------------------------------------------
+*
+*        At the top of the local-host loop (label LCHLOOP) register
+*        15 will point to the last lclhost entry used.  This is
+*        done to allow for checking for holes in the Local-Hostn
+*        list.  If a hole is found the return code will be set
+*        to stop execution of Mailer.
+*
+*        This loop will also verify the existince of the local-host
+*        name in the OUTGOING table.  If not found a message will
+*        be issued and the name will be checked for in the DOMAINS
+*        table.  A message indicating the success or failure of this
+*        search will always be issued.  Mailer will continue to run
+*        even if one or more of the local-host names are not found.
+*        This isn't necessarily good, but I assume you know what you
+*        are doing (and there will be error messages in the console
+*        to help you figure out what you did).
+*
+*--------------------------------------------------------------------
+         SPACE 1
+         LA    R3,LCLHOST          Address of LocalHost array.
+         LA    R4,L'LCLHOST/4      Number of entries in LCLHOST.
+         LR    R15,R3              Initial last entry ptr value
+LCHLOOP  DS    0H
+         ICM   R1,B'0111',1(R3)    Is there a LocalHost ptr?
+         BZ    LCHNEXT             ---> No, keep looping.
+         CLC   1(3,R15),=XL3'0'    Was there a previous one?
+         BNE   LCHNOHOL            ---> Yes
+         WTR   STI084              Tell user about hole
+         MVC   EXITRC,=F'16'       Set error return code
+LCHNOHOL EQU   *
+         SR    R6,R6               Get Local-Host
+         ICM   R6,B'0001',0(R1)       length.
+         BZ    LCHNEXT             ---> Zero length
+         LA    R7,1(,R1)           Start of string
+         L     R8,MAILRTAB         Point to OUTGOING table
+         CALL  TBLUK,((R8),(R7),(R6),TWORK)
+         LTR   R15,R15             Was it found?
+         BZ    LCHNEXT             ---> Yes
+         LR    R15,R6              Copy field name length
+         BCTR  R15,0               Decrement
+         MVC   LCHOSTNM,=CL40' '   Clear to blanks
+         EX    R15,COPYNAME        Move into field for msg processing
+         WTR   STI072,(CA,LCHOSTNM)  Issue msg
+         L     R8,MAILDTAB         Point to DOMAINS table
+         CALL  TBLUK,((R8),(R7),(R6),TWORK)
+         LTR   R15,R15             Was it found?
+         BZ    LCHNDOM             ---> Yes
+         WTR   STI073,(CA,LCHOSTNM)  Issue msg
+         B     LCHNEXT             ---> Keep looping
+         SPACE 1
+LCHNDOM  EQU   *
+         WTR   STI074,(CA,LCHOSTNM)  Issue msg
+         B     LCHNEXT             ---> Keep looping
+         SPACE 1
+LCHNEXT  DS    0H
+         LR    R15,R3              Remember last pointer address
+         LA    R3,4(,R3)           Update pointer
+         BCT   R4,LCHLOOP             and loop.
+LCHDONE  EQU   *
+         SPACE 2
+*--------------------------------------------------------------------
+*        Validate the existence of the THISNODE value in the
+*        OUTGOING table.  Since this is the NJE name for the local
+*        node this is the only reasonable place for it to appear.
+*
+*        If THISNODE is not defined or if the value in not found
+*        in OUTGOING the return code will be set to stop mailer
+*        before mail processing begins.
+*--------------------------------------------------------------------
+         SPACE 1
+         CLC   CPUSLEN,=F'0'       THISNODE defined?
+         BNE   HAVETHIS            ---> Yes
+         WTR   STI083              Issue msg
+         B     BADTHIS             ---> Set return code
+         SPACE 1
+HAVETHIS EQU   *
+         L     R0,MAILRTAB         Pointer to OUTGOING table
+         LA    R14,CPUSTR          Pointer to string
+         L     R15,CPUSLEN         Length
+*        CALL  TBLUK,(MAILRTAB,CPUSTR,CPUSLEN,TWORK)
+         CALL  TBLUK,((R0),(R14),(R15),TWORK)
+         LTR   R15,R15             Found
+         BZ    MNTCHECK            ---> Yes
+         WTR   STI085              Issue msg
+         SPACE 1
+BADTHIS  EQU   *
+         MVC   EXITRC,=F'16'       Set return code
+         SPACE 2
+*--------------------------------------------------------------------
+*        Validate the MAINTNODEn values.  Since these values only
+*        appear during MSG/SMSG validation they must be NJE
+*        addresses.is the only reasonable place for it to appear.
+*--------------------------------------------------------------------
+         SPACE 1
+MNTCHECK EQU   *
+         LA    R3,MAINTID          Point to start of list
+         LR    R15,R3              Initial last entry ptr value
+MNTLOOP  EQU   *
+         CLI   0(R3),X'FF'         At end of list?
+         BE    LOADEXIT            ---> Yes
+         CLI   0(R3),X'00'         Have a userid?
+         BNE   MNTUID              ---> Yes
+         CLI   8(R3),X'00'         Have a node value?
+         BE    MNTNEXT             ---> No, that's ok
+         SPACE 1
+*        If we arrive here we have a node with no userid
+*        Validate that previous entry existed before issuing error msg
+         SPACE 1
+         CLI   0(R15),X'00'        Previous entry?
+         BNE   MNTNOU              ---> Yes
+         WTR   STI086              Issue error messgage
+MNTNOU   EQU   *
+         LR    R15,R3              Copy current pointer
+         LA    R14,MAINTID         Table start
+         SR    R15,R14             Offset to pointer
+         SRL   R15,4                / 16 (length of each entry)
+         LA    R2,1(,R15)           +1 = entry number
+         MVC   MSGBUFF,MSGBUFF-1   Clear to blanks
+         LINEDIT TEXT='..',SUB=(DEC,(R2)),                             X
+               DISP=NONE,BUFFA=MSGBUFF,DOT=NO,COMP=YES
+         WTR   STI087,(CA,MSGBUFF+1)    Issue error msg
+         B     MNTNEXT
+         SPACE 1
+*        If we arrive here we have a userid
+*        Validate that previous entry existed before checking node
+         SPACE 1
+MNTUID   EQU   *
+         CLI   0(R15),X'00'        Previous entry?
+         BNE   MNTUID2             ---> Yes
+         WTR   STI086              Issue error messgage
+MNTUID2  EQU   *
+         CLI   8(R3),X'00'         Have a node value?
+         BE    MNTNEXT             ---> No, that's ok
+         L     R0,MAILRTAB         Pointer to OUTGOING table
+         LA    R14,8(,R3)          Pointer to string
+         LA    R15,7(,R14)         Last character
+MNTUID4  EQU   *
+         CLI   0(R15),C' '         A blank?
+         BNE   MNTUID6             ---> No, done trimming
+         BCT   R15,MNTUID4         ---> Trim 1 and try again
+MNTUID6  EQU   *
+         SR    R15,R14             Compute offset
+         BM    MNTNEXT             ---> all blanks
+         LA    R15,1(,R15)         Compute length
+*        CALL  TBLUK,(MAILRTAB,STR,STRLEN,TWORK)
+         CALL  TBLUK,((R0),(R14),(R15),TWORK)
+         LTR   R15,R15             Found
+         BZ    MNTNEXT             ---> Yes
+         LR    R15,R3              Copy current pointer
+         LA    R14,MAINTID         Table start
+         SR    R15,R14             Offset to pointer
+         SRL   R15,4                / 16 (length of each entry)
+         LA    R2,1(,R15)           +1 = entry number
+         MVC   MSGBUFF,MSGBUFF-1   Clear to blanks
+         LINEDIT TEXT='..',SUB=(DEC,(R2)),                             X
+               DISP=NONE,BUFFA=MSGBUFF,DOT=NO,COMP=YES
+         WTR   STI088,(CA,MSGBUFF+1)    Issue error msg
+         SPACE 1
+MNTNEXT  EQU   *
+         LR    R15,R3              Remember last entry location
+         LA    R3,16(,R3)          To next entry
+         B     MNTLOOP             ---> Around again
+         SPACE 2
+*--------------------------------------------------------------------
+*        End of profile validation
+*--------------------------------------------------------------------
+         EJECT ,
+*--------------------------------------------------------------------
+*        LOAD USER ROUTING EXITS
+*--------------------------------------------------------------------
+         SPACE 1
+LOADEXIT EQU   *
+         SPACE 1
+         L     R1,MAILRTAB   ROUTING TABLE
+         BAL   R14,LOADRTAB
+         LTR   R15,R15
+         BNZ   NOROUT        NEED A ROUTING TABLE!
+         SPACE 1
+         L     R1,MAILSTAB   SPECIAL TABLE
+         BAL   R14,LOADRTAB
+         SPACE 1
+         L     R1,MAILOTAB   [1.20]Origins table
+         BAL   R14,LOADRTAB  [1.20]
+         SPACE 1
+         L     R1,MAILDTAB   Domains table                       [1.22]
+         BAL   R14,LOADRTAB                                      [1.22]
+         SPACE 1
+*--------------------------------------------------------------------
+*        DUPLICATE ABOVE FOR VALIDATION USER EXITS NOW
+*--------------------------------------------------------------------
+         L     R6,MAILVTAB   GET VALIDATION TABLE
+         USING TBTAB,R6      ADDRESS THE DSECT
+         ICM   R7,B'1111',TB$LEN  GET COUNT OF ENTRIES
+         BZ    NOVAL        NO ENTRIES IN TABLE
+         BCTR  R7,0          -1 TO GET START ADDRESS OF LAST ONE
+         MH    R7,=Y(TBE$LEN)  #ENTRIES * LENGTH OF EACH
+         L     R8,TB$ADR     BXLE INDEX
+         AR    R7,R8         BXLE COMPARAND ADDRESS
+         LA    R6,TBE$LEN    BXLE INCREMENT
+         DROP  R6
+VALLOOP  EQU   *
+         USING TBENTRY,R8    DSECT IT
+         L     R5,TBE$DSP    GET ROUTD ADDRESS
+         USING VALD,R5       DSECT
+         DROP  R8
+         SPACE ,
+         SR    R1,R1         START WITH A ZERO
+         CLC   VAPROG,=CL8' '  NO USER EXIT WANTED?
+         BE    GOTIT2        FINE, DON'T TRY TO LOAD IT
+         CLC   VAPROG,=CL8'*' SAME AS FOR BLANK
+         BE    GOTIT2
+         L     R2,MAILVTAB   ADDRESS OF VTAB
+         LA    R3,VAPROG-VALD OFFSET FROM BEGINNING OF VALD
+         LA    R4,VAADDR-VALD
+         BAL   R14,FINDIT    SEE IF THIS EXIT HAS BEEN LOADED
+         LTR   R1,R1         IF ZERO, THE ENTRY HASN'T BEEN LOADED
+         BNZ   GOTIT2        YES, IT'S ALREADY LOADED
+         LA    R3,VAPROG     ADDRESS OF NAME TO LOAD
+         BAL   R14,LOADIT    LOAD IT IN (ADDRESS RETURNED IN R1)
+         C     R15,EXITRC    Highest so far?
+         BNP   GOTIT2        ---> No
+         ST    R15,EXITRC    Remember it
+GOTIT2   EQU   *
+         ST    R1,VAADDR     SAVE ADDRESS OF USER EXIT ROUTINE
+**-- CLEAR THE STATISTICS COUNTERS
+         XC    VAMSGCNT,VAMSGCNT
+         XC    VAMSGFAI,VAMSGFAI
+         XC    VAMSGMAX,VAMSGMAX
+         XC    VAMSGLEN,VAMSGLEN
+         BXLE  R8,R6,VALLOOP  LOOP BACK FOR NEXT ENTRY
+         DROP  R5
+         SPACE ,
+*-------- RESTORE STACK POINTERS AND RETURN -------------------------
+         STM   R9,R10,STACK
+         L     R15,EXITRC     Pick up return code
+RET      EQU   *
+         L     R13,4(R13)              GET CALLER'S SAVE PTR
+         L     R14,12(R13)             GET R14
+         LM    R0,R12,20(R13)          GET R0-R12
+         BR    R14                     RETURN
+         EJECT ,
+*--------------------------------------------------------------------
+*        LOAD USER EXITS NAMED IN ROUTING TABLE (MAILRTAB)
+*        ALSO, CHECK VALIDITY OF ROUTD ENTRIES.
+* REGISTERS - R8=BXLE INDEX            R5=ROUTD BASE
+*             R6=BXLE INCREMENT        R2,3,4=WORK
+*             R7=BXLE COMPARAND
+*--------------------------------------------------------------------
+LOADRTAB EQU   *
+         ST    R14,LOADS14
+         LR    R6,R1         GET TABLE
+         ST    R6,TABLE      REMEMBER FOR LATER
+         USING TBTAB,R6      ADDRESS IT
+         LA    R15,4
+         ICM   R7,B'1111',TB$LEN  GET COUNT OF ENTRIES
+         BZ    LOADRRET     NO ALIAS ENTRIES IN TABLE
+         BCTR  R7,0          -1 TO GET START ADDRESS OF LAST ONE
+         MH    R7,=Y(TBE$LEN)  #ENTRIES * LENGTH OF EACH
+         L     R8,TB$ADR     BXLE INDEX
+         AR    R7,R8         BXLE COMPARAND ADDRESS
+         LA    R6,TBE$LEN    BXLE INCREMENT
+         DROP  R6
+LOADLOOP EQU   *
+         USING TBENTRY,R8    DSECT IT
+         L     R5,TBE$DSP    GET ROUTD ADDRESS
+         USING ROUTD,R5      DSECT
+         DROP  R8
+*--------  CHECK FOR DEFAULT MAILER USERID  -------------------------
+         CLC   RTUSER,=CL8' '  IS IT BLANK
+         BE    DEFUSER       YES, DEFAULT IT
+         CLC   RTUSER,=CL8'*'  OR ASTERISK
+         BNE   DEFUSER2      NO, DON'T DEFAULT IT
+DEFUSER  EQU   *
+         MVC   RTUSER,MAILVMID  DEFAULT USERID IS MY CURRENT ID
+DEFUSER2 EQU   *
+*--------  CHECK FOR DEFAULT MAILER NODE NAME  ----------------------
+         CLC   RTROUTE,=CL8' ' IS IT BLANK?
+         BE    DEFNODE       YES, DEFAULT IT
+         CLC   RTROUTE,=CL8'*' OR ASTERISK?
+         BNE   DEFNODE2      NO, DON'T DEFAULT IT
+DEFNODE  EQU   *
+         MVC   RTROUTE,CPUSTR THIS MACHINE'S NODE NAME
+DEFNODE2 EQU   *
+**-- IF A RTPROG IS SUPPLIED, CHECK THE RTTYPE  ---------------------
+         SR    R1,R1         GET A ZERO IN CASE OF DEFAULT RTPROG
+         CLC   RTPROG,=CL8' ' RTPROG NOT SUPPLIED?
+         BE    GOTIT         INDICATE DEFAULT BY ZERO POINTER
+         CLC   RTPROG,=CL8'*' DEFAULT REQUESTED THIS WAY?
+         BE    GOTIT
+         CLC   RTTYPE,=CL2'1 '  TYPE 1 SPECIFIED?
+         BE    SETT1         SET TYPE 1
+         CLC   RTTYPE,=CL2'2 '  TYPE 2 SPECIFIED?
+         BE    SETT2         SET TYPE 2
+         CLC   RTTYPE,=CL2'3'   type 3 specified?                [1.22]
+         BE    SETT3         (this is dumb code)                 [1.22]
+         B     BADTYPE       INVALID ROUTD ENTRY
+SETT1    EQU   *
+         MVI   RTFLAGS,RTP1  RTPROG IS TYPE 1                    [1.22]
+         B     LOAD2
+SETT2    EQU   *
+         MVI   RTFLAGS,RTP2  RTPROG IS TYPE 2
+         B     LOAD2                                             [1.22]
+SETT3    EQU   *                                                 [1.22]
+         MVI   RTFLAGS,RTP3  type 3 of course                    [1.22]
+LOAD2    EQU   *
+**-- CLEAR THE STATISTICS COUNTERS
+         XC    RTMSGCNT,RTMSGCNT
+         XC    RTMSGLEN,RTMSGLEN
+         XC    RTMSGMAX,RTMSGMAX
+         XC    RTMSGFAI,RTMSGFAI
+         SPACE ,
+**-- NOW LOAD THE USER EXIT  ----------------------------------------
+         L     R2,TABLE
+         LA    R3,RTPROG-ROUTD OFFSET FROM BEGINNING OF ROUTD
+         LA    R4,RTADDR-ROUTD
+         BAL   R14,FINDIT    SEE IF THIS EXIT HAS BEEN LOADED
+         LTR   R1,R1         IF ZERO, THE ENTRY HASN'T BEEN LOADED
+         BNZ   GOTIT         YES, IT'S ALREADY LOADED
+         LA    R3,RTPROG     ADDRESS OF NAME TO LOAD
+         BAL   R14,LOADIT    LOAD IT IN (ADDRESS RETURNED IN R1)
+         C     R15,EXITRC    Highest so far?
+         BNP   GOTIT         ---> No
+         ST    R15,EXITRC    Remember it
+GOTIT    EQU   *
+         ST    R1,RTADDR     SAVE ADDRESS OF USER EXIT ROUTINE
+         BXLE  R8,R6,LOADLOOP  LOOP BACK FOR NEXT ENTRY
+         DROP  R5
+         SR    R15,R15
+LOADRRET EQU   *
+         L     R14,LOADS14
+         BR    R14
+         SPACE ,
+*--------------------------------------------------------------------
+*  FINDIT SUBROUTINE - LOOKS FOR A PROG NAME IN A SPECIFIED RANGE
+*  OF TABLE ENTRIES.
+*  REGISTERS ON ENTRY-
+*    R8 - ADDRESS OF CURRENT TBENTRY
+*    R5 - ADDRESS OF CURRENT RECORD
+*    R4 - OFFSET FROM BEGINNING OF REC FOR ROUTINE ADDRESS
+*    R3 - OFFSET FROM BEGINNING OF REC FOR ROUTINE NAME
+*    R2 - ADDRESS OF RTAB OR VTAB
+*  REGISTERS ON EXIT -
+*    R1 - ADDRESS OF ALREADY LOADED EXIT OR 0 IF NOT FOUND
+*--------------------------------------------------------------------
+FINDIT   EQU   *
+         STM   R9,R10,FINDSAVE  RAN OUT OF REGISTERS!
+         USING TBTAB,R2      DSECT THE TABLE
+         L     R2,TB$ADR     ADDRESS OF FIRST ENTRY
+         DROP  R2
+FINDLOOP EQU   *
+         CR    R2,R8         UP TO CURRENT ENTRY YET?
+         BNL   FINDOUT       YUP, RETURN
+         USING TBENTRY,R2    ADDRESS ENTRY DSECT
+         L     R1,TBE$DSP    GET ROUTD ADDRESS
+         DROP  R2
+         LA    R9,0(R3,R1)   ADDRESS OF RTPROG OR RTPROG2
+         LA    R10,0(R3,R5)  DITTO
+         CLC   0(8,R9),0(R10)  COMPARE THE RTPROGS
+         BE    FOUNDIT       FOUND THE SAME RTPROG
+         LA    R2,TBE$LEN(R2)  GET NEXT ENTRY
+         B     FINDLOOP
+FINDOUT  EQU   *
+         SR    R1,R1         ENTRY NOT FOUND
+         LM    R9,R10,FINDSAVE
+         BR    R14           RETURN
+FOUNDIT  EQU   *
+         L     R1,0(R4,R1)   GET ADDRESS OF ROUTINE
+         LM    R9,R10,FINDSAVE
+         BR    R14           AND RETURN IT
+         SPACE ,
+*--------------------------------------------------------------------
+* LOADIT subroutine - loads the named user exit into CMS storage
+* and returns address of loaded routine in R1
+*
+* REGISTERS ON ENTRY -
+*  R3 - ADDRESS OF CL8 PROGRAM NAME
+*  R9,R10 - STACK POINTERS
+* REGISTERS ON RETURN -
+*  R1 - ADDRESS OF LOADED ROUTINE
+*--------------------------------------------------------------------
+LOADIT   EQU   *
+         ST    R14,SAVE14    HOLD ON TO THIS OVER SUBR CALL
+         CALL  TBLUK,(BUILTINS,(R3),8,TWORK)   check for builtin [1.22]
+         LTR   R15,R15       is it a builtin?                    [1.22]
+         BZ    LOADED        yes,  already loaded                [1.22]
+         CALL  LOAD,((R3),STK)  LOAD THE CODE
+         LTR   R15,R15       DID IT LOAD OK?
+         BNZ   BADLOAD       NOPE
+LOADED   EQU   *                                                 [1.22]
+         LR    R4,R1         COPY LOAD ADDRESS
+         WTR   STI018,(CA,(R3),X,(R4))  WRITE LOAD MSG
+         LR    R1,R4         RETURN LOAD ADDRESS
+         L     R14,SAVE14    RESTORE RETURN ADDRESS
+         SR    R15,R15       Set return code
+         BR    R14
+         SPACE 1
+BADLOAD  EQU   *
+         LR    R4,R15        Save return code
+         WTR   STI017,(CA,(R3),D,(R15))
+         LR    R15,R4        Restore return code
+         L     R14,SAVE14    Restore return address
+         BR    R14
+         SPACE ,
+*--------------------------------------------------------------------
+*        ERROR EXITS
+*--------------------------------------------------------------------
+NOROUT  EQU   *             ROUTING TABLE IS EMPTY
+         WTR   STI016,(CA,ROUTING)
+         LA    R15,4
+         B     RET
+BADTYPE  EQU   *             BAD ROUTING ENTRY
+         USING ROUTD,R5
+         LA    R2,RTTYPE
+         LA    R3,RTPROG
+         WTR   STI022,(CA,(R2),CA,(R3))
+         DROP  R5
+         LA    R15,8
+         B     RET
+NOVAL   EQU   *             VAL TABLE IS EMPTY
+         WTR   STI016,(CA,VALID)
+         LA    R15,4
+         B     RET
+         SPACE ,
+*--------------------------------------------------------------------
+*        READ/ONLY DATA
+*--------------------------------------------------------------------
+         SPACE 1
+COPY     MVC   0(0,R3),0(R2)
+COPYNAME MVC   FIELDNAM(1),0(R7)             For dup. init. msg
+         SPACE 1
+         LTORG ,
+         SPACE 1
+*----------------------------------------------------------------[1.22]
+*  TABLE of built-in user exits.  All the standard stuff is      [1.22]
+*  here so avg user doesn't even need a MAILER TXTLIB anymore.   [1.22]
+*----------------------------------------------------------------[1.22]
+         EXTRN BITNET,BSMTP,DEFRT,FWDMAIL,LOCAL,NOMAIL,RSCSVER   [1.22]
+         EXTRN RSMAIL,DISTLIST,TRYRSCS                           [1.24]
+BUILTINS TBSTART ,                                               [1.22]
+*           12345678   <- pad to 8 chars to make lookup easier   [1.22]
+         T 'BITNET  ',BITNET                                     [1.22]
+         T 'BSMTP   ',BSMTP                                      [1.22]
+         T 'DEFRT   ',DEFRT                                      [1.22]
+         T 'DISTLIST',DISTLIST                                   [1.24]
+         T 'FWDMAIL ',FWDMAIL                                    [1.22]
+         T 'LOCAL   ',LOCAL                                      [1.22]
+         T 'NOMAIL  ',NOMAIL                                     [1.22]
+         T 'RSCSVER ',RSCSVER                                    [1.22]
+         T 'RSMAIL  ',RSMAIL                                     [1.22]
+         T 'TRYRSCS ',TRYRSCS
+         TBEND ,                                                 [1.22]
+         SPACE ,
+*--------------------------------------------------------------------
+*        READ/WRITE DATA
+*--------------------------------------------------------------------
+SAVE     DS    18F                     SAVE AREA
+         SPACE 1
+STK      DS    2F
+         SPACE 1
+FINDSAVE DS    2F
+         SPACE 1
+SAVE14   DS    F
+         SPACE 1
+EXITRC   DC    F'0'                Highest RC from LOAD
+         SPACE 1
+LOADS14  DS    F
+         SPACE 1
+TABLE    DS    F
+         SPACE 1
+         DC    C' '
+MSGBUFF  DC    CL81' '             Formatting of MAISTI075 msgs
+*                                  First byte will get length from
+*                                  LINEDIT macro
+         SPACE 1
+         DS    0D
+TWORK    DS    256X
+         SPACE 1
+FIELDNAM DS    CL30                    For dup. init. msg
+         ORG   FIELDNAM                Reuse
+LCHOSTNM DS    CL40                    Must match length of 072 msg
+         SPACE 1
+*  Table identifiers
+         SPACE 1
+ROUTING  DC    CL8'Outgoing'
+VALID    DC    CL8'Incoming'
+         SPACE 2
+         END   SETINIT

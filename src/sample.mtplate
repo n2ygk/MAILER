@@ -1,0 +1,247 @@
+; +-----------------------------------------------------------------+
+; |                                                                 |
+; |             M A I L E R   R 2    P R O F I L E                  |
+; |                                                                 |
+; |        VM Network Mailer Version 2 profile template             |
+; |                                                                 |
+; +-----------------------------------------------------------------+
+
+;**
+;** NOTE:  This sample template contains many additional comment
+;**        lines as instructions on how to fill in the entries.
+;**        All of these lines begin with ';**' and should be removed
+;**        after you have customized the template for your local site.
+;**
+;** A ';' indicates the beginning of a comment.  Anything preceeding
+;** the semi-colon is processed.
+;**
+;** ********** The real profile stuff begins here **********
+;**
+;** The following 2 lines identify the userids of the RSCS server(s)
+;** on the system on which MAILER will be running.
+;**
+rscsname=RSCS                ; name of rscs/networking vm userid
+;** rscsalt=KNET             ; name of alternate rscs userid
+;**
+;** The following lines allow you to specify RSCS network
+;** domains.  This is useful for mailers imbedded inside a domain
+;** that might receive mail with a specification other than the real
+;** domain identifier (such as .BITNET, which is a kludge)
+;**
+RSCS-Domain1=.BITNET         ; Accept .BITNET
+RSCS-Domain2=.EARN           ; Accept .EARN
+RSCS-Domain3=.NETNORTH       ; Accept .Netnorth
+;** RSCS-Domain4=.LOCAL.EDU
+;** RSCS-Domain5=.LCL.EDU
+;** RSCS-Domain6=
+;** RSCS-Domain7=
+;** RSCS-Domain8=
+;** RSCS-Domain9=            ; You may have up to 9 RSCS-Domains
+;**
+;**
+;** The node name for the node on which MAILER is running.  This value
+;** must be supplied or mailer will after initialization checking has
+;** been done.
+;**
+thisnode=MYNODE              ; local node name
+;**
+;** The following lines allow you to specify host names for your host.
+;** This is useful if your host is known by more than 1 name.
+;**
+;** If your system is known only by its NJE node name, delete these
+;** lines.
+;**
+Local-Host1=Host.DOMAIN.EDU       ; The real host name
+;** Local-Host2=                     ; Alternate host identifier
+;** Local-Host3=                     ; Alternate host identifier
+;** Local-Host4=                     ; Alternate host identifier
+;** Local-Host5=                     ; Alternate host identifier
+;** Local-Host6=                     ; Alternate host identifier
+;** Local-Host7=                     ; Alternate host identifier
+;** Local-Host8=                     ; Alternate host identifier
+;** Local-Host9=                     ; Alternate host identifier
+;**
+;** The following users may issue privileged commands to MAILER (via
+;** SMSG, MSG or TELL).  The maintuser@maintnode will be informed of
+;** problems with mail processing.  The maintuserN@maintnodeN users
+;** will not receive these notifications.  A maximum of 9 ids are
+;** allowed.
+;**
+maintuser=user1              ; userid of maintainer
+maintnode=node2              ; node name of maintainer
+;** maintuser2=user2             ; Alternate privileged userid
+;** maintnode2=node2             ;
+;** maintuser3=user3             ; Alternate privileged userid
+;** maintnode3=node3             ;
+;** maintuser4=user4             ; Alternate privileged userid
+;** maintnode4=node4             ;
+;** maintuser5=user5             ; Alternate privileged userid
+;** maintnode5=node5             ;
+;** maintuser6=user6             ; Alternate privileged userid
+;** maintnode6=node6             ;
+;** maintuser7=user7             ; Alternate privileged userid
+;** maintnode7=node7             ;
+;** maintuser8=user8             ; Alternate privileged userid
+;** maintnode8=node8             ;
+;** maintuser9=user9             ; Alternate privileged userid
+;** maintnode9=node9             ;
+;**
+;**
+;** Setting allow-unknown-nodes to TRUE will do 2 things:
+;**
+;**   1.  If the *DEFAULT* entry in the INCOMING table does not
+;**       exist, all mail received by MAILER will always be accepted.
+;**       If the *DEFAULT* entry exists, then validation will occur
+;**       just as it would for any other match in the incoming table.
+;**
+;**       Assuming that the RSCSVER exit is used:
+;**         A. For RFC822 mail, a mismatch between the NJE origin and
+;**            the From: header will cause the mail to be rejected
+;**         B. For BSMTP mail, a mismatch between the NJE origin and
+;**            the BSMTP MAIL FROM: will cause a warning to be added
+;**            to the mail file (if allow-charlatans=TRUE).
+;**
+;**   2.  Files being sent by MAILER but for which no entry is found
+;**       in the OUTGOING or DOMAINS table will use the *DEFAULT*
+;**       (and *DEFAULT*ROUTE*) entries (if they exist).
+;**
+;** Leaving the value FALSE will cause all incoming mail that does not
+;** match an entry in the INCOMING table to be rejected (even if the
+;** *DEFAULT* entry is coded).  Outgoing mail that does not match an
+;** entry in the OUTGOING or DOMAINS table will also be returned (even
+;** if *DEFAULT* entries are coded).
+;**
+allow-unknown-nodes=FALSE    ; Do not allow nodes I do not know
+                             ; about to exchange mail.
+;**
+;** Leave this value as TRUE if you are willing to allow the BSMTP
+;** from address to disagree with the RSCS origin value.  If this
+;** occurs a warning message will be inserted in the header.  Change
+;** this value to FALSE if you want to always reject the mail unless
+;** the addresses agree.
+;**
+allow-charlatans=TRUE        ; Let BSMTP origin disagree with RSCS
+                             ; origin value
+;**
+;** When Allow-File-From is TRUE, MAILER will accept FILE FROM: commands
+;** in the BSMTP stream (a MAILER only extension to the BSMTP protocol
+;** used in BITNET).  Leave this value as TRUE if you are willing to
+;** allow files wrapped in BSMTP (RFC821) envelopes to be delivered via
+;** your mailer.
+;**
+;** If you set the value to FALSE, the BSMTP FILE FROM: command will
+;** not be recognized and the file will be returned to the sender (just
+;** as mail would have been).
+;**
+Allow-File-From=TRUE         ; Support FILE FROM: extension
+;**
+;** Specify the command to be used to send informational messages.
+;** You can specify MSGNOH, but this may require special privilege
+;** classes for the MAILER server.  Consult your local system support
+;** guru for more information on MSGNOH.
+;**
+msgcmd=MSG                   ; Send messages using MSG
+;**
+;** You may specify a prefix to be used on msgs issued by the LOCAL
+;** or PROFS exits.  These messages announce the arrival of new mail
+;** for the user.  If you do not specify a prefix, a prefix of '*'
+;** will be used.  You will need to remove the ';' at the start of
+;** line to use the msgprefix value.
+;**
+;** *Note* It is recommended that the msgprefix value begin with an
+;** asterisk ('*') so that msgs to servers (such as listserv) will
+;** not be handled as commands.
+;**
+; msgprefix=                 ; Prefix for local delivery messages
+;**
+;** Leave the following value FALSE if you do not want to log (display
+;** on the console) the BSMTP transaction lines.  Change this value to
+;** TRUE if you want them all listed.  You may want to change this
+;** value to TRUE for debugging or just so you can see that the value
+;** of FALSE creates a less confusing console listing.
+;**
+verbose-logging=FALSE        ; Don't print BSMTP
+;**
+;** The following lines provide special information used for
+;** forwarding (rerouting) mail.  The values are used in by
+;** entries coded in the DOMAINS and SPECIAL tables below.
+;** The value before the '=' is the parameter name you need to
+;** code on the lines where these values are used.  See sample
+;** for DEC and SPAN in the DOMAINS list and POSTMAST in
+;** the SPECIAL list.
+;
+; Forwarding info
+; (see "SPECIAL:" table below)
+;
+;**
+;** Place the address of the postmaster here.  This value may be
+;** either 'userid' or 'userid@node' if the postmaster is on another
+;** node in your network.
+;**
+postmast=userid@node         ; Person for mail system questions
+
+; The following entries allow indirect routing for other networks
+
+viaJPL=@VLSI.JPL.NASA.GOV                   ; SPAN domain
+viaDEC=@DECWRL.DEC.COM                      ; DEC domain
+
+; The following table lists the possible sources of incoming
+; files and the name of an exit to be invoked before any processing
+; has been done on the mail file.  This allows you to do arbitrary
+; processing based on the origin userid.
+
+ORIGINS:
+;USERID  EXIT        COMMENTS
+;------- ---------  -------------------------------
+END ORIGINS
+
+; The following table lists the possible sources of incoming
+; files and the name of an optional exit to validity check
+; the file. It is your responsibility to validity check mail from
+; an insecure gateway.
+
+INCOMING:
+; NODE   USERID   EXIT        COMMENTS
+;------- -------- ---------  -------------------------------
+%incoming
+; *DEFAULT* MAILER              ; Allow userid MAILER from anywhere
+*DEFAULT* *DEFAULT* RSCSVER   ; Standard RSCS tag checking
+END INCOMING
+
+; Table of mail nodes that I can send to.
+
+OUTGOING:
+; Host name      Node     Userid   Exit     Type Parm
+; -------------- -------- -------- -------- ---- --------
+%outgoing
+*DEFAULT*        *        *        TRYRSCS  1    ; See DOC for parm info
+END OUTGOING
+
+; Table of mail domains that I can send to.
+
+DOMAINS:
+; Domain name    Node     Userid   Exit     Type Parm
+; ----------     -------- -------- -------- ---- --------
+%domains
+*DEFAULT*ROUTE*.BITNET *  *        TRYRSCS   1    ; See DOC for parm inf
+*DEFAULT*ROUTE*.EARN   *  *        TRYRSCS   1    ; See DOC for parm inf
+*DEFAULT*ROUTE*.NETNORTH * *       TRYRSCS   1    ; See DOC for parm inf
+*DEFAULT*        INTERBIT SMTP     BSMTP     3    ;
+.DEC             INTERBIT SMTP     BSMTP     3    %viaDEC
+.SPAN            INTERBIT SMTP     BSMTP     3    %viaJPL
+END DOMAINS
+
+; Local addresses to receive "special handling":
+
+SPECIAL:
+;           Exit     Exit
+; Userid    Name     Type Parm         Comments
+; ------    -------- ---- ----------   --------------------------------
+MAILER      RSMAIL    2   POSTMAST      ; Trap mail to mailer
+POSTMASTER  RSMAIL    2   POSTMAST      ; The postmaster
+; POSTMAST  RSMAIL    2   POSTMAST      ; Leave this entry commented out
+                                        ;   if you have a real id of
+                                        ;   POSTMAST on your system
+SYSTEM                                  ; To prevent punched decks
+*                                       ; Prevent mail to *@node
+END SPECIAL

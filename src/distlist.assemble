@@ -1,0 +1,319 @@
+DISTLIST TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - LIST DISTRIBUTION'
+*---------------------------------------------------------------------*
+*      MAILER -- Copyright (c) 1982,1986 Columbia University.         *
+*    Program Property of the Trustees of Columbia University in the   *
+*    City of New York.                                                *
+*---------------------------------------------------------------------*
+DISTLIST CSECT ,
+* DISTLIST -
+*
+* This exit implements a distribution list by punching a BSMTP file
+* back into the Mailer's reader for processing by the BSMTP code.
+* The list of RCPT's is obtained from the file "parm DISTLIST *" where
+* parm is the RTPARM.
+*
+* This is new code as of version 1.24 (1/8/86).  Alan Crosswell.
+*
+* The generated file will look like:
+*  HELO domain
+*  TICK message-id
+*  MAIL FROM: <sender>     (from MAILSFLD)
+*  RCPT TO: <recipient1>   (from parm DISTLIST *)
+*  RCPT TO: <recipient2>
+*   . . .
+*  RCPT TO: <recipientN>
+*  DATA
+*   [the mail file itself]
+*  .
+*  QUIT
+*
+* The domain that gets plugged into the HELO command is simply the
+* Thisnode= string (RSCS node name).
+PAB      DSECT ,
+@MBLOK   DS    A             MAILBLOK base
+@ACT     DS    A             ACTADR base
+* REGISTER USAGE -
+R0  EQU  0 -
+R1  EQU  1 -
+R2  EQU  2 -
+R3  EQU  3 -
+R4  EQU  4 -
+R5  EQU  5 -
+R6  EQU  6 -
+R7  EQU  7 -
+R8  EQU  8 -
+R9  EQU  9 -
+R10 EQU 10 - ACTADR base
+R11 EQU 11 - MAILBLOK base
+R12 EQU 12 - program base
+R13 EQU 13 - save area
+R14 EQU 14 - linkage
+R15 EQU 15 - linkage
+         BLOCKS ,
+         MAILBLOK ,
+         FSCBD  ,
+         EJECT ,
+DISTLIST CSECT ,
+         USING DISTLIST,R15     temp addr
+         B     EYESKIP            around the eye-catcher
+MYNAME   DC    CL8'DISTLIST',CL8'&SYSDATE'
+EYESKIP  DS    0H
+         STM   R14,R12,12(R13)    save caller's registers
+         LR    R12,R15            a better base
+         DROP  R15                done with temp base
+         USING DISTLIST,R12       get perm base
+         LA    R15,SAVE           point to my save area
+         ST    R13,4(R15)         play the chain game
+         ST    R15,8(R13)
+         LR    R13,R15            set up my save pointer
+         USING PAB,R1             get to the parms
+         L     R11,@MBLOK         MAILBLOK base
+         L     R10,@ACT           ACTADR base
+         DROP  R1                 done with 'em
+         USING MAILBLOK,R11       address the mailblok
+         USING ACTADR,R10         address the actadr
+         SPACE 1
+         TM    DBGFLG6,DBGNOOUT   Produce mail files?
+         BNO   SKIP001            ---> Yes
+         WRTERM 'DISTLIST:  Trace-send-no-mail set'
+SKIP001  EQU   *
+         SPACE 1
+*----------------------------------------------------------------------
+* See if the distribution list file exists before wasting any time
+*----------------------------------------------------------------------
+         L     R4,ACTRT           get the routd
+         USING ROUTD,R4           address it
+         LA    R5,LISTFSCB        point to fscb
+         USING FSCBD,R5           address it
+         MVC   FSCBFN,RTPARM      parm is FN
+         DROP  R4                 done with routd
+         FSOPEN FSCB=LISTFSCB,ERROR=FSERROR
+         CLI   FSCBFV,C'V'        better be recfm V
+         BNE   BADFMT             bad file format
+         DROP  R5                 done with fscb
+*----------------------------------------------------------------------
+* File opened OK.  Now spool punch to *
+*----------------------------------------------------------------------
+         LA    R1,=C'SPOOL PUN *' punch back to self
+         LA    R0,11              length
+         DC    X'83100008'        issue the spool command
+*----------------------------------------------------------------------
+* Set up the initial items: HELO, TICK, VERB, MAIL...
+*----------------------------------------------------------------------
+         MVC   HELODOM(8),CPUSTR  copy in rscs node name
+         TM    DBGFLG6,DBGNOOUT   Producing mail?
+         BNO   SKIP0102           ---> Yes
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,HELO),                      X
+               DOT=NO,COMP=NO
+         B     SKIP0104
+SKIP0102 EQU   *
+         PUNCHC HELO,ERROR=PUNERR punch the HELO record
+SKIP0104 EQU   *
+         SPACE 1
+         MVC   TICKID,MAILFTXT    message id number
+         TM    DBGFLG6,DBGNOOUT   Producing mail?
+         BNO   SKIP0112           ---> Yes
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,TICK),                      X
+               DOT=NO,COMP=NO
+         B     SKIP0114
+SKIP0112 EQU   *
+         PUNCHC TICK,ERROR=PUNERR punch the TICK
+SKIP0114 EQU   *
+*----------------------------------------------------------------------
+* MAIL FROM:<sender> is a little more work...
+*----------------------------------------------------------------------
+         L     R6,MAILSFLD        sender fieldd
+         USING FIELDD,R6          address it
+         L     R6,FIPARS          point to adaddr
+         DROP  R6                 done with fieldd
+         USING MBOX,R6          use the adaddr now
+         LA    R2,MAILFROM        address of buffer for userid
+         LA    R3,L'MAILFROM(R2)  length of it
+         MVI   MAILFROM,C' '      blank it out
+         MVC   MAILFROM+1(L'MAILFROM-1),MAILFROM propagate the blanks
+         L     R1,MBXLCL         list of user name tokens
+         BAL   R14,COPYTOK        copy the token
+         CR    R2,R3              is there room?
+         BNL   OVERFLOW           didn't fit!
+         MVI   0(R2),C'@'         move in the atsign
+         LA    R2,1(R2)           bump string ptr
+         L     R1,MBXDML         list of host name tokens
+         LR    R4,R2              hold onto it for a sec
+         BAL   R14,COPYTOK        copy it
+         CR    R2,R3              room for the ">"?
+         BNL   OVERFLOW           didn't fit
+         MVI   0(R2),C'>'         end of the mail from
+         TM    DBGFLG6,DBGNOOUT   Producing mail?
+         BNO   SKIP0122           ---> Yes
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,MAIL),                      X
+               DOT=NO,COMP=NO
+         B     SKIP0124
+SKIP0122 EQU   *
+         PUNCHC MAIL,ERROR=PUNERR punch the MAIL FROM: line
+SKIP0124 EQU   *
+         DROP  R6                 done with MBOX
+*----------------------------------------------------------------------
+* Get the recipients,  one per line,  from the distlist file.
+* Generate a RCPT TO: line for each one.
+*----------------------------------------------------------------------
+         SR    R8,R8              record counter
+RCPTLOOP EQU   *                  top of file reading loop
+         MVI   RCPTTO,C' '        blank it out
+         MVC   RCPTTO+1(L'RCPTTO-1),RCPTTO propagate the blanks
+         LA    R2,L'RCPTTO-1
+         FSREAD FSCB=LISTFSCB,BUFFER=RCPTTO,BSIZE=(R2),                *
+               ERROR=RDERR
+         LR    R1,R0              get length read
+         LA    R1,RCPTTO(R1)      end of address
+         MVI   0(R1),C'>'         close it off
+         TM    DBGFLG6,DBGNOOUT   Producing mail?
+         BNO   SKIP0132           ---> Yes
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,RCPT),                      X
+               DOT=NO,COMP=NO
+         B     SKIP0134
+SKIP0132 EQU   *
+         PUNCHC RCPT,ERROR=PUNERR punch the RCPT TO: line
+SKIP0134 EQU   *
+         LA    R8,1(R8)           bump counter
+         B     RCPTLOOP           back to top
+RDERR    EQU   *                  error exit from fsread
+         C     R15,=F'12'         EOF?
+         BNE   FSERROR            no,  serious error
+         FSCLOSE FSCB=LISTFSCB    close the file
+*----------------------------------------------------------------------
+* done with RCPT's.  Now send the DATA
+*----------------------------------------------------------------------
+         TM    DBGFLG6,DBGNOOUT   Producing mail?
+         BNO   SKIP0142           ---> Yes
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,RCPT),                      X
+               DOT=NO,COMP=NO
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,ENDDATA),                   X
+               DOT=NO,COMP=NO
+         LINEDIT TEXTA=LINESKEL,SUB=(CHARA,QUIT),                      X
+               DOT=NO,COMP=NO
+         B     SKIP0144
+SKIP0142 EQU   *
+         PUNCHC DATA,ERROR=PUNERR send the data
+         OI    MAILFLG1,MFLG1DOT  do dot quoting
+         L     R15,APUNHDR
+         CALL  (15),((R11))       send the header
+         LTR   R15,R15
+         BNZ   RET
+         L     R15,APUNTXT
+         CALL  (15),((R11))       send the text
+         LTR   R15,R15
+         BNZ   RET
+         PUNCHC ENDDATA,ERROR=PUNERR end the data
+         PUNCHC QUIT,ERROR=PUNERR end the "session"
+         L     R15,APUNCLS        close the punch
+         CALL  (15),((R11))
+         LTR   R15,R15
+         BNZ   RET
+SKIP0144 EQU   *
+         LA    R5,LISTFSCB        get fscb
+         USING FSCBD,R5           address it
+         LA    R4,FSCBFN          get address of file name
+         DROP  R5                 done with fscbd
+         LOG   DST052,(D,(R8),CA,(R4))
+RET      EQU   *
+         NI    MAILFLG1,255-MFLG1DOT turn off dot quoting
+         L     R13,4(R13)
+         L     R14,12(R13)
+         LM    R0,R12,20(R13)
+         BR    R14
+         SPACE ,
+*----------------------------------------------------------------------
+* COPYTOK - copy token from NODE to buffer
+*
+* ENTRY -
+*  R1 - address of NODE
+*  R2 - address of output buffer
+*  R3 - address of end of output buffer
+* R14 - return address
+* EXIT -
+*  R2 - updated to reflect length of string copied
+*----------------------------------------------------------------------
+COPYTOK  DS    0H
+         STM   R0,R5,COPYSAVE     save reg's I clobber
+         USING NODE,R1          look at the adnode
+         L     R1,NODDOWN         get the down pointer
+         DROP  R1                 done with adnode
+         USING TOKEND,R1          address the token descriptor
+         SR    R4,R4              get a zero
+         L     R4,TOKLEN          length of it
+         L     R5,TOKPTR          point to the string
+         DROP  R1                 done with TOKEND
+         LA    R0,0(R2,R4)        check the length against buffer
+         CR    R0,R3              will it overflow the buffer?
+         BNL   OVERFLOW           yes.  go croak.
+         BCTR  R4,0               decrement for EXECUTE
+         EX    R4,COPY            MVC 0(0,R2),0(R5)
+         LA    R2,1(R4,R2)        update the buffer pointer
+         LM    R0,R1,COPYSAVE     restore clobbered regs
+         LM    R3,R5,COPYSAVE+12  "       "         "
+         BR    R14                return to caller
+COPY     MVC   0(0,R2),0(R5)      executed instr
+COPYDEF  MVC   0(0,R2),1(R4)      executed mvc
+TRAPDOT  TRT   0(0,R4),TRAPTAB    executed trt
+MOVEDOM  MVC   HELODOM(0),1(R5)   executed mvc
+COPYSAVE DS    6F                 save area for copytok
+         SPACE ,
+OVERFLOW DS    0H                 overflow error
+         LOG   DST026,(CA,MYNAME) error message
+         LA    R15,4              set error status
+OVERPUR  EQU   *
+         LA    R1,=C'SP PUN PURGE' purge what's been punched so far
+         LA    R0,12              length
+         DC    X'83100008'        diagnose 8
+         B     RET                and return
+         SPACE ,
+PUNERR   DS    0H                 punch error
+         LOG   DST026,(CA,MYNAME)
+         LA    R15,12             fatal error
+         B     OVERPUR            do the purge stuff
+         SPACE ,
+BADFMT   EQU   *
+         LA    R15,99             sounds like a good error #
+FSERROR  EQU   *
+         LR    R5,R15
+         LA    R4,LISTFSCB
+         USING FSCBD,R4
+         LA    R4,FSCBFN
+         DROP  R4
+         LOG   DST053,(D,(R5),CA,(R4))
+         LA    R15,4
+         B     OVERPUR            purge it
+         SPACE ,
+         LTORG ,
+SAVE     DS    18F                save area
+         SPACE 1
+LINESKEL DC    AL1(91)
+         DC    CL11'DISTLIST:'
+         DC    80C'.'
+         SPACE 1
+LISTFSCB FSCB  'DISTLIST DISTLIST *',FORM=E
+HELO     DC    CL80' '            a helo message
+         ORG   HELO               org back to it
+         DC    CL5'HELO '         the constant part
+HELODOM  DC    CL75' '            the domain that gets filled in
+         ORG   ,
+VERB     DC    CL80'VERB ON'      the verb message
+TICK     DC    CL80' '            the tick message
+         ORG   TICK
+         DC    CL5'TICK '
+TICKID   DC    CL4'0000'          the id number
+         ORG   ,
+MAIL     DC    CL80' '            the mail message
+         ORG   MAIL
+         DC    CL11'MAIL FROM:<'
+MAILFROM DC    CL69' '            space for the userid
+         ORG   ,
+RCPT     DC    CL80' '            rcpt message
+         ORG   RCPT
+         DC    CL9'RCPT TO:<'
+RCPTTO   DC    CL71' '            space for the address
+         ORG   ,
+DATA     DC    CL80'DATA'         data message
+ENDDATA  DC    CL80'.'            end of data message
+QUIT     DC    CL80'QUIT'         quit message
+         END   DISTLIST

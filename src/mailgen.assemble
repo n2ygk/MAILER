@@ -1,0 +1,537 @@
+GEN      TITLE 'MAILGEN     Columbia Univ Network MAILER (Rel. 2)      *
+               generate header strings'
+*-------------------------------------------------------------------*
+*                                                                   *
+*        Columbia University Network MAILER  -  Release 2           *
+*                                                                   *
+*        Program property of Columbia University                    *
+*                                                                   *
+*-------------------------------------------------------------------*
+         SPACE ,
+*-------------------------------------------------------------------*
+*                                                                   *
+* Module Name:                                                      *
+*                                                                   *
+*        MAILGEN                                                    *
+*                                                                   *
+* Function:                                                         *
+*                                                                   *
+*        Subroutines to generate/manipulate strings found in mail   *
+*        headers like mailboxes,  dates,  etc. from the canonical   *
+*        form of them described in various dsects.                  *
+*                                                                   *
+* Attributes:                                                       *
+*                                                                   *
+*        Reentrant                                                  *
+*                                                                   *
+* Entry Points:                                                     *
+*                                                                   *
+*        ADDROUTE            add route at beginning of route-list,  *
+*                            this does not add route into token list*
+*        DELROUTE            delete first route address from MBOX   *
+*        GENLIST             generate '.' separated list of tokens  *
+*        GENMBOX             generate mailbox from MBOX dsect       *
+*                                                                   *
+* Entry Conditions:                                                 *
+*                                                                   *
+*        ADDROUTE:                                                  *
+*          R1  = A(ADPARMS)  see ADPARMS DSECT, below               *
+*          R15 = A(ADDROUTE)                                        *
+*          R14 = return address                                     *
+*          R13 = register save area                                 *
+*                                                                   *
+*        DELROUTE:                                                  *
+*          R1  = A(DRPARMS)  see DRPARMS DSECT, below               *
+*          R15 = A(DELROUTE)                                        *
+*          R14 = return address                                     *
+*          R13 = register save area                                 *
+*                                                                   *
+*        GENLIST:                                                   *
+*          R1  = A(LIPARMS)  see LIPARMS DSECT, below               *
+*          R15 = A(GENLIST)                                         *
+*          R14 = return address                                     *
+*          R13 = register save area                                 *
+*                                                                   *
+*        GENMBOX:                                                   *
+*          R1  = A(MBPARMS)  see MBPARMS DSECT, below               *
+*          R15 = A(GENMBOX)                                         *
+*          R14 = return address                                     *
+*          R13 = register save area                                 *
+*                                                                   *
+* Sample Invocation:                                                *
+*                                                                   *
+*        CALL ADDROUTE,(MBOX,NODE)                                  *
+*              mbox - address of pointer to MBOX dsect              *
+*              node - address of pointer to NODE dsect for first    *
+*                     level node under the MBOX.                    *
+*                                                                   *
+*        CALL DELROUTE,(MBOX)                                       *
+*              mbox - address of pointer to MBOX dsect              *
+*                                                                   *
+*        CALL GENLIST,(TOKEND,STR,STRLEN,STK,SLEN)                  *
+*              tokend - address of pointer to TOKEND dsect          *
+*                       for the first token of the generated string *
+*              str - (output) address of string generated           *
+*              strlen - (output) length of string generated         *
+*              stk - stack for string generation                    *
+*              slen - length of stack                               *
+*                                                                   *
+*        CALL GENMBOX,(MBOX,STR,STRLEN,STK,SLEN)                    *
+*              mbox - address of pointer to MBOX dsect              *
+*              str - (output) address of string generated           *
+*              strlen - (output) length of string generated         *
+*              stk - stack for string generation                    *
+*              slen - length of stack                               *
+*                                                                   *
+* Exit Conditions:                                                  *
+*                                                                   *
+*        Normal                                                     *
+*                                                                   *
+*              R15 = 0       string generated,  parms updated       *
+*                            route added/deleted                    *
+*                                                                   *
+*        Error                                                      *
+*                                                                   *
+*              R15 = 4       not enough space to generate string    *
+*              R15 = 8       ADDROUTE: NODDOWN = 0                  *
+*                                                                   *
+* Calls to other routines, etc:                                     *
+*                                                                   *
+*        None                                                       *
+*                                                                   *
+* External References:                                              *
+*                                                                   *
+*        None                                                       *
+*                                                                   *
+* Work Areas:                                                       *
+*                                                                   *
+* Operation:                                                        *
+*                                                                   *
+*        ADDROUTE:                                                  *
+*         Verify that NODE passed points to a lower level NODE and  *
+*         then to a TOKEND.  Chain NODE into MBXRTL chain.          *
+*                                                                   *
+*        DELROUTE:                                                  *
+*         Chain from MBOX to NODE for first routeaddr and remember  *
+*         its address.  Chain down to NODE list representing        *
+*         routeaddr.  Find first and last TOKENDs by running chain  *
+*         of nodes.  Since all routeadders are in one of two forms  *
+*         ('@routeaddr,' or '@routeaddr:'), remove the routeaddr    *
+*         by backing up two TOKENDs from the first address token    *
+*         (to the TOKEND preceeding the '@') and chaining forward   *
+*         one TOKEND from the last token (to the ',' or ':').       *
+*         Copy the TOKNEXT address from the last token into the     *
+*         token preceeding the address. Now, copy the NODNEXT       *
+*         address from the top level node into MBXRTL and decrement *
+*         MBXRCNT by 1 to complete the deletion.                    *
+*                                                                   *
+*        GENLIST:                                                   *
+*         Chain thru the NODEs, copying the tokens out to the       *
+*         string.  The resulting string looks like:                 *
+*           a.b.c.d                                                 *
+*                                                                   *
+*        GENMBOX:                                                   *
+*         Chain thru the MBOX routelist,  local part list, and      *
+*         domain list,  copying the tokens out to the string.       *
+*         The resulting string looks like:                          *
+*           <@A,@B,@C: D.E@F.G>                                     *
+*                                                                   *
+* Alan Crosswell,  1/84                                             *
+*-------------------------------------------------------------------*
+         EJECT ,
+*-------------------------------------------------------------------*
+*        Local Macros                                               *
+*-------------------------------------------------------------------*
+         EJECT ,
+*-------------------------------------------------------------------*
+*        Parameters                                                 *
+*-------------------------------------------------------------------*
+         SPACE ,
+ADPARMS  DSECT ,             parameters for DELROUTE
+AD@MBOX  DS    A             address of pointer to MBOX
+AD@NODE  DS    A             address of pointer to NODE
+         SPACE ,
+DRPARMS  DSECT ,             parameters for DELROUTE
+DR@MBOX  DS    A             address of pointer to MBOX
+         SPACE ,
+MBPARMS  DSECT ,             parameters
+MB@MBOX  DS    A             address of pointer to MBOX
+MB@STR   DS    A             address of string pointer to fill in
+MB@STLEN DS    A             address of string length to fill in
+MB@STK   DS    A             address of stack pointer
+MB@SLEN  DS    A             address of stack length
+         SPACE ,
+LIPARMS  DSECT ,             parameters
+LI@NODE  DS    A             address of pointer to NODE
+LI@STR   DS    A             address of string pointer to fill in
+LI@STLEN DS    A             address of string length to fill in
+LI@STK   DS    A             address of stack pointer
+LI@SLEN  DS    A             address of stack length
+         EJECT ,
+*-------------------------------------------------------------------*
+*        Local dynamic variables                                    *
+*-------------------------------------------------------------------*
+         SPACE ,
+LOCALS   DSECT ,             local variables
+         DS    18F           save area
+         DS    0D            dword aligned
+LOCSIZE  EQU   *-LOCALS      size of LOCALS dsect
+         EJECT ,
+*-------------------------------------------------------------------*
+*        Control block definitions                                  *
+*-------------------------------------------------------------------*
+         SPACE ,
+         BLOCKS ,
+         EJECT ,
+*-------------------------------------------------------------------*
+*        Register definitions                                       *
+*-------------------------------------------------------------------*
+         SPACE ,
+R0       EQU   0
+R1       EQU   1
+R2       EQU   2
+R3       EQU   3
+R4       EQU   4
+R5       EQU   5
+R6       EQU   6
+R7       EQU   7             MBOX pointer
+R8       EQU   8             output string pointer
+R9       EQU   9             output string length
+R10      EQU   10
+R11      EQU   11
+R12      EQU   12
+R13      EQU   13
+R14      EQU   14
+R15      EQU   15
+         SPACE ,
+*-------------------------------------------------------------------*
+*        Main program                                               *
+*-------------------------------------------------------------------*
+         SPACE ,
+MAILGEN  CSECT ,
+         EJECT ,
+ADDROUTE MENTRY STK=NONE
+         LR    R11,R1              hide parms pointer
+         USING ADPARMS,R11
+         L     R7,AD@MBOX          Get MBOX address pointer
+         L     R7,0(,R7)           Actual MBOX address
+         L     R2,AD@NODE          Get 1st level NODE address pointer
+         L     R2,0(,R2)           Actual NODE address
+         LA    R15,8               set default return code
+         SPACE 1
+*-------------------------------------------------------------------*
+*        1) Check that 1st level node points to another node        *
+*           R3 - Second level NODE                                  *
+*-------------------------------------------------------------------*
+         SPACE 1
+         USING NODE,R2
+         ICM   R3,B'1111',NODDOWN  Address non-zero?
+         BZ    ADDREXIT            ---> No
+         DROP  R2
+         SPACE 1
+*-------------------------------------------------------------------*
+*        2) Check that 2nd level node points to TOKEND              *
+*           R4 - 1st NODE's TOKEND address                          *
+*-------------------------------------------------------------------*
+         SPACE 1
+         USING NODE,R3
+         ICM   R4,B'1111',NODDOWN  Address non-zero?
+         BZ    ADDREXIT            ---> No
+         DROP  R3
+         SPACE 1
+*-------------------------------------------------------------------*
+*        5) Chain 1st level NODE into MBXRTL list                   *
+*-------------------------------------------------------------------*
+         SPACE 1
+         USING MBOX,R7
+         ICM   R15,B'1111',MBXRTL  Pick up route-list ptr
+         BZ    ADDR0040            ---> No list currently exists
+         ST    R15,NODNEXT-NODE(R2) Update forward chain
+         ST    R2,NODPREV-NODE(R15)  & back chain
+         SPACE 1
+ADDR0040 DS    0H
+         ST    R2,MBXRTL           Update route-list ptr
+         SPACE 1
+         L     R1,MBXRCNT          Update
+         A     R1,=F'1'                 count of
+         ST    R1,MBXRCNT                    routeadders
+         DROP  R7
+         SPACE 1
+ADDREXIT DS    0H
+         MRET  ,
+         MPEND ,
+         EJECT ,
+DELROUTE MENTRY STK=NONE
+         LR    R11,R1              hide parms pointer
+         USING DRPARMS,R11         address them
+         L     R7,DR@MBOX          get MBOX address pointer
+         L     R7,0(R7)            actaul MBOX address
+         USING MBOX,R7
+         LA    R15,4               Set default return code
+         SPACE 1
+*-------------------------------------------------------------------*
+*        1) Get NODE for first routeaddr                            *
+*           R8 - Top level node for first/only routeaddr            *
+*           R9 - Second level node for first/only routeaddr         *
+*-------------------------------------------------------------------*
+         SPACE 1
+         ICM   R8,B'1111',MBXRTL   Get route list pointer
+         BZ    DELREXIT            ---> No route list
+         ICM   R9,B'1111',NODDOWN-NODE(R8)   Down 1 level
+         BZ    DELREXIT            ---> Logic error, but what the hell
+         SPACE 1
+*-------------------------------------------------------------------*
+*        2) Get first TOKEND address                                *
+*           R2 - Address of first TOKEND preceeding routeaddr       *
+*-------------------------------------------------------------------*
+         SPACE 1
+         USING NODE,R9
+         ICM   R2,B'1111',NODDOWN  TOKEND for first node
+         DROP  R9
+         USING TOKEND,R2
+         CLC   TOKPREV,=F'0'       Previous token pointer?
+         BZ    DELR0030            ---> No, assume added by ADDROUTE
+         L     R2,TOKPREV          This is the '@' token
+         L     R2,TOKPREV          Token before '@'
+         DROP  R2
+         SPACE 1
+*-------------------------------------------------------------------*
+*        3)  Get last TOKEND of routeaddr (',' or ':')              *
+*            R3 - Addr of last TOKEND of routeaddr                  *
+*-------------------------------------------------------------------*
+         SPACE 1
+         LR    R3,R9               Copy starting address
+DELR0010 DS    0H
+         USING NODE,R3
+         ICM   R1,B'1111',NODNEXT  Point to next NODE
+         BZ    DELR0020            ---> No more NODEs
+         LR    R3,R1               Update pointer
+         B     DELR0010            ---> Keep searching
+         SPACE 1
+DELR0020 DS    0H
+         L     R3,NODDOWN          Point to TOKEND
+         DROP  R3
+         USING TOKEND,R3
+         L     R3,TOKNEXT          To ',' or ':' TOKEND
+         DROP  R3
+         SPACE 1
+*-------------------------------------------------------------------*
+*        4)  Cut 1st routeaddr from token string                    *
+*-------------------------------------------------------------------*
+         SPACE 1
+         MVC   TOKNEXT-TOKEND(,R2),TOKNEXT-TOKEND(R3)
+         L     R1,TOKNEXT-TOKEND(R3)
+         ST    R2,TOKPREV-TOKEND(R1)
+         SPACE 1
+*-------------------------------------------------------------------*
+*        5)  Drop 1st NODE (routeaddr) from MBXRTL list             *
+*-------------------------------------------------------------------*
+         SPACE 1
+DELR0030 DS    0H
+         ICM   R1,B'1111',NODNEXT-NODE(R8)
+         BZ    DELR0035            ---> Only 1 entry in list
+         XC    NODPREV-NODE(,R1),NODPREV-NODE(R1)
+DELR0035 DS    0H
+         MVC   MBXRTL,NODNEXT-NODE(R8)  Update MBXRTL pointer
+         L     R1,MBXRCNT          Update
+         BCTR  R1,0                     count of
+         ST    R1,MBXRCNT                    routeadders
+         DROP  R7
+         SR    R15,R15             Set return code
+         SPACE 1
+DELREXIT DS    0H
+         MRET  ,
+         MPEND ,
+         EJECT ,
+GENMBOX  MENTRY STK=NONE
+         LR    R11,R1        hide parms pointer
+         USING MBPARMS,R11   address them
+         L     R8,MB@STK     get stack pointer address
+         L     R8,0(,R8)     get actual stack address
+         L     R9,MB@SLEN    get stack length address
+         L     R9,0(,R9)     get actual length
+         L     R7,MB@MBOX    get MBOX pointer
+         L     R7,0(,R7)     actual MBOX address
+         USING MBOX,R7       address the MBOX
+*-------------------------------------------------------------------*
+*        1) Start the string off with a "<"                         *
+*-------------------------------------------------------------------*
+         L     R2,MB@STR     address of string pointer
+         ST    R8,0(,R2)     string is allocated off the stack
+         S     R9,=F'1'      sub 1 from stack for the "<"
+         BL    MB#NOS        no space on the stack
+         MVI   0(R8),C'<'    put the "<" into the string
+         LA    R8,1(,R8)     increment the pointer
+*-------------------------------------------------------------------*
+*        2) Expand the route list (if any).  Each route list NODE   *
+*        points down to a list of domain list nodes.  Expand it as  *
+*        @<domain list>,@<domain list>, ...,                        *
+*-------------------------------------------------------------------*
+         L     R6,MBXRTL     get the route list pointer
+         LTR   R6,R6         see if the route list is empty
+         BZ    MB#LCL        no route list,  go to local part
+         USING NODE,R6       address the route list NODE
+MB#RTL1  EQU   *             loop to expand domain lists.
+         LTR   R6,R6         end of route list?
+         BZ    MB#RTL2       yes,  finish up
+         S     R9,=F'1'           is there room for the "@"?
+         BL    MB#NOS        no stack space
+         MVI   0(R8),C'@'    set up the "@<domain list>"
+         LA    R8,1(,R8)     bump pointer to string
+         L     R1,NODDOWN    point down to domain list node
+         L     R15,=A(GENLST)
+         BALR  R14,R15       and generate the domain list
+         B     MB#NOS        No space on stack
+         S     R9,=F'1'      is there room for the comma?
+         BL    MB#NOS        no stack space
+         MVI   0(R8),C','    now reads ... @<domain list>,
+         LA    R8,1(,R8)     bump the pointer
+         L     R6,NODNEXT    get next domain list in route
+         B     MB#RTL1       itterate loop
+         DROP  R6            done with NODE
+MB#RTL2  EQU   *             here when done expanding route list
+         LR    R1,R8         point 1 past last comma
+         BCTR  R1,0          point to the comma
+         MVI   0(R1),C':'    and replace it with a colon
+*-------------------------------------------------------------------*
+*        3) Expand the local-part list.  Each token gets a "."      *
+*         stuck between it and the next one.                        *
+*-------------------------------------------------------------------*
+MB#LCL   EQU   *             here for local part expansion
+         L     R1,MBXLCL     get local part list
+         L     R15,=A(GENLST)
+         BALR  R14,R15       generate the list
+         B     MB#NOS        No space on stack
+         S     R9,=F'1'      make room for the atsign
+         BL    MB#NOS        no space
+         MVI   0(R8),C'@'    move in the atsign
+         LA    R8,1(,R8)     bump the pointer
+*-------------------------------------------------------------------*
+*        4) Expand the domain list.  Just like local part.          *
+*-------------------------------------------------------------------*
+         L     R1,MBXDML     get domain list
+         L     R15,=A(GENLST)
+         BALR  R14,R15       generate the list
+         B     MB#NOS        No space on stack
+*-------------------------------------------------------------------*
+*        5) Drop off the closing ">" and return                     *
+*        The stack pointer should be left fullword aligned          *
+*-------------------------------------------------------------------*
+         S     R9,=F'1'      room for the ">"?
+         BL    MB#NOS        no stack space
+         MVI   0(R8),C'>'    close it off.
+         L     R4,MB@SLEN    get ptr to original stack length
+         L     R2,0(,R4)     original stack length
+         SR    R2,R9         less new stack length is string length
+         L     R3,MB@STLEN   address of string length to fill in
+         ST    R2,0(,R3)     replaced in parameter list
+         LA    R8,3(,R8)     add 3 to get a fword aligned stack
+         N     R8,=X'FFFFFFFC' turn off the low 2 bits.
+         L     R1,MB@STK     get stack pointer address
+         L     R2,0(,R1)     get original stack location
+         ST    R8,0(,R1)     set new stack location
+         SR    R8,R2         get amount removed from the stack
+         L     R3,0(,R4)     get original stack length
+         SR    R3,R8         minus amount removed
+         ST    R3,0(,R4)     is the new length
+         SR    R15,R15       zero return code
+         MRET  ,             return
+*-------------------------------------------------------------------*
+*        Stack overflow error return                                *
+*-------------------------------------------------------------------*
+MB#NOS   EQU   *             here for stack error
+         LA    R15,4         set error return code
+         MRET  ,             and return
+         MPEND ,
+         EJECT ,
+GENLIST  MENTRY STK=NONE
+         LR    R11,R1        hide parms pointer
+         USING LIPARMS,R11   address them
+         L     R8,LI@STK     get stack pointer address
+         L     R8,0(,R8)     get actual stack address
+         L     R9,LI@SLEN    get stack length address
+         L     R9,0(,R9)     get actual length
+         L     R7,LI@NODE    get NODE pointer
+*-------------------------------------------------------------------*
+*        Expand the list                                            *
+*-------------------------------------------------------------------*
+         L     R2,LI@STR     address of string pointer
+         ST    R8,0(,R2)     string is allocated off the stack
+         L     R1,0(,R7)     actual NODE address
+         L     R15,=A(GENLST)
+         BALR  R14,R15       generate the list
+         B     AD#NOS        No space on stack
+*-------------------------------------------------------------------*
+*        The stack pointer should be left fullword aligned          *
+*-------------------------------------------------------------------*
+         L     R4,LI@SLEN    get ptr to original stack length
+         L     R2,0(,R4)     original stack length
+         SR    R2,R9         less new stack length is string length
+         L     R3,LI@STLEN   address of string length to fill in
+         ST    R2,0(,R3)     replaced in parameter list
+         LA    R8,3(,R8)     add 3 to get a fword aligned stack
+         N     R8,=X'FFFFFFFC' turn off the low 2 bits.
+         L     R1,LI@STK     get stack pointer address
+         L     R2,0(,R1)     get original stack location
+         ST    R8,0(,R1)     set new stack location
+         SR    R8,R2         get amount removed from the stack
+         L     R3,0(,R4)     get original stack length
+         SR    R3,R8         minus amount removed
+         ST    R3,0(,R4)     is the new length
+         SR    R15,R15       zero return code
+         MRET  ,             return
+*-------------------------------------------------------------------*
+*        Stack overflow error return                                *
+*-------------------------------------------------------------------*
+AD#NOS   EQU   *             here for stack error
+         LA    R15,4         set error return code
+         MRET  ,             and return
+         MPEND ,
+         EJECT ,
+*-------------------------------------------------------------------*
+*        GENLST                                                     *
+*                                                                   *
+*        local subroutine to expand out a list of "." separated     *
+*        tokens.  Registers:                                        *
+*              R1 = NODE pointer                                    *
+*              R8 = string output address                           *
+*              R9 = string remainder length                         *
+*              R14 = return address                                 *
+*              R15 = address of GENLST entry point                  *
+*                                                                   *
+*        Exit: R14+0  Out of stack space                            *
+*              R14+4  Successful                                    *
+*                                                                   *
+*-------------------------------------------------------------------*
+         SPACE ,
+GENLST   DS    0H            generate a list
+         USING *,R15
+         LTR   R1,R1         see if at end of list
+         BZ    GENLST1       done with list
+         USING NODE,R1       address the NODE
+         L     R2,NODDOWN    point down to token
+         USING TOKEND,R2     address the token
+         L     R3,TOKLEN     length of token
+         L     R2,TOKPTR     get token pointer
+         DROP  R2            done with TOKEND
+         SR    R9,R3         subtract length from remainder count
+         BL    0(,R14)       return error
+         LR    R4,R8         get string pointer
+         LR    R5,R3         and length
+         MVCL  R4,R2         copy the string
+         LR    R8,R4         updated length
+         S     R9,=F'1'      -1 for the dot
+         BL    0(,R14)       no space
+         MVI   0(R8),C'.'    move in the dot
+         LA    R8,1(,R8)     bump the pointer
+         L     R1,NODNEXT    get the next pointer
+         B     GENLST        and itterate
+GENLST1  EQU   *             here when done looping
+         BCTR  R8,0          remove the extra trailing dot
+         MVI   0(R8),C' '        in all forms
+         LA    R9,1(,R9)     add one to remainder length
+         B     4(,R14)       and return
+         SPACE 1
+         DROP  R15
+         SPACE 3
+         END   ,

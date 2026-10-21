@@ -1,0 +1,872 @@
+* Following mods merged in:                                      [1.24]
+*[EMU1] 3/19/86 - Output PROFS compatible subject line on PROFS param
+*[EMU2] 3/22/86 - Set Reply / Forward indicator on PROFS subj line
+*9/16/86 Change message to start with '*' by default.            [1.24]
+*[1.20] 2/13/85 - Add check for PROFS parameter and generate
+*       RSCS-style TAG
+*[4] 11/25/84 - change to use MAILSFLD instead of FROM: for msg.
+*[3] 5/18/83 - fix incorrect 033 msg.
+*[2] 12/23/82 - trim trailing blanks from msgnoh call.
+*   and add use of msgcmd & msgprefix in mailptab for name of cp cmd.
+*[1] 12/9/82 - added msgnoh to recipient announcing new mail.
+LOCAL  TITLE 'VM Network Mailer Version 2 - local distribution exit'
+*---------------------------------------------------------------------*
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         *
+*    Program Property of the Trustees of Columbia University in the   *
+*    City of New York.                                                *
+*---------------------------------------------------------------------*
+LOCAL    CSECT ,
+* LOCAL  -
+*  This routine performs the delivery of files to local users.
+*  In addition to sending files and reporting non-existent
+*  users, a table of userid/special routines is checked for
+*  each userid.  This is used to prevent punching of files to
+*  disconnected machines that shouldn't receive mail (i.e.
+*  BATCH, RSCS, CMSBATxx...) as well as providing a means for
+*  special usernames such as BBOARD, etc.
+*
+*  As part of local delivery, this routine will look for a file
+*  with a filename of local userid and a filetype of "FORWARD"
+*  on MAILER's A disk.  If this file is found, it will be used
+*  to forward the mail.  This forwarding process will build a
+*  BSMTP header using whatever addresses are found in the FORWARD
+*  file and then punch the resulting mail back to MAILER for further
+*  processing.  The sender of the mail will receive a message (assuming
+*  they are on the NJE network) indicating that the mail is being
+*  forwarded.
+*
+*  If a "FORWARD" file is not found for this local destination, a
+*  check will be made for a "MAILLIST" (mailing list) file.
+*  Processing is similar to forwarding.
+*
+*  This routine is also responsible for supporting the '%' kludge
+*  for rerouting mail.
+*
+*  Example:  Given 'someuser%somewhere@localnode' the address will
+*            be changed to 'someuser@somewhere' and the mail
+*            resent.
+*
+*  LAST EDIT: 3/22/86 BY PETER DAY     [EMU2]
+*
+PAB      DSECT ,
+@MBLOK   DS    A             MAILBLOK BASE
+@ACT     DS    A             ACTADR BASE
+* REGISTER USAGE -
+R0  EQU  0 -
+R1  EQU  1 -
+R2  EQU  2 -
+R3  EQU  3 -
+R4  EQU  4 -
+R5  EQU  5 -
+R6  EQU  6 -
+R7  EQU  7 -
+R8  EQU  8 -
+R9  EQU  9 - Second program base
+R10 EQU 10 - ACTADR BASE
+R11 EQU 11 - MAILBLOK BASE
+R12 EQU 12 - PROGRAM BASE
+R13 EQU 13 - SAVE AREA
+R14 EQU 14 - SUBROUTINE LINKAGE
+R15 EQU 15 - SUBROUTINE LINKAGE
+         SPACE 3
+         FBLOCK ,
+         BLOCKS ,
+         MAILBLOK ,
+         TRACETBL ,
+         EJECT ,
+LOCAL    CSECT ,
+         USING *,R15               Temp addressability
+         B     EYESKIP             Skip over eye catcher
+MYNAME   DC    CL8'LOCAL   ',CL8'&SYSDATE'
+EYESKIP  DS    0H
+         DROP  R15                 Done with R15 for now
+         STM   R14,R12,12(R13)
+         LR    R12,R15             Set up first program base
+         LA    R9,2048(,R12)       Set up second program base
+         LA    R9,2048(,R9)
+         USING LOCAL,R12,R9
+         LA    R14,SAVE
+         ST    R13,4(R14)
+         ST    R14,8(R13)
+         LR    R13,R14
+         USING PAB,R1        ADDRESS PARMS
+         L     R11,@MBLOK    GET MAILBLOK BASE
+         L     R10,@ACT      GET ACTADR BASE
+         DROP  R1
+         USING MAILBLOK,R11
+         USING ACTADR,R10
+         SPACE 1
+         TM    DBGFLG6,DBGNOOUT    Sending mail?
+         BZ    SKIP001             ---> No
+         WRTERM 'LOCAL:  Trace-send-no-mail set'
+SKIP001  EQU   *
+         SPACE 1
+         L     R6,ACTMBOX    GET MBOX BLOCK
+         USING MBOX,R6
+         L     R1,MBXLCL         pointer to list of user adnodes
+         ST    R1,NODEA          Save for GENLIST call
+         LA    R14,STACKP        Stack pointer address ptr
+         LA    R15,STACKP+4      Stack size address ptr
+         MAILTRC CALL,GENLIST
+         CALL  GENLIST,(NODEA,LSTRA,LSTRL,(14),(15))
+         MAILTRC RETURN,GENLIST,(R15)
+         L     R3,LSTRA          address of user name token
+         L     R4,LSTRL          length of it
+         DROP  R6
+         EJECT ,
+*--------------------------------------------------------------------
+*    Check for '%' in address
+*--------------------------------------------------------------------
+         SPACE 1
+         MVI   TRAPTAB+C'%',1    Set '!' trap
+         LR    R15,R4            Copy length value
+         BCTR  R15,0             Decrement for EX
+         SR    R1,R1             Be sure high order byte is clear
+         EX    R15,TRAPIT        Any '%'s?
+         MVI   TRAPTAB+C'%',0    Clear '%' trap
+         BC    B'0100',DOPCT     ---> Found '%' in address
+         B     NOPCT             ---> No '%' in address or
+*                                    '%' is last character
+         SPACE 1
+*--------------------------------------------------------------------
+*    Process address containing a '%'
+*--------------------------------------------------------------------
+         SPACE 1
+DOPCT    DS    0H
+         LA    R3,0(R4,R3)       End character + 1
+         TM    DBGFLG7,DBGLOCAL    Tracing?
+         BNO   PCTLOOP             ---> No
+         WRTERM DBGMSG01,L'DBGMSG01
+PCTLOOP  EQU   *
+         BCTR  R3,0              Back up 1 char
+         CLI   0(R3),C'%'        This the '%'?
+         BE    PCTFOUND          ---> Yes
+         BCT   R4,PCTLOOP        ---> Keep trying
+         WRTERM '*** Logic error in LOCAL exit'
+         DC    H'0'              Not nice, but effective
+         SPACE 1
+PCTFOUND DS    0H
+         TM    DBGFLG7,DBGLOCAL    Tracing?
+         BNO   DBG0001             ---> No
+         WRTERM DBGMSG02,L'DBGMSG02
+DBG0001  EQU   *
+         MVI   0(R3),C'@'        Change to '@'
+         B     RESEND            ---> Join common resend code
+         EJECT ,
+*--------------------------------------------------------------------
+*    Check for '!' in address
+*--------------------------------------------------------------------
+         SPACE 1
+NOPCT    EQU   *
+         TM    DBGFLG7,DBGLOCAL    Tracing?
+         BNO   DBG0010             ---> No
+         WRTERM DBGMSG03,L'DBGMSG03
+DBG0010  EQU   *
+         MVI   TRAPTAB+C'!',1    Set '!' trap
+         LR    R15,R4            Copy length value
+         BCTR  R15,0             Decrement for EX
+         SR    R1,R1             Be sure high order byte is clear
+         EX    R15,TRAPIT        Any '%'s?
+         MVI   TRAPTAB+C'!',0    Clear '!' trap
+         BC    B'0100',DOBANG    ---> Found '!' in address
+         B     NOBANG            ---> No '!' in address or
+*                                    '!' is last character
+         SPACE 1
+TRAPIT   TRT   0(1,R3),TRAPTAB   Executed
+         SPACE 1
+*--------------------------------------------------------------------
+*    Process address containing a '!'
+*--------------------------------------------------------------------
+         SPACE 1
+DOBANG   DS    0H
+         TM    DBGFLG7,DBGLOCAL    Tracing?
+         BNO   DBG0020             ---> No
+         ST    R1,DBGR01           Save R1 over WRTERM
+         WRTERM DBGMSG04,L'DBGMSG04
+         L     R1,DBGR01           Restore R1
+DBG0020  EQU   *
+         SR    R1,R3             Length of string to '!'
+         BZ    NOBANG            ---> Was first character
+         LA    R15,1(,R1)        Length including '!'
+         LR    R14,R3            Save since R3 will be destroyed
+         BCTR  R1,0              Decrement for EX
+         LA    R2,TEMPSAVE       Save string here
+         EX    R1,COPY           Copy string before '!'
+         SPACE 1
+         LR    R2,R3             Want to copy to here
+         LA    R3,0(R15,R3)      Copy from here
+         LR    R1,R4             Original length of string
+         SR    R1,R15            Length of rest of string
+         BCTR  R1,0              Decrement for EX
+         EX    R1,COPY           Copy string after '!'
+         SPACE 1
+         LA    R2,1(R1,R2)       Where the '@' goes
+         MVI   0(R2),C'@'        Change to '@'
+         SPACE 1
+         LA    R2,1(,R2)         Copy rest to here
+         LA    R3,TEMPSAVE       We saved it here
+         S     R15,=F'2'         Decrement for EX
+         EX    R15,COPY          Copy in node part
+         SPACE 1
+         LR    R3,R14            Restore R3
+         B     RESEND            ---> Join common resend code
+         EJECT ,
+*--------------------------------------------------------------------
+*  Resend an address containing '%' or '!'
+*--------------------------------------------------------------------
+*  Building the following:
+*
+*        DC    A(MAILBLOK)              <--  R2
+*        DC    A(FBLOCK)
+*
+*FBLOCK  DC    CL18' '                  <--  R3
+*        DC    XL2'0'
+*FBLDLS  DC    A(PTRLIST)
+*FBLDLE  DC    A(PTREND-PTRLIST)
+*        DC    CL8' '
+*
+*PTRLIST DC    A(LINE1),A(LENGTH1)      <--  R4
+*PTREND  EQU   *
+*LINE1   DC    C'string'
+*--------------------------------------------------------------------
+         SPACE 1
+RESEND   EQU   *
+         TM    DBGFLG7,DBGLOCAL    Tracing?
+         BNO   DBG0030             ---> No
+         WRTERM DBGMSG05,L'DBGMSG05
+DBG0030  EQU   *
+         L     R2,LSTRL          Length of string
+         LA    R2,FBLLENL+16(,R2)  + parameter list (8)
+*                                  + fileblock length (FBLLENL)
+*                                  + pointer list (8)
+         SALOC (R2),RET          Allocate stack space
+         LR    R2,R1             Remember storage address
+         SPACE 1
+*  Set up base pointers
+         SPACE 1
+         LA    R3,8(,R2)         Address of FBLOCK
+         USING FBLOCK,R3
+         LA    R4,FBLLENL(,R3)   Ptrlist address
+         SPACE 1
+*  Build parameter list
+         SPACE 1
+         ST    R11,0(,R2)        MAILBLOK base
+         ST    R3,4(,R2)           into plist
+         SPACE 1
+*  Construct fileblock
+         SPACE 1
+         XC    FBLOCK(FBLLENL),FBLOCK Zero it
+         ST    R4,FBLDLS         Ptr list start address into FBLOCK
+         MVC   FBLDLE,=F'8'      Ptr list length into FBLOCK
+         SPACE 1
+*  Construct pointer/length pair
+         SPACE 1
+         LA    R2,8(R4)          Line1 string goes here
+         ST    R2,0(R4)          Address into ptr pair
+         MVC   4(4,R4),LSTRL     Length into ptr pair
+         SPACE 1
+*  Move in string
+         SPACE 1
+         L     R3,LSTRA          String comes from here
+         L     R15,LSTRL         Length of string
+         BCTR  R15,0             Decrement for EX
+         EX    R15,COPY          Move string to parm list
+         MAILTRC CALL,DISTSUB
+         L     R15,=V(DISTSUB)   Subroutine address
+         CALL  (15)              Call it
+         MAILTRC RETURN,DISTSUB,(R15)
+         B     RET
+         EJECT ,
+*--------------------------------------------------------------------
+*    Process address not containing a '%' or '!'
+*--------------------------------------------------------------------
+         SPACE 1
+NOBANG   EQU   *
+         TM    DBGFLG7,DBGLOCAL    Tracing?
+         BNO   DBG0040             ---> No
+         WRTERM DBGMSG06,L'DBGMSG06
+DBG0040  EQU   *
+         MVC   RECVR,=CL8' ' [3]blank it
+         LR    R1,R4         [3]copy
+         C     R1,=F'8'      [3]trunc to 8 if necessary
+         BNH   OK0           [3]
+         LA    R1,8          [3]
+OK0      EQU   *
+         BCTR  R1,0          [3]
+         LA    R2,RECVR           Destination of copy
+         EX    R1,COPY            Move into RECVR
+         EX    R1,UPIT            Upper case it.
+*--------------------------------------------------------------------
+*    SEE IF THE USERID IN RECVR IS IN THE LIST OF 'HOT' ONES
+*--------------------------------------------------------------------
+         L     R5,MAILSTAB   SPECIAL MAILBOX TABLE
+         MAILTRC CALL,TBLUK
+         L     R15,ATBLUK    ADDRESS OF TBLUK ROUTINE
+         CALL  (15),((R5),(R3),(R4),TWORK)  LOOK FOR THE ID
+         MAILTRC RETURN,TBLUK,(R15)
+         LTR   R15,R15       FIND IT?
+         BNZ   CHKRET        NOT FOUND -- DO REGULAR STUFF
+         LR    R8,R1         GET A HANDLE ON THE ROUTD
+         USING ROUTD,R8
+         TM    DBGFLG7,DBGLOCAL    Tracing?
+         BNO   DBG0044             ---> No
+         WRTERM DBGMSG07,L'DBGMSG07
+DBG0044  EQU   *
+         LA    R1,RTPROG           Point to exit name
+         ICM   R15,B'1111',RTADDR  IS THERE A ROUTINE?
+         DROP  R8            [1.20]
+         BZ    NOFILES       THAT'S ILLEGAL
+         MAILTRC CALL,(R1)         Create trace table entry
+         ST    R11,MYPAB     COPY MAILBLOK POINTER
+         MVC   MYACT(ACTLEN),0(R10) COPY ACTADR
+         ST    R8,MYACT+ACTRT-ACTADR REPLACE ROUTD POINTER
+         ST    R8,ACTRT      AND MAILSTAB ROUTD POINTER
+         LA    R1,MYPAB      POINT TO PLIST
+         BALR  R14,R15       AND CALL THE SPECIAL EXIT WITH IT
+         MAILTRC RETURN,userexit,(R15)
+         B     RET
+         EJECT ,
+*--------------------------------------------------------------------
+*    Must be local userid
+*
+*    Verify 8 characters of less in length (VM limit)
+*    See if user has set up mail forwarding (destid FORWARD file)
+*    See if id is really a mailing list (destid MAILLIST file)
+*    Otherwise must be a real local delivery attempt
+*
+*--------------------------------------------------------------------
+         SPACE 1
+CHKRET   EQU   *
+         TM    DBGFLG7,DBGLOCAL    Tracing?
+         BNO   DBG0050             ---> No
+         WRTERM DBGMSG08,L'DBGMSG08
+DBG0050  EQU   *
+         C     R4,=F'8'            8 or less?
+         BH    ILLEGAL             ---> All locals/forwards must be
+*                                       8 characters or less
+         MVC   FWDFN,RECVR         Copy in local id
+         MVC   EXECLDFN,RECVR      Here also
+         SPACE 1
+*  Check for 'destid FORWARD' file
+         SPACE 1
+CHKFWD   EQU   *
+         TM    DBGFLG7,DBGLOCAL    Tracing?
+         BNO   DBG0052             ---> No
+         WRTERM DBGMSG09,L'DBGMSG09
+DBG0052  EQU   *
+         MVC   FWDFT,=CL8'FORWARD'      Fill in filetype
+         MVC   EXECLDFT,=CL8'FORWARD'
+         LA    R1,FWDSTAT          Point to EXECSTAT command
+         SVC   202                 Issue command
+         DC    AL4(1)              Always return to next instruction
+         LTR   R15,R15             Forward file exist?
+         BZ    HAVEFWD             ---> No
+         C     R15,=F'4'           Found on disk?
+         BE    ONDISK              ---> Yes
+         SPACE 1
+*  Check for 'destid MAILLIST' file
+         SPACE 1
+         TM    DBGFLG7,DBGLOCAL    Tracing?
+         BNO   DBG0054             ---> No
+         WRTERM DBGMSG10,L'DBGMSG10
+DBG0054  EQU   *
+         MVC   FWDFT,=CL8'MAILLIST'     Fill in filetype
+         MVC   EXECLDFT,=CL8'MAILLIST'
+         LA    R1,FWDSTAT          Point to EXECSTAT command
+         SVC   202                 Issue command
+         DC    AL4(1)              Always return to next instruction
+         LTR   R15,R15             MAILLIST file exist?
+         BZ    HAVEFWD             ---> No
+         C     R15,=F'4'           Found on disk?
+         BE    ONDISK              ---> Yes
+         BNE   NOFWD               ---> No, no forward/distlist file
+         SPACE 1
+*  FORWARD or MAILLIST file found on disk
+*
+*  Load it into memory using EXECLOAD
+         SPACE 1
+ONDISK   EQU   *
+         TM    DBGFLG7,DBGLOCAL    Tracing?
+         BNO   DBG0056             ---> No
+         WRTERM DBGMSG11,L'DBGMSG11
+DBG0056  EQU   *
+         LA    R1,EXECLOAD         Point to EXECLOAD command
+         SVC   202                 Go load forwarding file
+         DC    AL4(1)              Always return at next instruction
+         LTR   R15,R15             Succesful?
+         BZ    CHKFWD              ---> Yes
+         C     R15,=F'104'         Was it out of storage?
+         BE    TRYDROP             ---> Yes, try a EXECDROP
+         BAL   R2,DIE              ---> No, big trouble
+         SPACE 1
+TRYDROP  EQU   *
+         TM    DBGFLG7,DBGLOCAL    Tracing?
+         BNO   DBG0057             ---> No
+         WRTERM DBGMSG12,L'DBGMSG12
+         WRTERM DBGMSG13,L'DBGMSG13
+DBG0057  EQU   *
+         MVC   EXECDRFT,=CL8'FORWARD'   Drop FORWARD files
+         LA    R1,EXECDROP         Point to EXECDROP command
+         SVC   202                 Go load forwarding file
+         DC    AL4(1)              Always return at next instruction
+         C     R15,=F'4'           Succesful?
+         BNH   TRYDROP2            ---> Yes, do another
+         BAL   R2,DIE              ---> No, big trouble
+         DC    H'0'                Should never get here
+         SPACE
+TRYDROP2 EQU   *
+         TM    DBGFLG7,DBGLOCAL    Tracing?
+         BNO   DBG0058             ---> No
+         WRTERM DBGMSG14,L'DBGMSG14
+DBG0058  EQU   *
+         MVC   EXECDRFT,=CL8'MAILLIST'  Drop MAILLIST files
+         LA    R1,EXECDROP         Point to EXECDROP command
+         SVC   202                 Go load forwarding file
+         DC    AL4(1)              Always return at next instruction
+         C     R15,=F'4'           Succesful?
+         BNH   ONDISK              ---> Yes, try again
+         BAL   R2,DIE              ---> No, big trouble
+         DC    H'0'                Should never get here
+         SPACE 1
+*--------------------------------------------------------------------
+*  Process FORWARDing file
+*--------------------------------------------------------------------
+         SPACE 1
+HAVEFWD  EQU   *
+         TM    DBGFLG7,DBGLOCAL    Tracing?
+         BNO   DBG0060             ---> No
+         WRTERM DBGMSG05,L'DBGMSG05
+DBG0060  EQU   *
+         LR    R3,R1               Save FBLOCK pointer
+         SALOC 8,RET               Allocate stack space
+         LR    R2,R1               Remember storage address
+         SPACE 1
+*--------------------------------------------------------------------
+*  Building the following:
+*
+*        DC    A(MAILBLOK)
+*        DC    A(FBLOCK)
+*
+*--------------------------------------------------------------------
+         SPACE 1
+         ST    R11,0(,R2)          MAILBLOK base
+         ST    R3,4(,R2)           Address of FBLOCK
+         MAILTRC CALL,DISTSUB
+         L     R15,=V(DISTSUB)     Subroutine address
+         CALL  (15)                Call it
+         MAILTRC RETURN,DISTSUB,(R15)
+         LTR   R15,R15             Successful?
+         BNZ   CHKLCLF             ---> No, see if local forward
+         LOG   LCL077,(CA,RECVR)   Tell sender about forward
+         B     RET0
+         SPACE 1
+CHKLCLF  EQU   *
+         C     R15,=F'4'           Need local delivery also?
+         BNE   RET                 ---> No, error
+         EJECT ,
+NOFWD    EQU   *
+         TM    DBGFLG7,DBGLOCAL    Tracing?
+         BNO   DBG0070             ---> No
+         WRTERM DBGMSG15,L'DBGMSG15
+DBG0070  EQU   *
+         ST    R4,RCVRLEN    [2]save receiver length for later
+         CLC   RECVR,MAILVMID TRYING TO SEND MAIL TO MAILER?
+         BE    NOFILES       HANDLE MAIL TO MAILER
+         LINEDIT   TEXT='SP PUN TO ........ CLASS M',DOT=NO,RENT=NO,   *
+               DISP=CPCOMM,SUB=(CHARA,RECVR)
+         LTR   R15,R15       DID IT WORK?
+         BNZ   NOSUCH        NOPE
+*[1.20] BEGIN -----------------------------------------------------
+*    Build an RSCS-style tag so people with a modified RDRLIST
+*    and similar execs can figure who the mail is from
+*------------------------------------------------------------------
+         MVC   TNUM,MAILFTXT file number
+         L     R6,MAILSFLD   get sender FIELDD
+         USING FIELDD,R6     address the field
+         L     R6,FIPARS     pointer to adaddr
+         DROP  R6
+         USING MBOX,R6           address list thing
+         L     R1,MBXLCL         pointer to list of user adnodes
+         ST    R1,NODEA          Save for GENLIST call
+         LA    R14,STACKP        Stack pointer address ptr
+         LA    R15,STACKP+4      Stack size address ptr
+         MAILTRC CALL,GENLIST
+         CALL  GENLIST,(NODEA,LSTRA,LSTRL,(14),(15))
+         MAILTRC RETURN,GENLIST,(R15)
+         L     R3,LSTRA          address of user name token
+         L     R4,LSTRL          length of it
+         MVC   TUSER,=CL8' '  blank out the user tag item
+         C     R4,=F'8'      if > 8 trunc it.
+         BNH   OK1           it's ok
+         LA    R4,8          force to 8
+OK1      EQU   *
+         BCTR  R4,0          -1 for executed copy
+         LA    R2,TUSER      dest of copy
+         EX    R4,COPY       copy it in
+* now do the same for host name
+         MVC   THOST,=CL8'? ' blank out the host tag item        [1.22]
+         ICM   R1,B'1111',MBXDML point to list of host adnodes
+         BZ    NOHOST1       sometimes these slip thru...        [1.22]
+         USING NODE,R1     address a host node
+         L     R1,NODDOWN    point down to host name token
+         DROP  R1
+         USING TOKEND,R1     address the tokend
+         L     R3,TOKPTR         address of host name token
+         SR    R4,R4
+         L     R4,TOKLEN     length of it
+         DROP  R1
+         C     R4,=F'8'      if > 8 trunc it.
+         BNH   OK2           it's ok
+         LA    R4,8          force to 8
+OK2      EQU   *
+         BCTR  R4,0          -1 for executed copy
+         LA    R2,THOST      dest of copy
+         EX    R4,COPY       copy it in
+         DROP  R6
+NOHOST1  EQU   *             here when avoiding null hostname    [1.22]
+         LA    R1,TCMD       point to tag command
+         LA    R0,TLEN       length of the command
+         DIAG  R1,R0,X'0008' do it
+         L     R1,ACTRT      get routd pointer
+         USING ROUTD,R1      address the routd
+         CLC   RTPARM,=CL8'PROFS' Profs local mail?
+         DROP  R1
+         BNE   NOTPROFS      no profs hook needed
+         MVC   PROFUSER,TUSER copy sender into profs junk
+         PUNCHC PROFCARD     punch the profs card
+         LTR   R15,R15       check for error
+         BNZ   RET           and return if there is one
+NOTPROFS EQU   *
+*[1.20] END
+         TM    MAILOPTS,MOPTFIOK   FILE FROM: allowed?
+         BNO   PUNHDR              ---> No
+         TM    MAILFLG2,MFLG2N82   FILE FROM: found?
+         BO    NOPUNHDR            ---> Yes
+PUNHDR   EQU   *
+         TM    DBGFLG6,DBGNOOUT    Sending mail?
+         BO    NOMAIL              ---> No
+         L     R15,APUNHDR
+         MAILTRC CALL,PUNHDR
+         CALL  (15),((R11))  PUNCH THE HEADER
+         MAILTRC RETURN,PUNHDR,(R15)
+         LTR   R15,R15       ANY SCREW UPS?
+         BNZ   RET
+NOPUNHDR EQU   *
+         L     R15,APUNTXT
+         MAILTRC CALL,PUNTXT
+         CALL  (15),((R11))  PUNCH THE REST
+         MAILTRC RETURN,PUNTXT,(R15)
+         LTR   R15,R15      ANY ERRORS?
+         BNZ   RET           OH WEEELLL....
+*[EMU1] BEGIN
+         L     R1,ACTRT      get routd pointer
+         USING ROUTD,R1      address the routd
+         CLC   RTPARM,=CL8'PROFS' Profs local mail?
+         DROP  R1
+         BNE   NOTPROF2      no profs subj needed
+* Create a PROFS subject trailer card with Reply/Forward indicator
+* First, clear the card, then see if there is a Subject field
+         MVI   PROFSUBJ,C' '
+         MVC   PROFSUBJ+1(PROFCLEN-1),PROFSUBJ  fill with blanks
+         L     R4,MAILKTAB             get keyword table
+         MAILTRC CALL,TBLUK
+         L     R15,ATBLUK              tbluk address
+         CALL  (15),((R4),SUBJECT,L'SUBJECT,TWORK)
+         MAILTRC RETURN,TBLUK,(R15)
+         LTR   R15,R15                 find Subject?
+         BZ    SUBFOUND                yes, get it
+         MVC   PROFSUBJ(10),=C'NO SUBJECT' else: be explicit
+         B     SUBJEND                 to endif
+SUBFOUND EQU   *
+         USING FIELDD,R1               address the field
+         L     R3,FISTR                start address of string
+         L     R15,FIEND               end address of string
+         DROP  R1
+         SR    R15,R3                  length-1 of string
+         SH    R15,=H'1'               trim trailing LF
+TRIMSUBJ EQU   *
+         CLI   0(R3),C' '              leading blank?
+         BNE   SUBJTRIM                all done
+         LA    R3,1(R3)                bump pointer
+         BCT   R15,TRIMSUBJ            trim leading blank
+SUBJTRIM EQU   *
+         C     R15,=A(L'PROFSUBJ)      > space available?
+         BL    MOVESUBJ                if fits
+         LA    R15,L'PROFSUBJ-1        else truncate
+MOVESUBJ EQU   *
+         LA    R2,PROFSUBJ             prepare for EX
+         EX    R15,COPY                move subj to card
+SUBJEND  EQU   *                       subject text moved
+* Now see if Forward or Reply and if so set indicator      [EMU2]
+* Reply to Forwarded note removes Resent- fields           [EMU2]
+         MAILTRC CALL,TBLUK
+         L     R15,ATBLUK         tbluk address            [EMU2]
+         CALL  (15),((R4),RESENT,L'RESENT,TWORK)           [EMU2]
+         MAILTRC RETURN,TBLUK,(R15)
+         LTR   R15,R15            find Resent-?            [EMU2]
+         BNZ   FWDEND             Not found; not forward   [EMU2]
+         MVI   PROFTYPE,C'F'      set forwarded            [EMU2]
+         B     PUNSUBJ            go punch subj card       [EMU2]
+FWDEND   EQU   *                                           [EMU2]
+         MAILTRC CALL,TBLUK
+         L     R15,ATBLUK         tbluk address            [EMU2]
+         CALL  (15),((R4),NREPLYTO,L'NREPLYTO,TWORK)       [EMU2]
+         MAILTRC RETURN,TBLUK,(R15)
+         LTR   R15,R15            find In-Reply-To?        [EMU2]
+         BNZ   REPLYEND           Not found; not reply     [EMU2]
+         MVI   PROFTYPE,C'R'      set reply                [EMU2]
+         B     PUNSUBJ            go punch subj card       [EMU2]
+REPLYEND EQU   *                                           [EMU2]
+PUNSUBJ  EQU   *                                           [EMU2]
+         PUNCHC PROFCRD2     punch the profs subj card
+         LTR   R15,R15       check for error
+         BNZ   NOTPROF2      continue; something is better than nothing
+NOTPROF2 EQU   *
+*[EMU1] END
+         L     R15,APUNCLS   ROUTINE TO CLOSE PUNCH
+         MAILTRC CALL,PUNCLS
+         CALL  (15),((R11))  CALL IT
+         MAILTRC RETURN,PUNCLS,(R15)
+         LTR   R15,R15       ANY ERRORS?
+         BNZ   RET           SORRY...
+NOMAIL   EQU   *
+         LA    R4,CPUSTR
+         LOG   LCL034,(CA,RECVR,CA,(R4))
+*----------[1] and [2]-------------------------------------------[2]
+*  Send a message to recipient of new mail telling him of the    [2]
+*  arrival.  The message sent is done by MSGNOH unless the       [2]
+*  parameter "MSGCMD" is found in MAILPTAB.  If found,  the      [2]
+*  value of MSGCMD is used as the CP command name.  Also,  an    [2]
+*  optional prefix may follow the message command.  This prefix  [2]
+*  is set in "MSGPREFIX".                                        [2]
+*                                                                [2]
+*  Message format is:                                            [2]
+*  (prefix) New mail from <From-field-contents>                  [2]
+*----------------------------------------------------------------[2]-
+         TM    DBGFLG6,DBGNOOUT    Sending mail?
+         BO    NOMAIL2             ---> No, no msg either
+         LA    R6,MSGBUF               [2] message buffer
+         L     R3,MAILPTAB             [2] parameter table
+         MAILTRC CALL,TBLUK
+         L     R15,ATBLUK              [2] tbluk routine
+         LA    R4,=C'MSGNOH'           [2] default msgcmd
+         LA    R5,6                    [2] Length
+         CALL  (15),((R3),MSGCMD,L'MSGCMD,TWORK)
+         MAILTRC RETURN,TBLUK,(R15)
+         LTR   R15,R15                 [2] find it?
+         BNZ   NOMSGCMD                [2] nope - use default
+         LA    R4,1(R1)                [2]msgcmd name
+         SR    R5,R5
+         IC    R5,0(R1)                [2]lenght
+NOMSGCMD EQU   *
+         LR    R7,R5                   [2]length of MVCL
+         MVCL  R6,R4                   [2]move into header
+         MVI   0(R6),C' '              [2]insert space
+         LA    R6,1(R6)                [2]
+*--- now move in the recipient userid... [2]
+         LA    R4,RECVR                [2]receiver userid
+         L     R5,RCVRLEN              [2] and length
+         LR    R7,R5                   [2]
+         MVCL  R6,R4                   [2]"MSGNOH userid" so far
+         MVI   0(R6),C' '
+         LA    R6,1(R6)
+*--- see if msgprefix is defined...
+         L     R3,MAILPTAB             [2]get parmater table
+         MAILTRC CALL,TBLUK
+         L     R15,ATBLUK              [2]
+         CALL  (15),((R3),MSGPREF,L'MSGPREF,TWORK) [2]
+         MAILTRC RETURN,TBLUK,(R15)
+         LTR   R15,R15                 [2] not found?
+         BNZ   NOPREFIX                [2] just as well
+         LA    R4,1(R1)                [2] start of data
+         SR    R5,R5
+         IC    R5,0(R1)                [2] length
+         LR    R7,R5                   [2]
+         MVCL  R6,R4                   [2] move the prefix in
+         B     NOPREFI2                -> skip default prefix    [1.24]
+NOPREFIX EQU   *
+         MVI   0(R6),C'*'              default for GONE, et. al. [1.24]
+         LA    R6,1(,R6)               increment pointer         [1.24]
+NOPREFI2 EQU   *                       <- here when had prefix   [1.24]
+         MVI   0(R6),C' '
+         LA    R6,1(R6)
+         MVC   0(L'NEWMSG,R6),NEWMSG   [2] nice message
+         LA    R6,L'NEWMSG(R6)         [2]
+*-- now (finally) add the from field from the memo header [2]
+         L     R4,MAILKTAB             [1]get keyword table
+         MAILTRC CALL,TBLUK
+         L     R15,ATBLUK              [1]tbluk address
+*[4]     CALL  (15),((R4),FROM,L'FROM,TWORK)     [1]
+         MAILTRC RETURN,TBLUK,(R15)
+*[4]     LTR   R15,R15                 [1]find it?
+*[4]     BNZ   RET                     [1]nope - just return
+         L     R1,MAILSFLD             [4]get sender FIELDD
+         USING FIELDD,R1               [1]address the field
+         L     R2,FISTR                [1]start address of string
+         L     R3,FIEND                [1]end address of string
+         DROP  R1                      [1]
+         SR    R3,R2                   [1]length of string
+*---- trim leading blanks ----- [2]
+TRIMIT   EQU   *
+         CLI   0(R2),C' '              [2] leading blank?
+         BNE   TRIMMED                 [2] all done
+         LA    R2,1(R2)                [2] bump pointer
+         BCT   R3,TRIMIT               [2] trim leading blk
+TRIMMED  EQU   *                       [2]
+         LR    R4,R2                   Copy start address
+         LR    R7,R3                   Copy original length
+TRIMLP1  EQU   *
+         CLI   0(R4),X'15'             Newline?
+         BE    TRIMLP2                 ---> Yes
+         LA    R4,1(,R4)               Bump pointer
+         BCT   R7,TRIMLP1              Decrement count
+         B     TRIMLP3                 ---> All one line
+TRIMLP2  EQU   *
+         SR    R4,R2                   Length to newline character?
+         LR    R3,R4                   Correct length
+TRIMLP3  EQU   *
+         LR    R4,R3                   [2]hold length for later
+         LA    R7,L'MSGBUF+MSGBUF      [2] addr of end
+         SR    R7,R6                   [2] remainder available
+         SR    R4,R7                   [2]|from| - |available|
+         BH    FROMLONG                [2]from is longer; trunc it
+         LR    R7,R3                   [2]from is shorter;
+FROMLONG EQU   *                       [2]
+         MVCL  R6,R2                   [2]copy into message
+         LA    R1,MSGBUF               [2]point to msg command
+         LR    R0,R6                   [2]
+         S     R0,=A(MSGBUF)           [2] total length
+         DC    X'83100008'             [1]send it off
+NOMAIL2  EQU   *
+RET0     EQU   *
+         SR    R15,R15                 [4]clean RC
+RET      EQU   *
+         L     R13,4(R13)
+         L     R14,12(R13)
+         LM    R0,R12,20(R13)
+         BR    R14
+         SPACE ,
+*--------------------------------------------------------------------
+*  ERROR/SPECIAL HANDLING
+*--------------------------------------------------------------------
+NOFILES  EQU   *             NOT ALLOWED TO SEND FILES TO THESE IDS
+         LOG   LCL033,(CA,RECVR)  TELL THE USER
+         LA    R15,4         ERROR RETCODE
+         B     RET
+         SPACE ,
+ILLEGAL  EQU   *
+         LOG   LCL031,(CA,(R3))
+         LA    R15,4
+         B     RET
+         SPACE ,
+NOSUCH   EQU   *
+         LOG   LCL032,(CA,RECVR)
+         LA    R15,4
+         B     RET
+         SPACE ,
+*  DIE routine is called via BAL R2 whenever a point in execution is
+*  reached from which recovery is not possible (i.e. out of memory
+*  for EXECLOAD of forwarding file).
+         SPACE ,
+DIE      EQU   *
+         LINEDIT TEXT='MAILCL099 Impossible recovery situation entered'X
+               ,DOT=NO
+         LINEDIT TEXT='MAILCL099 Failure at ........',                 X
+               SUB=(HEX,(R2)),DOT=NO
+         DC    H'0'                Fall over big
+         EJECT ,
+COPY     MVC   0(0,R2),0(R3)
+UPIT     TR    0(0,R2),UPCASE
+         SPACE ,
+         LTORG ,
+FROM     DC    C'From'                 [1]
+SUBJECT  DC    C'Subject'              [EMU1]
+RESENT   DC    C'Resent-To'            [EMU2]
+NREPLYTO DC    C'In-Reply-To'          [EMU2]
+MSGCMD   DC    C'Msgcmd'               [2]
+MSGPREF  DC    C'Msgprefix'            [2]
+NEWMSG   DC    C'New mail from '       [2]
+SAVE     DS    18F
+TWORK    DS    64F
+DBGR01   EQU   TWORK+0,4           Temporary save area
+         SPACE 1
+MYPAB    DS    F
+         DC    A(MYACT)      COPY OF ACTADR FOR SPECIAL EXIT
+MYACT    DS    (ACTLEN/4)F
+RCVRLEN  DS    F                       [2]
+         SPACE 1
+RECVR    DS    CL8
+         SPACE 1
+MSGBUF   DS    CL130                    [2]
+         SPACE 1
+PROFCARD DC    CL80' '       [1.20]
+         ORG   PROFCARD      [1.20]
+         DC    C':READ '     [1.20]
+PROFUSER DC    CL8' '        [1.20]
+         DC    C' NOTE     A' [1.20]
+         ORG   ,             [1.20]
+         SPACE ,             [1.20]
+TCMD     DC    C'TAG DEV PUN FILE ('   [1.20]
+TNUM     DC    CL4'0000',C') ORIGIN '  [1.20]
+THOST    DC    CL8' ',C' '             [1.20]
+TUSER    DC    CL8' '                  [1.20]
+TLEN     EQU    *-TCMD                 [1.20]
+         SPACE 1
+PROFCRD2 DC    CL80' '                 [EMU1]
+         SPACE ,                       [EMU1]
+         ORG   PROFCRD2                [EMU1]
+         DC    X'FFFF40404040'         [EMU1]
+PROFSUBJ DS    CL65                    [EMU1]
+         DS    CL6                     [EMU1]
+PROFTYPE DS    CL1                     [EMU1]    R=REPLY F=FORWARD
+PROFCLEN EQU   *-PROFSUBJ              [EMU1]    LENGTH TO CLEAR
+         ORG   ,
+         SPACE 1
+NODEA    DC    A(0)                Address of node for GENLIST
+LSTRA    DC    A(0)                Address of local part
+LSTRL    DC    A(0)                Length of local part
+         SPACE 1
+FWDSTAT  DS    0D
+         DC    CL8'EXECSTAT'
+FWDFN    DC    CL8' '
+FWDFT    DC    CL8'FORWARD'        FORWARD or MAILLIST
+         DC    8X'FF'
+         SPACE 1
+EXECLOAD DS    0D
+         DC    CL8'EXECLOAD'
+EXECLDFN DC    CL8' '
+EXECLDFT DC    CL8'FORWARD'        FORWARD or MAILLIST
+         DC    CL8'*'
+         DC    CL8'='
+         DC    CL8'='
+         DC    CL8'('
+         DC    CL8'USER'
+         DC    8X'FF'
+         SPACE 1
+EXECDROP DS    0D
+         DC    CL8'EXECDROP'
+         DC    CL8'*'
+EXECDRFT DC    CL8'FORWARD'        FORWARD or MAILLIST
+         DC    CL8'('
+         DC    CL8'USER'
+         DC    8X'FF'
+         SPACE 1
+TEMPSAVE DC    CL256' '            Temporary work area
+         SPACE 2
+DBGMSG01 DC    C'LOCAL   :  Doing ''%'' processing'
+DBGMSG02 DC    C'LOCAL   :  Changing ''%'' to ''@'''
+DBGMSG03 DC    C'LOCAL   :  No ''%'' found'
+DBGMSG04 DC    C'LOCAL   :  Doing ''!'' processing'
+DBGMSG05 DC    C'LOCAL   :  Building BSMTP file to reprocess'
+DBGMSG06 DC    C'LOCAL   :  No ''!'' found'
+DBGMSG07 DC    C'LOCAL   :  Found in SPECIALS table'
+DBGMSG08 DC    C'LOCAL   :  Not found in SPECIALS table'
+DBGMSG09 DC    C'LOCAL   :  Checking for FORWARD file'
+DBGMSG10 DC    C'LOCAL   :  Checking for MAILLIST file'
+DBGMSG11 DC    C'LOCAL   :  Loading FORWARD/MAILLIST file'
+DBGMSG12 DC    C'LOCAL   :  Out of memory on EXECLOAD'
+DBGMSG13 DC    C'LOCAL   :  Dropping FORWARD files'
+DBGMSG14 DC    C'LOCAL   :  Dropping MAILLIST files'
+DBGMSG15 DC    C'LOCAL   :  Sending file to local user'
+         SPACE 3
+         END   LOCAL

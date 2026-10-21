@@ -1,0 +1,918 @@
+*[1.22] - Add DOMAINS table.                                     [1.22]
+*[1.20] - Add ORIGINS table.
+READINIT TITLE 'CUCCA VM MAILER VERSION 1 - READ INITIALIZATION FILE'
+*---------------------------------------------------------------------*
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         *
+*    Program Property of the Trustees of Columbia University in the   *
+*    City of New York.                                                *
+*---------------------------------------------------------------------*
+READINIT CSECT ,
+* READINIT -
+*  THIS ROUTINE READS THE MAILER INITIALIZATION FILE AND EXTRACTS
+*  THE FOLLOWING INFORMATION:
+*        1) PARAMETER KEYWORDS (BOTH USER AND MAILER PARMS)
+*        2) MAILRTAB - MAILER ROUTING TABLE
+*        3) MAILSTAB - MAILER SPECIAL MAILBOX TABLE
+*        4) MAILVTAB - MAILER VALIDATION TABLE
+*        5) MAILOTAB - MAILER ORIGINS TABLE          [1.20]
+*        6) MAILDTAB - MAILER DOMAINS TABLE                      [1.22]
+*
+*
+*  CALLED VIA -
+*  CALL READINIT,(MAILBLOK)
+         SPACE ,
+PAB      DSECT ,             PARAMETER LIST DEFINED
+@MBLOK   DS    A             ADDRESS OF MAILBLOK
+         SPACE ,
+* REGISTER USAGE -
+R0  EQU  0 -
+R1  EQU  1 -
+R2  EQU  2 -
+R3  EQU  3 -
+R4  EQU  4 -
+R5  EQU  5 -
+R6  EQU  6 -
+R7  EQU  7 -
+R8  EQU  8 - FSCB BASE
+R9  EQU  9 - STACK POINTER
+R10 EQU 10 - STACK LENGTH
+R11 EQU 11 - MAILBLOK BASE
+R12 EQU 12 - PROGRAM BASE
+R13 EQU 13 - SAVE AREA
+R14 EQU 14 - SUBROUTINE LINKAGE
+R15 EQU 15 - SUBROUTINE LINKAGE
+         BLOCKS ,
+         MAILBLOK ,
+         FSTD  ,
+         FSCBD ,
+         TBTAB DSECT=YES
+         TBENTRY ,
+         COPY  TBBITS                                            [1.22]
+         EJECT ,
+READINIT CSECT ,
+         USING READINIT,R15  TEMPORARY ADDRESSABILITY
+         B     EYESKIP       BRANCH OVER EYESKIP
+MYNAME   DC    CL8'READINIT',CL8'&SYSDATE'
+EYESKIP  DS    0H
+         DROP  R15
+         STM   R14,R12,12(R13) SAVE CALLER'S REGS
+         LR    R12,R15       PERMANENT ADDRESSABILITY
+         USING READINIT,R12
+         LA    R14,SAVE      MY SAVE AREA
+         ST    R13,4(R14)    SAVE CALLER'S PTR
+         ST    R14,8(R13)    CHAIN MINE BACK
+         LR    R13,R14       SET MY SAVE PTR
+         USING PAB,R1        ADDRESS PLIST
+         L     R11,@MBLOK    GET MAILBLOK ADDRESS
+         USING MAILBLOK,R11  ADDRESS IT
+         DROP  R1
+         LM    R9,R10,STACK  GET STACK POINTER
+         LA    R9,3(R9)      ROUND UP TO A FULLWORD ADDRESS
+         N     R9,=X'FFFFFFFC'
+         LR    R1,R9
+         S     R1,STACK      DIFFERENCE FROM OLD VALUE
+         SR    R10,R1        ADJUST STACK LENGTH
+         BL    NOSPACE       STACK TOO SMALL
+         SPACE ,
+*--------------------------------------------------------------------
+*   OPEN THE PARAMETER FILE. ALLOCATE INPUT BUFFER AT STACK TOP.
+*--------------------------------------------------------------------
+         LA    R8,MAILRTFN   ADDRESS OF FILE NAME
+         FSSTATE (R8),ERROR=NOFILE  LOOK FOR IT
+         USING FSTD,R1       ADDRESS THE FST
+         MVC   LRECL,FSTLRECL COPY LRECL FOR LATER
+         S     R10,FSTLRECL  Compute stack space left
+         DROP  R1            DONE WITH FST
+         BL    NOSPACE       STACK TOO SMALL
+         LR    R7,R9         Allocate from bottom of stack
+         AR    R7,R10          so there will be no hole later
+         FSOPEN (R8),BUFFER=(R7),ERROR=NOFILE  OPEN THE FILE
+         LR    R8,R1         GET FSCB ADDRESS
+         USING FSCBD,R8      ADDRESS IT
+         XC    FILELINE,FILELINE   ZERO LINE COUNTER
+         SPACE ,
+*--------------------------------------------------------------------
+*  PASS 1: READ FILE AND CALCULATE SIZES FOR THE THREE TABLES
+*--------------------------------------------------------------------
+         XC    PCOUNT,PCOUNT ZERO THE ENTRY COUNTERS
+         XC    VCOUNT,VCOUNT
+         XC    RCOUNT,RCOUNT
+         XC    SCOUNT,SCOUNT
+         XC    OCOUNT,OCOUNT [1.20]
+         XC    DCOUNT,DCOUNT                                     [1.22]
+         LA    R6,TABLECNT   TABLE COUNTING ROUTINE
+         LA    R7,KWCNT      KEYWORD COUNTING ROUTINE
+         BAL   R14,PASS      PASS THRU FILE USING ABOVE ROUTINES
+         EJECT ,
+*--------------------------------------------------------------------
+*  SIZES OF TABLES IS NOW KNOWN.  ALLOCATE THE NECESSARY STACK SPACE.
+*        1) PTAB
+*        2) RTAB
+*        3) STAB
+*        4) VTAB
+*        4.5) OTAB   [1.20]
+*        4.6) DTAB                                               [1.22]
+*        5) ROUTD ENTRIES
+*        6) VALD ENTRIES
+*        7) VARIABLE STRING SPACE
+*--------------------------------------------------------------------
+STRALLOC EQU   *
+         SPACE 1
+*--------  INITIALIZE TBLUK TABLES  ---------------------------------
+         SPACE 1
+         L     R0,PCOUNT     NUMBER OF USER PARMS
+         ST    R9,MAILPTAB   TABLE ADDRESS
+         BAL   R14,INITTAB   INITIALIZE THE TABLE
+         SPACE 1
+         L     R0,RCOUNT     Number of routing (OUTGOING) entries
+         ST    R9,MAILRTAB   TABLE ADDRESS
+         BAL   R14,INITTAB   INIT THE TABLE
+         L     R1,MAILRTAB   Table address
+         USING TBTAB,R1
+         OI    TB$FLG,TBT#EXAC     Exact matches required
+         DROP  R1
+         SPACE 1
+         L     R0,SCOUNT     NUMBER OF SPECIAL ENTRIES
+         ST    R9,MAILSTAB   TABLE ADDRESS
+         BAL   R14,INITTAB   INIT THE TABLE
+         SPACE 1
+         L     R0,VCOUNT     VALIDATION ENTRIES
+         ST    R9,MAILVTAB   ADDRESS OF TABLE
+         BAL   R14,INITTAB   INITIALIZE THE TABLE
+         SPACE 1
+         L     R0,OCOUNT     [1.20]number of origin entries
+         ST    R9,MAILOTAB   [1.20]table address
+         BAL   R14,INITTAB   [1.20]init the table
+         SPACE 1
+         L     R0,DCOUNT     number of domain entries            [1.22]
+         ST    R9,MAILDTAB   table address                       [1.22]
+         BAL   R14,INITTAB   initialize the table                [1.22]
+         L     R1,MAILDTAB   (r9 gets changed by inittab...)     [1.22]
+         USING TBTAB,R1      want this to be a sequential table  [1.22]
+         OI    TB$FLG,TBT#SEQ+TBT#RGT  and right-adjusted match  [1.22]
+         DROP  R1            done with base                      [1.22]
+         SPACE 1
+*--------  NOW CREATE SOME ROUTD ENTRIES ----------------------------
+         SPACE 1
+         ST    R9,ROUTD1     ADDRESS OF 1ST ROUTD
+         L     R1,RCOUNT     NUMBER OF ROUTD'S NEEDED
+         A     R1,SCOUNT     + SPECIAL CASE ROUTD'S
+         A     R1,OCOUNT     + origins table routd's
+         A     R1,DCOUNT     + domain table routd's              [1.22]
+         MH    R1,=Y(RTLEN)  TIMES LENGTH OF AN ENTRY
+         SR    R10,R1        IS THERE ROOM?
+         BL    NOSPACE       NOPE
+         LA    R9,0(R9,R1)   GET UPDATED STACK
+*--------  NOW CREATE SOME VALD ENTRIES -----------------------------
+         ST    R9,VALD1      ADDRESS OF FIRST ONE
+         L     R1,VCOUNT     NUMBER NEEDED
+         MH    R1,=Y(VALEN)  TIMES LENGTH OF AN ENTRY
+         SR    R10,R1        MAKE ROOM ON THE STACK
+         BL    NOSPACE       SORRY
+         LA    R9,0(R9,R1)   BUMP STACK POINTER
+         SPACE ,
+*--------------------------------------------------------------------
+*  PASS2: READ THE FILE AGAIN AND BUILD THE TABLES
+*--------------------------------------------------------------------
+         XC    FILELINE,FILELINE       ZERO LINE COUNTER
+         FSPOINT FSCB=(R8),RDPNT=1,ERROR=NOFILE REWIND THE FILE
+         LA    R6,TABLELOD   LOAD ROUTINE
+         LA    R7,KWADD      KEYWORD ADD ROUTINE
+         BAL   R14,PASS      PASS 2
+         SPACE ,
+*--------------------------------------------------------------------
+*  END OF PASS 2. CLOSE THE FILE AND RESTORE STACK POINTERS
+*--------------------------------------------------------------------
+         FSCLOSE FSCB=(R8)   CLOSE IT
+         DROP  R8            DONE WITH THE FSCB
+         A     R10,LRECL     RETURN BUFFER FROM TOP OF STACK
+         STM   R9,R10,STACK  SET NEW STACK POINTER
+         SR    R15,R15       ZERO RETURN CODE
+         SPACE ,
+RET      EQU   *
+         L     R13,4(R13)              GET CALLER'S SAVE PTR
+         L     R14,12(R13)             GET R14
+         LM    R0,R12,20(R13)          GET R0-R12
+         BR    R14                     RETURN
+         EJECT ,
+*--------------------------------------------------------------------
+*  PASS SUBROUTINE - CALLED FOR BOTH PASS 1 AND PASS 2
+*  READS THE FILE AND CALLS THE ROUTINE ADDRESSED IN R6 WHENEVER
+*  A <TABLE-NAME>: IS FOUND OR THE ROUTINE ADDRESSED IN R7 WHEN
+*  A <KEYWORD>= IS FOUND.
+*--------------------------------------------------------------------
+PASS     EQU   *
+         USING FSCBD,R8      ADDRESS THE FSCB
+         ST    R14,PASSAVE   SAVE R14 FOR RETURN TRIP
+PASS1    EQU   *
+*--------  READ A RECORD  -------------------------------------------
+         L     R1,FILELINE   GET LINE COUNTER
+         LA    R1,1(R1)      INCREMENT IT
+         ST    R1,FILELINE   AND RESTORE IT
+         L     R1,FSCBBUFF   Get buffer address
+         L     R15,FSCBSIZE  Get buffer length
+         S     R15,=F'2'     Decrement for MVC and EX
+         MVI   0(R1),C' '    Blank out the buffer
+         EX    R15,CLRBUFF
+         FSREAD FSCB=(R8),ERROR=EOF1
+*--------  GET LENGTH OF THE RECORD ---------------------------------
+         BAL   R14,GETLEN    GET LENGTH INTO R1
+         LTR   R4,R1         IS THE LINE EMPTY?
+         BZ    PASS1         YES, GET THE NEXT LINE
+*--------  TOKENIZE THE INPUT LINE UNIX STYLE -----------------------
+         L     R3,FSCBBUFF   ADDRESS OF THE LINE
+         CALL  UNIXSCAN,(ARGV,LARGV,(R3),(R4))
+         ST    R1,ARGC       ARG COUNT
+         CLC   ARGC,=F'1'    MORE THAN 1 TOKEN ON THE LINE?
+         BH    CHKKW         CHECK FOR A KEYWORD=VALUE ASSIGNMENT
+*--------  INPUT MIGHT BE A TABLE DECLARATION -----------------------
+         SR    R1,R1         GET A ZERO
+         IC    R1,ARGV       LENGTH OF FIRST TOKEN
+         L     R2,ARGV       GET ADDRESS OF FIRST TOKEN
+         LA    R1,0(R1,R2)   GET ADDRESS OF LAST CHAR OF TOKEN
+         BCTR  R1,0          POINT AT IT, NOT PAST IT
+         CLI   0(R1),C':'    IS <TABLE-NAME>: ?
+         BNE   BADTOK        NO? WELL THATS THE ONLY KIND ALLOWED.
+         BAL   R14,TABLES    DO TABLE STUFF (USES R6)
+         LTR   R15,R15       NON-ZERO MEANS EOF SEEN
+         BZ    PASS1         NOT EOF, KEEP READING
+         B     PASSRET       RETURN
+         SPACE ,
+*--------  INPUT MIGHT BE A <KEYWORD>=<VALUE> ASSIGNMENT ------------
+CHKKW    EQU   *
+         SR    R1,R1         GET A ZERO
+         IC    R1,ARGV+4     GET LENGTH OF TOKEN 2
+         CH    R1,=H'1'      IS IT LENGTH("=")?
+         BNE   BADTOK        NO? WELL IT'S NOT LEGAL THEN.
+         L     R1,ARGV+4     GET ADDRESS OF 1 CHAR TOKEN
+         CLI   0(R1),C'='    IS IT ASSIGNMENT?
+         BNE   BADTOK        SORRY...
+         CLC   ARGC,=F'2'    More than 'keyword='?
+         BNH   PASS1         ---> No, ignore it.
+         BALR  R14,R7        CALL KW ROUTINE
+         B     PASS1         GO GET NEXT LINE
+         SPACE ,
+*-------  ERROR ENCOUNTERED, CHECK IF IT WAS EOF --------------------
+EOF1     EQU   *
+         CH    R15,=H'12'    EOF ERROR?
+         BNE   NOFILE        NOPE, SOMETHING ELSE
+*------- RETURN TO CALLER -------------------------------------------
+PASSRET  EQU   *
+         L     R14,PASSAVE   GET RETURN ADDRESS
+         BR    R14
+         DROP  R8
+         SPACE ,
+*--------  KW COUNTER -----------------------------------------------
+KWCNT    EQU   *
+         L     R1,PCOUNT     GET PARM COUNTER
+         LA    R1,1(R1)      BUMP THE COUNTER
+         ST    R1,PCOUNT     AND STORE IT BACK
+         BR    R14           RETURN
+         SPACE ,
+*--------------------------------------------------------------------
+* GETLEN - GET LENGTH OF A LINE.  TRIMS OFF TRAILING BLANKS AND
+*        COMMENTS. COMMENTS START WITH A ";".
+*        GLOBAL FSCB BASE IN R8, MAILBLOK BASE IN R11
+*        RETURNS LENGTH IN R1.
+*--------------------------------------------------------------------
+GETLEN   EQU   *
+         USING FSCBD,R8      ADDRESS THE FSCB
+         LA    R2,TRAPTAB    ADDRESS OF TRT TABLE
+         MVI   TRAPTAB+C';',X'FF'  Trap on semicolon
+         L     R4,FSCBNORD   NUMBER OF BYTES READ
+         L     R3,FSCBBUFF   ADDRESS OF DATA
+         LA    R1,0(R3,R4)   ADDRESS OF END OF LINE IF NO ";"
+         BCTR  R4,0          -1 FOR EXECUTE
+         EX    R4,TRAPSEMI   TRAP SEMICOLON
+         MVI   TRAPTAB+C';',0      Reset the TRT table for the next guy
+         SR    R1,R3         NEW LENGTH OF LINE
+         BZR   R14           RETURN IF LENGTH 0
+GETL     EQU   *
+         LA    R4,0(R3,R1)   ADDRESS OF END OF STRING
+         BCTR  R4,0          POINT AT LAST CHAR, NOT PAST IT
+         CLI   0(R4),C' '    IS IT A BLANK?
+         BNER  R14           NO, LENGTH FOUND
+         BCT   R1,GETL       BACK UP POINTER AND LOOP
+         BR    R14           RETURN
+         DROP  R8
+         SPACE ,
+*--------------------------------------------------------------------
+*  INITTAB - INITIALIZE A TBLUK TABLE.
+*  A TBLUK TABLES IS ALLOCATED FROM THE STACK SPACE POINTED TO
+*  BY R9,R10.  IT IS GIVEN A MAXIMUM NUMBER OF ENTRIES AS THE
+*  CONTENTS OF R0 INDICATES.  ON RETURN, R9,R10 ARE UPDATED.
+*--------------------------------------------------------------------
+INITTAB  EQU   *
+         SH    R10,=Y(TB$SIZE)         IS THERE ROOM FOR THE HEADER?
+         BL    NOSPACE       NOPE...
+         XC    0(TB$SIZE,R9),0(R9)   ZERO THE HEADER
+         USING TBTAB,R9      ADDRESS THE HEADER
+         LA    R1,TB$SIZE(R9)  ENTRIES START HERE
+         ST    R1,TB$ADR     SET ADDRESS OF FIRST ENTRY
+         ST    R0,TB$MAX     MAXIMUM NUMBER OF ENTRIES
+         DROP  R9            DONE WITH HEADER
+         LR    R9,R1         GET UPDATED STACK POINTER
+         MH    R0,=Y(TBE$LEN) SPACE NEEDED FOR MAX ENTRIES
+         SR    R10,R0        IS THERE ROOM?
+         BL    NOSPACE       NOPE
+         AR    R9,R0         UPDATE POINTER FOR SUBSEQUENT USE
+         BR    R14           AND RETURN
+         SPACE ,
+*--------------------------------------------------------------------
+*  KWADD - ADD A KEYWORD ENTRY TO PARMS TBLUK TABLE (MAILPTAB)
+*  THE DISPATCH VALUE OF THE ENTRY CONSISTS OF A VARYING LENGTH
+*  STRING (FIRST BYTE = LENGTH).
+*
+*  TOKENS -
+*        ARGV+0 - KEYWORD
+*        ARGV+4 - "="
+*        ARGV+8 - DATA
+*--------------------------------------------------------------------
+KWADD    EQU   *
+         ST    R14,KW14      SAVE RETURN ADDRESS
+*--------  COPY KEYWORD TO STRING SPACE AND INIT TBE ----------------
+         BAL   R14,KEYCOP    COPY KEYWORD
+*--------  COPY THE DATA STRING TO STRING BUFFER --------------------
+         LA    R2,TBE        TBENTRY
+         USING TBENTRY,R2    ADDRESS IT
+         ST    R9,TBE$DSP    THIS IS ADDRESS OF DISPATCH VALUE
+         DROP  R2
+         SR    R1,R1         GET A ZERO
+         CLC   ARGC,=F'3'    WAS THERE A VALUE OR JUST "KEY="?
+         BL    NULLSTR       SET NULL STRING
+         IC    R1,ARGV+8     GET LENGTH OF THE VALUE STRING
+         BCTR  R10,0         -1 FOR LENGTH BYTE
+         SR    R10,R1        LENGTH NEEDED FOR STRING
+         BL    NOSPACE       STACK OVERFLOW
+         STC   R1,0(R9)      STUFF INTO STRING
+         BCTR  R1,0          -1 FOR EXECUTE
+         LA    R3,1(R9)      DESTINATION IF COPY
+         L     R2,ARGV+8     SOURCE OF COPY
+         EX    R1,COPY       COPY THE VALUE STRING
+         LA    R9,1(R3,R1)   UPDATED STACK POINTER
+         B     NULLSKIP
+NULLSTR  EQU   *
+         BCTR  R10,0         -1 FOR LENGTH OF NULL
+         LTR   R10,R10       TEST IT
+         BL    NOSPACE
+         MVI   0(R9),0       SET LENGTH TO 0
+         LA    R9,1(R9)      AND INCREMENT IT
+NULLSKIP EQU   *
+*--------  ADD THE STRING TO THE TABLE NOW --------------------------
+         L     R3,MAILPTAB   ADDRESS OF TABLE
+         CALL  TBADD,((R3),TBE,TWORK)
+         LTR   R15,R15       DID IT WORK?
+         BNZ   KWWARN        ISSUE A WARNING
+         L     R14,KW14      RESTORE R14
+         BR    R14           AND RETURN
+KWWARN   EQU   *
+         C     R15,=F'8'     duplicate entry?                    [1.24]
+         BNE   KWWARN1       no, some other error                [1.24]
+         WTR   RDI064,(DA,FILELINE)                              [1.24]
+         MVC   TWORK(80),=CL80' '  Clear work area
+         USING FSCBD,R8
+         L     R15,FSCBBUFF        Original line address
+         L     R14,FSCBNORD        Original line length
+         DROP  R8
+         C     R14,=F'80'          Longer than 80?
+         BNH   *+8                 ---> No
+         LA    R14,80              Use first 80
+         BCTR  R14,0               Decrement for EX
+         EX    R14,MVCTWORK        Move into work area
+         WTR   RDI075,(CA,TWORK)
+         B     KWWARN2                                           [1.24]
+KWWARN1  EQU   *             <- here when not a duplicate        [1.24]
+         WTR   RDI015,(D,(R15),DA,FILELINE)
+KWWARN2  EQU   *                                                 [1.24]
+         L     R14,KW14
+         BR    R14
+         SPACE ,
+*--------------------------------------------------------------------
+*  TABLES - DO TABLE FUNCTIONS.
+*    IN PASS 1, CALL ROUTINE SUPPLIED TO INCRMENT ENTRY COUNTERS
+*    IN PASS 2, CALL ROUTIEN SUPPLIED TO BUILD THE TABLE ENTRIES
+*
+*        1) LOOKUP TABLE NAME
+*        2) READ NEXT RECORD.
+*        3) IF EOF OR "END TABLE-NAME" FINISH UP.
+*        4) IF LINE IS NON-BLANK, CALL THE ROUTINE SUPPLIED IN R6.
+*        5) LOOP TO (2)
+*  REGISTERS - R6 = ROUTINE TO CALL, R8 = FSCB, R9,R10 = STACK PTRS
+*--------------------------------------------------------------------
+TABLES   EQU   *
+         ST    R14,T14       SAVE RETURN ADDRESS
+*-------- FIRST FIND THE TABLE THEY HAVE NAMED ----------------------
+         SR    R1,R1         GET ZERO
+         IC    R1,ARGV       GET LENGTH INCLUDING ":"
+         BCTR  R1,0          IGNORE THE ":"
+         STH   R1,TESTSTR    THIS IS TEST STRING LENGTH
+         CH    R1,=Y(TESTMAX) TOO LONG?
+         BH    BADTBL        BAD TABLE NAME
+         BCTR  R1,0          -1 FOR EXECUTE
+         LA    R3,TESTSTR+2  DEST OF COPY
+         L     R2,ARGV       SOURCE OF COPY
+         EX    R1,COPY       COPY THE TEST STRING
+         LA    R3,1(R1)      GET LENGTH
+         CALL  TBLUK,(TNAMES,(R2),(R3),TWORK)
+         LTR   R15,R15       FIND IT?
+         BNZ   BADTBL        NOPE
+         ST    R1,INDEX      SAVE DISPATCH VALUE AS ARRAY INDEX
+*--------  READ A LINE  ---------------------------------------------
+TREAD    EQU   *
+         L     R1,FILELINE   GET LINE COUNTER
+         LA    R1,1(R1)      INCREMENT IT
+         ST    R1,FILELINE   AND RESTORE IT
+         USING FSCBD,R8      ADDRESS THE FSCB
+         L     R1,FSCBBUFF   Get buffer address
+         L     R15,FSCBSIZE  Get buffer length
+         DROP  R8
+         S     R15,=F'2'     Decrement for MVC and EX
+         MVI   0(R1),C' '    Blank out the buffer
+         EX    R15,CLRBUFF
+         FSREAD FSCB=(R8),ERROR=EOF2  READ NEXT LINE
+         BAL   R14,GETLEN    GET LENGHT OF IT
+         LTR   R4,R1         IS IT A NULL LINE?
+         BZ    TREAD         YES, GO GET THE NEXT LINE
+*--------  TOKENIZE THE INPUT LINE ----------------------------------
+         USING FSCBD,R8
+         L     R3,FSCBBUFF   ADDRESS OF LINE
+         DROP  R8
+         CALL  UNIXSCAN,(ARGV,LARGV,(R3),(R4))
+         ST    R1,ARGC       NUMBER OF ARGS READ
+*--------  CHECK FOR "END <TABLE-NAME>" -----------------------------
+         SR    R1,R1         GET ZERO
+         CLC   ARGC,=F'2'    EXACTLY 2 TOKENS?
+         BNE   NOTEND        CAN'T BE THE END IF NOT
+         IC    R1,ARGV       GET LENGTH OF TOKEN 1
+         CH    R1,=H'3'      IS IT LENGTH("END")?
+         BNE   NOTEND        CAN'T BE THE END...
+         L     R2,ARGV       GET ADDRESS OF THIS TOKEN
+         MVC   TESTEND,0(R2) COPY STRING
+         TR    TESTEND,UPCASE UPPER CASE IT
+         CLC   TESTEND,=C'END' IS IT END?
+         BNE   NOTEND        NOPE...
+         IC    R1,ARGV+4     GET LENGTH OF 2ND TOKEN
+         CLC   ARGV+4(1),TESTSTR+1   BOTH STRINGS HAVE SAME LENGTH?
+         BNE   NOTEND        NOPE...
+         BCTR  R1,0          -1 FOR EXECUTE
+         L     R2,ARGV+4     SOURCE OF COPY
+         LA    R3,TESTSTR2   DESTINATION
+         EX    R1,COPY       COPY THE TOKEN
+         EX    R1,TRANSUP    UPPER CASE IT
+         LA    R3,TESTSTR+2
+         EX    R1,TRANSUP    UPPER CASE IT
+         LA    R2,TESTSTR2
+         EX    R1,COMPARE    COMPARE THEM
+         BNE   NOTEND        NOT END....
+*-------  END OF TABLE DECLARATION FOUND ----------------------------
+         SR    R15,R15       RETURN CLEAN RC
+         L     R14,T14
+         BR    R14           RETURN
+         SPACE ,
+*-------  END OF FILE ON INPUT (OR OTHER ERROR)  --------------------
+EOF2     EQU   *
+         CH    R15,=H'12'    WAS IT EOF?
+         BNE   NOFILE        SOME OTHER ERROR
+         LA    R15,4         RETURN 4
+         L     R14,T14
+         BR    R14           RETURN
+         SPACE ,
+*--------  NOW CALL THE ROUTINE SUPPLIED IN R6 ----------------------
+NOTEND   EQU   *
+         L     R1,INDEX      ROUTINE EXPECTS AN INDEX FOR TABLE NAME
+         BALR  R14,R6        CALL IT
+         B     TREAD         AND GET THE NEXT LINE
+         SPACE ,
+*--------------------------------------------------------------------
+*   TABLECNT - COUNT NUMBER OF ENTRIES TO BE ADDED TO TABLE IN
+*              PASS 2.
+*        R1 CONTAINS INDEX INTO RCOUNT/VCOUNT ARRAY
+*--------------------------------------------------------------------
+TABLECNT EQU   *
+         L     R2,TVECTOR(R1)   GET RTAB OR VTAB COUNTER
+         LA    R2,1(R2)         INCREMENT IT
+         ST    R2,TVECTOR(R1)   RETURN IT
+         BR    R14
+         SPACE ,
+*--------------------------------------------------------------------
+*   TABLELOD - CREATE A ROUTD/VALD ENTRY FOR THE CURRENT RECORD.
+*   R1 CONTAINS AN INDEX INDICATING ROUTD OR VALD.
+*        1) COPY KEYWORD INTO STRING SPACE
+*        2) BUILD ROUTD OR VALD ENTRY
+*        3) ADD TO TABLE
+*  REGISTERS - R5 = MAILRTAB, MAILVTAB, OR MAILSTAB
+*--------------------------------------------------------------------
+TABLELOD EQU   *
+         ST    R14,TLODSAVE  SAVE RETURN ADDRESS
+         L     R5,LVECTOR(R1)   GET BRANCH ADDRESS
+*-------=  COPY KEYWORD TO STRING SPACE -----------------------------
+         L     R15,KVECTOR(R1)  GET COPY ROUTINE ADDRESS
+         BALR  R14,R15       COPY THE KEYWORD(S)
+*--------  BUILD ROUTD/VALD ENTRY -----------------------------------
+         BR    R5            BRANCH TO APPROPRIATE ENTRY POINT
+KVECTOR  DC    A(KEYCOP2,KEYCOP,KEYCOP,KEYCOP,KEYCOP)            [1.22]
+         SPACE 1
+LVECTOR  DS    0A                  BRANCH TABLE
+LVECTVC  DC    A(VCODE)            +0  - Incoming
+LVECTRC  DC    A(RCODE)            +4  - Outgoing
+LVECTSC  DC    A(SCODE)            +8  - Special
+LVECTOC  DC    A(OCODE)            +12 - Origins
+LVECTDC  DC    A(DCODE)            +16 - Domains
+         SPACE ,
+* Use RCODE for DCODE too...                                     [1.22]
+DCODE    EQU   *                                                 [1.22]
+         MVC   RCODTAB,MAILDTAB  table to use                    [1.22]
+         B     RCODEAA                                           [1.22]
+RCODE    EQU   *             ROUTD CODE
+         MVC   RCODTAB,MAILRTAB  table to use                    [1.22]
+RCODEAA  EQU   *                                                 [1.22]
+         L     R4,ROUTD1     GET ADDRESS OF NEXT ROUTD BUFFER
+         USING ROUTD,R4
+         LA    R1,TBE        GET THE TBE
+         USING TBENTRY,R1    ADDRESS IT
+         ST    R4,TBE$DSP    SET DISPATCH ADDRESS
+         DROP  R1
+         XC    RTFLAGS,RTFLAGS  CLEAR ALL FLAGS
+         MVC   RTROUTE,=CL8' '   INIT TO BLANKS
+         MVC   RTUSER,=CL8' '    INIT TO BLANKS
+         MVC   RTPROG,=CL8' '    INIT TO BLANKS
+         MVC   RTTYPE,=CL2' '    INIT TO BLANKS
+         MVC   RTPARM,=CL8' '    INIT TO BLANKS
+* FILL IN ENTRIES IN REVERSE ORDER SO ANY OMITTED ONES AREN'TCOPIED
+         CLC   ARGC,=F'6'    MORE THAN 6 TOKENS?
+         BNH   *+10          NO, NUMBER IS RIGHT
+         MVC   ARGC,=F'6'    THROW AWAY THE EXTRAS
+         LA    R1,6          MAX NUMBER OF TOKENS
+         S     R1,ARGC       MINUS NUMBER SUPPLIED
+         SLL   R1,2          MAKE IT A MULTIPLE OF 4
+         L     R1,RBRTAB(R1) GET BRANCH ADDRESS
+         BR    R1            AND GO THERE
+RBRTAB   DC    A(RCODE0,RCODE1,RCODE2,RCODE3,RCODE4,RCODE5)
+         SPACE ,
+RCODE0   EQU   *
+         IC    R1,ARGV+20    LENGTH OF PARM NAME
+         CH    R1,=H'8'      IS LENGTH 8 OR LESS
+         BNH   *+8           YES
+         LA    R1,8          SORRY, TRUNCATE IT
+         L     R2,ARGV+20    ADDRESS OF STRING
+         LA    R3,RTPARM     ADDRESS OF DESTINATION
+         BCTR  R1,0          -1 FOR EXECUTE
+         EX    R1,COPY       COPY STRING
+         SPACE ,
+RCODE1   EQU   *
+         SR    R1,R1         GET A ZERO
+         IC    R1,ARGV+16    GET LENGTH OF TOKEN
+         CH    R1,=H'2'      IS LENGTH 2 OR LESS
+         BNH   *+8           YES
+         LA    R1,2          SORRY, TRUNCATE IT
+         L     R2,ARGV+16    ADDRESS OF STRING
+         LA    R3,RTTYPE     ADDRESS OF DESTINATION
+         BCTR  R1,0          -1 FOR EXECUTE
+         EX    R1,COPY       COPY STRING
+         SPACE ,
+RCODE2   EQU   *
+         IC    R1,ARGV+12    LENGTH OF PROGRAM NAME
+         CH    R1,=H'8'      IS LENGTH 8 OR LESS
+         BNH   *+8           YES
+         LA    R1,8          SORRY, TRUNCATE IT
+         L     R2,ARGV+12    ADDRESS OF STRING
+         LA    R3,RTPROG     ADDRESS OF DESTINATION
+         BCTR  R1,0          -1 FOR EXECUTE
+         EX    R1,COPY       COPY STRING
+         SPACE ,
+RCODE3   EQU   *
+         SR    R1,R1         GET A ZERO
+         IC    R1,ARGV+8     GET LENGTH OF TOKEN
+         CH    R1,=H'8'      IS LENGTH 8 OR LESS
+         BNH   *+8           YES
+         LA    R1,8          SORRY, TRUNCATE IT
+         L     R2,ARGV+8     ADDRESS OF STRING
+         LA    R3,RTUSER     ADDRESS OF DESTINATION
+         BCTR  R1,0          -1 FOR EXECUTE
+         EX    R1,COPY       COPY STRING
+         SPACE ,
+RCODE4   EQU   *
+         SR    R1,R1         GET A ZERO
+         IC    R1,ARGV+4     GET LENGTH OF TOKEN
+         CH    R1,=H'8'      IS LENGTH 8 OR LESS
+         BNH   *+8           YES
+         LA    R1,8          SORRY, TRUNCATE IT
+         L     R2,ARGV+4     ADDRESS OF STRING
+         LA    R3,RTROUTE    ADDRESS OF DESTINATION
+         BCTR  R1,0          -1 FOR EXECUTE
+         EX    R1,COPY       COPY STRING
+         SPACE ,
+RCODE5   EQU   *
+         XC    RTADDR,RTADDR ZERO THE USER EXIT ADDRESS
+         DROP  R4
+         LA    R4,RTLEN(R4)  BUMP ROUTD BUFFER POINTER
+         ST    R4,ROUTD1     SAVE NEW BUFFER ADDRESS FOR NEXT TIME
+         L     R5,RCODTAB    address of table to use             [1.22]
+         CALL  TBADD,((R5),TBE,TWORK)
+         LTR   R15,R15       DID THE ADD WORK?
+         BZ    TLODRET       SURE DID, RETURN
+         C     R15,=F'8'     is it a duplicate?                  [1.24]
+         BNE   TLODERR1      no,  some other error               [1.24]
+         B     TLODERR0      sort it into the table              [1.22]
+         SPACE ,
+*[1.20] Use SCODE for both Special and Origins table setup
+OCODE    EQU   *
+         MVC   SCODTAB,MAILOTAB [1.20]get ptr to table for later
+         B     SCODE0        [1.20]
+SCODE    EQU   *             ROUTD CODE FOR SPECIAL MAILBOXES
+         MVC   SCODTAB,MAILSTAB [1.20]get ptr for later
+SCODE0   EQU   *             [1.20]
+         L     R4,ROUTD1     GET ADDRESS OF NEXT ROUTD BUFFER
+         USING ROUTD,R4
+         LA    R1,TBE        GET THE TBE
+         USING TBENTRY,R1    ADDRESS IT
+         ST    R4,TBE$DSP    SET DISPATCH ADDRESS
+         DROP  R1
+         XC    RTFLAGS,RTFLAGS  CLEAR ALL FLAGS
+         MVC   RTROUTE,=CL8'*'   INDICATE SELF
+         MVC   RTUSER,=CL8'*'    SELF
+         MVC   RTPROG,=CL8' '    INIT TO BLANKS
+         MVC   RTTYPE,=CL2' '    INIT TO BLANKS
+         MVC   RTPARM,=CL8' '    INIT TO BLANKS
+* FILL IN ENTRIES IN REVERSE ORDER SO ANY OMITTED ONES AREN'TCOPIED
+         CLC   ARGC,=F'4'    MORE THAN 4 TOKENS?
+         BNH   *+10          NO, NUMBER IS RIGHT
+         MVC   ARGC,=F'4'    THROW AWAY THE EXTRAS
+         LA    R1,4          MAX NUMBER OF TOKENS
+         S     R1,ARGC       MINUS NUMBER SUPPLIED
+         SLL   R1,2          MAKE IT A MULTIPLE OF 4
+         L     R1,SBRTAB(R1) GET BRANCH ADDRESS
+         BR    R1            AND GO THERE
+SBRTAB   DC    A(SCODE2,SCODE3,SCODE4,SCODE5)
+         SPACE ,
+SCODE2   EQU   *
+         IC    R1,ARGV+12    LENGTH OF PARM
+         CH    R1,=H'8'      IS LENGTH 8 OR LESS
+         BNH   *+8           YES
+         LA    R1,8          SORRY, TRUNCATE IT
+         L     R2,ARGV+12    ADDRESS OF STRING
+         LA    R3,RTPARM     ADDRESS OF DESTINATION
+         BCTR  R1,0          -1 FOR EXECUTE
+         EX    R1,COPY       COPY STRING
+         SPACE ,
+SCODE3   EQU   *
+         SR    R1,R1         GET A ZERO
+         IC    R1,ARGV+8     GET LENGTH OF TOKEN
+         CH    R1,=H'2'      IS LENGTH 8 OR LESS
+         BNH   *+8           YES
+         LA    R1,2          SORRY, TRUNCATE IT
+         L     R2,ARGV+8     ADDRESS OF STRING
+         LA    R3,RTTYPE     ADDRESS OF DESTINATION
+         BCTR  R1,0          -1 FOR EXECUTE
+         EX    R1,COPY       COPY STRING
+         SPACE ,
+SCODE4   EQU   *
+         SR    R1,R1         GET A ZERO
+         IC    R1,ARGV+4     GET LENGTH OF TOKEN
+         CH    R1,=H'8'      IS LENGTH 8 OR LESS
+         BNH   *+8           YES
+         LA    R1,8          SORRY, TRUNCATE IT
+         L     R2,ARGV+4     ADDRESS OF STRING
+         LA    R3,RTPROG     ADDRESS OF DESTINATION
+         BCTR  R1,0          -1 FOR EXECUTE
+         EX    R1,COPY       COPY STRING
+         SPACE ,
+SCODE5   EQU   *
+         XC    RTADDR,RTADDR ZERO THE USER EXIT ADDRESS
+         DROP  R4
+         LA    R4,RTLEN(R4)  BUMP ROUTD BUFFER POINTER
+         ST    R4,ROUTD1     SAVE NEW BUFFER ADDRESS FOR NEXT TIME
+         L     R5,SCODTAB    [1.20]ADDRESS OF ROUTING TABLE
+         B     TLODADD       NOW ADD THE ENTRY TO TABLE
+         SPACE ,
+VCODE    EQU   *             VALD  CODE
+         L     R4,VALD1      GET ADDRESS OF NEXT VALD  BUFFER
+         USING VALD,R4
+         LA    R1,TBE        GET THE TBE
+         USING TBENTRY,R1    ADDRESS IT
+         ST    R4,TBE$DSP    SET DISPATCH ADDRESS
+         DROP  R1
+         MVC   VAUSER,=CL8' ' INIT TO BLANKS
+         MVC   VAPROG,=CL8' '    INIT TO BLANKS
+         MVC   VAPARM,=CL8' '    INIT TO BLANKS
+* FILL IN ENTRIES IN REVERSE ORDER SO ANY OMITTED ONES AREN'TCOPIED
+         CLC   ARGC,=F'4'    RIGHT NUMBER GIVEN?
+         BNH   *+10          SURE
+         MVC   ARGC,=F'4'    IGNORE ANY EXTRAS
+         LA    R1,4          MAX NUMBER OF TOKENS
+         S     R1,ARGC       MINUS NUMBER SUPPLIED
+         SLL   R1,2          MAKE IT A MULTIPLE OF 4
+         L     R1,VBRTAB(R1) GET BRANCH ADDRESS
+         BR    R1            AND GO THERE
+VBRTAB   DC    A(VCODE0,VCODE1,VCODE2,VCODE3)
+         SPACE ,
+VCODE0   EQU   *
+         SR    R1,R1         GET A ZERO
+         IC    R1,ARGV+12    GET LENGTH OF TOKEN
+         CH    R1,=H'8'      IS LENGTH 8 OR LESS
+         BNH   *+8           YES
+         LA    R1,8          SORRY, TRUNCATE IT
+         L     R2,ARGV+12    ADDRESS OF STRING
+         LA    R3,VAPARM     ADDRESS OF DESTINATION
+         BCTR  R1,0          -1 FOR EXECUTE
+         EX    R1,COPY       COPY STRING
+         SPACE ,
+VCODE1   EQU   *
+         SR    R1,R1         GET A ZERO
+         IC    R1,ARGV+8     GET LENGTH OF TOKEN
+         CH    R1,=H'8'      IS LENGTH 8 OR LESS
+         BNH   *+8           YES
+         LA    R1,8          SORRY, TRUNCATE IT
+         L     R2,ARGV+8     ADDRESS OF STRING
+         LA    R3,VAPROG     ADDRESS OF DESTINATION
+         BCTR  R1,0          -1 FOR EXECUTE
+         EX    R1,COPY       COPY STRING
+         SPACE ,
+VCODE2   EQU   *
+         IC    R1,ARGV+4     LENGTH OF PROGRAM NAME
+         CH    R1,=H'8'      IS LENGTH 8 OR LESS
+         BNH   *+8           YES
+         LA    R1,8          SORRY, TRUNCATE IT
+         L     R2,ARGV+4     ADDRESS OF STRING
+         LA    R3,VAUSER     ADDRESS OF DESTINATION
+         BCTR  R1,0          -1 FOR EXECUTE
+         EX    R1,COPY       COPY STRING
+         SPACE ,
+VCODE3   EQU   *
+         XC    VAADDR,VAADDR ZERO THE USER EXIT ADDRESS
+         DROP  R4
+         LA    R4,VALEN(R4)  BUMP VALD  BUFFER POINTER
+         ST    R4,VALD1      SAVE NEW BUFFER ADDRESS FOR NEXT TIME
+         L     R5,MAILVTAB   ADDRESS OF VALIDATION TABLE
+         SPACE ,
+TLODADD  EQU   *
+         CALL  TBADD,((R5),TBE,TWORK)
+         LTR   R15,R15       DID THE ADD WORK?
+         BZ    TLODRET       SURE DID, RETURN
+         C     R15,=F'8'     is it a duplicate?                  [1.24]
+         BNE   TLODERR1      no,  some other error               [1.24]
+TLODERR0 EQU   *
+         WTR   RDI064,(DA,FILELINE)                              [1.24]
+         MVC   TWORK(80),=CL80' '  Clear work area
+         USING FSCBD,R8
+         L     R15,FSCBBUFF        Original line address
+         L     R14,FSCBNORD        Original line length
+         DROP  R8
+         C     R14,=F'80'          Longer than 80?
+         BNH   *+8                 ---> No
+         LA    R14,80              Use first 80
+         BCTR  R14,0               Decrement for EX
+         EX    R14,MVCTWORK        Move into work area
+         WTR   RDI075,(CA,TWORK)
+         B     TLODRET                                           [1.24]
+TLODERR1 EQU   *             <- here for other errors            [1.24]
+         WTR   RDI015,(D,(R15),DA,FILELINE) WRITE WARNING MESSAGE
+TLODRET  EQU   *
+         L     R14,TLODSAVE  RESTORE RETURN ADDRESS
+         BR    R14
+         SPACE ,
+*--------------------------------------------------------------------
+*        COPY A KEYWORD TO STRING SPACE AND INIT TBENTRY PARM
+*--------------------------------------------------------------------
+KEYCOP   EQU   *
+*--------  COPY KEYWORD PREFIX TO STRING BUFFER ---------------------
+         SH    R10,=Y(TBS$LEN)  ROOM FOR THE PREFIX?
+         BL    NOSPACE
+         LA    R2,TBE        ADDRESS OF ENTRY
+         USING TBENTRY,R2    GET THE SYMBOLS
+         ST    R9,TBE$STR    ADDRESS OF THE STRING
+         DROP  R2
+         USING TBS,R9        ADDRESS THE PREFIX
+         XC    0(TBS$LEN,R9),0(R9) INIT. TO ZERO
+*--------  COPY KEYWORD STRING TO STRING BUFFER ---------------------
+         SR    R1,R1         GET A ZERO
+         IC    R1,ARGV       LENGTH OF KEYWORD
+         STC   R1,TBS$SIZ    SIZE OF THIS STRING
+         SR    R10,R1        ROOM FOR THE STRING?
+         BL    NOSPACE       NOPE
+         DROP  R9
+         LA    R9,TBS$LEN(R9) UPDATE STACK POINTER
+         LR    R3,R9         DESTINATION OF COPY
+         L     R2,ARGV       SOURCE OF COPY
+         BCTR  R1,0          -1 FOR EXECUTE
+         EX    R1,COPY       COPY THE STRING
+         LA    R9,1(R9,R1)   UPDATE STACK POINTER
+         BR    R14           RETURN
+         SPACE ,
+*--------------------------------------------------------------------
+*   COPY A KEYWORD PAIR TO STRING SPACE AND INIT TBENTRY PARM
+*   THE PAIR IS COPIED AS A 16 CHARACTER STRING WITH PADDING BLANKS
+*   AFTER THE FIRST AND SECOND LEFT JUSTIFIED 8 CHARACTER KEYWORDS.
+*   (I.E. "FOO     BAR     ")
+*--------------------------------------------------------------------
+KEYCOP2  EQU   *
+*--------  COPY KEYWORD PREFIX TO STRING BUFFER ---------------------
+         SH    R10,=Y(TBS$LEN)  ROOM FOR THE PREFIX?
+         BL    NOSPACE
+         LA    R2,TBE        ADDRESS OF ENTRY
+         USING TBENTRY,R2    GET THE SYMBOLS
+         ST    R9,TBE$STR    ADDRESS OF THE STRING
+         DROP  R2
+         USING TBS,R9        ADDRESS THE PREFIX
+         XC    0(TBS$LEN,R9),0(R9) INIT. TO ZERO
+*--------  COPY KEYWORD STRING TO STRING BUFFER ---------------------
+         SR    R1,R1         GET A ZERO
+         IC    R1,ARGV       LENGTH OF KEYWORD
+         C     R1,=F'8'      8 CHARS OR LESS?
+         BNH   *+8
+         LA    R1,8          TRIM TO 8
+         MVI   TBS$SIZ,16    SIZE OF THIS STRING
+         S     R10,=F'16'    ROOM FOR IT?
+         BL    NOSPACE       NOPE
+         DROP  R9
+         LA    R9,TBS$LEN(R9) UPDATE STACK POINTER
+         MVI   0(R9),C' '    SET THE BUFFER TO BLANKS
+         MVC   1(15,R9),0(R9)
+         LR    R3,R9         DESTINATION OF COPY
+         L     R2,ARGV       SOURCE OF COPY
+         BCTR  R1,0          -1 FOR EXECUTE
+         EX    R1,COPY       COPY THE STRING
+         LA    R3,8(R3)      ADDRESS FOR 2ND KEYWORD
+         L     R2,ARGV+4     STRING SOURCE
+         IC    R1,ARGV+4     LENGTH
+         C     R1,=F'8'      MORE THAN 8?
+         BNH   *+8
+         LA    R1,8          TRIM IT
+         BCTR  R1,0          -1 FOR EX
+         EX    R1,COPY       COPY 2ND KEYWORD IN
+         LA    R9,16(R9)     UPDATE STACK POINTER
+         BR    R14           RETURN
+         SPACE ,
+*--------------------------------------------------------------------
+*        ERROR EXITS
+*--------------------------------------------------------------------
+NOSPACE  EQU   *             STACK OVERFLOW
+         WTR   RDI003,(CA,MYNAME)
+         LA    R15,4
+         B     RET
+         SPACE ,
+NOFILE   EQU   *
+         LR    R3,R15        COPY RETURN CODE
+         LA    R5,MAILRTFN   ADDRESS OF NAME
+         WTR   RDI000,(CA,(R5),D,(R8))
+         LA    R15,4
+         B     RET
+         SPACE ,
+BADTOK   EQU   *             BAD TOKEN
+BADTBL   EQU   *             BAD TABLE ID
+         LA    R5,MAILRTFN   NAME OF FILE
+         WTR   RDI014,(CA,(R5),DA,FILELINE)
+         LA    R15,4
+         B     RET
+         SPACE ,
+*--------------------------------------------------------------------
+*        READ/ONLY DATA AND EXCUTABLE CODE
+*--------------------------------------------------------------------
+CLRBUFF  MVC   1(0,R1),0(R1)       Used to clear input buffer
+COPY     MVC   0(0,R3),0(R2)
+TRAPSEMI TRT   0(0,R3),0(R2)
+TRANSUP  TR    0(0,R3),UPCASE
+COMPARE  CLC   0(0,R3),0(R2)
+MVCTWORK MVC   TWORK(1),0(R15)
+TNAMES   TBSTART ,           TABLE NAMES ALLOWED
+         T 'DOMAINS',LVECTDC-LVECTOR
+         T 'INCOMING',LVECTVC-LVECTOR
+         T 'ORIGINS',LVECTOC-LVECTOR
+         T 'OUTGOING',LVECTRC-LVECTOR
+         T 'SPECIAL',LVECTSC-LVECTOR
+         TBEND ,
+         LTORG ,
+*--------------------------------------------------------------------
+*        READ/WRITE DATA
+*--------------------------------------------------------------------
+SAVE     DS    18F                     SAVE AREA
+PASSAVE  DS    F             PASS ROUTINE SAVE AREA
+KW14     DS    F             KWADD SAVE AREA
+T14      DS    F             TABLES SAVE AREA
+TLODSAVE DS    F             TABLELOD SAVE AREA
+INDEX    DS    F
+FILELINE DS    F             CURRENT FILE LINE NUMBER
+ARGC     DS    F             NUMBER OF ARGS IN ARGV
+ARGV     DS    20F           ALLOW FOR 20 TOKENS
+LARGV    EQU   *-ARGV        LENGTH OF ARGV
+PCOUNT   DS    F             PARM COUNTER
+         SPACE ,
+TVECTOR  DS    0F            ARRAY CONTAING RCOUNT AND VCOUNT
+VCOUNT   DS    F             VALIDATION ENTRY COUNTER
+RCOUNT   DS    F             ROUTING ENTRY COUNTER
+SCOUNT   DS    F             SPECIAL ENTRY COUNTER
+OCOUNT   DS    F             [1.20]ORIGINS ENTRY COUNTER
+DCOUNT   DS    F             domains entry counter               [1.22]
+         SPACE ,
+ROUTD1   DS    A             ADDRESS OF ROUTD BUFFER
+VALD1    DS    A             ADDRESS OF VALD BUFFER
+LRECL    DS    F             FILE MAXIMUM LRECL
+SCODTAB  DS    A             [1.20]ptr for SCODE/OCODE
+RCODTAB  DS    A             ptr for RCODE/DCODE                 [1.22]
+TBE      DS    (TBE$LEN/4)F  TBENTRY
+TWORK    DS    64F
+TESTSTR  DS    1H,20C
+TESTMAX  EQU   *-TESTSTR-2
+TESTSTR2 DS    (TESTMAX)C
+TESTEND  DS    CL3
+         END   READINIT

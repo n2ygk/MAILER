@@ -1,0 +1,168 @@
+BITNET   TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - BITNET EXIT'
+*---------------------------------------------------------------------*
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         *
+*    Program Property of the Trustees of Columbia University in the   *
+*    City of New York.                                                *
+*---------------------------------------------------------------------*
+BITNET   CSECT ,
+* BITNET     -
+*
+* ACCEPTS A PARM LIST ADDRESS IN R1 -
+*        0: ADDR OF MAILBLOK
+*        4: ADDR OF ACTADR BLOCK
+*
+* REGISTER USAGE -
+R0  EQU  0 -
+R1  EQU  1 -
+R2  EQU  2 -
+R3  EQU  3 -
+R4  EQU  4 -
+R5  EQU  5 -
+R6  EQU  6 -
+R7  EQU  7 -
+R8  EQU  8 -
+R9  EQU  9 -
+R10 EQU 10 -
+R11 EQU 11 -
+R12 EQU 12 - PROGRAM BASE
+R13 EQU 13 - SAVE AREA
+R14 EQU 14 - SUBROUTINE LINKAGE
+R15 EQU 15 - SUBROUTINE LINKAGE
+         BLOCKS ,
+         MAILBLOK
+         EJECT
+BITNET   CSECT ,
+         USING BITNET,R15
+         B     EYESKIP
+MYNAME   DC    CL8'BITNET',CL8'&SYSDATE'
+EYESKIP  DS    0H
+         DROP  R15
+         STM       R14,R12,12(R13)
+         LR    R12,R15
+         USING BITNET,R12
+         LA        R14,SAVE
+         ST        R13,4(R14)
+         ST        R14,8(R13)
+         LR        R13,R14
+         LR        R10,R1
+         L         R11,0(R10)          GET MAILBLOK
+         USING     MAILBLOK,R11
+         SPACE 1
+         TM    DBGFLG6,DBGNOOUT    Sending mail?
+         BZ    SKIP001             ---> Yes
+         WRTERM 'BITNET:  Trace-send-no-mail set'
+SKIP001  EQU   *
+         SPACE 1
+         L         R9,4(R10)           GET ACTADR
+         USING     ACTADR,R9
+         L     R8,ACTRT      ADDRESS OF ROUTD CARD
+         USING     ROUTD,R8
+         MVC       TAGNODE,RTROUTE     GET NODE NAME TO TAG
+         MVC       TAGUSER,RTUSER      GET MAILER NAME TO TAG
+         MVC       TAGWTR,RTUSER       Also to writer
+         MVC   XFERUSER,RSCSNAME   GET NAME OF RSCS SYSTEM
+         CLC       TAGNODE,CPUSTR      same as my node?          [1.24]
+         BNE       RMTNODE             no, remote                [1.24]
+         MVC       XFERUSER,TAGUSER    just send directly        [1.24]
+RMTNODE  EQU       *                   here if remote node       [1.24]
+         LA        R1,CPCOM            ADDRESS OF COMMANDS
+         LA        R0,CPCOML           LENGTH
+         DC        X'83100008'         DO IT UP
+         LTR       R15,R0              GET RETURN CODE
+         BNZ       RET
+*----------------------------------------------------------------[1.22]
+*  If the "DELIVER2" parm was supplied,  then punch a            [1.22]
+*  Deliver-to: header.  This is used with Reg Quinton's          [1.22]
+*  MLNET gateway.  Most of this code copied out of INTERNET      [1.22]
+*----------------------------------------------------------------[1.22]
+         CLC   =CL8'DELIVER2',RTPARM  do they want it?           [1.22]
+         BNE   NODEL2        No sir                              [1.22]
+         L     R7,ACTMBOX        LOAD MBOX BASE REGISTER        [1.22]
+         USING MBOX,R7         PROVIDE ADDRESSABILITY           [1.22]
+         L     R7,MBXLCL         POINT TO USER LIST             [1.22]
+         USING NODE,R7         PROVIDE ADDRESSABILITY          [1.22]
+         L     R7,NODDOWN        LOAD DOWN POINTER               [1.22]
+         USING TOKEND,R7         ADDRESS THE USER NAME TOKEN     [1.22]
+         SR    R4,R4             CLEAR A WORK REGISTER           [1.22]
+         L     R4,TOKLEN         LENGTH OF TOKEN                 [1.22]
+         CL    R4,=A(L'MLADDR-1) TOO LONG?                       [1.22]
+         BH    FAIL0             YUP, ABORT                      [1.22]
+         BCTR  R4,0              LENGTH-1 FOR EXECUTE            [1.22]
+         L     R3,TOKPTR         LOAD STRING ADDRESS             [1.22]
+         LA    R2,MLADDR         POINT TO RECEIVING FIELD        [1.22]
+         MVI   0(R2),C' '        SET UP FOR BUFFER CLEAR         [1.22]
+         MVC   1(L'MLADDR-1,R2),0(R2)  propogate the blank       [1.22]
+         EX    R4,COPY           AND COPY OVER THE USER NAME     [1.22]
+         LA    R2,1(R2,R4)       POINT TO LAST CHARACTER         [1.22]
+         MVI   0(R2),C'@'        AND MOVE IN THE @               [1.22]
+         LA    R2,1(R2)          INCREMENT TO HOST AREA          [1.22]
+         LA    R3,L'MLADDR       LOAD LENGTH OF FIELD            [1.22]
+         SR    R3,R4             LOAD LENGTH OF FIELD LEFT-1     [1.22]
+         L     R7,ACTMBOX        LOAD MBOX BASE REGISTER        [1.22]
+         USING MBOX,R7         AND ESTABLISH                    [1.22]
+         L     R7,MBXDML         POINT TO HOST LIST             [1.22]
+         USING NODE,R7         AND ESTABLISH                   [1.22]
+         L     R7,NODDOWN        LOAD DOWN POINTER               [1.22]
+         USING TOKEND,R7         ADDRESS OF HOST NAME TOKEN      [1.22]
+         SR    R4,R4             CLEAR A WORKING REGISTER        [1.22]
+         L     R4,TOKLEN         LENGTH OF HOST NAME             [1.22]
+         CR    R4,R3             TOO LONG?                       [1.22]
+         BH    FAIL0             YUP, ABORT                      [1.22]
+         BCTR  R4,0              LENGTH-1 FOR EXECUTE            [1.22]
+         L     R3,TOKPTR         LOAD STRING ADDRESS             [1.22]
+         EX    R4,COPY           AND COPY IN THE HOST NAME       [1.22]
+         TM    DBGFLG6,DBGNOOUT  Sending mail?
+         BO    SHOWDELT          ---> No
+         PUNCHC MDELTO           PUNCH THE DELIVER-TO: LINE      [1.22]
+         B     NODEL2            around the fail code            [1.22]
+         SPACE 1
+SHOWDELT EQU   *
+         LINEDIT TEXT='BITNET:  .......................................X
+               .........................................',             X
+               SUB=(CHARA,MDELTO),DOT=NO,COMP=NO
+         B     NODEL2
+         SPACE 1
+FAIL0    EQU   *                                                 [1.22]
+         LOG   BIT036,(CA,EMSG)  NET ADDRESS TOO BIG!            [1.22]
+         LA    R15,8             SET A BAD RETURN CODE           [1.22]
+         B     RET               AND RETURN TO CALLER            [1.22]
+NODEL2   EQU   *             here for no deliver-to              [1.22]
+         TM    DBGFLG6,DBGNOOUT    Sending mail?
+         BO    NOMAIL              ---> No
+         L     R15,APUNHDR   HEADER PUNCHING ROUTINE
+         CALL  (15),((11))   PUNCH HEADER
+         LTR   R15,R15       CHECK FOR ERRORS
+         BNZ   RET
+         L     R15,APUNTXT   TEXT PUNCHING ROUTINE
+         CALL  (15),((11))   PUNCH TEXT
+         LTR   R15,R15
+         BNZ   RET
+         L     R15,APUNCLS   PUNCH CLOSER
+         CALL  (15),((11))
+         LTR   R15,R15
+         BNZ   RET
+NOMAIL   EQU   *
+         LOG   BIT034,(CA,TAGUSER,CA,TAGNODE)                    [1.24]
+RET      EQU       *
+         L         R13,4(R13)
+         L         R14,12(R13)
+         LM        R0,R12,20(R13)
+         BR        R14
+*
+COPY     MVC   0(*-*,R2),0(R3)         COPY USER NAME TOKEN      [1.22]
+         LTORG
+SAVE     DS        18F
+CPCOM    DC        C'TAG DEV PUN '
+TAGNODE  DS        CL8
+         DC        C' '
+TAGUSER  DS        CL8
+         DC        C' 50 W='
+TAGWTR   DS        CL8' '
+         DC        C' ENQMSG=NO SENTMSG=NO FINALMSG=NO'
+         DC        X'15',C'SP PUN CLASS M TO '                   [1.22]
+XFERUSER DS        CL8
+CPCOML   EQU       *-CPCOM
+MDELTO   DC    C'Deliver-to: '                                   [1.22]
+MLADDR   DS    CL68                                              [1.22]
+EMSG     DC    CL19'Address too long'                            [1.22]
+         END   BITNET

@@ -1,0 +1,218 @@
+/* ****************************************************************** */
+/*  SAMPPROF - Sample profile for MAILER disconnected server          */
+/* ****************************************************************** */
+
+address 'COMMAND'                            /*                       */
+
+'SET RDYMSG SMSG'
+'SET BLIP OFF'
+'CP SET EMSG ON'
+'CP SPOOL RDR NOH'
+
+/*  The following line assumes the standard disk configuration as     */
+/*  described in the Mailer Installation and Maintenance Guide        */
+
+'ACCESS 193 C/A'
+
+if disc()  then  'EXEC MAILER'               /*                       */
+exit
+
+/* ******************* */
+/*  Internal Routines  */
+/* ******************* */
+
+Disc:  procedure /* Determine if running disconnected */
+parse value diag(8,'QUERY V CONS') with ,    /*                       */
+   . . status .                              /*                       */
+if status = 'DISCONNECTED'  then             /*                       */
+   disc = 1                                  /*                       */
+else                                         /*                       */
+   disc = 0                                  /*                       */
+return disc                                  /*                       */
+
+
+
+
+
+/* ****************************************************************** */
+/*  SAMPPROF2 - Sample profile for the mail/file scavenger server     */
+/* ****************************************************************** */
+
+address 'COMMAND'                            /*                       */
+
+'SET RDYMSG SMSG'
+'SET BLIP OFF'
+'CP SET EMSG ON'
+'CP SPOOL RDR NOH'
+
+/*  The following line assumes the standard disk configuration as     */
+/*  described in the Mailer Installation and Maintenance Guide        */
+
+'ACCESS 193 C/A'
+
+/*  The following code assumes you want the file forwarding code run  */
+/*  every 15 minutes.  This is certainly one way to run the code but  */
+/*  you could also remove this loop and have another server (such as  */
+/*  SMART) autolog the MAILFWD id whenever you want FORWARDX run.     */
+/*  **** Note ****                                                    */
+/*  If you want to use this loop, then you must remove the            */
+/*                                                                    */
+/*     if disc()  then  'CP LOGOFF'                                   */
+/*                                                                    */
+/*  line when modifying the FORWARDX EXEC.                            */
+
+
+do while disc()
+   'EXEC FORWARDX'                           /* Do some forwarding    */
+   'CP SLEEP 15 MIN'                         /* Wait a while          */
+   end
+
+exit
+
+/* ******************* */
+/*  Internal Routines  */
+/* ******************* */
+
+Disc:  procedure /* Determine if running disconnected */
+parse value diag(8,'QUERY V CONS') with ,    /*                       */
+   . . status .                              /*                       */
+if status = 'DISCONNECTED'  then             /*                       */
+   disc = 1                                  /*                       */
+else                                         /*                       */
+   disc = 0                                  /*                       */
+return disc                                  /*                       */
+
+
+
+
+
+/* ****************************************************************** */
+/*  MAILER - VM Mailer driver EXEC                                    */
+/* ****************************************************************** */
+/*                                                                    */
+/*  Command format:    MAILER  mailerid                               */
+/*                                                                    */
+/*  This is a sample profile for driving the MAILER program.          */
+/*                                                                    */
+/*                                                                    */
+/*                                                                    */
+/*                                                                    */
+/*                                                                    */
+/*                                                                    */
+/*                                                                    */
+/* ****************************************************************** */
+
+parse upper arg mailer . '(' options ')' ./* Get command line args    */
+if mailer = ''  then  mailer = 'MAILER'   /* Set default if none given*/
+
+address COMMAND                          /*  set command environment  */
+
+/* ****************************************************************** */
+/*  Local variables                                                   */
+/*  These are values you need to change                               */
+/* ****************************************************************** */
+
+/*  Ids for error reporting                                           */
+/*  Specify 1 or more as 'userid AT node'.  Do NOT use userid@node    */
+/*  since mail to these ids will be sent using the CMS NOTE command.  */
+
+errids = 'maintid1 AT node1  maintid2 AT node2'
+
+logid   = 'userid@node1'                 /* Where to send console logs*/
+
+smartnodes = 'node1 node2'               /* Nodes at which VMSMART is */
+                                         /* monitoring mailer         */
+
+/* ****************************************************************** */
+/*  End of local variables                                            */
+/* ****************************************************************** */
+
+'IDENTIFY ( LIFO'
+parse upper pull . . nodeid . via .
+
+parse var logid loguid '@' lognode .     /*                           */
+if lognode = ''  then                    /* No logging node given     */
+   lognode = nodeid                      /*   so it must be here      */
+upper loguid lognode                     /* Make them VM consistent   */
+
+'CP CHANGE RDR CLASS T NOH'              /*  A little error recovery  */
+
+if nodeid = lognode  then
+   'CP TRANSFER RDR CLASS T TO' loguid 'RDR' /*                       */
+else
+   'CP TRANSFER RDR CLASS T TO' via 'RDR'   /*                        */
+
+if nodeid = lognode  then                 /* Have local VMJESLOG      */
+   'CP SPOOL CONSOLE START TO' loguid
+else  do                                  /* Running on RSCS remote   */
+   'CP TAG DEV CONSOLE' lognode loguid
+   'CP SPOOL CONSOLE START TO' via
+   end
+
+'CP SET EMSG ON'
+'CP SPOOL PUNCH FORM QUIET'
+
+do forever
+   'ACCESS 193 C/A'                     /* Access system files        */
+   'CP CHANGE RDR ALL NOH'              /* Clean up any hold problems */
+   if mailer = 'MAILER'  then
+      'GLOBAL TXTLIB MAILLCL MAILER'    /* Mailer library             */
+   else
+      'GLOBAL TXTLIB' mailer'LCL' mailer
+   ''mailer nodeid 'PROFILE *'          /* Start mailer               */
+   mailrc = rc
+   if mailrc ^= 0  then  say 'MAILER rc =' mailrc
+   select
+      when mailrc=0  &  disc()  then  nop
+      when mailrc=0  & ^disc()  then  leave
+      when mailrc=12 & ^disc()  then  leave
+      otherwise  do
+         if disc()  then  do
+            call errmail('Mailer failed with RC='mailrc)
+            if find(smartnodes,nodeid) = 0  then  /* Not monitored    */
+               'CP LOGOFF'
+            else                             /*                       */
+               'CP'                          /* Go to CP so SMART will*/
+                                             /* notice and MSG op     */
+            end
+         else  leave
+         end
+      end
+   end
+exit mailrc
+
+/* ******************* */
+/*  Internal Routines  */
+/* ******************* */
+
+Disc:  procedure /* Determine if running disconnected */
+parse value diag(8,'QUERY V CONS') with ,    /*                       */
+   . . status .                              /*                       */
+if status = 'DISCONNECTED'  then             /*                       */
+   disc = 1                                  /*                       */
+else                                         /*                       */
+   disc = 0                                  /*                       */
+return disc                                  /*                       */
+
+ErrMail:  procedure , /* Send error mail to maintainers */
+          expose errids
+parse upper arg errmsg
+'ERASE MAILMNT NOTE A1'
+mailfile.0 = 10
+mailfile.1 = 'OPTIONS: NOACK    LOG    SHORT     NOTEBOOK MAILERR'
+mailfile.2 = ' '
+mailfile.3 = ' '
+mailfile.4 = ' '
+mailfile.5 = ' '
+parse value diag(8,'QUERY TIME') with 'TIME IS' . timezone .
+mailfile.6 = 'Date:' date()',' time() timezone
+'IDENTIFY (LIFO'
+parse pull userid . node .
+mailfile.7 = 'From:' userid 'at' node
+mailfile.8 = 'To:  ' errids
+mailfile.9 = ' '
+mailfile.10 = errmsg
+'EXECIO' mailfile.0 'DISKW MAILMNT NOTE A1 (FINIS STEM MAILFILE.'
+'EXEC SENDFILE MAILMNT NOTE A1 (NOTE'
+'ERASE MAILMNT NOTE A1'
+return

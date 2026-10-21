@@ -1,0 +1,120 @@
+/* ****************************************************************** */
+/*  MABNXIT - MAILER R2 abend exit processor                          */
+/* ****************************************************************** */
+/*              (c) Copyright Princeton University 1991               */
+/* ****************************************************************** */
+/*                                                                    */
+/*  This exec receives control from the abend trap in MAILMAIN.  It   */
+/*  is passed the userid of the maintainer and the spoolid of the     */
+/*  file being processed when the abend occurred.                     */
+/*                                                                    */
+/*  The code in this exec determines what should be done with the     */
+/*  mail file that is the probable cause of the failure:              */
+/*                                                                    */
+/*                                                                    */
+/*     RC   Mailer action                                             */
+/*    ==== ========================================================   */
+/*      0   Purge file                                                */
+/*    <12   Return to sender                                          */
+/*    12+   Stop mailer                                               */
+/*                                                                    */
+/* ****************************************************************** */
+
+address COMMAND                              /*                       */
+parse upper arg maintid maintnode spoolid .  /*                       */
+
+'IDENTIFY (LIFO'
+parse pull myid . mynode . rscsid date time timezone .
+
+say 'MABNXIT: Called with maintid='maintid'@'maintnode ,
+   'spoolid='spoolid
+
+if maintnode = mynode  then  do              /* Local maintainer      */
+   say 'MABNXIT: Taking VMDUMP'              /* Take a VMDUMP         */
+   'CP VMDUMP 0-END TO' maintid 'FORMAT CMS * Mail abend at' ,
+      'approximately' time timezone 'on' date
+   end
+
+'ERASE ERROR NOTEBOOK A'                     /*                       */
+'EXEC RECEIVE' spoolid 'ERROR NOTEBOOK A ( NOTEBOOK ERROR LOG'
+
+newid = newft()
+'RENAME ERROR NOTEBOOK A MAILPROB' newid 'A'
+say 'MABNXIT: Problem mail file saved in "MAILPROB"' newid 'A"'
+
+call sendmail 'MAILPROB' newid 'A'
+
+'ESTATE' spoolid 'EFLAG A'
+if rc = 0  then  do                          /* Saw this before       */
+   'ERASE' spoolid 'EFLAG A'                 /* Forget we saw it      */
+   exitrc = 0                                /* Purge it this time    */
+   end
+else  do                                     /* Remember the spoolid  */
+   'EXECIO 1 DISKW' spoolid 'EFLAG A (FINIS STRING' spoolid
+   exitrc = 16                               /* Restart mailer        */
+   end
+
+exit exitrc
+
+/* ******************* */
+/*  Internal routines  */
+/* ******************* */
+
+/**********************************************************************/
+NewFt:  procedure  /* Find a open filetype of the form FILEnnnn       */
+do i=1 for 9999
+   'ESTATE MAILPROB FILE'right(i,4,'0') 'A'
+   if rc <> 0  then leave
+   end
+return 'FILE'right(i,4,'0')
+
+/**********************************************************************/
+SendMail:  procedure , /* Send error notification to maintainer       */
+           expose maintid maintnode myid mynode rscsid timezone
+
+parse arg fileid
+fileid = strip(fileid)
+
+'ERASE ERROR MAIL A1'
+line.0 = 7
+line.1 = 'Date:' left(date('W'),3)',' ,
+                 delstr(right(date(),11,'0'),8,2) Time() timezone
+line.2 = 'From:' myid'@'mynode
+line.3 = 'To:  ' maintid'@'maintnode
+line.4 = ' '
+line.5 = 'A mailer abend has occurred.  The file being processed at the'
+line.6 = 'time of the failure has been saved as "'fileid'".'
+line.7 = ' '
+'EXECIO' line.0 'DISKW ERROR MAIL A ( FINIS STEM LINE.'
+
+/*  Here we send the mail to the maintainer.  Since the mailer may    */
+/*  be badly broken, the mail is sent using standard RSCS services.   */
+/*  Since RSCS V2 may not be installed this code has to worry about   */
+/*  local routing.                                                    */
+/*                                                                    */
+/*  The following code assumes the console has been spooled start     */
+/*  by either the PROFILE EXEC or a driver exec for the mailer.       */
+
+'CP CLOSE PUNCH PURGE'
+if maintnode <> mynode  then  do
+   'CP SPOOL PUNCH' rscsid 'CLASS M CONT'
+   'CP SPOOL CONSOLE' rscsid 'CLASS T'
+   'CP TAG DEV PUNCH' maintnode maintid
+   'CP TAG DEV CONSOLE' maintnode maintid
+   end
+else do
+   'CP SPOOL PUNCH' maintid 'CLASS M CONT'
+   'CP SPOOL CONSOLE' maintid 'CLASS T'
+   end
+
+'PUNCH ERROR MAIL A ( NOH'
+'CP SPOOL PUNCH NOCONT'
+'PUNCH' fileid '( NOH'
+'CP SPOOL PUNCH OFF'
+'CP TAG DEV PUNCH'
+'ERASE ERROR MAIL A'
+
+'CP SPOOL CONSOLE CLOSE'
+'CP TAG DEV CONSOLE'
+
+return

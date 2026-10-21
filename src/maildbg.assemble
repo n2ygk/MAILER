@@ -1,0 +1,122 @@
+DBG      TITLE 'MAILDBG - MAILER general purpose debugging routines'
+**************************************************************
+*                                                            *
+* Module Name:                                               *
+*                                                            *
+*        MAILDBG                                             *
+*                                                            *
+* Function:                                                  *
+*                                                            *
+*        Subroutines to display various control blocks.      *
+*                                                            *
+* Attributes:                                                *
+*                                                            *
+*        Reentrant                                           *
+*                                                            *
+* Entry Points:                                              *
+*                                                            *
+*        SHOWTOKS    Display TOKEND chain                    *
+*                                                            *
+* Entry Conditions:                                          *
+*                                                            *
+*        SHOWTOKS:                                           *
+*          R1  = parmlist ptr                                *
+*          R15 = A(SHOWTOKS)                                 *
+*          R14 = return address                              *
+*          R13 = register save area                          *
+*                                                            *
+* Sample Invocation:                                         *
+*                                                            *
+*        CALL SHOWTOKS,(tokend)                              *
+*             tokend - address of first TOKEND to display    *
+*                                                            *
+* Exit Conditions:                                           *
+*                                                            *
+*        Normal                                              *
+*                                                            *
+*              R15 = 0    display complete, no errors        *
+*                                                            *
+*        Error                                               *
+*                                                            *
+*              R15 = 4    display complete, some error found *
+*                         displaying TOKENDS (bad TOKNEXT    *
+*                         pointer, etc.)                     *
+*                                                            *
+* Calls to other routines, etc:                              *
+*                                                            *
+*        None                                                *
+*                                                            *
+* External References:                                       *
+*                                                            *
+*        None                                                *
+*                                                            *
+* Work Areas:                                                *
+*                                                            *
+* Operation:                                                 *
+*                                                            *
+*        SHOTOKS:                                            *
+*          Chain through the TOKEND chain starting at the    *
+*          first TOKEND pointed to by the parameter list.    *
+*          Display TOKEND address, type and character string *
+*          it points to.                                     *
+*                                                            *
+**************************************************************
+         EJECT ,
+*------------------------------------------------------------*
+*        Local dynamic variables                             *
+*                                                            *
+*        A register save area and local variables are        *
+*        allocated from the high end of the stack.  R13 is   *
+*        used as the base of this area so that programs      *
+*        called by this one see standard OS linkage.         *
+*        standard OS linkage.                                *
+*                                                            *
+*------------------------------------------------------------*
+LOCALS   DSECT ,             local variables
+SAVE     DS    18F           register save area
+STACK    DS    A             address of stack
+STKSIZ   DS    F             length
+PLIST    DS    A             main plist pointer
+LOCSIZE  EQU   *-LOCALS      length of this dsect
+         EJECT ,
+*------------------------------------------------------------*
+*        Control block definitions                           *
+*------------------------------------------------------------*
+         BLOCKS ,
+         REGEQU ,
+         SPACE 1
+         NUCON DSECT
+         EJECT ,
+MAILDBG  CSECT ,
+SHOWTOKS MENTRY STK=NONE
+         ICM   R2,B'1111',0(R1)    Get first TOKEND address
+         BZ    STOKS900            ---> Zero is a bad address
+         USING TOKEND,R2
+STOKS010 DS    0H
+         USING NUCON,R0
+         C     R2,VMSIZE           Beyond VM size?
+         BH    STOKS900            ---> Yes
+         DROP  R0
+         L     R3,TOKPTR           Get string address
+         L     R4,TOKLEN               and length
+         LINEDIT TEXT='SHOWTOKS: TOKEND@........ -> ...................+
+               ..............................',                        +
+               SUB=(HEX,(R2),CHARA,((R3),(R4))),                       +
+               DOT=NO,COMP=NO,RENT=NO
+         SPACE 1
+         ICM   R2,B'1111',TOKNEXT  To next token
+         BZ    STOKS999            End of list of tokens
+         B     STOKS010
+         DROP  R2
+         SPACE 1
+STOKS900 DS    0H
+         LINEDIT TEXT='SHOWTOKS: Bad TOKNEXT address (........)',      +
+               SUB=(HEX,(R2)),                                         +
+               DOT=NO,COMP=NO,RENT=NO
+         LA    R15,4               Remember there was a problem
+         SPACE 1
+STOKS999 MRET  0
+         EJECT ,
+         LTORG ,
+         SPACE 3
+         END

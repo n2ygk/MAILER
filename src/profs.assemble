@@ -1,0 +1,358 @@
+*9/8/86 - New PROFS-specific exit based on LOCAL thru vers 1.24
+*         Same as LOCAL but doesn't look in MAILSTAB. Includes code
+*         from Peter Day:
+*[EMU1] 3/19/86 - Output PROFS compatible subject line on PROFS param
+*[EMU2] 3/22/86 - Set Reply / Forward indicator on PROFS subj line
+PROFS  TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - PROFS DISTRIBUTION'
+*---------------------------------------------------------------------*
+*      MAILER -- Copyright (c) 1982,1986 Columbia University.         *
+*    Program Property of the Trustees of Columbia University in the   *
+*    City of New York.                                                *
+*---------------------------------------------------------------------*
+PROFS    CSECT ,
+* PROFS  -
+*  This routine performs the delivery of files to local profs users.
+*
+*
+PAB      DSECT ,
+@MBLOK   DS    A             MAILBLOK BASE
+@ACT     DS    A             ACTADR BASE
+* REGISTER USAGE -
+R0  EQU  0 -
+R1  EQU  1 -
+R2  EQU  2 -
+R3  EQU  3 -
+R4  EQU  4 -
+R5  EQU  5 -
+R6  EQU  6 -
+R7  EQU  7 -
+R8  EQU  8 -
+R9  EQU  9 -
+R10 EQU 10 - ACTADR BASE
+R11 EQU 11 - MAILBLOK BASE
+R12 EQU 12 - PROGRAM BASE
+R13 EQU 13 - SAVE AREA
+R14 EQU 14 - SUBROUTINE LINKAGE
+R15 EQU 15 - SUBROUTINE LINKAGE
+         BLOCKS ,
+         MAILBLOK ,
+         EJECT ,
+PROFS    CSECT ,
+         STM   R14,R12,12(R13)
+         BALR  R12,0
+         USING *,R12
+         LA    R14,SAVE
+         ST    R13,4(R14)
+         ST    R14,8(R13)
+         LR    R13,R14
+         USING PAB,R1        ADDRESS PARMS
+         L     R11,@MBLOK    GET MAILBLOK BASE
+         L     R10,@ACT      GET ACTADR BASE
+         DROP  R1
+         USING MAILBLOK,R11
+         USING ACTADR,R10
+         L     R7,ACTMBOX    GET MBOX BLOCK
+         USING MBOX,R7
+         L     R7,MBXLCL         GET USER LIST
+         USING NODE,R7     ADDRESS IT
+         L     R7,NODDOWN    GET DOWN POINTER
+         USING TOKEND,R7     ADDRESS THE USER NAME TOKEN
+         L     R9,TOKPTR         GET STRING
+         SR    R4,R4         GET ZERO
+         L     R4,TOKLEN     LENGTH OF USERID STRING
+         DROP  R7            [1.20]
+         MVC   RECVR,=CL8' ' [3]blank it
+         LR    R1,R4         [3]copy
+         C     R1,=F'8'      [3]trunc to 8 if necessary
+         BNH   *+8           [3]
+         LA    R1,8          [3]
+         BCTR  R1,0          [3]
+         EX    R1,MOVEIT     [3]move into RECVR
+         EX    R1,UPIT       [3]upper case it.
+         SPACE ,
+CHKRET   EQU   *
+         C     R4,=F'8'      8 OR LESS?
+         BH    ILLEGAL
+         ST    R4,RCVRLEN    [2]save receiver length for later
+         CLC   RECVR,MAILVMID TRYING TO SEND MAIL TO MAILER?
+         BE    NOFILES       HANDLE MAIL TO MAILER
+         LINEDIT   TEXT='SP PUN TO ........ CLASS M',DOT=NO,RENT=NO,   *
+               DISP=CPCOMM,SUB=(CHARA,RECVR)
+         LTR   R15,R15       DID IT WORK?
+         BNZ   NOSUCH        NOPE
+*[1.20] BEGIN -----------------------------------------------------
+*    Build an RSCS-style tag so people with a modified RDRLIST
+*    and similar execs can figure who the mail is from
+*------------------------------------------------------------------
+         MVC   TNUM,MAILFTXT file number
+         L     R6,MAILSFLD   get sender FIELDD
+         USING FIELDD,R6     address the field
+         L     R6,FIPARS     pointer to adaddr
+         DROP  R6
+         USING MBOX,R6     address list thing
+         L     R1,MBXLCL         point to list of user adnodes
+         USING NODE,R1     address a user node
+         L     R1,NODDOWN    point down to user name token
+         DROP  R1
+         USING TOKEND,R1     address the tokend
+         L     R3,TOKPTR         address of user name token
+         SR    R4,R4
+         L     R4,TOKLEN     length of it
+         DROP  R1
+         MVC   TUSER,=CL8' '  blank out the user tag item
+         C     R4,=F'8'      if > 8 trunc it.
+         BNH   OK1           it's ok
+         LA    R4,8          force to 8
+OK1      EQU   *
+         BCTR  R4,0          -1 for executed copy
+         LA    R2,TUSER      dest of copy
+         EX    R4,COPY       copy it in
+* now do the same for host name
+         MVC   THOST,=CL8'? ' blank out the host tag item        [1.22]
+         ICM   R1,B'1111',MBXDML   point to list of host adnodes
+         BZ    NOHOST1       sometimes these slip thru...        [1.22]
+         USING NODE,R1     address a host node
+         L     R1,NODDOWN    point down to host name token
+         DROP  R1
+         USING TOKEND,R1     address the tokend
+         L     R3,TOKPTR         address of host name token
+         SR    R4,R4
+         L     R4,TOKLEN     length of it
+         DROP  R1
+         C     R4,=F'8'      if > 8 trunc it.
+         BNH   OK2           it's ok
+         LA    R4,8          force to 8
+OK2      EQU   *
+         BCTR  R4,0          -1 for executed copy
+         LA    R2,THOST      dest of copy
+         EX    R4,COPY       copy it in
+         DROP  R6
+NOHOST1  EQU   *             here when avoiding null hostname    [1.22]
+         LA    R1,TCMD       point to tag command
+         LA    R0,TLEN       length of the command
+         DIAG  R1,R0,X'0008' do it
+         MVC   PROFUSER,TUSER copy sender into profs junk
+         PUNCHC PROFCARD     punch the profs card
+         LTR   R15,R15       check for error
+         BNZ   RET           and return if there is one
+*[1.20] END
+         L     R15,APUNHDR
+         CALL  (15),((R11))  PUNCH THE HEADER
+         LTR   R15,R15       ANY SCREW UPS?
+         BNZ   RET
+         L     R15,APUNTXT
+         CALL  (15),((R11))  PUNCH THE REST
+         LTR   R15,R15      ANY ERRORS?
+         BNZ   RET           OH WEEELLL....
+*[EMU1] BEGIN
+* Create a PROFS subject trailer card with Reply/Forward indicator
+* First, clear the card, then see if there is a Subject field
+         MVI   PROFSUBJ,C' '
+         MVC   PROFSUBJ+1(PROFCLEN-1),PROFSUBJ  fill with blanks
+         L     R4,MAILKTAB             get keyword table
+         L     R15,ATBLUK              tbluk address
+         CALL  (15),((R4),SUBJECT,L'SUBJECT,TWORK)
+         LTR   R15,R15                 find Subject?
+         BZ    SUBFOUND                yes, get it
+NOSUBJ   EQU   *
+         MVC   PROFSUBJ(10),=C'NO SUBJECT' else: be explicit
+         B     SUBJEND                 to endif
+SUBFOUND EQU   *
+         USING FIELDD,R1               address the field
+         L     R3,FISTR                start address of string
+         L     R15,FIEND               end address of string
+         DROP  R1
+         SR    R15,R3                  length-1 of string
+         SH    R15,=H'1'               trim trailing LF
+         BNP   NOSUBJ                  ---> No subject text
+TRIMSUBJ EQU   *
+         CLI   0(R3),C' '              leading blank?
+         BNE   SUBJTRIM                all done
+         LA    R3,1(R3)                bump pointer
+         BCT   R15,TRIMSUBJ            trim leading blank
+SUBJTRIM EQU   *
+         C     R15,=A(L'PROFSUBJ)      > space available?
+         BL    MOVESUBJ                if fits
+         LA    R15,L'PROFSUBJ-1        else truncate
+MOVESUBJ EQU   *
+         LA    R2,PROFSUBJ             prepare for EX
+         EX    R15,COPY                move subj to card
+SUBJEND  EQU   *                       subject text moved
+* Now see if Forward or Reply and if so set indicator      [EMU2]
+* Reply to Forwarded note removes Resent- fields           [EMU2]
+         L     R15,ATBLUK         tbluk address            [EMU2]
+         CALL  (15),((R4),RESENT,L'RESENT,TWORK)           [EMU2]
+         LTR   R15,R15            find Resent-?            [EMU2]
+         BNZ   FWDEND             Not found; not forward   [EMU2]
+         MVI   PROFTYPE,C'F'      set forwarded            [EMU2]
+         B     PUNSUBJ            go punch subj card       [EMU2]
+FWDEND   EQU   *                                           [EMU2]
+         L     R15,ATBLUK         tbluk address            [EMU2]
+         CALL  (15),((R4),NREPLYTO,L'NREPLYTO,TWORK)       [EMU2]
+         LTR   R15,R15            find In-Reply-To?        [EMU2]
+         BNZ   REPLYEND           Not found; not reply     [EMU2]
+         MVI   PROFTYPE,C'R'      set reply                [EMU2]
+         B     PUNSUBJ            go punch subj card       [EMU2]
+REPLYEND EQU   *                                           [EMU2]
+PUNSUBJ  EQU   *                                           [EMU2]
+         PUNCHC PROFCRD2     punch the profs subj card
+         LTR   R15,R15       check for error
+*[EMU1] END
+         L     R15,APUNCLS   ROUTINE TO CLOSE PUNCH
+         CALL  (15),((R11))  CALL IT
+         LTR   R15,R15       ANY ERRORS?
+         BNZ   RET           SORRY...
+         LA    R4,CPUSTR
+         LOG   OFS034,(CA,RECVR,CA,(R4))
+*----------[1] and [2]-------------------------------------------[2]
+*  Send a message to recipient of new mail telling him of the    [2]
+*  arrival.  The message sent is done by MSGNOH unless the       [2]
+*  parameter "MSGCMD" is found in MAILPTAB.  If found,  the      [2]
+*  value of MSGCMD is used as the CP command name.  Also,  an    [2]
+*  optional prefix may follow the message command.  This prefix  [2]
+*  is set in "MSGPREFIX".                                        [2]
+*                                                                [2]
+*  Message format is:                                            [2]
+*  (prefix) New mail from <From-field-contents>                  [2]
+*----------------------------------------------------------------[2]-
+         LA    R6,MSGBUF               [2] message buffer
+         L     R3,MAILPTAB             [2] parameter table
+         L     R15,ATBLUK              [2] tbluk routine
+         LA    R4,=C'MSGNOH'           [2] default msgcmd
+         LA    R5,6                    [2] Length
+         CALL  (15),((R3),MSGCMD,L'MSGCMD,TWORK)
+         LTR   R15,R15                 [2] find it?
+         BNZ   NOMSGCMD                [2] nope - use default
+         LA    R4,1(R1)                [2]msgcmd name
+         SR    R5,R5
+         IC    R5,0(R1)                [2]lenght
+NOMSGCMD EQU   *
+         LR    R7,R5                   [2]length of MVCL
+         MVCL  R6,R4                   [2]move into header
+         MVI   0(R6),C' '              [2]insert space
+         LA    R6,1(R6)                [2]
+*--- now move in the recipient userid... [2]
+         LA    R4,RECVR                [2]receiver userid
+         L     R5,RCVRLEN              [2] and length
+         LR    R7,R5                   [2]
+         MVCL  R6,R4                   [2]"MSGNOH userid" so far
+         MVI   0(R6),C' '
+         LA    R6,1(R6)
+*--- see if msgprefix is defined...
+         L     R3,MAILPTAB             [2]get parmater table
+         L     R15,ATBLUK              [2]
+         CALL  (15),((R3),MSGPREF,L'MSGPREF,TWORK) [2]
+         LTR   R15,R15                 [2] not found?
+         BNZ   NOPREFIX                [2] just as well
+         LA    R4,1(R1)                [2] start of data
+         SR    R5,R5
+         IC    R5,0(R1)                [2] length
+         LR    R7,R5                   [2]
+         MVCL  R6,R4                   [2] move the prefix in
+         B     NOPREFI2                -> skip default prefix    [1.24]
+NOPREFIX EQU   *
+         MVI   0(R6),C'*'              default for GONE, et. al. [1.24]
+         LA    R6,1(,R6)               increment pointer         [1.24]
+NOPREFI2 EQU   *                       <- here when had prefix   [1.24]
+         MVI   0(R6),C' '
+         LA    R6,1(R6)
+         MVC   0(L'NEWMSG,R6),NEWMSG   [2] nice message
+         LA    R6,L'NEWMSG(R6)         [2]
+*-- now (finally) add the from field from the memo header [2]
+         L     R4,MAILKTAB             [1]get keyword table
+         L     R15,ATBLUK              [1]tbluk address
+*[4]     CALL  (15),((R4),FROM,L'FROM,TWORK)     [1]
+*[4]     LTR   R15,R15                 [1]find it?
+*[4]     BNZ   RET                     [1]nope - just return
+         L     R1,MAILSFLD             [4]get sender FIELDD
+         USING FIELDD,R1               [1]address the field
+         L     R2,FISTR                [1]start address of string
+         L     R3,FIEND                [1]end address of string
+         DROP  R1                      [1]
+         SR    R3,R2                   [1]length of string
+*---- trim leading blanks ----- [2]
+TRIMIT   EQU   *
+         CLI   0(R2),C' '              [2] leading blank?
+         BNE   TRIMMED                 [2] all done
+         LA    R2,1(R2)                [2] bump pointer
+         BCT   R3,TRIMIT               [2] trim leading blk
+TRIMMED  EQU   *                       [2]
+         LR    R4,R3                   [2]hold length for later
+         LA    R7,L'MSGBUF+MSGBUF      [2] addr of end
+         SR    R7,R6                   [2] remainder available
+         SR    R4,R7                   [2]|from| - |available|
+         BH    FROMLONG                [2]from is longer; trunc it
+         LR    R7,R3                   [2]from is shorter;
+FROMLONG EQU   *                       [2]
+         MVCL  R6,R2                   [2]copy into message
+         LA    R1,MSGBUF               [2]point to msg command
+         LR    R0,R6                   [2]
+         S     R0,=A(MSGBUF)           [2] total length
+         DC    X'83100008'             [1]send it off
+         SR    R15,R15                 [4]clean RC
+RET      EQU   *
+         L     R13,4(R13)
+         L     R14,12(R13)
+         LM    R0,R12,20(R13)
+         BR    R14
+         SPACE ,
+*--------------------------------------------------------------------
+*  ERROR/SPECIAL HANDLING
+*--------------------------------------------------------------------
+NOFILES  EQU   *             NOT ALLOWED TO SEND FILES TO THESE IDS
+         LOG   OFS033,(CA,RECVR)  TELL THE USER
+         LA    R15,4         ERROR RETCODE
+         B     RET
+         SPACE ,
+ILLEGAL  EQU   *
+         LOG   OFS031,(CA,(R9))
+         LA    R15,4
+         B     RET
+         SPACE ,
+NOSUCH   EQU   *
+         LOG   OFS032,(CA,RECVR)
+         LA    R15,4
+         B     RET
+*
+COPY     MVC   0(0,R2),0(R3)
+MOVEIT   MVC   RECVR(0),0(R9)
+UPIT     TR    RECVR(0),UPCASE
+         SPACE ,
+         LTORG ,
+FROM     DC    C'From'                 [1]
+SUBJECT  DC    C'Subject'              [EMU1]
+RESENT   DC    C'Resent-To'            [EMU2]
+NREPLYTO DC    C'In-Reply-To'          [EMU2]
+MSGCMD   DC    C'Msgcmd'               [2]
+MSGPREF  DC    C'Msgprefix'            [2]
+NEWMSG   DC    C'New mail from '       [2]
+SAVE     DS    18F
+TWORK    DS    64F
+MYPAB    DS    F
+         DC    A(MYACT)      COPY OF ACTADR FOR SPECIAL EXIT
+MYACT    DS    (ACTLEN/4)F
+RCVRLEN  DS    F                       [2]
+RECVR    DS    CL8
+MSGBUF   DS    CL130                    [2]
+PROFCARD DC    CL80' '       [1.20]
+         ORG   PROFCARD      [1.20]
+         DC    C':READ '     [1.20]
+PROFUSER DC    CL8' '        [1.20]
+         DC    C' NOTE     A' [1.20]
+         ORG   ,             [1.20]
+         SPACE ,             [1.20]
+TCMD     DC    C'TAG DEV PUN FILE ('   [1.20]
+TNUM     DC    CL4'0000',C') ORIGIN '  [1.20]
+THOST    DC    CL8' ',C' '             [1.20]
+TUSER    DC    CL8' '                  [1.20]
+TLEN     EQU    *-TCMD                 [1.20]
+PROFCRD2 DC    CL80' '                 [EMU1]
+         SPACE ,                       [EMU1]
+         ORG   PROFCRD2                [EMU1]
+         DC    X'FFFF40404040'         [EMU1]
+PROFSUBJ DS    CL65                    [EMU1]
+         DS    CL6                     [EMU1]
+PROFTYPE DS    CL1                     [EMU1]    R=REPLY F=FORWARD
+PROFCLEN EQU   *-PROFSUBJ              [EMU1]    LENGTH TO CLEAR
+         ORG   ,
+         END   PROFS

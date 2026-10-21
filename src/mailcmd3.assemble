@@ -1,0 +1,629 @@
+MAILCMD3 TITLE 'VM Network Mailer Release 2 - Command processor'
+*---------------------------------------------------------------------*
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         *
+*    Program Property of the Trustees of Columbia University in the   *
+*    City of New York.                                                *
+*                Copyright (c) 1990 Princeton University              *
+*---------------------------------------------------------------------*
+         SPACE 1
+MAILCMD3 CSECT ,
+         SPACE 1
+* MAILCMD3 -
+*
+* CALLED VIA -
+*  CALL MAILCMD3,(MAILBLOK,MSGBLOK)
+         SPACE 1
+PAB      DSECT ,
+@MBLOK   DS    A                   MAILBLOK address
+@MSGBLOK DS    A                   MSGBLOK address
+         SPACE
+* REGISTER USAGE -
+         SPACE 1
+R0  EQU  0 - Work reg
+R1  EQU  1 - Work reg
+R2  EQU  2 -
+R3  EQU  3 -
+R4  EQU  4 - Console message processing
+R5  EQU  5 -
+R6  EQU  6 -
+R7  EQU  7 -
+R8  EQU  8 -
+R9  EQU  9 -
+R10 EQU 10 - Internal subroutine linkage
+R11 EQU 11 - MAILBLOK BASE
+R12 EQU 12 - PROGRAM BASE
+R13 EQU 13 - SAVE AREA
+R14 EQU 14 - SUBROUTINE LINKAGE
+R15 EQU 15 - SUBROUTINE LINKAGE
+         BLOCKS ,
+         NUCON DSECT
+         COPY  IPARML
+         MSGBLOK ,
+         MAILBLOK ,
+         COPY  MAILEQU
+         TRACETBL ,
+         EJECT
+MAILCMD3 CSECT ,
+         USING MAILCMD3,R15  TEMPORARY ADDRESSABILITY
+         B     EYESKIP       BRANCH OVER EYESKIP
+MYNAME   DC    CL8'MAILCMD3',CL8'&SYSDATE'
+EYESKIP  DS    0H
+         DROP  R15
+         STM   R14,R12,12(R13) SAVE CALLER'S REGS
+         LR    R12,R15       PERMANENT ADDRESSABILITY
+         USING MAILCMD3,R12
+         LA    R14,SAVE      MY SAVE AREA
+         ST    R13,4(R14)    SAVE CALLER'S PTR
+         ST    R14,8(R13)    CHAIN MINE BACK
+         LR    R13,R14       SET MY SAVE PTR
+         USING PAB,R1        ADDRESS PARMS
+         L     R11,@MBLOK    GET MAILBLOK
+         L     R9,@MSGBLOK         Get MSGBLOK
+         SPACE 1
+         DROP  R1
+         USING MAILBLOK,R11
+         USING MSGBLOK,R9
+         SPACE ,
+*--------------------------------------------------------------------
+*        Route to the appropriate command
+*--------------------------------------------------------------------
+         SPACE 1
+LOOP     EQU   *
+         L     R14,ARGVP           Pick up token ptr
+         S     R14,=F'4'           Back up to command name
+         L     R14,0(,R14)         Pick up length and address
+         SRDL  R14,24              Length
+         SRL   R15,8                   and address
+         LA    R0,CMDTAB           Command table address
+         CALL  TBLUK,((0),(15),(14),TWORK)
+         C     R15,=F'4'           Found an entry?
+         BNHR  R1                  ---> Go to it
+         B     LOGICERR            ---> HUH?, MAILCMD0 sent this here
+         SPACE 2
+* MAILCMD3 called when processing routine not found in MAILCMD3
+         SPACE 1
+LOGICERR EQU   *
+         LA    R1,LOGICMSG         Point to msg
+         LA    R0,L'LOGICMSG       Get length
+         BAL   R14,WRITEMSG        Send the msg
+         B     DONE                Get out
+         SPACE 1
+LOGICMSG DC    C'MAILCMD3:  Command table error in MAILCMD0'
+         SPACE 2
+* All processors return here when done
+         SPACE 1
+DONE     EQU   *
+         LA    R15,0               Set return code
+         L     R13,4(R13)          Previous save area
+         L     R14,12(R13)         Pick R14
+         LM    R0,R12,20(R13)      Pick up R0-R12
+         BR    R14                 Return
+         SPACE 3
+* Table for command routing
+         SPACE 2
+CMDTAB   TBSTART ,
+         T 'SET'                   SET command
+         TBEND ,
+         SPACE 3
+*-------------------------------------------------------------------
+* BOGUS command routine
+*
+* This routine is used when the command is invalid or the user
+* is not authorized to do what they have requested.
+*--------------------------------------------------------------------
+         SPACE 1
+BOGUS    DS    0H
+         L     R1,=A(BOGMSG)       Point to message
+         LA    R0,L'BOGMSG              and get length
+         BAL   R14,WRITEMSG        Write it
+         B     DONE
+         SPACE 1
+BOGMSG   DC    C'Command not allowed or invalid.'
+         EJECT ,
+*--------------------------------------------------------------------
+*                            S E T
+*
+*  An authorized user may issue SET commands.  The authorization of
+*  this user has already been checked in MAILCMD0, so no testing
+*  is needed here.
+*
+*  The SET command can be used to SET and UNSET bit values using
+*
+*          SET  BIT bitname  True | False
+*
+*  The SET command can be used to SET and UNSET variable values using
+*
+*          SET  VAR name   < value-string >
+*
+*  The absence of 'value-string' will cause the variable to be set
+*  to a null string.
+*
+*
+* Register usage local to SET processing:
+*
+*    R0  - Work reg
+*    R1  - Work reg
+*    R2  - Bit/Variable name array entry ptr
+*    R3  - Bit/Variable name array entry count
+*    R4  - Token length
+*    R5  - Token address
+*    R6  - Ptr to bit table entry
+*    R7  - Bit/Var name string ptr
+*    R8  - Bit value
+*    R9  -
+*    R10 - Internal subroutine linkage
+*    R11 - MAILBLOK base
+*    R12 - PROGRAM base
+*    R13 - Save area
+*    R14 - Work reg
+*    R15 - Decremented length of string (R4-1)
+*--------------------------------------------------------------------
+         SPACE 1
+$SET     DS    0H
+         CLC   ARGC,=F'0'          Any arguments?
+         BE    $SETHELP            ---> No, go tell them how
+         L     R15,ARGVP           Get pointer to next token
+         L     R4,0(R15)           Get address of next token
+         LA    R15,4(,R15)         Bump ARGV pointer to next token
+         ST    R15,ARGVP           Update ARGV pointer
+         L     R15,ARGC            Get remaining token count
+         BCTR  R15,0               Decrement
+         ST    R15,ARGC            Update it
+         LA    R0,SETTAB           SET options table
+         SRDL  R4,24               Length of token
+         SRL   R5,8                    and address
+         CALL  TBLUK,((0),(5),(4),TWORK)
+         C     R15,=F'4'           Unique substring found?
+         BNHR  R1                  ---> Go to command routine
+         B     BOGUS               ---> Unknown command
+         SPACE 1
+SETTAB   TBSTART ,           SHOW COMMAND OPTIONS
+         T '?',$SETHELP
+         T 'BIT',$SETBIT
+         T 'HELP',$SETHELP
+         T 'VAR',$SETVAR
+         TBEND
+         EJECT ,
+*----------------------------------------------------------------------
+*                          S E T     B I T
+*
+*  Set/unset a bit value
+*----------------------------------------------------------------------
+$SETBIT  DS    0H
+         CLC   ARGC,=F'2'          Correct number of parms?
+         BNE   $SETHELP            ---> No, give them help
+         L     R1,ARGVP            Get the token address
+         L     R4,0(R1)            Get token ptr
+         LA    R1,4(,R1)           Bump pointer
+         ST    R1,ARGVP            Update
+         L     R15,ARGC            Get current count
+         BCTR  R15,0               Decrement
+         ST    R15,ARGC            Update
+         SRDL  R4,24               Get token length
+         SRL   R5,8                    and address
+         CLI   0(R1),1             Only 1 character?
+         BNE   $SBIT00             ---> No, must be name
+         CLI   0(R5),C'?'          Help request?
+         BE    $SETHELP            ---> Yes
+$SBIT00  EQU   *
+         LR    R3,R4               Save the length here
+         MVI   WORKBUF,C' '        Clear to blanks
+         MVC   WORKBUF+1(L'WORKBUF-1),WORKBUF
+         LR    R15,R3              Copy length
+         BCTR  R15,0               Decrement for execute
+         EX    R15,$SBITMV1        Copy to work area
+         EX    R15,$SBITUP         Uppercase token
+         LA    R15,WORKBUF+1(R3)   Point into output buffer
+         MVI   0(R15),C'='         Move in equal sign
+         SPACE 1
+         LA    R6,PBITARR          Start of regular bit array
+         LA    R7,PBITLEN          Number of entries
+         BAL   R10,BITSRCH         Go find entry
+         B     $SBIT20             ---> Found
+         LA    R6,DBITARR          Start of debug bit array
+         LA    R7,DBITLEN          Number of entries
+         BAL   R10,BITSRCH         Go find entry
+         B     $SBIT20             ---> Found
+         LA    R15,WORKBUF+1(R3)   Where the text goes
+         MVC   0(9,R15),=CL9'not found'
+         LA    R1,WORKBUF          Msg text
+         LA    R0,11(,R3)             & length
+         BAL   R14,WRITEMSG
+         B     DONE
+         SPACE 2
+$SBIT20  EQU   *                   Bit name found
+         L     R7,0(R6)            Offset to flag byte in MAILBLOK
+         LA    R7,MAILBLOK(R7)     Address of flag byte in MAILBLOK
+         L     R8,8(R6)            Flag bit
+         L     R1,ARGVP            Get the next token address
+         L     R4,0(R1)            Get token ptr
+         SRDL  R4,24               Get token length
+         SRL   R5,8                    and address
+         CALL  TBLUK,($SBIT22,(5),(4),TWORK)
+         C     R15,=F'4'           Unique substring found?
+         BNHR  R1                  ---> Go to appropriate routine
+         B     $SETHELP            ---> Unknown command
+         SPACE 1
+$SBIT22  TBSTART ,                 True/False check
+         T 'FALSE',$SBIT30
+         T 'TRUE',$SBIT35
+         TBEND
+         SPACE 1
+$SBIT30  DS    0H
+         X     R8,=F'-1'           Flip the bits
+         EX    R8,$SBITNI          NI 0(R7),X'00'
+         LA    R15,WORKBUF+3(R3)   Where the text goes
+         MVC   0(5,R15),=C'False'  Finish message
+         LA    R0,8(,R3)           Total message length
+         B     $SBIT40
+         SPACE 1
+$SBIT35  EQU   *
+         EX    R8,$SBITOI          OI 0(R7),X'00'
+         LA    R15,WORKBUF+3(R3)   Where the text goes
+         MVC   0(4,R15),=C'True'   Finish message
+         LA    R0,7(,R3)           Total message length
+$SBIT40  EQU   *
+         LA    R1,WORKBUF          Message buffer
+         BAL   R14,WRITEMSG        Write it
+         B     DONE
+         SPACE 2
+BITSRCH  DS    0H
+*  WORKBUF+0 - Name translated to uppercase
+*  R4 - Name length
+*  R6 - First entry address
+*  R7 - Count of entries
+         LR    R14,R4              Copy value
+         BCTR  R14,0               Decrement for EX
+BITSRCH0 EQU   *
+         L     R15,4(,R6)          Flag name ptr
+         CH    R4,0(R15)           Lengths match?
+         BNE   BITSRCH2            ---> No
+         EX    R14,BITCLC01        Names matchs?
+         BER   R10                 ---> Return
+BITSRCH2 EQU   *
+         LA    R6,12(,R6)          Bump ptr to next entry
+         BCT   R7,BITSRCH0         ---> Keep looking
+         B     4(,R10)             ---> Not found
+         SPACE 2
+BITCLC01 CLC   WORKBUF(0),2(R15)
+         SPACE 2
+$SBITMV1 MVC   WORKBUF(0),0(R5)    Executed
+$SBITNI  NI    0(R7),X'00'         Exeduted
+$SBITOI  OI    0(R7),X'00'         Exeduted
+$SBITUP  TR    WORKBUF(0),UPCASE   Executed
+         EJECT ,
+*----------------------------------------------------------------------
+*                         S E T     H E L P
+*
+*  Help for SET command
+*----------------------------------------------------------------------
+$SETHELP DS    0H                  Command help msg
+         L     R1,=A(SETHELP)
+         LA    R0,SETHELPL
+         BAL   R14,WRITEMSG        Write usage message
+         B     DONE
+         SPACE 1
+SETHELP  DC    C'SET usage:  SET  BIT  bitname  True|False'
+*        DC    X'15'
+*        DC    C'            SET  VAR  varname  <value>'
+SETHELPL EQU   *-SETHELP
+         EJECT ,
+*----------------------------------------------------------------------
+*                          S E T     V A R
+*
+*  Set/unset a variable value
+*----------------------------------------------------------------------
+$SETVAR  DS    0H
+         CLC   ARGC,=F'1'          Not enough parms?
+         BL    $SETHELP            ---> No, give them help
+         L     R1,ARGVP            Get the token address
+         L     R4,0(R1)            Get token ptr
+         SRDL  R4,24               Get token length
+         SRL   R5,8                    and address
+         CLI   0(R1),1             Only 1 character?
+         BNE   $SVAR00             ---> No, must be name
+         CLI   0(R5),C'?'          Help request?
+         BE    $SETHELP            ---> Yes
+$SVAR00  EQU   *
+         B     DONE
+         EJECT ,
+***********************************************************************
+*
+*  RCMSG - Format return code message
+*
+*  Regs at entry:
+*
+*    R14 - Return address
+*    R15 - Return code to format
+*
+*  Registers at exit:
+*
+*    R0  - Total message lengt
+*    R1  - Message address
+*    R15 - Destroyed
+*
+*  Exit to R14+0
+*
+***********************************************************************
+         SPACE 1
+RCMSG    DS    0H                  Report on result of operation
+         MVC   MSGRC(14),=C'R(     ) for: '  Initialize
+         MVC   MSGRCCMD,MSGRCCMD-1 Clear buffer
+         CVD   R15,DWORD           Convert it to something readable
+         UNPK  MSGRCRC,DWORD       Unpack it
+         OI    MSGRCRC+L'MSGRCRC-1,X'F0' Kill the zone
+         L     R1,ARGV             Get pointer to first token
+         LA    R1,0(,R1)           Clean up high end
+         L     R15,@MESSAGE        Original msg start
+         A     R15,@MSGLEN         + Total length
+         SR    R15,R1              - Token start = length left
+         C     R15,=A(L'MSGRCCMD)  Enough space?
+         BNH   RCMSG010            ---> Yes
+         LA    R15,L'MSGRCCMD      No, truncate
+RCMSG010 EQU   *
+         BCTR  R15,0               Decrement for execute
+         EX    R15,MOVECMD         Move in command
+         LA    R1,MSGRC            Message address
+         LA    R0,MSGRCCMD-MSGRC+1(,R15)     Total length
+         BR    R14                 Return
+         SPACE 1
+MOVECMD  MVC   MSGRCCMD(0),0(R1)
+         TITLE 'VM Network Mailer Release 2 - Command processor internaX
+               l subroutines'
+***********************************************************************
+*                                                                     *
+*  CHKAUTH - Check if user is authorized                              *
+*                                                                     *
+*  Regs on entry:                                                     *
+*                                                                     *
+*     R9   - MSGBLOK block base                                       *
+*     R14  - Return address                                           *
+*                                                                     *
+*  Regs on exit:                                                      *
+*                                                                     *
+*     R2 - R13 Unchanged                                              *
+*                                                                     *
+*  Exit made to:    R14+0  - Not authorized                           *
+*                   R14+4  - Authorized user                          *
+*                                                                     *
+*                                                                     *
+***********************************************************************
+         SPACE 1
+CHKAUTH  EQU   *                   Check authorization
+         SPACE 1
+         USING MSGBLOK,R9
+         SPACE 1
+         CLC   SRCCODE,=A(CMDCONS) Command from console?
+         BE    CHKOK
+         CLC   SRCCODE,=A(CMDSMSG) Command from smsg?
+         BE    CHKSMS              Check smsg source
+         CLC   SRCCODE,=A(CMDNET)  Command from network?
+         BE    CHKSMS              ---> Yes
+         B     0(,R14)             ---> Unknown source, not authorized
+CHKSMS   EQU   *
+         LA    R15,MAINTID         Point to first entry of table
+CHKSMS10 DS    0H
+         CLI   0(R15),X'FF'                    At end of list?
+         BE    CHKNOTOK                   ---> Yes, SMSG is illegal
+         CLC   MAINTNOD-MAINTID(,R15),=8X'00'  No cpu specified?
+         BE    CHKSMS30                   ---> Yes, accept any
+         CLC   SRCCODE,=A(CMDNET)              Command from network?
+         BE    CHKSMS20                   ---> Yes, node id present
+         CLC   MAINTNOD-MAINTID(,R15),CPUSTR   Maintainer on this cpu?
+         BNE   CHKSMS40                   ---> No, go try next
+         B     CHKSMS30                   ---> Yes, go check id
+         SPACE 1
+CHKSMS20 DS    0H
+         CLC   MAINTNOD-MAINTID(,R15),SRCNODE  Maintainer node match?
+         BNE   CHKSMS40                   ---> No, go try next
+         SPACE 1
+CHKSMS30 DS    0H
+         CLC   MAINTID-MAINTID(,R15),SRCUSER   Sender on the list?
+         BE    CHKOK                      ---> Yes
+         SPACE 1
+CHKSMS40 DS    0H
+         LA    R15,MAINTID2-MAINTID(R15)  To the next entry
+         B     CHKSMS10
+         SPACE 1
+CHKNOTOK EQU   *
+         B     0(,R14)
+         SPACE 1
+CHKOK    EQU   *
+         B     4(,R14)
+         EJECT ,
+*--------------------------------------------------------------------
+*
+* FIND15 - Finds next newline in a string
+*
+* Registers at entry:
+*
+*  R1  - Address of string
+*  R2  - Length of string
+*  R14 - Return address
+*
+* Registers at exit:
+*
+*  R0  - Length of substring
+*  R1  - Updated to pointer after x'15'
+*  R2  - Remaining string length
+*
+*--------------------------------------------------------------------
+FIND15   EQU   *
+         SR    R0,R0         CHARACTER COUNTER
+FIND15L  EQU   *
+         CLI   0(R1),X'15'   FIND X'15'?
+         BE    F15RET        YES... RETURN
+         LA    R1,1(R1)      BUMP POINTER
+         A     R0,=F'1'      BUMP LENGTH COUNTER
+         BCT   R2,FIND15L    LOOP BACK TO TEST NEXT CHARACTER
+F15RET   EQU   *
+         LA    R1,1(R1)      POINT PAST THE X'15'
+         BCTR  R2,0          -1 FOR THE X'15' FROM LENGTH
+         BR    R14
+         EJECT ,
+*--------------------------------------------------------------------
+*                          F R E E E V A L
+*
+*  Free an EVALBLOK returned from REXX function call
+*
+*--------------------------------------------------------------------
+         SPACE 1
+FREEEVAL DS    0H
+         CLC   $EXCFUNR,=F'0'      Anything to free?
+         BER   R14                 ---> No
+         L     R1,$EXCFUNR         Pick up EVALBLOK ptr
+         L     R0,4(,R1)           Get length in dblwords
+         XC    $EXCFUNR,$EXCFUNR   Clear the pointer
+         DMSFRET LOC=(1),DWORDS=(0) Free the EVALBLOK
+         BR    R14                 Return to caller
+         EJECT ,
+*--------------------------------------------------------------------
+*                           W R I T E M S G
+*
+*  Send reply to the command issuer.  Multiline replies are seperated
+*  by x'15' (newline) characters.  Registers are as follows:
+*        R1 - message address
+*        R0 - length
+*--------------------------------------------------------------------
+         SPACE 1
+WRITEMSG DS    0H
+         STM   R14,R12,12(R13)
+         LA    R15,WRITSAVE        Point to our save
+         ST    R15,8(,R13)         Chain forward
+         ST    R13,4(,R15)         Chain back
+         LR    R13,R15             Point to the new save area
+         LR    R7,R1
+         LR    R8,R0
+MESSAGE1 EQU   *
+         LTR   R2,R8               Length zero?
+         BNH   MSGRET              Just return
+         LR    R5,R7               Address of string
+         LR    R1,R5
+         BAL   R14,FIND15          Get end of string
+         LR    R7,R1               Copy for next pass thru loop
+         LR    R8,R2
+         LR    R3,R0
+         CLC   SRCCODE,=A(CMDCONS) Is it from the console?
+         BE    MSGCON              Message to console
+         CLC   SRCCODE,=A(CMDSMSG) Is it from SMSG?
+         BE    MSGMSG              Msg back via MSG command
+         CLC   SRCCODE,=A(CMDNET)  Is it from the network?
+         BE    MSGNET              Yes : Output via network.
+         B     MSGRET              Unknown code
+MSGCON   EQU   *
+         WRTERM (R5),(R3)          Write reply to console
+         B     MESSAGE1            Get the next line if there is one
+MSGNET   DS    0H
+         MVC   MSGBUF,=CL18'SMSG rscsname MSG '
+         MVC   MSGBUF+5(8),RSCSNAME
+         B     MSGCOMM
+MSGMSG   EQU   *
+         TM    FLAG,SMSFLG   WANT SMSG REPLY?
+         BNO   MSG2          NOPE
+         MVC   MSGBUF,=CL18'SMSG '
+         B     MSGCOMM
+MSG2     EQU   *
+         MVC   MSGBUF,=CL18'MSGNOH '
+         L     R14,MAILPTAB        Parameter table
+         L     R15,ATBLUK          TBLUK routine
+         CALL  (15),((R14),MSGCMD,L'MSGCMD,TWORK)
+         LTR   R15,R15             Found MSGCMD?
+         BNZ   MSGCOMM             ---> No
+         MVC   MSGBUF,=CL18' '     Clear all blanks
+         IC    R15,0(R1)           Get length
+         C     R15,=F'8'           Longer than 8?
+         BH    MSGCOMM             ---> Yes, can't use it
+         BCTR  R15,0               Decrement for EX
+         EX    R15,MSGCMDMV        Move in the command
+         B     MSGCOMM
+         SPACE 1
+MSGCMDMV MVC   MSGBUF(1),1(R1)     Executed
+         SPACE 1
+MSGCOMM  DS    0H
+         C     R3,=A(L'MSGDATA) ROOM FOR THE DATA?
+         BNH   *+8
+         LA    R3,L'MSGDATA  TRUNC IT
+         BCTR  R3,0          -1 FOR EXECUTE
+         EX    R3,MOVEDATA   MVC MSGDATA(0),0(R5)
+         LA    R3,MSGLEN+1(R3) LENGTH OF ENTIRE COMMAND
+         LA    R1,MSGBUF
+         LR    R0,R3         GET LENGTH
+         DC    X'83100008'   MESSAGE TO SENDER
+         LTR   R0,R0         OK RETCODE?
+         BZ    MESSAGE1      TRY FOR NEXT LINE
+         C     R0,=F'1'      MSGNOH UNKNOWN FOR THIS USER?
+         BNE   MSGRET        NO, OTHER ERROR (I.E. NOT LOGGED IN)
+         CLC   =CL4'MSG ',MSGBUF   Was it MSG?
+         BE    MSGRET              ---> Yes, can't fix it up then.
+         MVC   MSGBUF,=CL18'MSG '  USE MSG COMMAND INSTEAD
+MSG3     EQU   *
+         LA    R1,MSGBUF
+         LR    R0,R3
+         DC    X'83100008'    SEND THE MSG
+         LTR   R0,R0         OK RETCODE?
+         BZ    MESSAGE1      YES, DO NEXT LINE
+MSGRET   EQU   *
+         L     R13,4(,R13)         Back to previous save area
+         LM    R14,R12,12(R13)
+         BR    R14
+         SPACE ,
+MOVEDATA MVC   MSGDATA(0),0(R5)
+         SPACE ,
+ENDMSG   DS    0H            <- here to end multi-line reply
+         L     R1,=A(ENDMESG) end marker
+         LA    R0,L'ENDMESG  length of above
+         BAL   R14,WRITEMSG   and send the message
+         B     DONE          and return
+         SPACE 1
+ENDMESG  DC    C'- output complete.'
+         SPACE ,
+         DROP  R9
+         TITLE 'VM Network Mailer Release 2 - Command processor data arX
+               eas'
+         LTORG ,
+         SPACE 2
+SAVE     DS    18F                 Save area
+WRITSAVE DS    18F                 WRITEMSG save area
+DWORD    DS    D
+         SPACE 1
+TWORK    DS    64F                 TBLUK work area
+         SPACE 1
+MSGCMD   DC    C'Msgcmd'           For TBLUK lookup
+         SPACE 1
+MSGRC    DS    C'R('               Return code message
+MSGRCRC  DS    CL5
+         DS    C') for: '
+MSGRCCMD DS    CL100
+         SPACE 2
+*  Data areas for EXEC command processing
+         SPACE 2
+         DS    0D
+$EXCPL   DC    CL8'EXEC'           Tokenized plist
+$EXCPLFN DC    CL8'xxxxxxxx'       FORWARD | MAILLIST
+         DC    8X'FF'              Fence for pretty
+         SPACE 1
+$EXCEPL  DC    A($EXCPL)           Point to 'EXEC'
+         DC    A($EXCARGS)         Start of arguments
+         DC    A($EXCARGE)         End of arguments
+         DC    A($EXCFBLK)         File block pointer
+         DC    A($EXCARGL)         Argument list ptr
+$EXCFUNR DC    A(0)                Function return
+         SPACE 1
+$EXCARGL DS    0F                  REXX argument list
+         DC    A($EXCARGS),A($EXCARGE-$EXCARGS)
+$EXCARG2 DC    A(0),A(0)           Address/length of 'MSGCMD' value
+         DC    8X'FF'
+         SPACE 1
+$EXCFBLK DS    0F
+         DC    CL8' '              FN = ?
+         DC    CL8'MAILER'         FT = MAILER
+         DC    CL2'*'              FM = *
+         DC    H'0'                No extension
+         SPACE 1
+$EXCARGS DS    0C                  Arguments start here
+         DC    CL256' '            Command arguments
+$EXCARGE EQU   *                   End of arguments
+         SPACE 1
+WORKBUF  DS    CL256' '            Output buffer
+         SPACE 3
+         END   MAILCMD3

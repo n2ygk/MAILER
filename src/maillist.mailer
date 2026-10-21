@@ -1,0 +1,944 @@
+/* ****************************************************************** */
+/*  MAILLIST - Implement the MAILLIST command                         */
+/* ****************************************************************** */
+/*              (c) Copyright Princeton University 1991               */
+/* ****************************************************************** */
+/*                                                                    */
+/*  Privileged command syntax (mail maintainers only):                */
+/*                                                                    */
+/*     MAILLIST CREATE   listid  listowner < listowner < ... >>       */
+/*              DESTROY  listid                                       */
+/*                                                                    */
+/*  Command syntax for list owner or mail maintainers:                */
+/*                                                                    */
+/*     MAILLIST ADD      listid  destid                               */
+/*-             ADDOWNER listid  listowner < listowner < ... >>       */
+/*              DELETE   listid  destid                               */
+/*-             DELOWNER listid  listowner < listowner < ... >>       */
+/*                                ALL                                 */
+/*                                                                    */
+/*  Command syntax for general users:                                 */
+/*                                                                    */
+/*     MAILLIST LIST     listid                                       */
+/*                                                                    */
+/*                                                                    */
+/*  This EXEC provides the code to maintain mail distribution lists.  */
+/*  It modifies the contents of a file identified as 'listid MAILLIST'*/
+/*  which is kept on MAILER's 191 disk.                               */
+/*                                                                    */
+/*  A list must be initially created by a user recognized as a mail   */
+/*  maintainer.  Once the list is created, the list owners or a       */
+/*  mail maintainer may modify its contents.  List owners must        */
+/*  reside on the NJE network.                                        */
+/*                                                                    */
+/*  This code expects that the 'destid' will be in standard RFC822    */
+/*  format OR specified as 'userid AT node'.  All other formats       */
+/*  should be rejected.                                               */
+/*                                                                    */
+/*  MAILLIST uses comment lines in the file for control information.  */
+/*  Comment lines are identified by having an '*' as the first        */
+/*  non-blank character on the line.                                  */
+/*                                                                    */
+/*  The first line of the MAILLIST fils is always a comment and       */
+/*  contains:                                                         */
+/*                                                                    */
+/*  *  Created: mm/dd/yy hh:mm:ss    Updated: mm/dd/yy hh:mm:ss       */
+/*                                                                    */
+/*  Scattered throughout the remainder of the file are owner          */
+/*  comments:                                                         */
+/*                                                                    */
+/*  *  Owner: user@node <user@node <...>>                             */
+/*                                                                    */
+/*  Owner lines are added and deleted as required to hold the entire  */
+/*  list of owners for this distribution list.  These ids are *NOT*   */
+/*  kept in sorted order.                                             */
+/*                                                                    */
+/* ****************************************************************** */
+
+address COMMAND                              /* Set environment       */
+
+signal on halt                               /* Set traps             */
+signal on syntax
+signal on novalue
+
+parse arg '(' requestorid '@' requestornode ')'  maintainer ,
+          cmdstring , msgcmd , localnode . , diskmode .
+cmdstring = strip(cmdstring)                 /*                       */
+if translate(word(cmdstring,1)) = 'MAILLIST'  then
+   cmdstring = subword(cmdstring,2)          /*                       */
+
+/*  Set some defaults  */
+
+console = 0                                  /* Not from console      */
+if diskmode = ''  then  diskmode = 'A'       /* Disk mode on which    */
+                                             /*   to write files      */
+exitrc  = 0                                  /*                       */
+if msgcmd = ''  then                         /* Set msg cmd default   */
+   msgcmd  = 'MSGNOH'                        /*    if none given      */
+operations = 'ADD ADDOWNER CREATE DELETE DELOWNER DESTROY LIST'
+requestor = '*CONSOLE*'                      /*                       */
+
+/*  Determine source of request */
+
+select
+   when  requestorid = 'CONSOLE' & ,         /*                       */
+         requestornode = localnode  then     /*                       */
+      console = 1                            /*                       */
+   when  requestornode = ''  then  do        /*                       */
+      requestornode = localnode              /*                       */
+      requestor = space(requestorid'@'requestornode,0)
+      end
+   when  requestornode <> ''  then           /*                       */
+      requestor = space(requestorid'@'requestornode,0)
+   otherwise  do                             /*                       */
+      say 'Maillist:  Invalid combination'    /*                      */
+      say '        :  Requestorid   = "'requestorid'"
+      say '        :  Requestornode = "'requestornode'"
+      say ' '
+      exit 8
+      end
+   end
+
+/* A little debugging code */
+
+parse arg original                           /*                       */
+if maintainer  then  mflag = '(maintainer)'  /*                       */
+else  mflag = ''                             /*                       */
+say 'Maillist:  Cmd       = "'strip(original)'"'
+say '        :  Requestor = "'requestor'"' mflag
+say '        :  Cmdline   = "'cmdstring'"'
+say '        :  Msgcmd    = "'msgcmd'"'
+say '        :  Thisnode  = "'localnode'"'
+say '        :  Diskmode  = "'diskmode'"'
+
+
+/* Do some command checking */
+
+if cmdstring = ''  then  do                  /*                       */
+   if maintainer  then                       /*                       */
+      call msg 'No action (ADD, ADDOWNER, CREATE, DELETE, DELOWNER' ,
+               'DESTROY or LIST) has been specified'
+   else                                      /*                       */
+      call msg 'No action (ADD, DELETE or LIST) has been specified'
+   exitrc = 8                                /*                       */
+   signal exit                               /*                       */
+   end
+
+parse upper var cmdstring operation .
+if find(operations,operation) = 0  then  do  /*                       */
+   call msg 'The "'operation'" request is not supported'
+   exitrc = 8                                /*                       */
+   signal exit                               /*                       */
+   end
+
+interpret  'call' operation                  /*                       */
+exitrc = result                              /*                       */
+
+exit:  exit exitrc                           /*                       */
+
+/* ******************* */
+/*  Internal routines  */
+/* ******************* */
+
+
+/* ****************************************************************** */
+/*                                                                    */
+/*  Add will add a new userid to the distribution list                */
+/*                                                                    */
+/*  The address is assumed to be in valid RFC821 format (i.e. just    */
+/*  a machine address, no comments or names).  If the address passes  */
+/*  validation (which may also modify it to standardize the format    */
+/*  of addresses in the table) it will then be verfied for uniqueness.*/
+/*  If this address is (apparently) new then it will be added to the  */
+/*  file.                                                             */
+/*                                                                    */
+/* ****************************************************************** */
+
+Add:  procedure ,  /* Do processing for an ADD operation */
+      expose cmdstring console diskmode localnode maillist. ,
+             maintainer msgcmd requestor
+
+parse var cmdstring . listid destination     /*                       */
+upper listid                                 /*                       */
+
+call readdistlist
+if result <> 0  then  do
+   exitrc = result                           /*                       */
+   call msg listid 'distribution list does not exist'
+   return exitrc
+   end
+
+if ^owner(requestor) & ^maintainer  then  do
+   call msg 'You are not authorized to add users to the' listid ,
+      'distribution list'
+   return 8
+   end
+
+dest = validdest(destination)
+if dest <> ''  then  do
+   destination = dest
+   exitrc = 0                                /*                       */
+   end
+else  do                                     /*                       */
+   call msg '"'destination'" is not valid: ' failure
+   return 8                                  /*                       */
+   end
+
+matches = addresscan(destination)            /* Look for matches      */
+if matches = 0  then  do                     /* Found 1 or more       */
+   call addone(destination)
+   exitrc = writedistlist()
+   end
+else  do                                     /* No matches            */
+   call msg '"'destination'" is a duplicate address'
+   exitrc = 4
+   end
+
+if exitrc = 0  then                          /* Info message to send  */
+   call msg 'Maillist:  Added' destination
+
+return exitrc
+
+
+/* *****************************************************************  */
+/*                                                                    */
+/*  Add a user to the distribution list                               */
+/*                                                                    */
+/* *****************************************************************  */
+
+Addone:  procedure ,
+         expose maillist.
+
+parse arg destination                        /* New destination       */
+last = maillist.0 + 1                        /* New number of lines   */
+call updatehdr                               /* Set update date       */
+maillist.last = destination                  /* Put in new dest.      */
+maillist.0 = last                            /* Update count          */
+
+return 0
+
+
+/* *****************************************************************  */
+/*                                                                    */
+/*  Add an owner to the distribution list                             */
+/*                                                                    */
+/* *****************************************************************  */
+
+Addoneowner:  procedure ,
+              expose console localnode maillist. msgcmd requestor
+
+parse arg ownerid                            /* New owner             */
+if owner(ownerid)  then  do                  /* Have a duplicate      */
+   call msg ownerid 'is already an owner'    /* Tell requestor        */
+   exitrc = 4
+   end
+else  do                                     /* Have a new owner      */
+   last = maillist.0 + 1                     /* New number of lines   */
+   call updatehdr                            /* Set update date       */
+   maillist.last = '*  Owner: ' ownerid      /* Put in new dest.      */
+   maillist.0 = last                         /* Update count          */
+   exitrc = 0
+   end
+
+return exitrc
+
+
+/* ****************************************************************** */
+/*                                                                    */
+/*  Add owners to the distribution list                               */
+/*                                                                    */
+/*  The address is assumed to be in valid RFC821 format (i.e. just    */
+/*  a machine address, no comments or names).  If the address passes  */
+/*  validation (which may also modify it to standardize the format    */
+/*  of addresses in the table) it will then be verfied for uniqueness.*/
+/*  If this address is (apparently) new then it will be added to the  */
+/*  file.                                                             */
+/*                                                                    */
+/* ****************************************************************** */
+
+AddOwner:  procedure ,  /* Do processing for an ADDOWNER operation */
+           expose cmdstring console diskmode localnode maillist. ,
+                  maintainer msgcmd requestor
+
+parse var cmdstring . listid owners          /*                       */
+upper listid                                 /*                       */
+
+if owners = ''  then  do
+   call msg 'No owner provided for list, default of' requestor 'will' ,
+      'be used'
+   owners = requestor
+   end
+
+call readdistlist
+if result <> 0  then  do
+   exitrc = result                           /*                       */
+   call msg listid 'distribution list does not exist'
+   return exitrc
+   end
+
+if ^owner(requestor) & ^maintainer  then  do
+   call msg 'You are not authorized to add owners to the' listid ,
+      'distribution list'
+   return 8
+   end
+
+owners.0 = 0                                 /* Initialize            */
+call scanowners(owners)                      /* Build list            */
+
+do i=1 for owners.0                          /*                       */
+   call addoneowner(owners.i)                /*                       */
+   if result <> 0  then  owners.0 = owners.0 - 1 /* Duplicate         */
+   end
+
+exitrc = writedistlist()
+if exitrc = 0  then
+   call msg 'Maillist:  Added' owners.0 'new list owner(s)'
+
+return exitrc
+
+
+/* *****************************************************************  */
+/*                                                                    */
+/*  AddresScan will scan the address file looking for matching        */
+/*     addresses                                                      */
+/*                                                                    */
+/*  The address to be scanned for is passed as the argument to        */
+/*  AddresScan.  The addresses to be scanned must be placed in the    */
+/*  REXX stem 'maillist.' before calling AddresScan.                  */
+/*                                                                    */
+/*  Lines that match are flagged in the REXX stem 'matching.'         */
+/*                                                                    */
+/* *****************************************************************  */
+
+AddresScan:  procedure , /* Scan address file for matching addresses */
+             expose matching. maillist.
+
+parse upper arg destination
+destination = strip(destination)
+
+matches = 0
+
+do i=1 for maillist.0
+   matching.i = 0                            /* Set default value     */
+   if left(word(maillist.i,1),1) = '*'  then  iterate
+   if translate(maillist.i) = destination  then  do
+      matches = matches + 1                  /*                       */
+      matching.i = 1                         /*                       */
+      end
+   end
+
+return matches
+
+
+/* *****************************************************************  */
+/*                                                                    */
+/*  Create a new distribution list                                    */
+/*                                                                    */
+/*  Create will build the initial headers for the list                */
+/*                                                                    */
+/* *****************************************************************  */
+
+
+Create:  procedure ,  /* Create a distribution list  */
+         expose cmdstring console diskmode localnode maintainer msgcmd ,
+                requestor
+
+parse upper var cmdstring . listid owners
+upper listid                                 /*                       */
+
+if ^maintainer  then  do
+   call msg 'You are not authorized to create a distribution list'
+   return 8
+   end
+
+if listid = ''  then  do
+   call msg 'Distribution list name not given'
+   exit 8
+   end
+
+if exists(listid 'MAILLIST' diskmode)  then  do
+   call msg '"'listid 'distribution list already exists'
+   return 8
+   end
+
+if owners = ''  then  do
+   call msg 'No owner provided for list, default of' requestor 'will' ,
+      'be used'
+   owners = requestor
+   end
+
+owners.0 = 0
+call scanowners(owners)
+
+maillist.0 = 1
+maillist.1 = '*  Created: ' date('U') time() ,
+             '   Updated: ' date('U') time()
+
+do i=2 for owners.0
+   call addoneowner(value('OWNERS.'i-1))
+   end
+
+call writedistlist
+if result = 0  then  do
+   call msg '"'listid 'MAILLIST" file created'
+   if owners.0 = 0  then
+      call msg listid 'distribution list has no owners'
+   end
+
+return result
+
+
+/* *****************************************************************  */
+/*                                                                    */
+/*  Delete will delete one or more addresses from the distribution    */
+/*  list.                                                             */
+/*                                                                    */
+/*  The address is assumed to be in valid RFC821 format (i.e. just    */
+/*  a machine address, no comments or names).  If the address passes  */
+/*  validation (which may also modify it to standardize the format    */
+/*  of addresses in the table) it will then be verified for existence.*/
+/*  All matching addresses in the file will be deleted.               */
+/*                                                                    */
+/*  An address of '<*>' will be taken to mean the local user.         */
+/*                                                                    */
+/*  An address of 'ALL' will mean to delete all entries (ALL is a     */
+/*  restricted userid under VM since it would affect the WNG and      */
+/*  MSG commands operation).                                          */
+/*                                                                    */
+/* *****************************************************************  */
+
+Delete:  procedure ,  /* Do processing for a DELETE operation */
+         expose cmdstring console diskmode localnode maillist. ,
+                maintainer msgcmd requestor
+
+parse var cmdstring . listid destination     /*                       */
+upper listid                                 /*                       */
+
+call readdistlist
+if result <> 0  then  do
+   exitrc = result                           /*                       */
+   call msg listid 'distribution list does not exist'
+   return exitrc
+   end
+
+if ^owner(requestor) & ^maintainer  then  do
+   call msg 'Your are not authorized to delete users from the' listid ,
+      'distribution list'
+   return 8
+   end
+
+if translate(destination) = 'ALL'  then      /*                       */
+   return deleteall()                        /*                       */
+
+dest = validdest(destination)
+if dest <> ''  then  do
+   destination = dest
+   exitrc = 0                                /*                       */
+   end
+else  do                                     /*                       */
+   call msg '"'destination'" is not valid: ' failure
+   exitrc = 8                                /*                       */
+   end
+
+matches = addresscan(destination)
+if matches > 0  then  do
+   call updatehdr                            /* Set update date       */
+   call msg 'Maillist: ' matches 'id(s) deleted'
+   j=0                                       /* Initialize counter    */
+   do i=1 to maillist.0                      /* Loop though all lines */
+      if matching.i  then                    /* This one being dropped*/
+         call msg '    ' maillist.i          /*   so tell requestor   */
+      else  do                               /* This one being kept   */
+         j=j+1                               /* Increment line ctr    */
+         if j<>i  then                       /* If 1 or more dropped  */
+            maillist.j = maillist.i          /*   copy line forward   */
+         end
+      end
+   maillist.0 = j                            /* Update line count     */
+   call writedistlist                        /* Rewrite file          */
+   end
+else
+   call msg 'Maillist:  No destinations match address requested'
+
+return exitrc
+
+
+/* *****************************************************************  */
+/*                                                                    */
+/*  DeleteAll will delete all list members (but not the list owners)  */
+/*  from the control file.                                            */
+/*                                                                    */
+/* *****************************************************************  */
+
+DeleteAll:  procedure ,  /* Do processing for a DELETE * operation */
+            expose cmdstring console diskmode listid localnode ,
+                   maillist. msgcmd requestor
+
+call msg 'Deleting all ids on list'          /* Header msg            */
+j=0                                          /* Initialize counter    */
+do i=1 to maillist.0                         /* Loop though all lines */
+   if left(word(maillist.i,1),1) <> '*'  then/* This one being dropped*/
+      call msg '    ' maillist.i             /*   so tell requestor   */
+   else  do                                  /* This one being kept   */
+      j=j+1                                  /* Increment line ctr    */
+      if j<>i  then                          /* If 1 or more dropped  */
+         maillist.j = maillist.i             /*   copy line forward   */
+      end
+   end
+
+call msg 'Maillist: ' maillist.0-j 'id(s) deleted'
+maillist.0 = j                               /* Update line count     */
+
+call writedistlist                           /* Rewrite file          */
+
+return result
+
+
+/* *****************************************************************  */
+/*                                                                    */
+/*  Delete an owner from the distribution list                        */
+/*                                                                    */
+/*  This process will also compress out the deleted lines.            */
+/*                                                                    */
+/* *****************************************************************  */
+
+DelOneOwner:  procedure ,
+              expose maillist.
+
+parse upper arg ownerid                      /* Id to delete          */
+
+deletedone = 0
+j=1
+do i=1 for maillist.0
+   if left(word(maillist.i,1),1) = '*'  then  do
+      parse upper var maillist.i '*' type ':' info
+      if type = 'OWNER' & strip(info) = ownerid  then  do
+         maillist.0 = maillist.0-1
+         deletedone = 1
+         iterate
+         end
+      end
+   if j<i  then  maillist.j = maillist.i
+   j=j+1
+   end
+
+return deletedone
+
+
+/* ****************************************************************** */
+/*                                                                    */
+/*  Delete owners from the distribution list                          */
+/*                                                                    */
+/*  The address is assumed to be in valid RFC821 format (i.e. just    */
+/*  a machine address, no comments or names).  If the address passes  */
+/*  validation (which may also modify it to standardize the format    */
+/*  of addresses in the table) it will then be compared against all   */
+/*  the owners and deletion done if a match is found.                 */
+/*                                                                    */
+/* ****************************************************************** */
+
+DelOwner:  procedure ,  /* Do processing for an DELOWNER operation */
+           expose cmdstring console diskmode localnode maillist. ,
+                  maintainer msgcmd requestor
+
+parse var cmdstring . listid owners          /*                       */
+upper listid                                 /*                       */
+
+if owners = ''  then  do
+   call msg 'No owner id(s) provided for deletion'
+      'be used'
+   return 8
+   end
+
+call readdistlist
+if result <> 0  then  do
+   exitrc = result                           /*                       */
+   call msg listid 'distribution list does not exist'
+   return exitrc
+   end
+
+if ^owner(requestor) & ^maintainer  then  do
+   call msg 'You are not authorized to delete owners from the' listid ,
+      'distribution list'
+   return 8
+   end
+
+owners.0 = 0                                 /* Initialize            */
+call scanowners(owners)                      /* Build list            */
+
+do i=1 for owners.0                          /*                       */
+   if ^deloneowner(owners.i)  then  do       /*                       */
+      call msg owners.i 'was not a list owner'
+      owners.0 = owners.0 - 1
+      end
+   end
+
+exitrc = writedistlist()
+if exitrc = 0  then
+   call msg 'Maillist:  Deleted' owners.0 'list owner(s)'
+
+return exitrc
+
+
+Exists:  procedure  /* Check for existance of a file */
+
+parse upper arg fn ft fm .                   /*                       */
+
+if fn = ''  then  exit 0                     /*                       */
+if ft = ''  then  exit 0                     /*                       */
+if fm = ''  then  fm = '*'                   /*                       */
+
+'ESTATE' fn ft fm                            /*                       */
+if rc = 0  then  return 1                    /*                       */
+return 0
+
+
+/* *****************************************************************  */
+/*                                                                    */
+/*  Destroy (totally remove) a distribution list                      */
+/*                                                                    */
+/* *****************************************************************  */
+
+
+Destroy:  procedure ,
+          expose cmdstring console diskmode localnode maintainer ,
+                  msgcmd requestor
+
+parse upper var cmdstring . listid .
+upper listid                                 /*                       */
+
+if ^maintainer  then  do
+   call msg 'You are not authorized to create a distribution list'
+   return 8
+   end
+
+if listid = ''  then  do
+   call msg 'Distribution list name not given'
+   return 8
+   end
+
+if ^exists(listid 'MAILLIST' diskmode)  then  do
+   call msg '"'listid 'distribution list does not exist'
+   return 8
+   end
+
+'EXECSTAT' listid 'MAILLIST'
+if rc = 0  then  'EXECDROP' listid 'MAILLIST'
+
+'ERASE' listid 'MAILLIST' diskmode
+call msg '"'listid 'MAILLIST" file erased'
+
+return 0
+
+
+/* *****************************************************************  */
+/*                                                                    */
+/*  List will list the address file                                   */
+/*                                                                    */
+/*  If the request is from the console, the file is typed, otherwise  */
+/*  it is sent to the requestor (using the CMS SENDFILE command).     */
+/*                                                                    */
+/* *****************************************************************  */
+
+List:  procedure ,  /* Do processing for a LIST operation */
+       expose cmdstring console diskmode localnode msgcmd requestor
+
+parse var cmdstring . listid extra           /*                       */
+upper listid                                 /*                       */
+
+if extra <> ''  then  do                     /*                       */
+   call msg 'Too many operands on LIST command'
+   return 8
+   end
+
+if ^exists(listid 'MAILLIST' diskmode)  then  do
+   call msg listid 'distribution list does not exist'
+   exitrc = 4
+   end
+else  do
+   if console  then  do
+      say 'Maillist: ' listid 'distribution list'
+      'TYPE' listid 'MAILLIST' diskmode
+      say 'Maillist:  End of forwarding distribution list'
+      end
+   else  do                                  /*                       */
+      call msg 'Sending a copy of distribution list to you'
+      parse var requestor userid '@' node /*                       */
+      if node = ''  then                  /*                       */
+         'EXEC SENDFILE' listid 'MAILLIST' diskmode 'TO' userid
+      else                                /*                       */
+         'EXEC SENDFILE' listid 'MAILLIST' diskmode 'TO' userid ,
+            'AT' node
+      end
+   exitrc = 0                                /*                       */
+   end
+
+return exitrc                                /*                       */
+
+
+/* *****************************************************************  */
+/*                                                                    */
+/*  MSG sends a msg to the requestor                                  */
+/*                                                                    */
+/*  Operation is effected by the location of the request;  on the     */
+/*  console, a local user or a network user.                          */
+/*                                                                    */
+/* *****************************************************************  */
+
+Msg:  procedure , /* Send reply to requestor */
+      expose console localnode msgcmd requestor
+
+parse arg msgstring
+
+say msgstring                                /* Duplicate on console  */
+if ^console  then  do
+   parse var requestor userid '@' node
+   if node = localnode  then  do             /* On local node         */
+      'CP' msgcmd userid msgstring
+      if rc <> 0 & ,                         /* Behave like msg code  */
+         msgcmd <> 'MSG'  then               /*    in MAILER          */
+         'CP MSG' userid msgstring
+      end
+   else
+      'EXEC TELL' userid 'AT' node msgstring
+   end
+
+return 0
+
+
+/* *****************************************************************  */
+/*                                                                    */
+/*  Determine if supplied userid is an owner of the list              */
+/*                                                                    */
+/* *****************************************************************  */
+
+Owner:  procedure  expose maillist.
+owner = 0                                    /* Default to no         */
+
+parse upper arg userid
+userid = strip(userid)
+if left(userid,1) <> '<'  then
+   userid = '<'userid'>'
+
+do i=1 to maillist.0
+   if left(word(maillist.i,1),1) = '*'  then  do
+      parse upper var maillist.i '*' type ':' info
+      if type = 'OWNER' & strip(info) = userid  then  do
+         owner = 1
+         leave
+         end
+      end
+   end
+
+return owner
+
+
+/* *****************************************************************  */
+/*                                                                    */
+/*  Read distribution list file from disk                             */
+/*                                                                    */
+/* *****************************************************************  */
+
+ReadDistList:  procedure expose diskmode listid maillist.
+
+If ^exists(listid 'MAILLIST' diskmode)  then  return 28
+'EXECIO * DISKR' listid 'MAILLIST' diskmode '(FINIS STEM MAILLIST.'
+
+return rc
+
+
+/* *****************************************************************  */
+/*                                                                    */
+/*  ScanOwners scans an owner list and converts it to standard        */
+/*  format.                                                           */
+/*                                                                    */
+/* *****************************************************************  */
+
+ScanOwners:  procedure  expose localnode msgcmd owners. requestor
+parse arg ownerlist
+i = owners.0
+
+do while ownerlist <>  ''
+   If words(ownerlist) > 2  & ,
+      translate(word(ownerlist,2)) = 'AT'  then  do
+      ownerlist = word(ownerlist,1)'@'subword(ownerlist,3)
+      end
+   parse var ownerlist nextowner ownerlist
+   dest = validdest(nextowner)
+   if dest = ''  then
+      call msg 'MAILLIST:  Invalid network address ("'nextowner'")'
+   else  do
+      i = i + 1
+      owners.i = dest
+      owners.0 = i
+      end
+   end
+
+return
+
+
+/* *****************************************************************  */
+/*                                                                    */
+/*  UpDateHdr will set the Update date/time field in the header       */
+/*                                                                    */
+/* *****************************************************************  */
+
+UpDateHdr:  procedure  expose  maillist.
+
+parse var maillist.1 oldpart 'Updated:' .    /* Get creation date     */
+maillist.1 = oldpart || 'Updated:' date('U') time()
+
+return
+
+/* *****************************************************************  */
+/*                                                                    */
+/*  ValidDest will validate an address against RFC822 (I hope).       */
+/*                                                                    */
+/*  The address to be check is passed in the REXX variable            */
+/*  'destination'.  This value may be changed during the validation   */
+/*  process so that all addresses will be in a standard form.         */
+/*                                                                    */
+/*  If there is a problem with the address, the reason for the        */
+/*  failure will be returned in the exposed variable 'failure'        */
+/*                                                                    */
+/* *****************************************************************  */
+
+ValidDest:  procedure , /* Validate a destination address */
+            expose failure
+
+parse arg destination                        /* Starting address      */
+workdest = strip(destination)                /*                       */
+
+if workdest = '*'  then  do                  /* To user?              */
+   destination = '<*>'                       /* Yes, kludge address   */
+   return 1                                  /*                       */
+   end
+
+failure = ''                                 /*                       */
+routeaddr = ''                               /*                       */
+userid = ''                                  /*                       */
+domain = ''                                  /*                       */
+quoted.0 = 0                                 /*                       */
+
+do while left(workdest,1) = '<'              /* Strip any hairpins    */
+   if right(workdest,1) <> '>'  then  do     /*                       */
+      failure = '"<" missing matching ">"'   /*                       */
+      return 0                               /*                       */
+      end
+   else                                      /*                       */
+      workdest = substr(workdest,2,length(workdest)-2)
+   end
+
+do i=1                                       /* Remove quoted strings */
+   first = pos('"',workdest)                 /*                       */
+   if first = 0  then  leave                 /*                       */
+   second = pos('"',workdest,first+1)        /*                       */
+   if second = 0  then  do                   /* Not matched           */
+      failure = 'Missing ending quote on quoted string'
+      return 0                               /*                       */
+      end
+   quoted.0 = i                              /*                       */
+   quoted.i = substr(workdest,first+1,second-first-1)
+   workdest = delstr(workdest,first,second-first+1) /* Delete quote   */
+   workdest = insert(d2c(i),workdest,first-1)/* Insert flag           */
+   end
+
+/* May have an RFC733 address at this point.  The only problem is the */
+/* use of ' AT ' for '@' in 733.  See if this is the case and convert */
+/* to valid RFC822 form.                                              */
+
+if words(workdest) = 3  then  do             /* Possible RFC733 format*/
+   if translate(word(workdest,2)) = 'AT'  then  /* It is 733 format   */
+      workdest = word(workdest,1)'@'word(workdest,3)
+   end
+
+/* Have <routeaddr:>userid<@node> at this point with quoted strings   */
+/* hidden as unprintable values.                                      */
+
+if pos(':',workdest) > 0  then               /*                       */
+   parse var workdest routeaddr ':' userid '@' domain
+else                                         /*                       */
+   parse var workdest userid '@' domain
+
+if routeaddr <> '' & domain = ''  then  do   /*                       */
+   routeaddr = reverse(routeaddr)            /*                       */
+   parse var routeaddr domain '@' routeaddr
+   domain = reverse(domain)                  /*                       */
+   if left(routeaddr,1) = ','  then
+      routeaddr = substr(routeaddr,2)
+   routeaddr = reverse(routeaddr)            /*                       */
+   end
+
+select                                       /*                       */
+   when routeaddr = '' & domain = ''  then  do  /*                    */
+      'IDENTIFY (LIFO'
+      parse upper pull . . domain .
+      destination = '<'userid'@'strip(domain)'>'
+      end
+   when routeaddr = '' & domain <> '' then  do  /*                    */
+      upper domain                           /*                       */
+      destination = '<'userid'@'domain'>'    /*                       */
+      end
+   otherwise  do                             /*                       */
+      upper routeaddr domain                 /*                       */
+      destination = '<'routeaddr':'userid'@'domain'>'
+      end
+   end                                       /*                       */
+
+do i=1 to quoted.0                           /* Put back quoted       */
+   spot = pos(d2c(i),destination)            /*    strings            */
+   destination = delstr(destination,spot,1)
+   destination = insert('"'quoted.i'"',destination,spot-1)
+   end
+
+return destination
+
+
+/* *****************************************************************  */
+/*                                                                    */
+/*  Write distribution list file back to disk                         */
+/*                                                                    */
+/* *****************************************************************  */
+
+WriteDistList:  procedure expose diskmode listid maillist.
+
+If exists(listid 'MAILLIST' diskmode)  then
+   'ERASE' listid 'MAILLIST' diskmode
+'EXECIO' maillist.0 'DISKW' listid 'MAILLIST' diskmode '(FINIS STEM' ,
+   'MAILLIST.'
+exitrc = rc
+if rc = 0  then
+   'EXECDROP' listid 'MAILLIST'
+
+return exitrc
+
+
+/* **************** */
+/*  Error handlers  */
+/* **************** */
+
+HALT:
+parse source . . myname .
+say "Halt in" myname "line" sigl":"
+say sourceline(sigl)
+exitrc = 16
+signal errexit
+
+NOVALUE:
+parse source . . myname .
+say "NOVALUE error in" myname "line" sigl":"
+say sourceline(sigl)
+exitrc = 16
+signal errexit
+
+SYNTAX:
+parse source . . myname .
+say "SYNTAX error in" myname "line" sigl": " errortext(rc)
+say sourceline(sigl)
+exitrc = 16
+signal errexit
+
+ERREXIT:
+trace ?r
+nop
+exit exitrc

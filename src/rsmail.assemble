@@ -1,0 +1,194 @@
+RSMAIL   TITLE 'CUCCA VM NETWORK MAILER VERSION 1 - mail resending'
+*---------------------------------------------------------------------*
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         *
+*    Program Property of the Trustees of Columbia University in the   *
+*    City of New York.                                                *
+*---------------------------------------------------------------------*
+RSMAIL   CSECT ,
+* RSMAIL -
+*  This routine resends mail to the user(s) named indirectly thru
+*  the parm.  The parm is used to find the entry in MAILPTAB that
+*  has the actual address(es) in it.  A new mail file is built
+*  and punched back to my reader that contains a header saying
+*  that automatic forwarding has been performed followed by the
+*  original file.
+*
+*
+PAB      DSECT ,
+@MBLOK   DS    A             MAILBLOK BASE
+@ACT     DS    A             ACTADR BASE
+* REGISTER USAGE -
+R0  EQU  0 -
+R1  EQU  1 -
+R2  EQU  2 -
+R3  EQU  3 -
+R4  EQU  4 -
+R5  EQU  5 -
+R6  EQU  6 -
+R7  EQU  7 -
+R8  EQU  8 -
+R9  EQU  9 -
+R10 EQU 10 - ACTADR BASE
+R11 EQU 11 - MAILBLOK BASE
+R12 EQU 12 - PROGRAM BASE
+R13 EQU 13 - SAVE AREA
+R14 EQU 14 - SUBROUTINE LINKAGE
+R15 EQU 15 - SUBROUTINE LINKAGE
+         BLOCKS ,
+         MAILBLOK ,
+         EJECT ,
+RSMAIL   CSECT ,
+         STM   R14,R12,12(R13)
+         BALR  R12,0
+         USING *,R12
+         LA    R14,SAVE
+         ST    R13,4(R14)
+         ST    R14,8(R13)
+         LR    R13,R14
+         USING PAB,R1        ADDRESS PARMS
+         L     R11,@MBLOK    GET MAILBLOK BASE
+         L     R10,@ACT      GET ACTADR BASE
+         DROP  R1
+         USING MAILBLOK,R11
+         USING ACTADR,R10
+         SPACE 1
+         TM    DBGFLG6,DBGNOOUT    Producing output mail?
+         BNO   SKIP001             ---> Yes
+         WRTERM 'RSMAIL:  Trace-send-no-mail set'
+         SR    R15,R15             Set return code
+         B     RET
+SKIP001  EQU   *
+         L     R1,ACTRT      get routd pointer
+         USING ROUTD,R1
+         MVC   LOCUSER,RTPARM Copy for later use
+*--------------------------------------------------------------------
+*        Look up the parm in the mailer parameter table and see if
+*        it's been defined.  If so,  use the string definition
+*        as the name of the recipient of the forwarded mail.
+*--------------------------------------------------------------------
+         LA    R4,RTPARM
+         DROP  R1
+         LA    R1,8(R4)      end of parm
+         MVI   TRAPTAB+C' ',X'FF' trap blanks
+         TRT   0(8,R4),TRAPTAB find end of string
+         MVI   TRAPTAB+C' ',0
+         SR    R1,R4         get length of string
+         LR    R5,R1         get into a better register
+         L     R6,MAILPTAB   address of parm table
+         L     R15,ATBLUK
+         CALL  (15),((R6),(R4),(R5),TWORK) find the parm
+         LTR   R15,R15       nope -- die
+         BNZ   NOFWD         sorry...
+         LR    R5,R1         get a better handle on string
+         IC    R1,0(R5)      length
+         BCTR  R1,0          -1 for execute
+         MVI   HTO,C' '      init to blanks
+         MVC   HTO+1(LHTO-1),HTO
+         EX    R1,MOVETO     fill in the to field
+*--------------------------------------------------------------------
+*        Fill in the date for the new memo.
+*--------------------------------------------------------------------
+         LA    R1,HDATE      date to be filled in
+         L     R15,AARPADAT
+         BALR  R14,R15       fill the arpa format date in
+*--------------------------------------------------------------------
+*        Fill in the from id (my id)
+*--------------------------------------------------------------------
+         MVI   TRAPTAB+C' ',X'FF' trap on blank
+         LA    R4,MAILVMID   address of my vmid
+         LA    R1,8(R4)      point to end of vmid
+         TRT   0(8,R4),TRAPTAB get trailing blank
+         SR    R1,R4         length of the vmid
+         LR    R0,R4         address of it
+         LA    R6,HFROM      where to move it
+         LR    R7,R1         length to move
+         MVCL  R6,R0         copy the id
+         MVI   0(R6),C'@'    now stick in the atsign
+         LA    R6,1(R6)      point past the @
+         LA    R4,CPUSTR     address of my node
+         LA    R1,8(R4)      point to end of node
+         TRT   0(8,R4),TRAPTAB get trailing blank
+         SR    R1,R4         length of the node
+         LR    R0,R4         address of it
+         LR    R7,R1         length to move
+         MVCL  R6,R0         copy the node
+         MVI   0(R6),C'>'    now stick in the closing >
+         MVI   TRAPTAB+C' ',0 back to initial state
+         SPACE ,
+*--------------------------------------------------------------------
+*        Finally,  punch the file back to myself!
+*--------------------------------------------------------------------
+PUNCHIT  EQU   *
+         LA    R1,=C'TAG DEV PUN --- returned mail file ---'
+         LA    R0,38
+         DC    X'83100008'
+         LA    R1,=C'SP PUN TO *'
+         LA    R0,11
+         DC    X'83100008'   aim the punch
+         L     R15,APUNHDR
+         CALL  (15),((R11))  PUNCH THE HEADER
+         LTR   R15,R15       ANY SCREW UPS?
+         BNZ   RET
+         LA    R3,H0         point to header
+         LA    R4,NUMHDR     number of records in new header
+HDRLOOP  EQU   *
+         PUNCHC (R3)
+         LA    R3,80(R3)
+         BCT   R4,HDRLOOP
+         SPACE ,
+         L     R15,APUNTXT
+         CALL  (15),((R11))  PUNCH THE REST
+         LTR   R15,R15      ANY ERRORS?
+         BNZ   RET           OH WEEELLL....
+         L     R15,APUNCLS   ROUTINE TO CLOSE PUNCH
+         CALL  (15),((R11))  CALL IT
+         LTR   R15,R15       ANY ERRORS?
+         BNZ   RET           SORRY...
+         LOG   RSD047,(CA,LOCUSER,CA,HTO)
+RET      EQU   *
+         L     R13,4(R13)
+         L     R14,12(R13)
+         LM    R0,R12,20(R13)
+         BR    R14
+         SPACE ,
+*--------------------------------------------------------------------
+*  ERROR/SPECIAL HANDLING
+*--------------------------------------------------------------------
+NOFWD    EQU   *
+         LOG   RSD046
+         LA    R15,4
+         B     RET
+         SPACE ,
+NOFROM   EQU   *
+         LOG   RSD046
+         LA    R15,4
+         B     RET
+         SPACE ,
+*
+MOVETO   MVC   HTO(0),1(R5)
+         SPACE ,
+         LTORG ,
+SAVE     DS    18F
+TWORK    DS    64F
+LOCUSER  DS    CL8
+H0       DS    0C
+H1       DC    CL80' '
+         ORG   H1
+H1T      DC    C'ReSent-Date: '
+HDATE    DS    0C
+LHDATE   EQU   L'H1-L'H1T
+         ORG   ,
+H2       DC    CL80' '
+         ORG   H2
+H2T      DC    C'ReSent-From: Network Mailer <'
+HFROM    DS    0C
+LHFROM   EQU   L'H2-L'H2T
+         ORG   ,
+H5       DC    CL80' '
+         ORG   H5
+H5T      DC    C'ReSent-To: '
+HTO      DS    0C
+LHTO     EQU   L'H5-L'H5T
+         ORG   ,
+NUMHDR   EQU   (*-H0)/80
+         END   RSMAIL

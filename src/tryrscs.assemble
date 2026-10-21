@@ -1,0 +1,369 @@
+TRYRSCS  TITLE 'VM NETWORK MAILER Release 2 - Default RSCS routing exit*
+               '
+TRYRSCS  CSECT ,
+*
+* TRYRSCS -
+*
+*  This routine punches individual files to RSCS sites that are
+*  either not running this Mailer or are running a different
+*  mailer that doesn't know how to handle the same message for
+*  several recipients as one file.
+*
+*  Changed logic for domain addressing.  A domain suffix is
+*  located if present and then looked up in a table.  The table
+*  specifies the routine to process the specified domain.  If
+*  no domain address is found, control passes to old DEFRT code.
+*  If an unknown domain address is found, an error message is
+*  printed.
+*
+*
+*  'RETURN' parameter (to be specified in MAILER PROFILE)
+*      When specified will cause mail to be returned to
+*      the originating user with an 'Unknown Host:' message.
+*
+*
+         EJECT ,
+PAB      DSECT ,
+@MBLOK   DS    F             ADDRESS OF MAILBLOK
+@ACT     DS    F             ADDRESS OF ACTADR BLOCK
+* REGISTER USAGE -
+R0  EQU  0 -
+R1  EQU  1 -
+R2  EQU  2 -
+R3  EQU  3 -
+R4  EQU  4 -
+R5  EQU  5 -
+R6  EQU  6 -
+R7  EQU  7 -
+R8  EQU  8 -
+R9  EQU  9 -
+R10 EQU 10 - ACTADR BASE
+R11 EQU 11 - MAILBLOK BASE
+R12 EQU 12 - PROGRAM BASE
+R13 EQU 13 - SAVE AREA
+R14 EQU 14 - SUBROUTINE LINKAGE
+R15 EQU 15 - SUBROUTINE LINKAGE
+         BLOCKS ,
+         MAILBLOK ,
+         EJECT ,
+TRYRSCS  CSECT ,
+         SAVE  (14,12),,*        SAVE CALLER'S REGISTERS
+         USING TRYRSCS,R15       SET UP TEMP ADDRESSABILITY
+         CNOP  0,4               ALIGN SAVE AREA TO FULLWORD
+         BAL   R15,SKIPSAVE      BRANCH AROUND LOCAL SAVE AREA
+         DROP  R15               DROP TEMP BASE REGISTER
+         USING SAVEAREA,R13,R12  SET UP NEW BASE REGISTERS
+         SPACE 1
+SAVEAREA DC    18F'-1'           REGISTER SAVE AREA
+         SPACE 1
+SKIPSAVE DS    0H
+         ST    R15,8(,R13)       CHAIN FORWARD SAVE AREA PTR
+         ST    R13,4(,R15)       CHAIN BACKWARD SAVE AREA PTR
+         LR    R13,R15           LOAD UP THE BASE REGISTER
+         SPACE 1
+*        GRAB A 2ND BASE REGISTER BEFORE SOME DODO TAKES IT
+         SPACE 1
+         LA    R12,4095(,R13)    LOAD SECOND BASE REGISTER
+         LA    R12,1(,R12)       EVEN UP FOR 8K ADDRESSABILITY
+         SPACE 1
+         USING PAB,R1            PARMS
+         L     R11,@MBLOK        GET MAILBLOK BASE
+         L     R10,@ACT          GET ACTADR BASE
+         USING MAILBLOK,R11
+         USING ACTADR,R10
+         MVI   FLAGS,0           CLEAR OPTIONS FLAG
+         EJECT ,
+         TM    DBGFLG6,DBGNOOUT  No output?
+         BNO   SKIP001           ---> No, want mail out
+         WRTERM 'TRYRSCS:  Trace-send-no-mail set'
+SKIP001  EQU   *
+         L     R7,ACTMBOX        GET MBOX BLOCK
+         USING MBOX,R7           GET USER LIST
+         SPACE 1
+* ------------------------------------------------------------------- *
+*  Check if ROUTEADDR is present.                                     *
+*                                                                     *
+*  If TRYRSCS has been entered with a ROUTEADDR, there is nothing     *
+*  that can be done.  This is because TRYRSCS will attempt to do      *
+*  DEFRT delivery.  This requires both a destination node and a       *
+*  destination userid.  A routeaddr will have only a destination      *
+*  node.                                                              *
+*                                                                     *
+*  Since we can't deliver, we will return to sender.                  *
+*                                                                     *
+*                                                                     *
+* ------------------------------------------------------------------- *
+         SPACE 1
+         CLC   MBXRTL,=F'0'      Route list present?
+         BNE   FAILRTL           ---> Yes, return to sender
+         CLC   MBXDCNT,=F'1'     More than 1 domain token?
+         BE    GETNODE           ---> No, continue
+         MVC   NODEA,MBXDML      Store node address
+         LA    R14,STACKP        Stack pointer address ptr
+         LA    R15,STACKP+4      Stack size address ptr
+         CALL  GENLIST,(NODEA,LSTRA,LSTRL,(14),(15))
+*                                Expand local part
+         LTR   R15,R15           Successful?
+         BNZ   FAIL              ---> No, call it bad RSCS node name
+         L     R4,LSTRL          Length of string
+         BCTR  R4,0              Decrement for later EXs
+         L     R2,LSTRA          Address of string
+         EX    R4,UPIT           Uppercase domain name
+FINDDOT  DS    0H
+         CLI   0(R2),C'.'        This the period?
+         BE    FOUNDDOT          ---> Yes
+         LA    R2,1(,R2)         Bump ptr
+         BCT   R4,FINDDOT        ---> Try again
+         WRTERM '**> TRYRSCS logic error 1'
+         B     FAIL              ---> Should never have gotten here
+         SPACE 1
+FOUNDDOT DS    0H
+         LA    R5,1(,R2)         Skip over '.'
+         BCTR  R4,0              Fix up length
+* R4 - Length of domain string after first '.' minus 1
+* R5 - Address of first character of domain string after '.'
+         SPACE 1
+         LA    R14,L'RSCSDOM/4   Number of RSCS-Domains.
+         LA    R15,RSCSDOM       First RSCS-Domain.
+DOMLOOP0 DS    0H
+         ICM   R3,B'1111',0(R15) no RSCS domain string defined?
+         BZ    FAIL              ---> No match found
+         SR    R0,R0             get a zero
+         IC    R0,0(R3)          get length of domain string
+         LA    R3,1(,R3)         Bump ptr to start of string
+         CLI   0(R3),C'.'        Start with a '.'?
+         BNE   NODOT             ---> No
+         LA    R3,1(,R3)         Bump ptr
+         S     R0,=F'1'          Decrement count
+NODOT    EQU   *
+* R0 - Length of RSCS domain string
+* R3 - Start of RSCS domain string
+         S     R0,=F'1'          Decrement for compare with R4
+         CR    R0,R4             lengths match?
+         BNE   DOMNEXT           ---> No
+         LA    R2,WORK           Point to work area
+         MVI   0(R2),C' '        Clear work area
+         MVC   1(L'WORK-1,R2),0(R2)     to blanks
+         EX    R4,COPY           Copy RSCS domain into work area
+         EX    R4,UPIT           Uppercase it
+         EX    R4,CLCIT          Compare
+         BE    GETNODE           ---> Have match, ignore domain stuff
+         SPACE 1
+DOMNEXT  DS    0H
+         LA    R15,4(,R15)         Try the next RSCS-Domain
+         BCT   R14,DOMLOOP0           if there is one.
+         B     FAIL              ---> Bad RSCS node name
+         SPACE 1
+GETNODE  DS    0H
+         L     R7,MBXDML         Point to domain list
+         USING NODE,R7           ADDRESS IT
+         L     R7,NODDOWN        GET DOWN POINTER
+         USING TOKEND,R7         ADDRESS THE HOST NAME TOKEN
+         L     R4,TOKLEN         LENGTH OF NODE STRING
+         L     R3,TOKPTR
+         LA    R2,WORK           POINT TO WORK AREA
+         MVI   0(R2),C' '        SET UP FOR BUFFER CLEAR
+         MVC   1(L'WORK-1,R2),0(R2)  PROPOGATE THE BLANK
+         LR    R5,R4             LOAD UP LENGTH OF STRING
+         BCTR  R5,0              -1 FOR EX
+         EX    R5,COPY           AND MOVE THE ENTIRE STRING TO WORK
+         EX    R5,UPIT           AND UPPERCASE IT
+         SPACE ,
+****************************************************************
+*                                                              *
+*  Check for FILE FROM: processing.  If this is a FILE FROM:   *
+*  we refuse to deliver it (since the file that would be       *
+*  bounced back from RSCS if the destination doesn't exist     *
+*  would have no headers and thus would be invalid).           *
+*                                                              *
+****************************************************************
+         SPACE ,
+         TM    MAILOPTS,MOPTFIOK   FILE FROM: allowed?
+         BNO   NOFILES             ---> No, everything ok
+         TM    MAILFLG2,MFLG2N82   FILE FROM: found?
+         BO    UNKNOWN             ---> Yes, return it
+NOFILES  EQU   *
+         SPACE ,
+****************************************************************
+*                                                              *
+*  Check for "RETURN" parm which means that mail to an unknown *
+*  host will be returned with an error message.                *
+*                                                              *
+****************************************************************
+         SPACE ,
+         L     R9,ACTRT          ADDRESS OF ROUTD CARD
+         USING ROUTD,R9          ADDRESS ROUTD CARD
+         CLC   =CL8'RETURN',RTPARM  WAS RETURN SPECIFIED?
+         BE    UNKNOWN
+         SPACE ,
+         DROP  R9
+         SPACE 2
+****************************************************************
+*                                                              *
+* Now resume normal "DEFRT" code for sending the file to an    *
+* undefined BITNET node.                                       *
+*                                                              *
+****************************************************************
+         SPACE 1
+         L     R7,ACTMBOX        GET MBOX BLOCK
+         USING MBOX,R7
+         L     R7,MBXLCL         GET USER LIST
+         USING NODE,R7           ADDRESS IT
+         ST    R7,NODEA          Store node address
+         L     R7,NODDOWN        GET DOWN POINTER
+         USING TOKEND,R7         ADDRESS THE USER NAME TOKEN
+         LA    R14,STACKP        Stack pointer address ptr
+         LA    R15,STACKP+4      Stack size address ptr
+         CALL  GENLIST,(NODEA,LSTRA,LSTRL,(14),(15))
+*                                Expand local part
+         LTR   R15,R15           Successful?
+         BZ    OKLOCAL           ---> Yes, local part ok
+         L     R3,TOKPTR         Get string address
+         L     R4,TOKLEN         Length of userid string
+         B     CHECK8
+         SPACE 1
+OKLOCAL  EQU   *                 Local part expanded ok
+         L     R3,LSTRA          Get string address
+         L     R4,LSTRL          Length of userid string
+         SPACE 1
+CHECK8   EQU   *
+         C     R4,=F'8'          8 or less?
+         BNH   OK8               ---> Yes
+         LA    R4,8              Only use 8
+OK8      EQU   *
+         BCTR  R4,0              -1 FOR EX
+         MVC   TAGUSER,=CL8' '   BLANK THE FIELD
+         LA    R2,TAGUSER
+         EX    R4,COPY           MVC TAGUSER(0),4(R3)
+         EX    R4,UPIT
+         L     R7,ACTMBOX        GET MBOX BLOCK
+         USING MBOX,R7
+         L     R7,MBXDML         POINT TO HOST LIST
+         USING NODE,R7           ADDRESS IT
+         L     R7,NODDOWN        GET DOWN POINTER
+         USING TOKEND,R7         ADDRESS THE HOST NAME TOKEN
+         L     R4,TOKLEN         LENGTH OF HOSTNAME STRING
+         C     R4,=F'8'          8 OR LESS?
+         BH    FAIL              ---> No, too long for RSCS
+         BCTR  R4,0              -1 FOR EX
+         L     R3,TOKPTR         GET STRING
+         MVC   TAGHOST,=CL8' '   BLANK THE FIELD
+         LA    R2,TAGHOST
+         EX    R4,COPY           MVC TAGHOST(0),4(R3)
+         EX    R4,UPIT
+         MVC   XRSCS,RSCSNAME    Get RSCS name
+         CLC   TAGHOST,CPUSTR    Dest for this host?
+         BNE   ISSUETAG          ---> No, use RSCS
+         MVC   XRSCS,TAGUSER     Set USERID for destination
+         SPACE 1
+ISSUETAG EQU   *
+         TM    DBGFLG6,DBGNOOUT  Send mail file?
+         BO    SKIPMAIL          ---> No
+         LA    R1,TAGCMD         GET THE TAG COMMAND NOW
+         LA    R0,LTAGCMD
+         DC    X'83100008'       AND EXECUTE
+         SPACE 1
+         L     R15,APUNHDR
+         CALL  (15),((R11))      PUNCH THE HEADER
+         LTR   R15,R15           ANY SCREW UPS?
+         BNZ   RET
+         L     R15,APUNTXT
+         CALL  (15),((R11))      PUNCH THE REST
+         LTR   R15,R15           ANY ERRORS?
+         BNZ   RET               OH WEEELLL....
+         L     R15,APUNCLS       ROUTINE TO CLOSE PUNCH
+         CALL  (15),((R11))      CALL IT
+         LTR   R15,R15           ERRORS?
+         BNZ   RET
+         LOG   TRY034,(CA,TAGUSER,CA,TAGHOST)
+RET      EQU   *
+         L     R13,4(,R13)       GET CALLER'S SAVE AREA PTR
+         RETURN (14,12),RC=(15)  RELOAD CALLER'S REGISTERS,
+         SPACE 2
+* Don't send mail, but log what would have happened
+         SPACE
+SKIPMAIL EQU   *
+         LOG   TRY034,(CA,TAGUSER,CA,TAGHOST)
+         SR    R15,R15           Set return code
+         B     RET
+         SPACE 2
+* Return mail with unknown node message
+         SPACE 1
+UNKNOWN  DS    0H
+         LOG   TRY027,(CA,WORK)
+         LA    R15,8             INDICATE INVALID
+         B     RET
+         SPACE 2
+FAIL     EQU   *
+         LOG   TRY030,(CA,EMSG)  Node name too long!
+         LA    R15,8
+         B     RET
+         SPACE 2
+* Return mail due to presence of a routeaddress
+         SPACE 1
+FAILRTL  DS    0H
+         USING MBOX,R7
+         L     R1,MBXRTL           First NODE of routeaddress list
+         DROP  R7
+         USING NODE,R1
+         MVC   NODEA,NODDOWN       NODE for first routeaddress
+         DROP  R1
+         LA    R14,STACKP          Stack pointer address ptr
+         LA    R15,STACKP+4        Stack size address ptr
+         CALL  GENLIST,(NODEA,LSTRA,LSTRL,(14),(15))
+*                                  Expand local part
+         LTR   R15,R15             Successful?
+         BNZ   FAIL                ---> No, call it bad RSCS node name
+         L     R4,LSTRL            Length of string
+         L     R3,LSTRA            Address of string
+         LA    R2,WORK             Point to work area
+         MVI   0(R2),C' '          Set up for buffer clear
+         MVC   1(L'WORK-1,R2),0(R2)  Propogate the blank
+         C     R4,=A(L'WORK)       Longer than WORK?
+         BNH   FAILRTL2            ---> No
+         LA    R4,L'WORK           Use shorter length
+FAILRTL2 EQU   *
+         BCTR  R4,0                Decrement for EXs
+         EX    R4,COPY             Move the entire string to WORK
+         EX    R4,UPIT             Uppercase routeaddr
+         WTR   TRY081
+         WTR   TRY082,(CA,WORK)
+         LA    R15,8               Set return code
+         B     RET
+         SPACE 2
+         EJECT ,
+***********************************************************************
+*                                                                     *
+*        DATA AREAS AND CONTROL BLOCKS                                *
+*                                                                     *
+***********************************************************************
+*
+UPIT     TR    0(0,R2),UPCASE
+CLCIT    CLC   0(0,R2),0(R5)
+TAGCMD   DC    C'TAG DEV PUN '
+TAGHOST  DS    CL8
+         DC    C' '
+TAGUSER  DS    CL8
+         DC    C' 50 ENQMSG=NO SENTMSG=NO FINALMSG=NO'
+         DC    X'15',C'SP PUN CLASS M TO '
+XRSCS    DS    CL8
+LTAGCMD  EQU   *-TAGCMD
+*
+COPY     MVC   0(*-*,R2),0(R3)         COPY USER NAME TOKEN
+         SPACE 1
+WORK     DS    CL255
+         SPACE 1
+EMSG     DC    CL19'Node name too long '
+         SPACE 1
+FLAGS    DC    X'00'                   A FLAG BYTE - WHAT ELSE?
+BSMTP    EQU   X'80'                   MAIL NEEDS BSMTP ENVELOPE
+INDIRECT EQU   X'40'                   MAIL PASSES THRU 2 NETS
+         SPACE 1
+NODEA    DC    A(0)                Address of node for GENLIST
+LSTRA    DC    A(0)                Address of local part
+LSTRL    DC    A(0)                Length of local part
+         EJECT
+         DS    0D
+         EJECT ,
+         LTORG ,
+         END   TRYRSCS

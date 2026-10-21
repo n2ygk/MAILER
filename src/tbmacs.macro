@@ -1,0 +1,116 @@
+*---------------------------------------------------------------------*
+*      MAILER -- Copyright (c) 1982,1985 Columbia University.         *
+*    Program Property of the Trustees of Columbia University in the   *
+*    City of New York.                                                *
+*---------------------------------------------------------------------*
+* Table lookup routine macros
+         MACRO
+         TBENTRY
+         PUSH  PRINT
+         AIF   ('&SYSPARM' NE 'SUP').NOSUP
+         PRINT OFF,NOGEN
+.NOSUP   ANOP
+TBENTRY  DSECT
+TBE$STR  DS        A
+TBE$DSP  DS        A
+TBE$LEN  EQU       *-TBENTRY
+         SPACE
+TBS      DSECT
+TBS$FLG  DS        X
+TBS$SIZ  DS        X
+TBS$STR  DS        0C
+TBS$LEN  EQU   *-TBS
+         POP   PRINT
+         MEND  ,
+         MACRO
+&LABEL   TBSTART   &MAX=0
+.* START OF A TBLUK TABLE
+.* EAC 8/81
+         COPY      TBGLOB              COPY GLOBAL VARIABLE DEFNS
+         AIF ('&LABEL' EQ '').NONAME
+&TBCNT   SETA      &TBCNT+1            COUNT OF TABLES GENERATED
+&TBLEN   SETA      0                   LENGTH OF TABLE
+&TBMAX   SETC      '&MAX'              MAXIMUM LENGTH OF TABLE
+&TBNAME  SETC      '&LABEL'            NAME OF THIS TABLE
+&TBFLG   SETA      1                   TURN ON FLAG
+         MEXIT
+.NONAME  MNOTE     4,'A NAME MUST BE GIVEN TO THE TABLE'
+         MEND
+         MACRO
+         TBINI
+         PUSH  PRINT
+         AIF   ('&SYSPARM' NE 'SUP').NOSUP
+         PRINT OFF,NOGEN
+.NOSUP   ANOP
+         COPY      TBBITS
+         POP   PRINT
+         MEND
+         MACRO
+         TBEND
+         COPY      TBGLOB              GET GLOBAL VARIABLES
+         LCLA      &TBIND              INDEX VARIABLE
+         AIF ('&TBFLG' NE '1').NOTAB   WAS THERE A START?
+&TBFLG   SETA      0                   CLEAR THE FLAG
+&TBIND   SETA      1
+         AIF ('&TBMAX' NE '').GOODMAX  MAX SPECIFIED?
+&TBMAX   SETC      '&TBLEN'            MAX = LEN
+.GOODMAX ANOP
+&TBNAME  TBTAB    FLAG=0,LEN=&TBLEN,MAX=&TBMAX,ADDRESS=TB$&TBCNT
+TB$&TBCNT DC       &TBMAX.F'0'         MAXIMUM TABLE ALLOCATTED
+         ORG       TB$&TBCNT           ORG BACK TO START OF IT
+.LOOP    ANOP
+         DC        A(&TBVAL(&TBIND),&TBDSP(&TBIND))
+&TBIND   SETA      &TBIND+1
+         AIF ('&TBIND' LE '&TBLEN').LOOP  DONE WITH LOOP?
+         ORG ,                          ORG BACK TO END OF TABLE
+         MEXIT
+.NOTAB   MNOTE     4,'NO TBSTART SPECIFIED'
+         MEXIT
+         MEND
+         MACRO
+         T         &STR,&DISP,&FLAGS
+         COPY      TBGLOB              COPY GLOBAL VARIABLES
+         LCLC      &DSTR,&FLG
+&DSTR    SETC      '&DISP'
+&FLG     SETC      '&FLAGS'
+         AIF ('&DSTR' NE '').SKIP1
+&DSTR    SETC      '&STR'(2,K'&STR-2)
+&DSTR    SETC      '$&DSTR'(1,8)
+.SKIP1   ANOP
+         AIF ('&FLG' NE '').SKIP2
+&FLG     SETC      '0'
+.SKIP2   ANOP
+         AIF ('&TBFLG' NE '1').NOTAB
+&TBLEN   SETA      &TBLEN+1
+TB$&TBCNT&TBLEN DC  AL1(&FLG,L'TB#&TBCNT&TBLEN)
+TB#&TBCNT&TBLEN DC  C&STR
+&TBVAL(&TBLEN)  SETC 'TB$&TBCNT&TBLEN'
+&TBDSP(&TBLEN)  SETC '&DSTR'
+         MEXIT
+.NOTAB   ANOP
+         MNOTE     4,'NO ACTIVE TBSTART'
+         MEND
+         MACRO
+&LABEL   TBTAB     &FLAG=0,&LEN=0,&MAX=0,&ADDRESS=0,&DSECT=NO
+         PUSH  PRINT
+         AIF   ('&SYSPARM' NE 'SUP').NOSUP
+         PRINT OFF,NOGEN
+.NOSUP   ANOP
+         LCLC      &TFLAG,&TLEN,&TMAX,&TADDR
+         AIF ('&DSECT' EQ 'YES').DSECT
+&LABEL   DS        0F                  FULLWORD ALIGNED
+         AGO       .NOD
+.DSECT   ANOP
+&TFLAG   SETC      'TB$FLG'            FLAG WORD
+&TLEN    SETC      'TB$LEN'            LENGTH OF TABLE
+&TMAX    SETC      'TB$MAX'            MAX LENGTH OF TABLE
+&TADDR   SETC      'TB$ADR'            ADDRESS OF THE TABLE
+TB$SIZE  EQU   4*4
+TBTAB    DSECT
+.NOD     ANOP
+&TFLAG   DC        A(&FLAG)            FLAG WORD
+&TLEN    DC        A(&LEN)             CURRENT TABLE LENGTH
+&TMAX    DC        A(&MAX)             MAXIMUM TABLE LENGTH
+&TADDR   DC        A(&ADDRESS)         ADDRESS OF TABLE
+         POP   PRINT
+         MEND  ,

@@ -1,0 +1,99 @@
+/* ****************************************************************** */
+/*  LCLMGEN - Build MAILER and MG with local changes                  */
+/* ****************************************************************** */
+/*  Command format:  LCLMGEN                                          */
+/*                                                                    */
+/*  LCLMGEN will apply changes to local created mailer code (such as  */
+/*  exits) or modifications to the standard mailer code.  After       */
+/*  all changes have been applied the MAILER and MG commands are      */
+/*  regenerated.                                                      */
+/*                                                                    */
+/* ****************************************************************** */
+
+/* get mailer version number */
+
+'EXECIO * DISKR VERSION COPY * (FINIS FIND /&VERSION SETC/'
+if rc ^=0 then version = "UNKNOWN"
+else do
+    pull   /* junk */
+    parse pull . . "'" version "'" .    /* &VERSION SETC 'Vnum' ... */
+end
+say "Building MAILER version" version"..."
+
+signal on error
+trace "Commands"
+
+/* Build local mailer maclib:  To change the files in the local       */
+/*                             mailer maclib the file MAILLCL EXEC    */
+/*                             must be changed.                       */
+
+'EXEC VMFMAC MAILLCL MAILER'
+signal off error
+address command 'ERASE MAILLCL COPY'
+signal on error
+
+/* Assemble local mailer code:  To change the list of assemble files  */
+/*                              the file LMAILMOD EXEC must be changed*/
+
+'EXEC LMAILMOD EXEC VMFASM MAILER'
+
+/* Build local C header files:  To change the list of header files the*/
+/*                              file LMAILHS EXEC must be changed     */
+
+'EXEC LMAILHS EXEC GET H (CLOBBER CONT PRINT'
+'EXEC GET CAUX AUX (CLOBBER CONT PRINT'
+
+/* Compile local C code:  To change the list of C files the file      */
+/*                        LMAILCS EXEC must be changed.               */
+
+'EXEC LMAILCS EXEC CCOMP C (PRINT'
+
+/* Place local text files in local txtlib:                            */
+
+'EXEC LMAILTXT'
+
+/* Update local mail execs: To change the list of execs the file      */
+/*                          LMAILEXC EXEC must be changed.            */
+
+'EXEC LMAILEXC EXEC EXECUPDT EXEC ( CTL MAILEXEC'
+
+/* Do a little cleanup */
+
+trace 'Off'
+signal off error
+address command 'ERASE * ERRS'
+address command 'ERASE * TEXT'
+address command 'ERASE * H'
+address command 'ERASE MAILER MAP'
+address command 'ERASE MG     MAP'
+signal on error
+trace 'Commands'
+
+/* Make sure C library disk is accessed */
+
+'EXEC CDISK'
+
+/* Global the appropriate TXTLIBS */
+
+'GLOBAL TXTLIB MAILLCL MAILGEN CLIB'
+
+/* Attempt to create new MAILER MODULE */
+
+signal off error
+'LOAD MAILER MAILPAL MAILLEX MAILLRP (CLEAR'
+if rc > 4 then exit rc
+signal on error
+'GENMOD MAILER'
+'RENAME LOAD MAP A MAILER MAP A'
+
+/* Attempt to create new MG MODULE */
+
+signal off error
+'LOAD @MG (CLEAR'
+if rc > 4  then  exit rc
+signal on error
+'GENMOD MG'
+'RENAME LOAD MAP A MG MAP A'
+
+error: exitrc = rc
+exit exitrc

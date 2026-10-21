@@ -1,0 +1,115 @@
+/* ****************************************************************** */
+/*  GENMAIL - Build mailer from TXTLIB files                          */
+/* ****************************************************************** */
+/*                                                                    */
+/*  command format:   GENMAIL  < userid >                             */
+/*                             < userid@node >                        */
+/*                                                                    */
+/*  GENMAIL will build a new MAILER module from the TXTLIB files.     */
+/*  If a userid or userid@node is provided it will then ship the      */
+/*  new mailer files to that userid.                                  */
+/*                                                                    */
+/* ****************************************************************** */
+
+address COMMAND
+parse upper arg dest .                       /*                       */
+if dest = '?'  then  do                      /*                       */
+   'EXEC CLEAR'                              /*                       */
+   do i=1 while sourceline(i) <> ''          /*                       */
+      say sourceline(i)                      /*                       */
+      end
+   exit
+   end
+                                             /*                       */
+if dest = ''  then  userid = ''              /*                       */
+else  do                                     /*                       */
+   parse var dest userid '@' node .          /*                       */
+   if node <> ''  then  userid = userid 'AT' node
+   end
+
+
+txtlibs = 'MAILLCL MAILGEN CLIB'
+say 'Globalling' txtlibs
+'GLOBAL TXTLIB' txtlibs
+
+/*  Build MAILER and MG modules  */
+
+signal off error
+say ' '
+say 'Loading MAILER code'
+'LOAD MAILER MAILPAL MAILLEX MAILLRP MAILDBG( CLEAR'
+if rc > 4 then exit rc
+call fixdate
+signal on error
+'GENMOD MAILER'
+say 'MAILER MODULE generated with rc='rc
+
+signal off error
+address COMMAND 'ESTATEW MAILER MAP A'
+if rc = 0  then  address COMMAND 'ERASE MAILER MAP A'
+signal on error
+'RENAME LOAD MAP A MAILER MAP A'
+say 'Load map saved as MAILER MAP'
+
+signal off error
+say ' '
+say 'Loading MG code'
+'LOAD @MG ( CLEAR'
+if rc > 4 then exit rc
+signal on error
+'GENMOD MG'
+say 'MG MODULE generated with rc='rc
+
+signal off error
+address COMMAND 'ESTATEW MG MAP A'
+if rc = 0  then  address COMMAND 'ERASE MG MAP A'
+signal on error
+'RENAME LOAD MAP A MG MAP A'
+say 'Load map saved as MG MAP'
+
+if userid <> ''  then  do
+   'EXEC SENDFILE MAILER   MODULE TO' userid
+   'EXEC SENDFILE MAILER   TXTLIB TO' userid
+   'EXEC SENDFILE MABNXIT  EXEC   TO' userid
+   'EXEC SENDFILE FORWARD  MAILER TO' userid
+   'EXEC SENDFILE MAILLIST MAILER TO' userid
+   end
+error: exit rc
+
+/* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ */
+/*  Modify the generation date field in the MAILBLOK to reflect the   */
+/*  correct date and time of creation of the module.                  */
+/* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ */
+
+FixDate: procedure
+'FINIS LOAD MAP A'
+'EXECIO * DISKR LOAD MAP A ( LOCATE /MAILBLOK SD/ STEM MAILBLOK. FINIS'
+if mailblok.0 <> 2  then  do
+   say ' '
+   say '** NOTE ** Unable to update generation date in MAILBLOK'
+   if mailblok.0 = 0  then
+      say '           Address not found in LOAD MAP'
+   else
+      say '           Too many addresses found in LOAD MAP'
+   say ' '
+   return
+   end
+mailblok = word(mailblok.1,3)                /* Csect address         */
+dateoffset = 'A9'                            /* Offset to date field  */
+dateaddr = d2x(x2d(mailblok)+x2d(dateoffset))/* Address in old module */
+parse value storage(dateaddr,17) with ,
+   . +2 slash1 +1 . +2 slash2 +1 . +5 colon1 +1 . +2 colon2 +1 .
+
+if slash1 <> '/' | slash2 <> '/' | colon1 <> ':' | colon2 <> ':' then do
+   say ' '
+   say '** NOTE ** Unable to update generation date in MAILBLOK'
+   say '           Date address is no longer' dateaddr
+   say ' '
+   end
+else  do
+   newdate = date('U') time()
+   x = storage(dateaddr,17,newdate)
+   say 'MAILBLOK asembled' word(x,1) 'at' word(x,2)
+   say 'Generation time changed to' word(newdate,1) 'at' word(newdate,2)
+   end
+return
